@@ -26,10 +26,24 @@ npm run og         # regenerate public/og.png (dev-only script; commit the outpu
 
 | const | notes |
 |---|---|
-| `WAITLIST_ENDPOINT` | Formspree/Tally-style POST endpoint. **Must be set before any email campaign.** While empty: dev builds log the payload and fake success; production builds show a mailto fallback and never fake success. |
+| `WAITLIST_ENDPOINT` | Google Form URL **or** Formspree-style JSON endpoint. **Must be set before any email campaign.** While empty: dev builds log the payload and fake success; production builds show a mailto fallback and never fake success. |
+| `GOOGLE_FORM_ENTRIES` | only for Google Form mode: the form's `entry.NNN` ids for email / company / source. |
 | `CONTACT_EMAIL` | mailto target for `contact` / fallbacks. |
 | `SITE_URL` | absolute base for OG tags (also hardcoded in `index.html` — keep in sync). |
 | `PLAUSIBLE_DOMAIN` | optional; empty = no analytics script injected. |
+
+### Waitlist: Google Form mode (accepted tradeoff)
+
+Google Forms sends no CORS headers, so the **browser cannot read Google's
+response** — the site shows success whenever the request completes, even if
+Google silently rejected it (deleted form, closed responses, changed entry
+ids). This is a deliberate tradeoff (team decision 2026-07-11) in exchange for
+a free, unlimited endpoint with responses in a familiar Sheet.
+
+Mitigation: run **`npm run test:waitlist`** periodically — Node *can* read the
+response, so the script submits a real test row and fails loudly if the form
+is gone or the entry ids stopped matching. Run it at minimum before and during
+any email campaign, then delete the test rows from the Responses sheet.
 
 ## Deploy
 

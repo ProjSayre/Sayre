@@ -1,7 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { CONTACT_EMAIL, WAITLIST_ENDPOINT } from "../config";
+import { CONTACT_EMAIL, GOOGLE_FORM_ENTRIES, WAITLIST_ENDPOINT } from "../config";
 import { Button } from "./Button";
+
+const isGoogleForm = WAITLIST_ENDPOINT.includes("docs.google.com/forms");
+// accept either the share link (…/viewform) or the raw submit url
+const googleFormAction = WAITLIST_ENDPOINT.replace(/\/viewform.*$/, "/formResponse");
 
 export type WaitlistSource = "landing" | "demo-topbar" | "demo-tour";
 
@@ -32,6 +36,28 @@ export function WaitlistForm({ source }: { source: WaitlistSource }): JSX.Elemen
       // dev only — production renders the mailto fallback instead of this path
       console.info("[sayre] waitlist payload (no endpoint configured):", payload);
       window.setTimeout(() => setStatus("success"), 400);
+      return;
+    }
+
+    if (isGoogleForm) {
+      // Google Forms sends no CORS headers, so the response is opaque — a
+      // completed send is treated as success (accepted tradeoff; verified
+      // periodically via `npm run test:waitlist`). Network failures still
+      // reject and surface the error state.
+      try {
+        await fetch(googleFormAction, {
+          method: "POST",
+          mode: "no-cors",
+          body: new URLSearchParams({
+            [GOOGLE_FORM_ENTRIES.email]: email,
+            [GOOGLE_FORM_ENTRIES.company]: company,
+            [GOOGLE_FORM_ENTRIES.source]: source,
+          }),
+        });
+        setStatus("success");
+      } catch {
+        setStatus("error");
+      }
       return;
     }
 
