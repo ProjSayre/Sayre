@@ -7,8 +7,14 @@
 //  • the graph then wires itself child-by-child while the camera pulls back
 //  • organic tree dissolves; labels and badges settle into the production look
 // Under reduced motion the scene renders its final frame statically.
+//
+// RENDERER: Canvas 2D, not SVG. The design's SVG version reconciled ~500 DOM
+// elements per frame and pushed feGaussianBlur over near-fullscreen groups —
+// unwatchable on mid-range hardware. Here every frame is one canvas paint, and
+// the blur filters are replaced by a ⅓-resolution glow layer composited
+// underneath (upscaling is a free soft blur). Geometry is unchanged.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { prefersReducedMotion } from "../demo/canvas/useCamera";
 import { HERO_BADGES, HERO_EDGES, HERO_LABELS, HERO_NODES } from "./heroTreeData";
 import type { HeroNode } from "./heroTreeData";
@@ -72,6 +78,7 @@ interface Seg {
   wEnd?: number;
   waistS?: number;
   fullD?: string | null;
+  p2d?: Path2D | null; // cached Path2D of the fully-grown outline
 }
 
 function sampleCubic(A: Pt, c1: Pt, c2: Pt, B: Pt, n: number): Pt[] {
@@ -765,122 +772,178 @@ function badgeOp(u: number): number {
   return 1;
 }
 
-// ------------------------------------------------------------------ render
-export function TreeSceneAt({ t }: { t: number }): JSX.Element {
-  const S = useMemo(buildSchedule, []);
 
+// ------------------------------------------------------------------ canvas renderer
+
+type Schedule = ReturnType<typeof buildSchedule>;
+
+function segPath(seg: Seg, revealLen: number): Path2D | null {
+  if (revealLen >= seg.len) {
+    if (seg.p2d === undefined) seg.p2d = seg.fullD ? new Path2D(seg.fullD) : null;
+    return seg.p2d;
+  }
+  const d = outlinePath(seg, revealLen);
+  return d ? new Path2D(d) : null;
+}
+
+interface Ctx2D {
+  main: CanvasRenderingContext2D;
+  glow: CanvasRenderingContext2D;
+}
+
+const GLOW_SCALE = 1 / 3; // glow layer renders at ⅓ res; upscaling = soft blur
+
+/** apply viewBox("-63 -169 1920 1080", slice) + camera to a context */
+function applyWorld(ctx: CanvasRenderingContext2D, pxScale: number, w: number, h: number, camTx: number, camTy: number, cs: number): void {
+  const s = Math.max(w / 1920, h / 1080);
+  const baseTx = (w - 1920 * s) / 2 + 63 * s;
+  const baseTy = (h - 1080 * s) / 2 + 169 * s;
+  ctx.setTransform(pxScale, 0, 0, pxScale, 0, 0);
+  ctx.translate(baseTx, baseTy);
+  ctx.scale(s, s);
+  ctx.translate(camTx, camTy);
+  ctx.scale(cs, cs);
+}
+
+function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, fill: string, alpha: number): void {
+  if (alpha <= 0.002) return;
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function ring(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, stroke: string, lw: number, alpha: number, fill?: string): void {
+  if (alpha <= 0.002) return;
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (fill) {
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+}
+
+function seg2(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, stroke: string, lw: number, alpha: number): void {
+  if (alpha <= 0.002) return;
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+function drawFrame(S: Schedule, c: Ctx2D, t: number, w: number, h: number, dpr: number): void {
+  const { main, glow } = c;
+
+  // camera (identical math to the svg version)
   const camP = eio(clamp01(t / CAM_T1));
   const cs = 1.22 - 0.22 * camP;
   const ccx = 958 + (897 - 958) * camP;
   const ccy = 706 + (371 - 706) * camP;
-  const cam = "translate(" + (897 - cs * ccx).toFixed(2) + " " + (371 - cs * ccy).toFixed(2) + ") scale(" + cs.toFixed(4) + ")";
+  const camTx = 897 - cs * ccx;
+  const camTy = 371 - cs * ccy;
+
+  main.setTransform(1, 0, 0, 1, 0, 0);
+  main.globalAlpha = 1;
+  main.fillStyle = BG;
+  main.fillRect(0, 0, w * dpr, h * dpr);
+  glow.setTransform(1, 0, 0, 1, 0, 0);
+  glow.clearRect(0, 0, Math.ceil(w * GLOW_SCALE), Math.ceil(h * GLOW_SCALE));
+
+  applyWorld(main, dpr, w, h, camTx, camTy, cs);
+  applyWorld(glow, GLOW_SCALE, w, h, camTx, camTy, cs);
+  main.lineJoin = "round";
+  glow.lineJoin = "round";
+
   const organicOp = 1 - eio(clamp01((t - FADE0) / (FADE1 - FADE0)));
   const dustFade = clamp01(t / 1.6) * (1 - clamp01((t - 5.6) / 0.9));
   const moteFade = clamp01(t / 1.2) * (1 - clamp01((t - 7.2) / 1.3));
-  const els: JSX.Element[] = [];
 
+  // ---- dust ----
   if (dustFade > 0.001) {
-    const a: JSX.Element[] = [];
     for (let i = 0; i < S.dust.length; i++) {
       const d = S.dust[i];
       const op = d.base * dustFade * (0.65 + 0.35 * Math.sin(t * d.w1 * 2 + d.ph));
-      a.push(
-        <circle
-          key={i}
-          cx={d.x + Math.sin(t * d.w1 + d.ph) * 26 + t * d.vx}
-          cy={d.y + Math.cos(t * d.w1 * 0.8 + d.ph) * 18 + t * d.vy}
-          r={d.r}
-          fill="#D9D8D1"
-          opacity={op}
-          filter={d.blur ? "url(#dustblur)" : undefined}
-        />,
-      );
+      const x = d.x + Math.sin(t * d.w1 + d.ph) * 26 + t * d.vx;
+      const y = d.y + Math.cos(t * d.w1 * 0.8 + d.ph) * 18 + t * d.vy;
+      circle(d.blur ? glow : main, x, y, d.r, "#D9D8D1", op);
     }
-    els.push(<g key="dust">{a}</g>);
   }
 
+  // ---- ambient motes ----
   if (moteFade > 0.001) {
-    const glow: JSX.Element[] = [];
-    const core: JSX.Element[] = [];
     for (let i = 0; i < S.motes.length; i++) {
       const m = S.motes[i];
       const op = m.base * moteFade * (0.55 + 0.45 * Math.sin(t * m.w1 * 1.7 + m.ph));
       const x = m.x + Math.sin(t * m.w1 + m.ph) * m.ax;
       const y = m.y + Math.cos(t * m.w1 * 0.85 + m.ph) * m.ay;
-      glow.push(<circle key={"mg" + i} cx={x} cy={y} r={m.r + 2.5} fill="#EFEEE7" opacity={op * 0.5} />);
-      core.push(<circle key={"mc" + i} cx={x} cy={y} r={m.r} fill="#F2F1EA" opacity={op} />);
+      circle(glow, x, y, m.r + 2.5, "#EFEEE7", op * 0.5);
+      circle(main, x, y, m.r, "#F2F1EA", op);
     }
-    els.push(
-      <g key="moteGlow" filter="url(#glow)">
-        {glow}
-      </g>,
-    );
-    els.push(<g key="moteCore">{core}</g>);
   }
 
+  // ---- organic braided tree (constant-speed wavefront) ----
   if (organicOp > 0.001) {
     const front = S.totalDist * ramp(clamp01((t - GROW_T0) / SPAN));
-    const glow: JSX.Element[] = [];
-    const crisp: JSX.Element[] = [];
-    if (front > 1)
-      els.push(
-        <ellipse key="ground" cx={BASE_X} cy={GROUND_Y + 4} rx={86} ry={9} fill="#D8D7CF" filter="url(#glowBig)" opacity={0.3 * clamp01(front / 40) * organicOp} />,
-      );
+    if (front > 1) {
+      glow.globalAlpha = Math.min(1, 0.3 * clamp01(front / 40) * organicOp);
+      glow.fillStyle = "#D8D7CF";
+      glow.beginPath();
+      glow.ellipse(BASE_X, GROUND_Y + 4, 86, 9, 0, 0, Math.PI * 2);
+      glow.fill();
+    }
     for (let i = 0; i < S.segs.length; i++) {
       const seg = S.segs[i];
       const rl = front - seg.distStart;
       if (rl <= 0.2) continue;
-      const d = rl >= seg.len ? seg.fullD : outlinePath(seg, rl);
-      if (!d) continue;
-      const op = seg.decoy ? 0.8 : 0.9;
-      glow.push(<path key={"g" + seg.id} d={d} fill="#EBEAE3" opacity={0.24 * op} />);
-      crisp.push(
-        <path key={"c" + seg.id} d={d} fill={seg.decoy ? "#C4C3BC" : "#CFCEC7"} stroke={seg.decoy ? "#C4C3BC" : "#CFCEC7"} strokeWidth="0.8" strokeLinejoin="round" opacity={op} />,
-      );
+      const p = segPath(seg, rl);
+      if (!p) continue;
+      const op = (seg.decoy ? 0.8 : 0.9) * organicOp;
+      glow.globalAlpha = Math.min(1, 0.24 * op);
+      glow.fillStyle = "#EBEAE3";
+      glow.fill(p);
+      main.globalAlpha = Math.min(1, op);
+      const col = seg.decoy ? "#C4C3BC" : "#CFCEC7";
+      main.fillStyle = col;
+      main.fill(p);
+      main.strokeStyle = col;
+      main.lineWidth = 0.8;
+      main.stroke(p);
     }
     for (let i = 0; i < S.joints.length; i++) {
       const j = S.joints[i];
       if (front < (j.dist ?? 0) - 0.5) continue;
-      glow.push(<circle key={"jg" + i} cx={j.x} cy={j.y} r={(j.r ?? 2) + 1} fill="#EBEAE3" opacity={0.24 * 0.9} />);
-      crisp.push(<circle key={"jc" + i} cx={j.x} cy={j.y} r={j.r ?? 2} fill="#CFCEC7" />);
+      circle(glow, j.x, j.y, (j.r ?? 2) + 1, "#EBEAE3", 0.24 * 0.9 * organicOp);
+      circle(main, j.x, j.y, j.r ?? 2, "#CFCEC7", organicOp);
     }
     for (let i = 0; i < S.fillerTips.length; i++) {
       const f = S.fillerTips[i];
       if (front < f.dist) continue;
-      glow.push(<circle key={"fg" + i} cx={f.x} cy={f.y} r={2.8} fill="#F2F1EA" opacity={0.32} />);
-      crisp.push(<circle key={"ff" + i} cx={f.x} cy={f.y} r={1.3} fill="#EFEEE7" opacity={0.5} />);
+      circle(glow, f.x, f.y, 2.8, "#F2F1EA", 0.32 * organicOp);
+      circle(main, f.x, f.y, 1.3, "#EFEEE7", 0.5 * organicOp);
     }
-    els.push(
-      <g key="organic" opacity={organicOp}>
-        <g filter="url(#glow)">{glow}</g>
-        {crisp}
-      </g>,
-    );
-    const pgl: JSX.Element[] = [];
-    const pcr: JSX.Element[] = [];
+    // node pulses riding the growth front
     for (let i = 0; i < S.nodes.length; i++) {
       const n = S.nodes[i];
       if (n.mote || !n.seg) continue;
       const rl = front - n.seg.distStart;
       if (rl <= 0 || rl >= (n.sOff ?? 0)) continue;
       const P = pointAt(n.seg, rl / n.seg.len);
-      pgl.push(<circle key={"pg" + i} cx={P.x} cy={P.y} r={6} fill="#FFFFFF" opacity={0.55} />);
-      pcr.push(<circle key={"pp" + i} cx={P.x} cy={P.y} r={2.6} fill="#F6F5EF" opacity={0.95} />);
-    }
-    if (pgl.length) {
-      els.push(
-        <g key="pulseGlow" filter="url(#glow)">
-          {pgl}
-        </g>,
-      );
-      els.push(<g key="pulses">{pcr}</g>);
+      circle(glow, P.x, P.y, 6, "#FFFFFF", 0.55 * organicOp);
+      circle(main, P.x, P.y, 2.6, "#F6F5EF", 0.95 * organicOp);
     }
   }
 
+  // ---- straight graph edges ----
   const calm = 1 - organicOp;
-  const glowLines: JSX.Element[] = [];
-  const crispLines: JSX.Element[] = [];
-  const heads: JSX.Element[] = [];
+  const heads: { x: number; y: number }[] = [];
   for (let i = 0; i < S.edges.length; i++) {
     const e = S.edges[i];
     const p = clamp01((t - e.t0) / (e.t1 - e.t0));
@@ -890,29 +953,16 @@ export function TreeSceneAt({ t }: { t: number }): JSX.Element {
     const y2 = e.y1 + (e.y2 - e.y1) * g;
     const alpha = Math.min(1, p * 3);
     if (e.ghost) {
-      crispLines.push(<line key={"e" + i} x1={e.x1} y1={e.y1} x2={x2} y2={y2} stroke="#3B3B35" strokeWidth="1" opacity={(0.55 + 0.25 * (1 - calm)) * alpha} />);
+      seg2(main, e.x1, e.y1, x2, y2, "#3B3B35", 1, (0.55 + 0.25 * (1 - calm)) * alpha);
     } else {
-      glowLines.push(<line key={"ge" + i} x1={e.x1} y1={e.y1} x2={x2} y2={y2} stroke="#E4E3DC" strokeWidth={4.5 - 1.7 * calm} opacity={(0.32 - 0.12 * calm) * alpha} />);
-      crispLines.push(<line key={"e" + i} x1={e.x1} y1={e.y1} x2={x2} y2={y2} stroke="#7B7B73" strokeWidth={1.6 - 0.5 * calm} opacity={alpha} />);
-      if (calm < 0.999) crispLines.push(<line key={"eb" + i} x1={e.x1} y1={e.y1} x2={x2} y2={y2} stroke="#C9C8C0" strokeWidth="1.2" opacity={alpha * 0.75 * (1 - calm)} />);
-      if (p < 1) heads.push(<circle key={"h" + i} cx={x2} cy={y2} r={3} fill="#FFFFFF" opacity={0.95} />);
+      seg2(glow, e.x1, e.y1, x2, y2, "#E4E3DC", 4.5 - 1.7 * calm, (0.32 - 0.12 * calm) * alpha);
+      seg2(main, e.x1, e.y1, x2, y2, "#7B7B73", 1.6 - 0.5 * calm, alpha);
+      if (calm < 0.999) seg2(main, e.x1, e.y1, x2, y2, "#C9C8C0", 1.2, alpha * 0.75 * (1 - calm));
+      if (p < 1) heads.push({ x: x2, y: y2 });
     }
   }
-  els.push(
-    <g key="glowEdges" filter="url(#glow)">
-      {glowLines}
-    </g>,
-  );
-  els.push(<g key="edges">{crispLines}</g>);
-  els.push(
-    <g key="edgeHeads" filter="url(#glow)">
-      {heads}
-    </g>,
-  );
 
-  const nodeGlow: JSX.Element[] = [];
-  const lights: JSX.Element[] = [];
-  const rings: JSX.Element[] = [];
+  // ---- nodes ----
   for (let i = 0; i < S.nodes.length; i++) {
     const n = S.nodes[i];
     if (t <= n.ignite && !n.mote) continue;
@@ -936,98 +986,121 @@ export function TreeSceneAt({ t }: { t: number }): JSX.Element {
     const lightR = n.type === "root" ? 5 : n.type === "folder" ? 4 : 3;
     const finalGlow = n.type === "file" ? 0.09 : n.type === "root" ? 0.2 : 0.15;
     const gop = (n.mote ? 0.32 * appear : 0.85 * flash) * (1 - settle) + pulse * (1 - settle) + finalGlow * settle + 0.65 * pop;
-    nodeGlow.push(<circle key={"gn" + i} cx={cx} cy={cy} r={n.r + 3 + 4 * pop} fill="#FFFFFF" opacity={Math.max(0, gop)} />);
+    circle(glow, cx, cy, n.r + 3 + 4 * pop, "#FFFFFF", Math.max(0, gop));
     if (settle < 1) {
-      if (n.mote) lights.push(<circle key={"li" + i} cx={cx} cy={cy} r={2.5} fill="#F2F1EA" opacity={0.7 * appear * (1 - settle)} />);
-      else lights.push(<circle key={"li" + i} cx={cx} cy={cy} r={lightR} fill="none" stroke="#F6F5EF" strokeWidth={1.8} opacity={(0.6 + 0.4 * flash) * (1 - settle)} />);
+      if (n.mote) circle(main, cx, cy, 2.5, "#F2F1EA", 0.7 * appear * (1 - settle));
+      else ring(main, cx, cy, lightR, "#F6F5EF", 1.8, (0.6 + 0.4 * flash) * (1 - settle));
     }
     if (settle > 0) {
-      if (n.type === "file") rings.push(<circle key={"n" + i} cx={n.cx} cy={n.cy} r={n.r} fill="#A6A59D" opacity={settle} />);
-      else
-        rings.push(
-          <circle key={"n" + i} cx={n.cx} cy={n.cy} r={n.r} fill={BG} stroke={n.type === "root" ? "#E8E6E1" : "#C7C6BF"} strokeWidth={n.type === "root" ? 1.75 : 1.5} opacity={settle} />,
-        );
+      if (n.type === "file") circle(main, n.cx, n.cy, n.r, "#A6A59D", settle);
+      else ring(main, n.cx, n.cy, n.r, n.type === "root" ? "#E8E6E1" : "#C7C6BF", n.type === "root" ? 1.75 : 1.5, settle, BG);
     }
   }
-  els.push(
-    <g key="nodeGlow" filter="url(#glow)">
-      {nodeGlow}
-    </g>,
-  );
-  els.push(<g key="rings">{rings}</g>);
-  els.push(<g key="lights">{lights}</g>);
 
-  const badgeEls: JSX.Element[] = [];
+  // travelling light-heads sit ON TOP (they had their own glow filter in svg)
+  for (const hd of heads) {
+    circle(main, hd.x, hd.y, 6.5, "rgba(255,255,255,0.28)", 1);
+    circle(main, hd.x, hd.y, 3, "#FFFFFF", 0.95);
+  }
+
+  // ---- badges ----
   for (let i = 0; i < S.badges.length; i++) {
     const b = S.badges[i];
     const op = badgeOp(t - b.t0);
     if (op <= 0) continue;
-    const c = b.kind === "pass" ? "#5FA876" : "#D2953F";
-    badgeEls.push(<circle key={"gb" + i} cx={b.cx} cy={b.cy} r={b.r + 2} fill={c} opacity={0.4 * op} filter="url(#glow)" />);
-    badgeEls.push(<circle key={"b" + i} cx={b.cx} cy={b.cy} r={b.r} fill={c} opacity={op} />);
+    const col = b.kind === "pass" ? "#5FA876" : "#D2953F";
+    circle(glow, b.cx, b.cy, b.r + 2, col, 0.4 * op);
+    circle(main, b.cx, b.cy, b.r, col, op);
   }
-  els.push(<g key="badges">{badgeEls}</g>);
 
-  const labelEls: JSX.Element[] = [];
+  // ---- labels ----
+  main.textAlign = "left";
+  main.textBaseline = "alphabetic";
   for (let i = 0; i < S.labels.length; i++) {
     const l = S.labels[i];
     const p = clamp01((t - l.t0) / 0.7);
     if (p <= 0) continue;
     const ep = eo(p);
-    const fill = l.depth === 0 ? "#E8E6E1" : l.cls === "ghost" ? "#64645C" : l.cls === "file" ? "#8B8B82" : "#A9A9A0";
-    labelEls.push(
-      <text key={"l" + i} x={l.x} y={l.y + 3 * (1 - ep)} fontSize={l.fs} fill={fill} opacity={ep}>
-        {l.text}
-      </text>,
-    );
+    main.globalAlpha = ep;
+    main.font = l.fs + 'px "Fragment Mono", ui-monospace, monospace';
+    main.fillStyle = l.depth === 0 ? "#E8E6E1" : l.cls === "ghost" ? "#64645C" : l.cls === "file" ? "#8B8B82" : "#A9A9A0";
+    main.fillText(l.text, l.x, l.y + 3 * (1 - ep));
   }
-  els.push(<g key="labels">{labelEls}</g>);
 
-  return (
-    <div style={{ position: "absolute", inset: 0, background: BG }}>
-      <svg
-        width="100%"
-        height="100%"
-        viewBox="-63 -169 1920 1080"
-        preserveAspectRatio="xMidYMid slice"
-        style={{ position: "absolute", inset: 0, display: "block" }}
-        fontFamily="'Fragment Mono', ui-monospace, monospace"
-        aria-hidden="true"
-      >
-        <defs>
-          <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="2.4" />
-          </filter>
-          <filter id="glowBig" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="7" />
-          </filter>
-          <filter id="dustblur" x="-120%" y="-120%" width="340%" height="340%">
-            <feGaussianBlur stdDeviation="1.6" />
-          </filter>
-        </defs>
-        <g transform={cam}>{els}</g>
-      </svg>
-    </div>
-  );
+  // ---- composite the ⅓-res glow layer over the frame (screen-ish, additive feel) ----
+  main.setTransform(dpr, 0, 0, dpr, 0, 0);
+  main.globalAlpha = 1;
+  main.globalCompositeOperation = "lighter";
+  main.imageSmoothingEnabled = true;
+  main.drawImage(glow.canvas, 0, 0, Math.ceil(w * GLOW_SCALE), Math.ceil(h * GLOW_SCALE), 0, 0, w, h);
+  main.globalCompositeOperation = "source-over";
 }
 
 /** chrome-free, self-clocked: plays once on mount and holds the finished graph */
 export function HeroTreeAmbient(): JSX.Element {
-  const reduced = prefersReducedMotion();
-  const [t, setT] = useState(reduced ? DUR : 0);
-  const rafRef = useRef(0);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    if (reduced) return;
-    const t0 = performance.now();
-    const loop = (ts: number): void => {
-      const el = (ts - t0) / 1000;
-      setT(Math.min(el, DUR));
-      if (el < DUR) rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [reduced]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const main = canvas.getContext("2d");
+    if (!main) return;
+    const glowCanvas = document.createElement("canvas");
+    const glow = glowCanvas.getContext("2d");
+    if (!glow) return;
 
-  return <TreeSceneAt t={t} />;
+    const S = buildSchedule();
+    const reduced = prefersReducedMotion();
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    let w = 0;
+    let h = 0;
+    let raf = 0;
+    let done = false;
+    const t0 = performance.now();
+
+    const size = (): void => {
+      const rect = canvas.getBoundingClientRect();
+      w = Math.max(1, rect.width);
+      h = Math.max(1, rect.height);
+      canvas.width = Math.ceil(w * dpr);
+      canvas.height = Math.ceil(h * dpr);
+      glowCanvas.width = Math.max(1, Math.ceil(w * GLOW_SCALE));
+      glowCanvas.height = Math.max(1, Math.ceil(h * GLOW_SCALE));
+      if (done || reduced) drawFrame(S, { main, glow }, DUR, w, h, dpr);
+    };
+    size();
+    const ro = new ResizeObserver(size);
+    ro.observe(canvas);
+
+    if (reduced) {
+      drawFrame(S, { main, glow }, DUR, w, h, dpr);
+      return () => ro.disconnect();
+    }
+
+    const loop = (now: number): void => {
+      const t = Math.min((now - t0) / 1000, DUR);
+      // skip painting while the hero is scrolled out of view (t keeps advancing)
+      if (window.scrollY < window.innerHeight * 1.3) {
+        drawFrame(S, { main, glow }, t, w, h, dpr);
+      }
+      if (t < DUR) {
+        raf = requestAnimationFrame(loop);
+      } else {
+        done = true;
+        drawFrame(S, { main, glow }, DUR, w, h, dpr);
+      }
+    };
+    raf = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
+
+  return (
+    <div style={{ position: "absolute", inset: 0, background: BG }}>
+      <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} aria-hidden="true" />
+    </div>
+  );
 }
