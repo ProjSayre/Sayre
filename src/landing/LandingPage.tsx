@@ -12,6 +12,28 @@ import { GraphDivider, Reveal } from "./Reveal";
 
 const GLOW = 0.65;
 
+// s2 set dressing: unlabeled nodes in the margins that label themselves as the
+// paragraph illuminates — the section acts out "a kitchen getting labels".
+// th = scrub fraction at which the label attaches (matches word lighting).
+const PROBLEM_DECOS: {
+  x: number;
+  y: number;
+  kind: "folder" | "file";
+  label: string;
+  th: number;
+  side: "left" | "right";
+  accent?: boolean;
+}[] = [
+  { x: 9, y: 16, kind: "folder", label: "apps/", th: 0.1, side: "right" },
+  { x: 15, y: 42, kind: "file", label: "currency.ts", th: 0.28, side: "right" },
+  { x: 7, y: 66, kind: "file", label: "retry.ts", th: 0.46, side: "right" },
+  { x: 13, y: 86, kind: "folder", label: "search/", th: 0.64, side: "right" },
+  { x: 91, y: 14, kind: "file", label: "session.ts", th: 0.19, side: "left" },
+  { x: 85, y: 38, kind: "folder", label: "packages/", th: 0.37, side: "left" },
+  { x: 92, y: 62, kind: "file", label: "PaymentForm.tsx", th: 0.55, side: "left" },
+  { x: 87, y: 84, kind: "folder", label: "checkout/", th: 0.92, side: "left", accent: true },
+];
+
 function LensSvg({ g, halo }: { g: LensGraph; halo: string }): JSX.Element {
   return (
     <svg viewBox={g.vb} preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }} aria-hidden="true">
@@ -45,6 +67,8 @@ export default function LandingPage(): JSX.Element {
   const heroContentRef = useRef<HTMLDivElement | null>(null);
   const problemRef = useRef<HTMLElement | null>(null);
   const wordsRef = useRef<HTMLSpanElement[]>([]);
+  const decosRef = useRef<HTMLDivElement[]>([]);
+  const answerRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLDivElement | null>(null);
   const lensTextsRef = useRef<HTMLDivElement[]>([]);
   const lensGraphsRef = useRef<HTMLDivElement[]>([]);
@@ -60,6 +84,11 @@ export default function LandingPage(): JSX.Element {
   }, []);
 
   const problemWords = PROBLEM.body.split(" ");
+  // the quoted question renders in mono, like a real query
+  const quoteStart = problemWords.findIndex((w) => w.startsWith('"'));
+  const quoteEnd = problemWords.findIndex((w) => w.endsWith('?"'));
+  // the headline's last word renders hollow — unfilled, i.e. unlabeled
+  const [h2Pre, h2Post] = PROBLEM.h2.split("labels");
   const graphs = lensGraphs();
   const paymentForm = NODE_BY_ID.get("apps/web/src/checkout/PaymentForm.tsx");
 
@@ -123,12 +152,18 @@ export default function LandingPage(): JSX.Element {
       if (problemRef.current && wordsRef.current.length) {
         const r = problemRef.current.getBoundingClientRect();
         const p = Math.min(1, Math.max(0, (vh * 0.8 - r.top) / (r.height + vh * 0.25)));
-        const lit = p * 1.25 * wordsRef.current.length;
+        const scrub = p * 1.25;
+        const lit = scrub * wordsRef.current.length;
         wordsRef.current.forEach((w, i) => {
           const on = i < lit;
           w.style.opacity = on ? "1" : "0.16";
           w.style.color = on ? "#E8E6E1" : "#A9A9A0";
+          if (!reduced) w.style.transform = on ? "none" : "translateY(6px)";
         });
+        for (const el of decosRef.current) {
+          el.classList.toggle("is-on", scrub >= parseFloat(el.dataset.th ?? "1"));
+        }
+        answerRef.current?.classList.toggle("is-on", scrub >= 1.04);
       }
 
       if (pinRef.current) {
@@ -166,6 +201,9 @@ export default function LandingPage(): JSX.Element {
 
   const collectWord = (el: HTMLSpanElement | null): void => {
     if (el && !wordsRef.current.includes(el)) wordsRef.current.push(el);
+  };
+  const collectDeco = (el: HTMLDivElement | null): void => {
+    if (el && !decosRef.current.includes(el)) decosRef.current.push(el);
   };
   const collectLensText = (el: HTMLDivElement | null): void => {
     if (el && !lensTextsRef.current.includes(el)) lensTextsRef.current.push(el);
@@ -220,17 +258,62 @@ export default function LandingPage(): JSX.Element {
         </div>
       </header>
 
-      {/* ═══ s2 · problem — rest beat with per-word illumination ═══ */}
+      {/* ═══ s2 · problem — the kitchen labels itself as you read ═══ */}
       <section className="v2-problem" ref={problemRef}>
-        <GraphDivider center />
-        <h2 className="v2-problem__title">{PROBLEM.h2}</h2>
-        <p className="v2-problem__body">
-          {problemWords.map((w, i) => (
-            <span key={i} ref={collectWord} className="v2-problem__word">
-              {w}{" "}
-            </span>
+        <div className="v2-problem__decos" aria-hidden="true">
+          {PROBLEM_DECOS.map((d, i) => (
+            <div
+              key={i}
+              ref={collectDeco}
+              data-th={d.th}
+              className={[
+                "v2-problem__deco",
+                d.side === "left" ? "v2-problem__deco--left" : "",
+                d.accent ? "v2-problem__deco--accent" : "",
+              ].join(" ")}
+              style={{ left: `${d.x}%`, top: `${d.y}%` }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" className="v2-problem__deco-glyph">
+                {d.kind === "folder" ? (
+                  <circle cx="9" cy="9" r="6" fill="none" strokeWidth="1.5" />
+                ) : (
+                  <circle cx="9" cy="9" r="4.5" strokeWidth="0" />
+                )}
+              </svg>
+              <span className="v2-problem__deco-edge" />
+              <span className="v2-problem__deco-label">{d.label}</span>
+            </div>
           ))}
-        </p>
+        </div>
+
+        <div className="v2-problem__inner">
+          <GraphDivider center />
+          <h2 className="v2-problem__title">
+            {h2Pre}
+            <span className="v2-problem__hollow">labels</span>
+            {h2Post}
+          </h2>
+          <p className="v2-problem__body">
+            {problemWords.map((w, i) => {
+              const inQuote = quoteStart !== -1 && quoteEnd !== -1 && i >= quoteStart && i <= quoteEnd;
+              return (
+                // the space lives OUTSIDE the span — inline-block would swallow it
+                <span key={i}>
+                  <span ref={collectWord} className={inQuote ? "v2-problem__word v2-problem__word--code" : "v2-problem__word"}>
+                    {w}
+                  </span>{" "}
+                </span>
+              );
+            })}
+          </p>
+          <div className="v2-problem__answer" ref={answerRef} aria-hidden="true">
+            <svg width="30" height="10" viewBox="0 0 30 10">
+              <line x1="0" y1="5" x2="20" y2="5" stroke="#4F7F5D" strokeWidth="1.5" />
+              <circle cx="25" cy="5" r="3.5" fill="#4F7F5D" />
+            </svg>
+            apps/web/src/checkout/ · 9 files · 3 workspaces
+          </div>
+        </div>
       </section>
 
       {/* ═══ s3 · pinned split-viewport — one graph, three lenses ═══ */}

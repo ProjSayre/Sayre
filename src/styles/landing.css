@@ -230,37 +230,167 @@ body:has(.landing-v2) {
   }
 }
 
-/* ═══ s2 · problem ═══ */
+/* ═══ s2 · problem — the kitchen labels itself as you read ═══ */
 
 .v2-problem {
-  max-width: 820px;
-  margin: 0 auto;
+  position: relative;
   padding: 30vh 40px 26vh;
   text-align: center;
 }
 
+.v2-problem__inner {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
 .v2-problem__title {
   font-family: var(--font-ui);
-  font-size: clamp(32px, 4vw, 48px);
-  line-height: 1.12;
+  font-size: clamp(36px, 4.6vw, 64px);
+  line-height: 1.08;
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   color: var(--text-bright);
   margin: 0;
   text-wrap: balance;
 }
 
+/* "labels" set hollow — unfilled, i.e. unlabeled */
+.v2-problem__hollow {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--text-muted);
+}
+
 .v2-problem__body {
   font-size: clamp(19px, 2vw, 24px);
   line-height: 1.65;
-  margin: 26px 0 0;
+  margin: 30px 0 0;
   text-wrap: pretty;
 }
 
 .v2-problem__word {
+  display: inline-block;
   opacity: 0.16;
   color: var(--text);
-  transition: opacity 0.4s linear, color 0.4s linear;
+  transition: opacity 0.4s linear, color 0.4s linear, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* the quoted question reads like a real query */
+.v2-problem__word--code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+}
+
+/* the question, answered — the section's payoff beat */
+.v2-problem__answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--accent-text);
+  margin-top: 34px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.v2-problem__answer.is-on {
+  opacity: 1;
+  transform: none;
+}
+
+/* margin nodes that label themselves as the words light */
+.v2-problem__decos {
+  position: absolute;
+  inset: 10vh 0;
+  pointer-events: none;
+}
+
+.v2-problem__deco {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  transform: translate(-50%, -50%);
+}
+
+.v2-problem__deco--left {
+  flex-direction: row-reverse;
+}
+
+.v2-problem__deco-glyph {
+  flex: none;
+  opacity: 0.55;
+  transition: opacity 0.5s ease-out;
+}
+
+.v2-problem__deco-glyph circle {
+  stroke: var(--node-stroke);
+  fill: none;
+}
+
+.v2-problem__deco-glyph circle[stroke-width="0"] {
+  fill: var(--node-stroke);
+  stroke: none;
+}
+
+.v2-problem__deco-edge {
+  width: 22px;
+  height: 1px;
+  background: var(--edge);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.v2-problem__deco--left .v2-problem__deco-edge {
+  transform-origin: right center;
+}
+
+.v2-problem__deco-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding: 0 8px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.5s ease-out, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.v2-problem__deco--left .v2-problem__deco-label {
+  transform: translateX(6px);
+}
+
+.v2-problem__deco.is-on .v2-problem__deco-glyph {
+  opacity: 1;
+}
+
+.v2-problem__deco.is-on .v2-problem__deco-edge {
+  transform: scaleX(1);
+}
+
+.v2-problem__deco.is-on .v2-problem__deco-label {
+  opacity: 1;
+  transform: none;
+}
+
+/* the checkout node ignites in accent when its question lights */
+.v2-problem__deco--accent.is-on .v2-problem__deco-glyph circle {
+  stroke: var(--accent);
+}
+
+.v2-problem__deco--accent.is-on .v2-problem__deco-edge {
+  background: var(--accent);
+}
+
+.v2-problem__deco--accent.is-on .v2-problem__deco-label {
+  color: var(--accent-text);
+}
+
+@media (max-width: 899px) {
+  .v2-problem__decos {
+    display: none;
+  }
 }
 
 /* ═══ s3 · pinned lenses ═══ */
