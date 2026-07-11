@@ -135,11 +135,24 @@ export default function LandingPage(): JSX.Element {
       }
     };
 
+    // avoid layout thrash: ALL rect reads happen before ANY style writes, every
+    // offscreen subsystem is skipped, and words only repaint when they flip
+    let lastLit = -1;
+    let frameGlowStaticSet = false;
+    const onScreen = (r: DOMRect, vh: number): boolean => r.bottom > -vh * 0.25 && r.top < vh * 1.25;
+
     const tick = (ts: number): void => {
       if (dead) return;
       const sy = window.scrollY;
       const vh = window.innerHeight;
 
+      // ---- read phase ----
+      const problemRect = problemRef.current && wordsRef.current.length ? problemRef.current.getBoundingClientRect() : null;
+      const pinRect = pinRef.current ? pinRef.current.getBoundingClientRect() : null;
+      const howRect = drawPathRef.current && howRef.current && !reduced ? howRef.current.getBoundingClientRect() : null;
+      const frameRect = frameGlowRef.current ? frameGlowRef.current.getBoundingClientRect() : null;
+
+      // ---- write phase ----
       if (!reduced && sy < vh * 1.2) {
         if (heroTreeRef.current) heroTreeRef.current.style.transform = "translateY(" + sy * 0.16 + "px)";
         if (heroGlowRef.current) heroGlowRef.current.style.transform = "translate(-50%,-50%) translateY(" + sy * 0.09 + "px)";
@@ -149,40 +162,50 @@ export default function LandingPage(): JSX.Element {
         }
       }
 
-      if (problemRef.current && wordsRef.current.length) {
-        const r = problemRef.current.getBoundingClientRect();
-        const p = Math.min(1, Math.max(0, (vh * 0.8 - r.top) / (r.height + vh * 0.25)));
+      if (problemRect && onScreen(problemRect, vh)) {
+        const p = Math.min(1, Math.max(0, (vh * 0.8 - problemRect.top) / (problemRect.height + vh * 0.25)));
         const scrub = p * 1.25;
-        const lit = scrub * wordsRef.current.length;
-        wordsRef.current.forEach((w, i) => {
-          const on = i < lit;
-          w.style.opacity = on ? "1" : "0.16";
-          w.style.color = on ? "#E8E6E1" : "#A9A9A0";
-          if (!reduced) w.style.transform = on ? "none" : "translateY(6px)";
-        });
+        const lit = Math.round(Math.min(wordsRef.current.length, Math.max(0, scrub * wordsRef.current.length)));
+        if (lit !== lastLit) {
+          // only touch the spans that crossed the boundary since last frame
+          const lo = Math.min(lit, lastLit === -1 ? 0 : lastLit);
+          const hi = Math.max(lit, lastLit === -1 ? wordsRef.current.length : lastLit);
+          for (let i = lo; i < hi; i++) {
+            const w = wordsRef.current[i];
+            if (!w) continue;
+            const on = i < lit;
+            w.style.opacity = on ? "1" : "0.16";
+            w.style.color = on ? "#E8E6E1" : "#A9A9A0";
+            if (!reduced) w.style.transform = on ? "none" : "translateY(6px)";
+          }
+          lastLit = lit;
+        }
         for (const el of decosRef.current) {
           el.classList.toggle("is-on", scrub >= parseFloat(el.dataset.th ?? "1"));
         }
         answerRef.current?.classList.toggle("is-on", scrub >= 1.04);
       }
 
-      if (pinRef.current) {
-        const r = pinRef.current.getBoundingClientRect();
-        const total = r.height - vh;
-        const p = Math.min(1, Math.max(0, -r.top / total));
+      if (pinRect && onScreen(pinRect, vh)) {
+        const total = pinRect.height - vh;
+        const p = Math.min(1, Math.max(0, -pinRect.top / total));
         setLensPhase(p);
       }
 
-      if (drawPathRef.current && howRef.current && !reduced) {
-        const r = howRef.current.getBoundingClientRect();
-        const p = Math.min(1, Math.max(0, (vh * 0.85 - r.top) / (r.height * 0.9)));
+      if (howRect && onScreen(howRect, vh) && drawPathRef.current) {
+        const p = Math.min(1, Math.max(0, (vh * 0.85 - howRect.top) / (howRect.height * 0.9)));
         drawPathRef.current.style.strokeDashoffset = String(drawLenRef.current * (1 - p));
       }
 
-      if (frameGlowRef.current) {
+      if (frameGlowRef.current && frameRect) {
         if (reduced) {
-          frameGlowRef.current.style.background = "#262723";
-        } else {
+          if (!frameGlowStaticSet) {
+            frameGlowRef.current.style.background = "#262723";
+            frameGlowStaticSet = true;
+          }
+        } else if (onScreen(frameRect, vh)) {
+          // re-rasterizing this gradient is the priciest write in the loop —
+          // never do it while the frame section is offscreen
           const hov = frameHoverRef.current ? 1 : 0.45;
           const a = (ts * 0.03) % 360;
           frameGlowRef.current.style.background =

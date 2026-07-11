@@ -50,10 +50,14 @@ body:has(.landing-v2) {
   opacity: 0;
   transform: translateY(36px);
   transition: opacity 1.1s cubic-bezier(0.16, 1, 0.3, 1), transform 1.1s cubic-bezier(0.16, 1, 0.3, 1), filter 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+  /* keep reveals on the compositor — a cpu blur transition under the hero
+     animation's opening frames was a measured source of frame spikes */
+  will-change: transform, opacity;
 }
 
 .reveal--blur {
   filter: blur(10px);
+  will-change: transform, opacity, filter;
 }
 
 .reveal.is-in {

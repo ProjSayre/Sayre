@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NODE_BY_ID } from "../data";
+import { FEATURE_BY_ID, NODE_BY_ID } from "../data";
 import { useCanvasBus, useDemoDispatch, useDemoState } from "./state";
 import { visibleTreeItems } from "./canvas/layout";
-import { useFileSearch } from "./search/useFileSearch";
+import { useContextSearch } from "./search/useFileSearch";
 
 export type PanelMode = "tree" | "search";
 
 /**
- * IDE-style left panel (§6.5 + design v2): `tree` mirrors the canvas; `search`
- * hosts the fuzzy file search (⌘k focuses it on desktop). Dir clicks run the
- * same reducer as canvas clicks on every tab; the panel never drills.
+ * IDE-style left panel (§6.5 + design v2): `tree` mirrors the canvas with
+ * disclosure chevrons, node-language glyphs, indent guides and test dots;
+ * `search` hosts the context search (⌘k focuses it on desktop). Dir clicks run
+ * the same reducer as canvas clicks on every tab; the panel never drills.
  */
 export function TreePanel({
   collapsed,
@@ -57,6 +58,10 @@ export function TreePanel({
           «
         </button>
       </div>
+      <div className="treepanel__repo">
+        <span className="treepanel__repo-name">acme/monorepo</span>
+        <span className="treepanel__repo-branch">main</span>
+      </div>
       {mode === "tree" ? <TreeList /> : <SearchPane focusToken={searchFocusToken} onExit={() => onModeChange("tree")} />}
     </div>
   );
@@ -102,20 +107,27 @@ function TreeList(): JSX.Element {
     }
   };
 
+  const guides = (depth: number): JSX.Element[] =>
+    Array.from({ length: depth }, (_, gi) => <span key={gi} className="treepanel__guide" aria-hidden="true" />);
+
   return (
     <ul className="treepanel__list" role="tree" aria-label="repository tree" ref={listRef}>
       {items.map((item) => {
         if (item.kind === "ghost") {
           return (
-            <li key={item.id} role="none" className="treepanel__ghost" style={{ paddingLeft: 10 + item.depth * 14 }}>
-              {item.label}
+            <li key={item.id} role="none" className="treepanel__ghost">
+              {guides(item.depth)}
+              <span className="treepanel__chevron-spacer" />
+              <span className="treepanel__ghost-label">{item.label}</span>
             </li>
           );
         }
         const node = item.node;
         const isFolder = node.type !== "file";
+        const isRoot = node.type === "root";
         const expanded = state.expandedIds.has(node.id);
         const selected = state.selectedId === node.id;
+        const tests = !isFolder ? node.meta.tests : undefined;
         return (
           <li key={item.id} role="none">
             <div
@@ -130,7 +142,6 @@ function TreeList(): JSX.Element {
                 isFolder ? "treepanel__row--dir" : "treepanel__row--file",
                 selected ? "is-selected" : "",
               ].join(" ")}
-              style={{ paddingLeft: 10 + item.depth * 14 }}
               onClick={() => (isFolder ? dispatch({ type: "clickTreeNode", id: node.id }) : onFileClick(node.id))}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -142,7 +153,33 @@ function TreeList(): JSX.Element {
                 onKeyNav(e, node.id, isFolder, expanded);
               }}
             >
-              {isFolder ? node.name + "/" : node.name}
+              {guides(item.depth)}
+              {isFolder ? (
+                <span
+                  className={expanded ? "treepanel__chevron is-open" : "treepanel__chevron"}
+                  aria-hidden="true"
+                  onClick={(e) => {
+                    // IDE semantics: the chevron discloses without selecting
+                    e.stopPropagation();
+                    dispatch({ type: "toggleExpand", id: node.id });
+                  }}
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8">
+                    <path d="M2.2 1.2 L5.8 4 L2.2 6.8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              ) : (
+                <span className="treepanel__chevron-spacer" />
+              )}
+              <svg className="treepanel__glyph" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                {isFolder ? (
+                  <circle cx="7" cy="7" r={isRoot ? 5 : 4.5} className={isRoot ? "treepanel__glyph-ring treepanel__glyph-ring--root" : "treepanel__glyph-ring"} />
+                ) : (
+                  <circle cx="7" cy="7" r="3.2" className="treepanel__glyph-dot" />
+                )}
+              </svg>
+              <span className="treepanel__name">{isFolder ? node.name + "/" : node.name}</span>
+              {tests && <span className={`treepanel__testdot treepanel__testdot--${tests.status}`} title={`tests ${tests.status === "pass" ? "passing" : "failing"}`} />}
             </div>
           </li>
         );
@@ -152,22 +189,27 @@ function TreeList(): JSX.Element {
 }
 
 function SearchPane({ focusToken, onExit }: { focusToken: number; onExit: () => void }): JSX.Element {
+  const state = useDemoState();
   const dispatch = useDemoDispatch();
   const bus = useCanvasBus();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const rows = useFileSearch(query, 12);
+  const rows = useContextSearch(query, state.tab, 12);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [focusToken]);
 
-  useEffect(() => setActive(0), [query]);
+  useEffect(() => setActive(0), [query, state.tab]);
 
-  const choose = (id: string): void => {
-    dispatch({ type: "selectFileForTab", id });
-    window.setTimeout(() => bus.current?.flyToNode(id), 30);
+  const choose = (row: { kind: "node" | "feature"; id: string }): void => {
+    if (row.kind === "feature") {
+      dispatch({ type: "selectFeature", id: row.id });
+      return;
+    }
+    dispatch({ type: "selectFileForTab", id: row.id });
+    window.setTimeout(() => bus.current?.flyToNode(row.id), 30);
   };
 
   const onKeyDown = (e: React.KeyboardEvent): void => {
@@ -182,9 +224,11 @@ function SearchPane({ focusToken, onExit }: { focusToken: number; onExit: () => 
       setActive((a) => Math.max(0, a - 1));
     } else if (e.key === "Enter" && rows[active]) {
       e.preventDefault();
-      choose(rows[active].id);
+      choose(rows[active]);
     }
   };
+
+  const placeholder = state.tab === "features" ? "search features…" : "search files…";
 
   return (
     <div className="treepanel__search" onKeyDown={onKeyDown}>
@@ -192,14 +236,14 @@ function SearchPane({ focusToken, onExit }: { focusToken: number; onExit: () => 
         <input
           ref={inputRef}
           className="treepanel__searchinput"
-          placeholder="search files…"
+          placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           role="combobox"
           aria-expanded="true"
           aria-controls="panel-search-results"
           aria-activedescendant={rows[active] ? `panel-row-${active}` : undefined}
-          aria-label="search files"
+          aria-label={placeholder.replace("…", "")}
         />
         <span className="treepanel__searchhint" aria-hidden="true">
           ⌘k
@@ -207,9 +251,35 @@ function SearchPane({ focusToken, onExit }: { focusToken: number; onExit: () => 
       </div>
       <div className="treepanel__results" id="panel-search-results" role="listbox">
         {rows.length === 0 ? (
-          <div className="treepanel__noresults">no files match</div>
+          <div className="treepanel__noresults">{state.tab === "features" ? "no features match" : "no files match"}</div>
         ) : (
           rows.map((row, i) => {
+            const isActive = i === active;
+            if (row.kind === "feature") {
+              const f = FEATURE_BY_ID.get(row.id);
+              if (!f) return null;
+              return (
+                <div
+                  key={`f-${row.id}`}
+                  id={`panel-row-${i}`}
+                  role="option"
+                  aria-selected={isActive}
+                  className={isActive ? "treepanel__result treepanel__result--feature is-active" : "treepanel__result treepanel__result--feature"}
+                  onPointerMove={() => setActive(i)}
+                  onClick={() => choose(row)}
+                >
+                  <span className="treepanel__result-name">
+                    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="treepanel__result-ring">
+                      <circle cx="6" cy="6" r="4.5" fill="none" strokeWidth="1" strokeDasharray="2.5 1.8" />
+                    </svg>
+                    {f.name}
+                  </span>
+                  <span className="treepanel__result-path">
+                    feature · {f.memberIds.length} files · {f.workspaces.length} workspaces
+                  </span>
+                </div>
+              );
+            }
             const node = NODE_BY_ID.get(row.id);
             if (!node) return null;
             return (
@@ -217,10 +287,10 @@ function SearchPane({ focusToken, onExit }: { focusToken: number; onExit: () => 
                 key={row.id}
                 id={`panel-row-${i}`}
                 role="option"
-                aria-selected={i === active}
-                className={i === active ? "treepanel__result is-active" : "treepanel__result"}
+                aria-selected={isActive}
+                className={isActive ? "treepanel__result is-active" : "treepanel__result"}
                 onPointerMove={() => setActive(i)}
-                onClick={() => choose(row.id)}
+                onClick={() => choose(row)}
               >
                 <span className="treepanel__result-name">{node.type === "file" ? node.name : node.name + "/"}</span>
                 <span className="treepanel__result-path">{row.id}</span>

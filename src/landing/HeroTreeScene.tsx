@@ -77,7 +77,6 @@ interface Seg {
   wStart?: number;
   wEnd?: number;
   waistS?: number;
-  fullD?: string | null;
   p2d?: Path2D | null; // cached Path2D of the fully-grown outline
 }
 
@@ -195,48 +194,70 @@ function pointAt(seg: Seg, frac: number): { x: number; y: number; tx: number; ty
   return { x: p.x, y: p.y, tx: 0, ty: -1, w: seg.wEnd ?? WMIN };
 }
 
-function outlinePath(seg: Seg, revealLen: number): string | null {
+// Outline building runs for every actively-growing limb on every frame, so it
+// must not allocate: centerline samples and the right-hand rim go into these
+// reused scratch buffers, and the polygon is emitted straight into a Path2D
+// (no SVG-path strings, no per-frame arrays — string parse + GC churn were the
+// source of the visible frame spikes).
+const SCX: number[] = [];
+const SCY: number[] = [];
+const SCW: number[] = [];
+const SCS: number[] = [];
+const SRX: number[] = [];
+const SRY: number[] = [];
+
+function outlineInto(seg: Seg, revealLen: number): Path2D | null {
   const pts = seg.pts;
   if (revealLen <= 0.2) return null;
   const rl = Math.min(revealLen, seg.len);
   const growing = revealLen < seg.len;
-  const list: ArcPt[] = [];
+  let n = 0;
   for (let i = 0; i < pts.length; i++) {
-    if (pts[i].s <= rl) list.push(pts[i]);
-    else {
+    const p = pts[i];
+    if (p.s <= rl) {
+      SCX[n] = p.x;
+      SCY[n] = p.y;
+      SCW[n] = p.w ?? WMIN;
+      SCS[n] = p.s;
+      n++;
+    } else {
       const b = pts[i - 1];
-      const a = pts[i];
-      const f = (rl - b.s) / (a.s - b.s || 1);
-      list.push({ x: b.x + (a.x - b.x) * f, y: b.y + (a.y - b.y) * f, w: (b.w ?? 0) + ((a.w ?? 0) - (b.w ?? 0)) * f, s: rl });
+      const f = (rl - b.s) / (p.s - b.s || 1);
+      SCX[n] = b.x + (p.x - b.x) * f;
+      SCY[n] = b.y + (p.y - b.y) * f;
+      SCW[n] = (b.w ?? 0) + ((p.w ?? 0) - (b.w ?? 0)) * f;
+      SCS[n] = rl;
+      n++;
       break;
     }
   }
-  if (list.length < 2) return null;
-  const left: [number, number][] = [];
-  const right: [number, number][] = [];
-  for (let i = 0; i < list.length; i++) {
-    const p = list[i];
-    const a = list[Math.max(0, i - 1)];
-    const b = list[Math.min(list.length - 1, i + 1)];
-    let tx = b.x - a.x;
-    let ty = b.y - a.y;
+  if (n < 2) return null;
+  const path = new Path2D();
+  for (let i = 0; i < n; i++) {
+    const ia = i > 0 ? i - 1 : 0;
+    const ib = i < n - 1 ? i + 1 : n - 1;
+    let tx = SCX[ib] - SCX[ia];
+    let ty = SCY[ib] - SCY[ia];
     const tl = Math.hypot(tx, ty) || 1;
     tx /= tl;
     ty /= tl;
     const nx = -ty;
     const ny = tx;
-    let w = p.w ?? WMIN;
+    let w = SCW[i];
     if (growing) {
-      const dTip = rl - p.s;
+      const dTip = rl - SCS[i];
       if (dTip < 7) w *= Math.max(0.12, dTip / 7);
     }
-    left.push([p.x + (nx * w) / 2, p.y + (ny * w) / 2]);
-    right.push([p.x - (nx * w) / 2, p.y - (ny * w) / 2]);
+    const hx = (nx * w) / 2;
+    const hy = (ny * w) / 2;
+    if (i === 0) path.moveTo(SCX[i] + hx, SCY[i] + hy);
+    else path.lineTo(SCX[i] + hx, SCY[i] + hy);
+    SRX[i] = SCX[i] - hx;
+    SRY[i] = SCY[i] - hy;
   }
-  let d = "M " + left[0][0].toFixed(1) + " " + left[0][1].toFixed(1);
-  for (let i = 1; i < left.length; i++) d += " L " + left[i][0].toFixed(1) + " " + left[i][1].toFixed(1);
-  for (let i = right.length - 1; i >= 0; i--) d += " L " + right[i][0].toFixed(1) + " " + right[i][1].toFixed(1);
-  return d + " Z";
+  for (let i = n - 1; i >= 0; i--) path.lineTo(SRX[i], SRY[i]);
+  path.closePath();
+  return path;
 }
 
 const RAMP_A = 0.12;
@@ -675,10 +696,11 @@ function buildSchedule() {
   }
 
   // ---- caches, ordering, totals ----
+  // full outlines are built ONCE here — never parsed/built mid-playback
   let totalDist = 0;
   for (const seg of segs) {
     totalDist = Math.max(totalDist, seg.distStart + seg.len);
-    seg.fullD = outlinePath(seg, seg.len);
+    seg.p2d = outlineInto(seg, seg.len);
   }
   segs.sort((a, b) => (b.wStart ?? 0) + (b.wEnd ?? 0) - ((a.wStart ?? 0) + (a.wEnd ?? 0)));
   for (const j of joints) {
@@ -737,7 +759,9 @@ function buildSchedule() {
     if (n.mote) n.driftStop = inc ? inc.t0 : EDGE_T0;
   }
   const badges = HERO_BADGES.map((b, i) => ({ ...b, t0: 7.7 + i * 0.08 }));
-  const labels = HERO_LABELS.map((l, i) => ({ ...l, t0: 8.0 + i * 0.022 }));
+  // t0 stagger follows the authored order; then sort by font size so the
+  // renderer changes ctx.font at most 3 times per frame
+  const labels = HERO_LABELS.map((l, i) => ({ ...l, t0: 8.0 + i * 0.022 })).sort((a, b) => a.fs - b.fs);
   const dust = Array.from({ length: 16 }, (_, i) => ({
     x: -40 + rnd(i + 300) * 1880,
     y: -150 + rnd(i + 340) * 1040,
@@ -778,12 +802,8 @@ function badgeOp(u: number): number {
 type Schedule = ReturnType<typeof buildSchedule>;
 
 function segPath(seg: Seg, revealLen: number): Path2D | null {
-  if (revealLen >= seg.len) {
-    if (seg.p2d === undefined) seg.p2d = seg.fullD ? new Path2D(seg.fullD) : null;
-    return seg.p2d;
-  }
-  const d = outlinePath(seg, revealLen);
-  return d ? new Path2D(d) : null;
+  if (revealLen >= seg.len) return seg.p2d ?? null;
+  return outlineInto(seg, revealLen);
 }
 
 interface Ctx2D {
@@ -1013,16 +1033,20 @@ function drawFrame(S: Schedule, c: Ctx2D, t: number, w: number, h: number, dpr: 
     circle(main, b.cx, b.cy, b.r, col, op);
   }
 
-  // ---- labels ----
+  // ---- labels (pre-sorted by font size — ctx.font changes at most 3×) ----
   main.textAlign = "left";
   main.textBaseline = "alphabetic";
+  let lastFs = -1;
   for (let i = 0; i < S.labels.length; i++) {
     const l = S.labels[i];
     const p = clamp01((t - l.t0) / 0.7);
     if (p <= 0) continue;
     const ep = eo(p);
     main.globalAlpha = ep;
-    main.font = l.fs + 'px "Fragment Mono", ui-monospace, monospace';
+    if (l.fs !== lastFs) {
+      main.font = l.fs + 'px "Fragment Mono", ui-monospace, monospace';
+      lastFs = l.fs;
+    }
     main.fillStyle = l.depth === 0 ? "#E8E6E1" : l.cls === "ghost" ? "#64645C" : l.cls === "file" ? "#8B8B82" : "#A9A9A0";
     main.fillText(l.text, l.x, l.y + 3 * (1 - ep));
   }
@@ -1043,7 +1067,8 @@ export function HeroTreeAmbient(): JSX.Element {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const main = canvas.getContext("2d");
+    // opaque canvas = cheaper compositing (no desynchronized — driver-artifact risk)
+    const main = canvas.getContext("2d", { alpha: false });
     if (!main) return;
     const glowCanvas = document.createElement("canvas");
     const glow = glowCanvas.getContext("2d");
@@ -1051,12 +1076,18 @@ export function HeroTreeAmbient(): JSX.Element {
 
     const S = buildSchedule();
     const reduced = prefersReducedMotion();
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    // labels land at t≈8s — make sure the webfont is resident before then so
+    // the first fillText doesn't hitch on a fallback swap
+    document.fonts?.load('11.5px "Fragment Mono"').catch(() => undefined);
+    // 1.5× is visually indistinguishable for a moving scene and ~30% fewer pixels
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     let w = 0;
     let h = 0;
     let raf = 0;
     let done = false;
-    const t0 = performance.now();
+    let started = false;
+    let dead = false;
+    let t0 = 0;
 
     const size = (): void => {
       const rect = canvas.getBoundingClientRect();
@@ -1090,9 +1121,31 @@ export function HeroTreeAmbient(): JSX.Element {
         drawFrame(S, { main, glow }, DUR, w, h, dpr);
       }
     };
-    raf = requestAnimationFrame(loop);
+
+    // hold the empty night sky, then start the clock once fonts are resident
+    // and the main thread has gone idle — page-load work (font atlas, first
+    // layout, module eval) was landing exactly under the opening growth frames
+    drawFrame(S, { main, glow }, 0, w, h, dpr);
+    const begin = (): void => {
+      if (started || dead) return;
+      started = true;
+      t0 = performance.now();
+      raf = requestAnimationFrame(loop);
+    };
+    // fonts.ready resolves early if loads haven't STARTED — force-start the two
+    // faces this page paints with and wait for those actual loads
+    const fontsReady: Promise<unknown> = document.fonts
+      ? Promise.all([document.fonts.load('11.5px "Fragment Mono"'), document.fonts.load('600 52px "Familjen Grotesk"')]).catch(() => undefined)
+      : Promise.resolve();
+    const cap = new Promise((r) => setTimeout(r, 900));
+    void Promise.race([fontsReady, cap]).then(() => {
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+      if (idle) idle(begin, { timeout: 400 });
+      else window.setTimeout(begin, 60);
+    });
 
     return () => {
+      dead = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
     };

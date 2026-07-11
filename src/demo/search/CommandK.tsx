@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { NODE_BY_ID } from "../../data";
-import { useCanvasBus, useDemoDispatch } from "../state";
-import { useFileSearch } from "./useFileSearch";
+import { FEATURE_BY_ID, NODE_BY_ID } from "../../data";
+import { useCanvasBus, useDemoDispatch, useDemoState } from "../state";
+import { useContextSearch } from "./useFileSearch";
+import type { SearchRow } from "./useFileSearch";
 
 export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
   const dispatch = useDemoDispatch();
+  const state = useDemoState();
   const bus = useCanvasBus();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -17,15 +19,19 @@ export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
     return () => (restoreRef.current as HTMLElement | null)?.focus?.();
   }, []);
 
-  const rows = useFileSearch(query, 8);
+  const rows = useContextSearch(query, state.tab, 8);
 
   useEffect(() => setActive(0), [query]);
 
-  const choose = (id: string): void => {
+  const choose = (row: SearchRow): void => {
     onClose();
-    dispatch({ type: "selectFileForTab", id });
+    if (row.kind === "feature") {
+      dispatch({ type: "selectFeature", id: row.id });
+      return;
+    }
+    dispatch({ type: "selectFileForTab", id: row.id });
     // fly after the (re-)layout settles — each view's bus resolves the position
-    window.setTimeout(() => bus.current?.flyToNode(id), 30);
+    window.setTimeout(() => bus.current?.flyToNode(row.id), 30);
   };
 
   const onKeyDown = (e: React.KeyboardEvent): void => {
@@ -40,11 +46,13 @@ export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
       setActive((a) => Math.max(0, a - 1));
     } else if (e.key === "Enter" && rows[active]) {
       e.preventDefault();
-      choose(rows[active].id);
+      choose(rows[active]);
     } else if (e.key === "Tab") {
       e.preventDefault(); // focus stays in the search input (§10: focus trapped)
     }
   };
+
+  const placeholder = state.tab === "features" ? "search features…" : "search files…";
 
   return (
     <div
@@ -53,11 +61,11 @@ export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="cmdk" role="dialog" aria-modal="true" aria-label="search files" onKeyDown={onKeyDown}>
+      <div className="cmdk" role="dialog" aria-modal="true" aria-label={placeholder.replace("…", "")} onKeyDown={onKeyDown}>
         <input
           ref={inputRef}
           className="cmdk__input"
-          placeholder="search files…"
+          placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           role="combobox"
@@ -67,9 +75,29 @@ export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
         />
         <div className="cmdk__results" id="cmdk-results" role="listbox">
           {rows.length === 0 ? (
-            <div className="cmdk__empty">no files match</div>
+            <div className="cmdk__empty">{state.tab === "features" ? "no features match" : "no files match"}</div>
           ) : (
             rows.map((row, i) => {
+              if (row.kind === "feature") {
+                const f = FEATURE_BY_ID.get(row.id);
+                if (!f) return null;
+                return (
+                  <div
+                    key={`f-${row.id}`}
+                    id={`cmdk-row-${i}`}
+                    role="option"
+                    aria-selected={i === active}
+                    className={i === active ? "cmdk__row is-active" : "cmdk__row"}
+                    onPointerMove={() => setActive(i)}
+                    onClick={() => choose(row)}
+                  >
+                    <span className="cmdk__name">{highlight(f.name, row.positions, 0)}</span>
+                    <span className="cmdk__path">
+                      feature · {f.memberIds.length} files · {f.workspaces.length} workspaces
+                    </span>
+                  </div>
+                );
+              }
               const node = NODE_BY_ID.get(row.id);
               if (!node) return null;
               const filenameStart = row.id.lastIndexOf("/") + 1;
@@ -82,11 +110,9 @@ export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
                   aria-selected={i === active}
                   className={i === active ? "cmdk__row is-active" : "cmdk__row"}
                   onPointerMove={() => setActive(i)}
-                  onClick={() => choose(row.id)}
+                  onClick={() => choose(row)}
                 >
-                  <span className="cmdk__name">
-                    {highlight(name, row.positions, filenameStart)}
-                  </span>
+                  <span className="cmdk__name">{highlight(name, row.positions, filenameStart)}</span>
                   <span className="cmdk__path">{highlight(row.id, row.positions, 0)}</span>
                 </div>
               );
