@@ -13,7 +13,7 @@ type Status = "idle" | "submitting" | "success" | "error";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function WaitlistForm({ source }: { source: WaitlistSource }): JSX.Element {
+export function WaitlistForm({ source, compact = false }: { source: WaitlistSource; compact?: boolean }): JSX.Element {
   const [status, setStatus] = useState<Status>("idle");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -78,7 +78,7 @@ export function WaitlistForm({ source }: { source: WaitlistSource }): JSX.Elemen
   }
 
   return (
-    <form className="waitlist-form" onSubmit={submit} noValidate>
+    <form className={compact ? "waitlist-form waitlist-form--compact" : "waitlist-form"} onSubmit={submit} noValidate>
       <input type="hidden" name="source" value={source} />
       <input
         className="input"
@@ -91,15 +91,17 @@ export function WaitlistForm({ source }: { source: WaitlistSource }): JSX.Elemen
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      <input
-        className="input"
-        type="text"
-        name="company"
-        placeholder="company (optional)"
-        aria-label="company (optional)"
-        value={company}
-        onChange={(e) => setCompany(e.target.value)}
-      />
+      {!compact && (
+        <input
+          className="input"
+          type="text"
+          name="company"
+          placeholder="company (optional)"
+          aria-label="company (optional)"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+        />
+      )}
       {prodFallback ? (
         <p className="waitlist-fallback">
           waitlist opens soon —{" "}

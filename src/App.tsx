@@ -16,18 +16,23 @@ function DemoShellFallback(): JSX.Element {
   return (
     <div className="demo">
       <header className="topbar">
-        <span className="wordmark">sayre_</span>
-        <div className="topbar__tabs" aria-hidden="true">
-          <span className="topbar__tab is-active">
-            <span className="topbar__tab-dot" />
-            filetree
-          </span>
-          <span className="topbar__tab">features</span>
-          <span className="topbar__tab">relations</span>
+        <div className="topbar__row topbar__row--brand">
+          <span className="wordmark">sayre_</span>
+          <span className="topbar__repo">acme/monorepo</span>
+          <span className="topbar__meta">main · {ROOT_FILE_COUNT.toLocaleString("en-US")} files · synced 2m ago</span>
+          <div className="topbar__right">
+            <span className="btn btn--primary btn--small">get early access</span>
+          </div>
         </div>
-        <div className="topbar__right">
-          <span className="topbar__meta">acme/monorepo · {ROOT_FILE_COUNT.toLocaleString("en-US")} files</span>
-          <span className="btn btn--primary btn--small">get early access</span>
+        <div className="topbar__row topbar__row--tabs" aria-hidden="true">
+          <div className="topbar__tabs">
+            <span className="topbar__tab is-active">
+              <span className="topbar__tab-dot" />
+              filetree
+            </span>
+            <span className="topbar__tab">features</span>
+            <span className="topbar__tab">relations</span>
+          </div>
         </div>
       </header>
       <div className="demo__body">

@@ -1,12 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { NODES, NODE_BY_ID, SUGGESTED_FILES } from "../../data";
+import { useEffect, useRef, useState } from "react";
+import { NODE_BY_ID } from "../../data";
 import { useCanvasBus, useDemoDispatch } from "../state";
-import { fuzzyMatch } from "./fuzzy";
-
-interface Row {
-  id: string;
-  positions: number[];
-}
+import { useFileSearch } from "./useFileSearch";
 
 export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
   const dispatch = useDemoDispatch();
@@ -22,19 +17,7 @@ export function CommandK({ onClose }: { onClose: () => void }): JSX.Element {
     return () => (restoreRef.current as HTMLElement | null)?.focus?.();
   }, []);
 
-  const rows = useMemo<Row[]>(() => {
-    if (query.trim() === "") {
-      return SUGGESTED_FILES.map((id) => ({ id, positions: [] }));
-    }
-    const hits: { id: string; score: number; positions: number[] }[] = [];
-    for (const n of NODES) {
-      if (n.type === "root") continue;
-      const hit = fuzzyMatch(query.trim(), n.id);
-      if (hit) hits.push({ id: n.id, score: hit.score, positions: hit.positions });
-    }
-    hits.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
-    return hits.slice(0, 8);
-  }, [query]);
+  const rows = useFileSearch(query, 8);
 
   useEffect(() => setActive(0), [query]);
 

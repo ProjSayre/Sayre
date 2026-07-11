@@ -78,3 +78,54 @@ export const WAITLIST_BAND = {
 
 export const REPO_OVERVIEW =
   "storefront, api, admin tool, and shared packages for acme's e-commerce stack. a checkout revamp is mid-flight; the search indexer is on a flaky streak.";
+
+// ---------------------------------------------------------------------------
+// Landing v2 "Cinematic" copy — from the approved claude.ai/design project
+// ("Demo and landing page redesign" · Landing v2 Cinematic).
+// ---------------------------------------------------------------------------
+
+export const V2_HERO = {
+  eyebrow: "early access · 2026",
+  h1: "Your codebase, mapped.",
+  cta: "explore the live demo",
+  scrollHint: "scroll — the graph is live",
+};
+
+export const V2_LENSES = {
+  eyebrow: "one graph · three lenses",
+  h2: "Everyone reads it their way.",
+  items: [
+    {
+      eyebrow: "view as: new hire",
+      h3: "Start from how the pieces lean on each other.",
+      body: "Which services call which, one level at a time — with setup steps and guardrails attached to the exact files they concern.",
+    },
+    {
+      eyebrow: "view as: tech lead",
+      h3: "Boundaries, churn, and failing tests on one canvas.",
+      body: "Ownership, module boundaries, and the two suites currently red — see boundaries drift before they break.",
+    },
+    {
+      eyebrow: "view as: product manager",
+      h3: "Features drawn as real boundaries across the code.",
+      body: "Tickets and shipping progress pinned to them, no engineer required to translate.",
+    },
+  ],
+};
+
+export const V2_FRAME = {
+  eyebrow: "the demo is the pitch",
+  h2: "This one's live.",
+  body: "acme/monorepo, 1,204 files, hand-authored sample data — the same shell you'd get on your repo.",
+  chip: "click to drive →",
+};
+
+export const V2_HOW = {
+  eyebrow: "how it works",
+  h2: "From clone to cartography in three moves.",
+};
+
+export const V2_LAYERS = {
+  eyebrow: "layers on every node",
+  h2: "Context, pinned to the code it concerns.",
+};

@@ -26,6 +26,7 @@ import { StatusLine } from "./StatusLine";
 import { TopBar, PersonaSwitcher } from "./TopBar";
 import { Tour } from "./tour/Tour";
 import { TreePanel } from "./TreePanel";
+import type { PanelMode } from "./TreePanel";
 
 function useMedia(query: string): boolean {
   const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
@@ -68,6 +69,8 @@ export default function DemoPage(): JSX.Element {
   const [tourActive, setTourActive] = useState(false);
   const [chipVisible, setChipVisible] = useState(false);
   const [panelUserCollapsed, setPanelUserCollapsed] = useState<boolean | null>(null);
+  const [panelMode, setPanelMode] = useState<PanelMode>("tree");
+  const [searchFocusToken, setSearchFocusToken] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const interactionsRef = useRef(0);
 
@@ -120,7 +123,14 @@ export default function DemoPage(): JSX.Element {
     const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setSearchOpen((o) => !o);
+        if (isMobile) {
+          setSearchOpen((o) => !o);
+        } else {
+          // search lives in the left panel on desktop (design v2)
+          setPanelUserCollapsed(false);
+          setPanelMode("search");
+          setSearchFocusToken((n) => n + 1);
+        }
         return;
       }
       if (tourActive || searchOpen || waitlistSource !== null) return;
@@ -134,7 +144,7 @@ export default function DemoPage(): JSX.Element {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [tourActive, searchOpen, waitlistSource, isNarrow]);
+  }, [tourActive, searchOpen, waitlistSource, isNarrow, isMobile]);
 
   const startTour = (): void => {
     setChipVisible(false);
@@ -157,27 +167,29 @@ export default function DemoPage(): JSX.Element {
             <div className="demo">
               <TopBar onEarlyAccess={() => setWaitlistSource("demo-topbar")} isMobile={isMobile} />
               <div className="demo__body">
-                {!isMobile && <TreePanel collapsed={panelCollapsed} onToggleCollapsed={() => setPanelUserCollapsed(!panelCollapsed)} />}
+                {!isMobile && (
+                  <TreePanel
+                    collapsed={panelCollapsed}
+                    onToggleCollapsed={() => setPanelUserCollapsed(!panelCollapsed)}
+                    mode={panelMode}
+                    onModeChange={setPanelMode}
+                    searchFocusToken={searchFocusToken}
+                  />
+                )}
 
                 <main className="demo__canvas-area" onPointerDownCapture={countInteraction}>
                   {state.tab === "filetree" && <FiletreeView onUserInteract={countInteraction} />}
                   {state.tab === "features" && <FeaturesView onUserInteract={countInteraction} />}
                   {state.tab === "relations" && <RelationsView onUserInteract={countInteraction} />}
 
-                  <button
-                    className={isMobile ? "cmdk-hint cmdk-hint--icon" : "cmdk-hint"}
-                    aria-label="search files"
-                    onClick={() => setSearchOpen(true)}
-                  >
-                    {isMobile ? (
+                  {isMobile && (
+                    <button className="cmdk-hint cmdk-hint--icon" aria-label="search files" onClick={() => setSearchOpen(true)}>
                       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
                         <circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
                         <line x1="9.5" y1="9.5" x2="13" y2="13" stroke="currentColor" strokeWidth="1.5" />
                       </svg>
-                    ) : (
-                      "⌘k"
-                    )}
-                  </button>
+                    </button>
+                  )}
 
                   <StatusLine onTour={startTour} showTour={!tourActive} />
 

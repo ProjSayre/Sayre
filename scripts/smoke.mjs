@@ -103,14 +103,8 @@ try {
   const nodesAfter = await page.evaluate(() => document.querySelectorAll("g.tree-node").length);
   if (nodesAfter <= nodesBefore) problems.push(`REAL click on api/ folder did not expand it (${nodesBefore} → ${nodesAfter} nodes)`);
 
-  // ---- persona switch via real clicks ----
-  await clickReal(page, centerOf(`document.querySelector(".persona__button")`), "persona button");
-  await sleep(300);
-  await clickReal(
-    page,
-    centerOf(`[...document.querySelectorAll(".persona__option")].find((o) => o.textContent?.includes("new hire"))`),
-    "persona option new hire",
-  );
+  // ---- persona switch via the segmented control ----
+  await clickReal(page, centerOf(`document.querySelector('[data-persona="new-hire"]')`), "persona segment new hire");
   await sleep(1300);
   const onRelations = await page.evaluate(() => Boolean(document.querySelector(".rel-breadcrumb")));
   if (!onRelations) problems.push("persona switch did not land on relations");
@@ -174,17 +168,21 @@ try {
     if (!nowFile) problems.push("flyout row click did not select the file");
   }
 
-  // ---- ⌘k ----
+  // ---- ⌘k → left-panel search (desktop, design v2) ----
   await page.keyboard.down("Control");
   await page.keyboard.press("k");
   await page.keyboard.up("Control");
-  await sleep(300);
+  await sleep(400);
+  const panelSearchFocused = await page.evaluate(() => document.activeElement?.classList.contains("treepanel__searchinput"));
+  if (!panelSearchFocused) problems.push("⌘k did not focus the panel search input");
   await page.keyboard.type("currency");
   await sleep(300);
-  const cmdkRows = await page.evaluate(() => document.querySelectorAll(".cmdk__row").length);
-  if (cmdkRows === 0) problems.push("⌘k returned no rows for 'currency'");
+  const panelRows = await page.evaluate(() => document.querySelectorAll(".treepanel__result").length);
+  if (panelRows === 0) problems.push("panel search returned no rows for 'currency'");
   await page.keyboard.press("Enter");
   await sleep(600);
+  const currencySelected = await page.evaluate(() => (document.querySelector(".nodepanel__path")?.textContent ?? "").includes("currency"));
+  if (!currencySelected) problems.push("panel search enter did not select currency.ts");
 
   // status line sanity
   const status = await page.evaluate(() => document.querySelector(".statusline__text")?.textContent ?? "");

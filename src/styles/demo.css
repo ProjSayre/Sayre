@@ -23,17 +23,110 @@
   min-width: 0;
 }
 
-/* ---- top bar (§6.1) ---- */
+/* ---- top bar — two rows (design v2): brand row + tab row ---- */
 
 .topbar {
-  height: 44px;
   flex: none;
   display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 0 18px;
+  flex-direction: column;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+.topbar__row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px;
+}
+
+.topbar__row--brand {
+  height: 46px;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__row--tabs {
+  height: 38px;
+  gap: 22px;
+}
+
+.topbar__repo {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.topbar__crumb {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-left: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__crumb-sep {
+  color: var(--text-faint);
+}
+
+.topbar__crumb-link {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.topbar__crumb-link:hover {
+  color: var(--text-bright);
+}
+
+.topbar__crumb-current {
+  color: var(--text);
+}
+
+/* persona segmented control — all three roles visible (design v2) */
+
+.persona-seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.persona-seg__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.persona-seg__group {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.persona-seg__option {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 5px 10px;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.persona-seg__option + .persona-seg__option {
+  border-left: 1px solid var(--border);
+}
+
+.persona-seg__option:hover:not(.is-active) {
+  color: var(--text-bright);
+  background: var(--bg-raised);
+}
+
+.persona-seg__option.is-active {
+  color: var(--accent-btn-text);
+  background: var(--accent);
 }
 
 .wordmark {
@@ -433,7 +526,7 @@
 .treepanel {
   width: 240px;
   flex: none;
-  background: var(--bg);
+  background: var(--bg-raised);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -444,19 +537,131 @@
   width: 30px;
   align-items: center;
   padding-top: 8px;
+  background: var(--bg);
 }
 
-.treepanel__head {
+.treepanel__modes {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+
+.treepanel__mode {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 9px 0;
+  transition: color 120ms ease-out;
+}
+
+.treepanel__mode + .treepanel__mode {
+  border-left: 1px solid var(--border);
+}
+
+.treepanel__mode:hover {
+  color: var(--text-bright);
+}
+
+.treepanel__mode.is-active {
+  color: var(--text-bright);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* panel search pane (⌘k lands here on desktop) */
+
+.treepanel__search {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.treepanel__searchbox {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 10px 10px 6px;
+  padding: 0 9px;
 }
 
-.treepanel__title {
+.treepanel__searchinput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-bright);
+  padding: 7px 0;
+}
+
+.treepanel__searchinput::placeholder {
+  color: var(--text-faint);
+}
+
+.treepanel__searchinput:focus {
+  outline: none;
+}
+
+.treepanel__searchbox:focus-within {
+  border-color: var(--accent);
+}
+
+.treepanel__searchhint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-left: 8px;
+}
+
+.treepanel__results {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 10px;
+}
+
+.treepanel__result {
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.treepanel__result:hover {
+  background: var(--bg);
+}
+
+.treepanel__result.is-active {
+  background: var(--bg);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.treepanel__result-name {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-bright);
+}
+
+.treepanel__result-path {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.treepanel__noresults {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-faint);
+  padding: 10px 12px;
 }
 
 .treepanel__toggle {
@@ -497,7 +702,7 @@
 }
 
 .treepanel__row:hover {
-  background: var(--bg-raised);
+  background: var(--bg);
 }
 
 .treepanel__row.is-selected {
@@ -1220,6 +1425,13 @@
   z-index: 10;
 }
 
+/* the scope breadcrumb lives in the header on desktop (design v2) */
+@media (min-width: 900px) {
+  .rel-breadcrumb {
+    display: none;
+  }
+}
+
 .rel-breadcrumb__sep {
   color: var(--text-faint);
 }
@@ -1555,9 +1767,17 @@
 }
 
 @media (max-width: 899px) {
-  .topbar {
+  .topbar__row {
     gap: 14px;
     padding: 0 12px;
+  }
+
+  .topbar__row--brand {
+    height: 42px;
+  }
+
+  .topbar__row--tabs {
+    height: 34px;
   }
 
   .demo__canvas-area .statusline {

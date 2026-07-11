@@ -20,4 +20,6 @@
   --font-mono: "Fragment Mono", ui-monospace, monospace;
 
   --backdrop: rgba(19, 20, 18, 0.7);
+
+  --bg-void: #0D0E0C; /* landing v2 cinematic — deeper than the demo's --bg */
 }
