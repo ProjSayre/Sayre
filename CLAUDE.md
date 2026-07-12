@@ -15,6 +15,7 @@ Codebase Visualizer — an AI-powered codebase ontology and visualization platfo
 ## Structure
 - `apps/web/` — Next.js visualization client
 - `services/core/` — Node.js API + service layer + Graph Query Service + BullMQ integration jobs
+- `services/gateway/` — WebSocket gateway for realtime fan-out (Redis pub/sub)
 - `services/workers/` — Python/FastAPI async fleet (ingestion, semantic enrichment, retrieval/RAG)
 - `packages/graph-schema/` — shared openCypher schema + query builders
 - `infra/` — docker-compose, pinned service images
@@ -55,16 +56,16 @@ Run `/pipeline <ticket description or path to ticket file>` to chain the full pi
 - `/pipeline-status` — reports which stage a run is currently at, without running anything
 - `/security-recheck` — re-runs just `security-checker` against current disk state, for a fast check after a hand-edit (doesn't redo tester/review)
 
-Feature/ticket work runs through five subagents in sequence, coordinating via shared files in `./pipeline/` (not `.claude/`, gitignored):
+Feature/ticket work runs through five subagents in sequence, coordinating via shared files in `.pipeline/` (not `.claude/`, gitignored):
 
-1. `planner` (Opus) — turns a vague ticket into a detailed spec with exact file paths/signatures/edge cases, writes `./pipeline/spec.md`
-2. `dev` (Sonnet) — reads spec.md, implements (can spawn its own subagents for independent sub-tasks), writes `./pipeline/changes.md`
-3. `tester` — reads changes.md, writes/runs tests for happy path + edge cases, writes `./pipeline/test-results.md`
-4. `review` — **read-only, cannot edit code** (enforced by hook) — checks the diff against spec.md/PRD alignment and test-results.md's coverage, writes `./pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES`
-5. `security-checker` — **read-only, cannot edit code** (enforced by hook) — runs only after review.md is `PASS`; checks tenant isolation/RBAC/secrets/webhooks, writes `./pipeline/security-report.md` with verdict `PASS` or `BLOCKED`
+1. `planner` (Opus) — turns a vague ticket into a detailed spec with exact file paths/signatures/edge cases, writes `.pipeline/spec.md`
+2. `dev` (Sonnet) — reads spec.md, implements (can spawn its own subagents for independent sub-tasks), writes `.pipeline/changes.md`
+3. `tester` — reads changes.md, writes/runs tests for happy path + edge cases, writes `.pipeline/test-results.md`
+4. `review` — **read-only, cannot edit code** (enforced by hook) — checks the diff against spec.md/PRD alignment and test-results.md's coverage, writes `.pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES`
+5. `security-checker` — **read-only, cannot edit code** (enforced by hook) — runs only after review.md is `PASS`; checks tenant isolation/RBAC/secrets/webhooks, writes `.pipeline/security-report.md` with verdict `PASS` or `BLOCKED`
 
 If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline routes back to `dev` with the fix list, then re-runs the downstream stages — capped at 3 loops before stopping to ask a human.
 
-Each stage reads the previous stage's file before starting. Don't skip a stage or let `dev` invent its own spec — if `./pipeline/spec.md` is missing, run `planner` first.
+Each stage reads the previous stage's file before starting. Don't skip a stage or let `dev` invent its own spec — if `.pipeline/spec.md` is missing, run `planner` first.
 
 Note: `planner`/`dev` model fields use the `opus`/`sonnet` aliases so they always resolve to Anthropic's current models for that tier — pin an exact model string (e.g. `claude-opus-4-8`) in their frontmatter instead if you need a fixed version.
