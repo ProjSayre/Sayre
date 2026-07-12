@@ -1,0 +1,25 @@
+:root {
+  --bg: #131412;          /* app/canvas background */
+  --bg-raised: #1B1C19;   /* panels, cards, inputs, hover fills */
+  --border: #262723;      /* hairline borders, dividers */
+  --edge: #2B2B27;        /* default graph edges */
+  --node-stroke: #55554E; /* node outlines / file dots */
+  --text-faint: #64645C;  /* metadata, status bar, shortcuts */
+  --text-muted: #8B8B82;  /* secondary text, inactive tabs, file labels */
+  --text: #A9A9A0;        /* directory labels on canvas */
+  --text-bright: #E8E6E1; /* primary text, headings, active tab */
+  --accent: #4F7F5D;      /* olive-moss: selection, active path, primary buttons */
+  --accent-text: #74A583; /* accent-colored text on dark bg */
+  --accent-btn-text: #EDECE7; /* text on accent fills */
+  --accent-hover: #588a67;    /* primary button hover (~6% brighter) */
+
+  --test-pass: #74A583;   /* same as --accent-text */
+  --test-fail: #9E6B62;   /* warm desaturated red — test-fail badges + form errors only */
+
+  --font-ui: "Familjen Grotesk", system-ui, sans-serif;
+  --font-mono: "Fragment Mono", ui-monospace, monospace;
+
+  --backdrop: rgba(19, 20, 18, 0.7);
+
+  --bg-void: #0D0E0C; /* landing v2 cinematic — deeper than the demo's --bg */
+}
