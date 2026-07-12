@@ -1,0 +1,37 @@
+{
+  "name": "@sayre/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js product visualization client (Technical/Product/Onboarding tree canvas). Distinct from the root Vite marketing site.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "14.2.x",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@xyflow/react": "12.3.x",
+    "sigma": "3.0.x",
+    "graphology": "0.25.4",
+    "graphology-layout": "0.6.1"
+  },
+  "devDependencies": {
+    "typescript": "5.5.x",
+    "@types/react": "18.3.x",
+    "@types/react-dom": "18.3.x",
+    "@types/node": "20.x",
+    "graphology-types": "0.24.x",
+    "tailwindcss": "3.4.x",
+    "postcss": "8.4.x",
+    "autoprefixer": "10.4.x",
+    "eslint": "8.57.x",
+    "eslint-config-next": "14.2.x"
+  },
+  "engines": {
+    "node": ">=20 <21"
+  }
+}
