@@ -21,6 +21,9 @@ dependencies = [
 [tool.poetry]
 package-mode = false
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.poetry.group.dev.dependencies]
 pytest = "8.*"
 pytest-asyncio = "0.24.*"

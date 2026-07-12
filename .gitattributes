@@ -1,0 +1,5 @@
+# Force LF line endings for shell scripts regardless of platform/autocrlf settings.
+# infra/localstack/init/ready.d/01-create-sqs-queues.sh (W0-04) runs inside a Linux
+# container via a bind-mounted volume — a CRLF-mangled shebang line (`#!/bin/sh\r`)
+# would break it on a Windows checkout with `core.autocrlf=true`.
+*.sh text eol=lf

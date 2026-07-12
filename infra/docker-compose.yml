@@ -60,6 +60,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # SQS emulator for the Python worker fleet (local-dev only — real AWS SQS in prod).
+  # See W0-04 spec / .claude/rules/async-messaging.md. Init script provisions the
+  # baseline queues (ingestion/enrichment/graph-events/w0-04-selftest) on startup.
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: sayre-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: sqs
+      DEBUG: "0"
+      AWS_DEFAULT_REGION: ${AWS_REGION}
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack/init/ready.d:/etc/localstack/init/ready.d
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal sqs list-queues >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   redis_data:

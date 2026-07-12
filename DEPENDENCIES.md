@@ -53,6 +53,7 @@ resolved on this machine).
 | `jsonwebtoken` | services/core (dep) | JWT AuthN for the API Gateway/AuthZ middleware | `docs/prd.md` §4.2 (API Gateway) | — |
 | `typescript` | services/core (devDep) | Type checking | `CLAUDE.md` Stack | — |
 | `tsx` | services/core (devDep) | Dev/runtime TS execution (`dev` script; unused until a later ticket implements `src/`) | — | — |
+| `vitest` | services/core (devDep) | Test runner (`npm run test`/`test:integration`) — none existed before W0-04; required for the BullMQ round-trip integration test | `CLAUDE.md` Commands (`npm run test`); W0-04 spec R1 | — |
 | `@types/node` | services/core (devDep) | Node type defs (Node 20 LTS target) | `.nvmrc` | — |
 | `@types/express` | services/core (devDep) | Express type defs | — | — |
 | `@types/jsonwebtoken` | services/core (devDep) | JWT type defs | — | — |
@@ -82,7 +83,10 @@ Graph Query Service, and the vector store client belongs to the Python fleet, no
 
 Not included in this ticket (see `.pipeline/spec.md` open questions): `graphify` (O-9 — named in
 `CLAUDE.md`'s stack list but not enumerated by this ticket; confirm exact package identity when
-the Semantic Enrichment Worker ticket comes up) and a LocalStack/SQS emulator for local dev (O-10).
+the Semantic Enrichment Worker ticket comes up).
+
+**O-10 (LocalStack/SQS emulator for local dev) — resolved by W0-04.** See
+`infra/docker-compose.yml` (`localstack` service) and the pinned image row below.
 
 ## `infra/docker-compose.yml` — pinned datastore images
 
@@ -91,6 +95,7 @@ the Semantic Enrichment Worker ticket comes up) and a LocalStack/SQS emulator fo
 | `pgvector/pgvector:pg16` | Postgres + `vector` extension — relational system of record *and* vector store backing | `docs/prd.md` §4.3 (Relational Store, Vector Store); `docs/architecture.md` | pgvector → Amazon OpenSearch; see below. **Deviation note:** the ticket's literal text said `postgres:16`; this is deliberately `pgvector/pgvector:pg16` instead because plain `postgres:16` does not ship the `vector` extension required by the Vector Store component. See `.pipeline/changes.md`. |
 | `redis:7.4-alpine` | Redis — BullMQ backing store + Realtime Service pub/sub | `docs/prd.md` §4.2 (Realtime Service); `.claude/rules/async-messaging.md` | — |
 | `neo4j:5.24-community` | Graph DB — codebase ontology (major 5, matching `neo4j-driver` 5.x) | `docs/prd.md` §4.3 (Graph Store) | Neo4j → Amazon Neptune; see below |
+| `localstack/localstack:3.8` | SQS emulator for the Python worker fleet (local dev only — real AWS SQS in prod) | `docs/prd.md` §2.1 (Delta Processing queue), §4.2; `.claude/rules/async-messaging.md`; W0-04 spec R5 (O-10 resolved) | Not a future swap — LocalStack is dev-only tooling; real AWS SQS provisioning/IAM/Terraform is separate, out-of-scope infra work |
 
 ## Known future swaps (PRD migration triggers)
 
