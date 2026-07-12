@@ -51,12 +51,14 @@ resolved on this machine).
 | `neo4j-driver` | services/core (dep) | Driver for the Graph Query Service (server-side traversal/RBAC filtering only) | `docs/prd.md` §4.2, §4.3 (Graph Store); `.claude/rules/security-multitenancy.md`, `.claude/rules/graph-schema.md` | Neo4j → Amazon Neptune; see below |
 | `pg` | services/core (dep) | Postgres client — org/user/permission system of record | `docs/prd.md` §4.3 (Relational Store) | — |
 | `jsonwebtoken` | services/core (dep) | JWT AuthN for the API Gateway/AuthZ middleware | `docs/prd.md` §4.2 (API Gateway) | — |
+| `drizzle-orm` | services/core (dep) | ORM/query builder + migrator for the Postgres system-of-record tables (org/user/repo/permission/ticket_cache/style_rules/onboarding_steps), layered on the pinned `pg` driver. Manifest pins `0.38.x`; resolved `0.38.4` (see `.pipeline/W0-05/changes.md`). | `docs/prd.md` §4.3, §4.5 (RLS); `.pipeline/W0-05/spec.md` | — |
 | `typescript` | services/core (devDep) | Type checking | `CLAUDE.md` Stack | — |
 | `tsx` | services/core (devDep) | Dev/runtime TS execution (`dev` script; unused until a later ticket implements `src/`) | — | — |
 | `@types/node` | services/core (devDep) | Node type defs (Node 20 LTS target) | `.nvmrc` | — |
 | `@types/express` | services/core (devDep) | Express type defs | — | — |
 | `@types/jsonwebtoken` | services/core (devDep) | JWT type defs | — | — |
 | `@types/pg` | services/core (devDep) | Postgres client type defs | — | — |
+| `drizzle-kit` | services/core (devDep) | Migration generator/runner CLI (`db:generate`) — produces the versioned `.sql` migrations under `services/core/drizzle/` from `src/db/schema.ts`. Manifest pins `0.30.x`; resolved `0.30.6` (see `.pipeline/W0-05/changes.md`). | `docs/prd.md` §4.3, §4.5; `.pipeline/W0-05/spec.md` | — |
 
 Note: no direct Graph DB/pgvector convenience dependency was added here — per
 `.claude/rules/service-layer.md`, the graph is only ever reached through the service layer /

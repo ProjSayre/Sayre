@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1783832221358,
+      "tag": "0000_sleepy_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783832236943,
+      "tag": "0001_rls_and_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783832241586,
+      "tag": "0002_triggers_and_indexes",
+      "breakpoints": true
+    }
+  ]
+}
