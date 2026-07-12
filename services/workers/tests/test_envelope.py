@@ -4,7 +4,7 @@ Broker-independent — these do not touch SQS/LocalStack, so they always run and
 give coverage even in a broker-less environment. Covers acceptance criterion 4
 (org_id REQUIRED, rejected empty/missing) and the envelope-shape edge cases.
 
-Imports use the qualified `workers.queue.*` form (NOT bare `queue.*`) so the
+Imports use the qualified `workers.messaging.*` form (NOT bare `queue.*`) so the
 `queue` name stays bound to the stdlib module for boto3/urllib3 — see Dev's
 Deviation #1 in changes.md.
 """
@@ -15,7 +15,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from workers.queue.envelope import MessageEnvelope
+from workers.messaging.envelope import MessageEnvelope
 
 
 def _valid_kwargs(**overrides):

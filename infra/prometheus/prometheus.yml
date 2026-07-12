@@ -1,0 +1,14 @@
+# Scrape config for the locally-run sayre-workers process (W0-06).
+# `sayre_workers/telemetry/otel.py` starts the /metrics HTTP endpoint on the
+# HOST (via `poetry run python scripts/synthetic_vector_load.py`, or a future
+# worker process), not inside a container, so this job targets
+# host.docker.internal -- see the `prometheus` service's `extra_hosts` in
+# infra/docker-compose.yml for the host-gateway wiring Prometheus needs to
+# reach it (esp. on Linux; Docker Desktop resolves it natively).
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: sayre-workers
+    static_configs:
+      - targets: ["host.docker.internal:9464"]

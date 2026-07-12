@@ -10,9 +10,10 @@ SQS_ENDPOINT_URL. When the broker is unreachable the whole module SKIPS (never
 fails) so `poetry run pytest` still passes without infra (spec edge case
 "LocalStack or Redis not running -> tests skip").
 
-Imports use the qualified `workers.queue.*` form (see Dev Deviation #1). Run with
-PYTHONSAFEPATH=1 (Dev Deviation #2) so the `services/workers/queue/` folder does not
-shadow the stdlib `queue` module that boto3/urllib3 need.
+Imports use the qualified `workers.messaging.*` form (see Dev Deviation #1). The
+package was renamed from `queue/` to `messaging/` at the W0-04/W0-06 merge, so it no
+longer shadows the stdlib `queue` module boto3/urllib3 need — PYTHONSAFEPATH is no
+longer required.
 """
 
 import functools
@@ -33,9 +34,9 @@ os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
 import boto3  # noqa: E402
 from botocore.config import Config  # noqa: E402
 
-from workers.queue import sqs_client  # noqa: E402
-from workers.queue.envelope import MessageEnvelope  # noqa: E402
-from workers.queue.sqs_client import (  # noqa: E402
+from workers.messaging import sqs_client  # noqa: E402
+from workers.messaging.envelope import MessageEnvelope  # noqa: E402
+from workers.messaging.sqs_client import (  # noqa: E402
     ENRICHMENT_QUEUE,
     INGESTION_QUEUE,
     SELFTEST_QUEUE,

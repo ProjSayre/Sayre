@@ -10,14 +10,12 @@ specified one); the committed lockfile (`package-lock.json` / `poetry.lock`) fre
 resolved graph. See `.pipeline/changes.md` for install verification notes (what was actually
 resolved on this machine).
 
-> **PRD section note:** `docs/prd.md` (the readable PRD conversion) numbers its System Design
-> Architecture section 4.1 through 4.9, then jumps straight to Section 6 (Cursor Origin) — there
-> is no literal "Section 4.10" in the document, and a "Section 5" is referenced once in-line
-> (§4.3, re: the Test node) but no such heading exists in the file. This mirrors the kind of
-> pre-existing path/numbering inconsistency already flagged in `.pipeline/spec.md` O-2/O-4. Per
-> `.pipeline/spec.md` O-5, real section numbers are cited below rather than inventing "4.10" —
-> future-swap content is sourced from the closest real PRD sections (3, 4.3, 4.5) and, primarily,
-> from `docs/migration-triggers.md`, which is the authoritative source for trigger thresholds.
+> **PRD section note (updated for PRD v3):** `docs/prd.md` is now the Annotated Edition v3,
+> which added the previously-missing §4.10 (Chosen Tools, Scaling Posture & Migration Triggers,
+> including the initial numeric thresholds) and restored §5 (CI/CD Test Impact Analysis
+> Addendum). References below cite §4.10/§5 directly; `docs/migration-triggers.md` mirrors
+> §4.10 and the two are kept in sync. (An earlier revision of this note documented the v2
+> numbering gap — that inconsistency no longer exists.)
 
 ## `apps/web` — Next.js product visualization client
 
@@ -81,6 +79,10 @@ Graph Query Service, and the vector store client belongs to the Python fleet, no
 | `pydantic` | services/workers (dep) | Data validation (FastAPI 0.115 requires Pydantic v2) | — | — |
 | `pytest` | services/workers (dev group) | Test runner | `CLAUDE.md` Commands (`poetry run pytest`) | — |
 | `pytest-asyncio` | services/workers (dev group) | Async test support for FastAPI/async code paths | — | — |
+| `opentelemetry-api` | services/workers (dep) | Vendor-neutral metrics API — the only surface `vector_metrics.py` and future call sites import (resolved `1.29.0`) | `docs/migration-triggers.md` (Vector Store trigger); W0-06 spec | — (this *is* the swap point's stable surface) |
+| `opentelemetry-sdk` | services/workers (dep) | MeterProvider/View/Resource implementation behind the API — same minor as `opentelemetry-api` (resolved `1.29.0`) | W0-06 spec (`sayre_workers/telemetry/otel.py`) | — |
+| `opentelemetry-exporter-prometheus` | services/workers (dep) | Pull-based Prometheus exporter for `/metrics` — pinned to the release paired with the `1.29.x` api/sdk minor (resolved `0.50b0`, which also pins `opentelemetry-semantic-conventions==0.50b0` transitively) | W0-06 spec | Swapped for an OTLP/vendor reader in prod — see `otel.py`'s `init_metrics()` docstring; zero call-site changes |
+| `prometheus-client` | services/workers (dep) | Arrives transitively via the exporter; pinned explicitly (resolved `0.25.0`) because `otel.py` calls `start_http_server()` directly | W0-06 spec | — |
 
 Not included in this ticket (see `.pipeline/spec.md` open questions): `graphify` (O-9 — named in
 `CLAUDE.md`'s stack list but not enumerated by this ticket; confirm exact package identity when
@@ -97,12 +99,13 @@ the Semantic Enrichment Worker ticket comes up).
 | `redis:7.4-alpine` | Redis — BullMQ backing store + Realtime Service pub/sub | `docs/prd.md` §4.2 (Realtime Service); `.claude/rules/async-messaging.md` | — |
 | `neo4j:5.24-community` | Graph DB — codebase ontology (major 5, matching `neo4j-driver` 5.x) | `docs/prd.md` §4.3 (Graph Store) | Neo4j → Amazon Neptune; see below |
 | `localstack/localstack:3.8` | SQS emulator for the Python worker fleet (local dev only — real AWS SQS in prod) | `docs/prd.md` §2.1 (Delta Processing queue), §4.2; `.claude/rules/async-messaging.md`; W0-04 spec R5 (O-10 resolved) | Not a future swap — LocalStack is dev-only tooling; real AWS SQS provisioning/IAM/Terraform is separate, out-of-scope infra work |
+| `prom/prometheus:v3.1.0` | Locally-run Prometheus — scrapes the `sayre-workers` `/metrics` endpoint (`sayre_workers/telemetry/otel.py`) for the pgvector → OpenSearch trigger metrics (`vector_query_duration_ms`, `vector_query_concurrent_count`) | W0-06 spec; `docs/prd.md` §4.10; `docs/migration-triggers.md` (Vector Store trigger) | Dashboards/Grafana/alert rules are a later, non-blocking ticket (see W0-06 spec Open Questions) |
 
 ## Known future swaps (PRD migration triggers)
 
-Sourced from `docs/migration-triggers.md`, the authoritative source for trigger thresholds
-(closest real PRD sections cited above are §3 and §4.3/§4.5, since `docs/prd.md` has no literal
-"Section 4.10" — see note at the top of this file):
+Sourced from `docs/migration-triggers.md` and PRD v3 §4.10, which now defines the initial
+numeric thresholds (the earlier "no literal Section 4.10" caveat predates PRD v3 and no
+longer applies):
 
 - **`neo4j-driver` (Neo4j) → Amazon Neptune-compatible driver.** Trigger: sustained concurrent,
   multi-tenant query load — not raw data size. Stays a data-store swap behind the Graph Query
@@ -110,7 +113,10 @@ Sourced from `docs/migration-triggers.md`, the authoritative source for trigger 
   not an application rewrite.
 - **`pgvector` (Python fleet) → Amazon OpenSearch client.** Trigger: instrumented concurrent
   vector-query load (sustained queries/sec under concurrent multi-tenant access) and/or a p95/p99
-  latency bound — not candidate-set size, corpus size, or customer count.
+  latency bound — not candidate-set size, corpus size, or customer count. The instrumentation that
+  measures this trigger (`vector_query_duration_ms`, `vector_query_concurrent_count`, both tagged
+  by `org_id`) shipped in W0-06 via `sayre_workers/telemetry/` — ahead of any real pgvector call
+  site, since none exist yet; see W0-06 spec for the harness/convention split.
 - **`express` / REST facade → GraphQL server libs + DataLoader batching.** Trigger: client
   data-shape divergence across the Technical/Product/Onboarding views reaching the point where
   REST forces overfetching or a proliferation of bespoke endpoints. Touches only the routing

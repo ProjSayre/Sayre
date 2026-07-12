@@ -81,6 +81,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # Scrapes the /metrics endpoint started by sayre_workers/telemetry/otel.py
+  # on the HOST (not a container) -- see infra/prometheus/prometheus.yml.
+  # W0-06: vector-store concurrency/latency instrumentation demo.
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: sayre-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # host reachability on Linux; Docker Desktop resolves it natively
+
 volumes:
   postgres_data:
   redis_data:
