@@ -3,7 +3,7 @@ Codebase Visualizer — an AI-powered codebase ontology and visualization platfo
 
 ## Stack
 - Frontend: Next.js (React) + TypeScript, Tailwind CSS
-- Graph rendering: React Flow (<~500 visible nodes); Sigma.js (WebGL) + graphology at scale — chosen automatically by node count, not a user toggle
+- Graph rendering: Sigma.js (WebGL) + graphology at every scale — graphology for client-side algorithm gaps only (local filter/subgraph/layout); heavy graph computation stays server-side in the Graph Query Service
 - Core API: Node.js/TypeScript — REST facade now, GraphQL later (see docs/migration-triggers.md)
 - Async workers: Python/FastAPI + Tree-sitter + Graphify + LangChain/LangGraph
 - Integration workers: Node.js + BullMQ (GitHub, Jira, Linear)
@@ -43,6 +43,7 @@ After every change, run in this order:
 - Cypher/query code targets openCypher syntax (Neo4j today, Neptune-compatible later) — see `.claude/rules/graph-schema.md`.
 - SQS is for the Python worker fleet; BullMQ is for Node integration workers. This is a permanent split, not a migration path — see `.claude/rules/async-messaging.md`.
 - For scaling/migration trigger thresholds (Neo4j→Neptune, pgvector→OpenSearch, REST→GraphQL), see `docs/migration-triggers.md`.
+- Secrets: MVP uses gitignored `.env` files (committed `*.env.example` templates hold placeholders only); KMS-backed secrets manager before the first external customer — see `.claude/rules/security-multitenancy.md`.
 
 ## Don't
 - Don't render Function/Class nodes on canvas — fold them into File node metadata instead.
