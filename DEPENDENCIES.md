@@ -10,14 +10,12 @@ specified one); the committed lockfile (`package-lock.json` / `poetry.lock`) fre
 resolved graph. See `.pipeline/changes.md` for install verification notes (what was actually
 resolved on this machine).
 
-> **PRD section note:** `docs/prd.md` (the readable PRD conversion) numbers its System Design
-> Architecture section 4.1 through 4.9, then jumps straight to Section 6 (Cursor Origin) — there
-> is no literal "Section 4.10" in the document, and a "Section 5" is referenced once in-line
-> (§4.3, re: the Test node) but no such heading exists in the file. This mirrors the kind of
-> pre-existing path/numbering inconsistency already flagged in `.pipeline/spec.md` O-2/O-4. Per
-> `.pipeline/spec.md` O-5, real section numbers are cited below rather than inventing "4.10" —
-> future-swap content is sourced from the closest real PRD sections (3, 4.3, 4.5) and, primarily,
-> from `docs/migration-triggers.md`, which is the authoritative source for trigger thresholds.
+> **PRD section note (updated for PRD v3):** `docs/prd.md` is now the Annotated Edition v3,
+> which added the previously-missing §4.10 (Chosen Tools, Scaling Posture & Migration Triggers,
+> including the initial numeric thresholds) and restored §5 (CI/CD Test Impact Analysis
+> Addendum). References below cite §4.10/§5 directly; `docs/migration-triggers.md` mirrors
+> §4.10 and the two are kept in sync. (An earlier revision of this note documented the v2
+> numbering gap — that inconsistency no longer exists.)
 
 ## `apps/web` — Next.js product visualization client
 
