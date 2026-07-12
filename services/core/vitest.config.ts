@@ -8,5 +8,8 @@ export default defineConfig({
     environment: 'node',
     hookTimeout: 20_000,
     testTimeout: 20_000,
+    // src/db/ tests are node:test suites (run via `npm run test:rls`), not
+    // vitest — excluding them here keeps the two runners from colliding.
+    exclude: ['**/node_modules/**', 'src/db/**'],
   },
 });

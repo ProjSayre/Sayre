@@ -7,25 +7,30 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file=../../infra/.env --import tsx src/db/migrate.ts",
     "test": "vitest run",
-    "test:integration": "vitest run"
+    "test:integration": "vitest run",
+    "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts"
   },
   "dependencies": {
-    "express": "4.21.x",
     "bullmq": "5.28.x",
+    "drizzle-orm": "0.38.x",
+    "express": "4.21.x",
     "ioredis": "5.4.x",
+    "jsonwebtoken": "9.0.2",
     "neo4j-driver": "5.26.x",
-    "pg": "8.13.x",
-    "jsonwebtoken": "9.0.2"
+    "pg": "8.13.x"
   },
   "devDependencies": {
-    "typescript": "5.5.x",
-    "tsx": "4.x",
-    "vitest": "2.1.x",
-    "@types/node": "20.x",
     "@types/express": "4.17.x",
     "@types/jsonwebtoken": "9.0.x",
-    "@types/pg": "8.11.x"
+    "@types/node": "20.x",
+    "@types/pg": "8.11.x",
+    "drizzle-kit": "0.30.x",
+    "tsx": "4.x",
+    "typescript": "5.5.x",
+    "vitest": "2.1.x"
   },
   "engines": {
     "node": ">=20 <21"
