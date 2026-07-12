@@ -1,6 +1,6 @@
 ---
 paths:
-  - "workers/**/*"
+  - "services/workers/**/*"
 ---
 
 # Async Messaging Rules
