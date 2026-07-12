@@ -4,3 +4,33 @@ dist/
 .DS_Store
 scripts/.fontcache/
 scripts/.shots/
+
+# Secrets / local env — keep *.example templates tracked
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Key material (e.g. GitHub App private keys)
+*.pem
+*.key
+
+# Build / tooling caches
+.turbo/
+coverage/
+*.log
+
+# Python workers (Poetry / pytest)
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Personal Claude agent workflow — teammates use other agent setups
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.pipeline/
+scripts/validate-pipeline-only-write.sh
