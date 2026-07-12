@@ -32,5 +32,5 @@ htmlcov/
 # personal/local overrides and per-ticket run artifacts stay out
 CLAUDE.local.md
 .claude/settings.local.json
-.pipeline/*.md
+.pipeline/**
 !.pipeline/README.md
