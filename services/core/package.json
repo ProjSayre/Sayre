@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=../../infra/.env --import tsx src/db/migrate.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run",
     "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts"
   },
   "dependencies": {
@@ -27,7 +29,8 @@
     "@types/pg": "8.11.x",
     "drizzle-kit": "0.30.x",
     "tsx": "4.x",
-    "typescript": "5.5.x"
+    "typescript": "5.5.x",
+    "vitest": "2.1.x"
   },
   "engines": {
     "node": ">=20 <21"
