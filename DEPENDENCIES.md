@@ -26,8 +26,7 @@ resolved on this machine).
 | `next` | apps/web (dep) | App framework/router/build for the visualization shell | `docs/prd.md` §3 (Frontend Framework), `CLAUDE.md` Stack | — |
 | `react` | apps/web (dep) | UI library | `docs/prd.md` §3, `CLAUDE.md` Stack | — |
 | `react-dom` | apps/web (dep) | React DOM renderer | `docs/prd.md` §3 | — |
-| `@xyflow/react` | apps/web (dep) | React Flow v12 — canvas renderer for <~500 visible nodes (Technical/Product/Onboarding trees) | `docs/prd.md` §2.2, §3 (Graph Rendering); `docs/architecture.md` Component Breakdown | See "Deliberate non-migrations" below — not a future swap |
-| `sigma` | apps/web (dep) | WebGL renderer for graphs above the node-count threshold | `docs/prd.md` §2.2, §3; `docs/architecture.md`; `docs/migration-triggers.md` (Client Rendering boundary) | See "Deliberate non-migrations" below |
+| `sigma` | apps/web (dep) | WebGL canvas renderer at every scale (Technical/Product/Onboarding trees) — single renderer, no node-count cutover (PRD v3 §4.10; `@xyflow/react` dropped 2026-07-12) | `docs/prd.md` §2.2, §3, §4.10; `docs/architecture.md`; `docs/migration-triggers.md` (Client Rendering boundary) | See "Deliberate non-migrations" below |
 | `graphology` | apps/web (dep) | Client-side graph data structure backing Sigma + local algorithms | `docs/prd.md` §2.2; `docs/migration-triggers.md` (Client Rendering boundary) | — |
 | `graphology-layout` | apps/web (dep) | Client-side layout algorithms (local pre-processing only, never RBAC/traversal) | `.claude/rules/security-multitenancy.md` | — |
 | `typescript` | apps/web (devDep) | Type checking | `CLAUDE.md` Stack | — |
@@ -114,10 +113,12 @@ Sourced from `docs/migration-triggers.md`, the authoritative source for trigger 
 
 So nobody mistakes these permanent splits for pending future swaps:
 
-- **`@xyflow/react` (React Flow) vs. `sigma` + `graphology`** — a permanent, node-count-driven
-  renderer split, chosen automatically by the backend based on visible-node count, not a user
-  toggle and not a migration (`docs/migration-triggers.md`, "Client Rendering: Sigma.js +
-  graphology boundary").
+- **`sigma` + `graphology` client boundary** — Sigma.js is the single WebGL renderer at every
+  scale (the earlier React Flow/`@xyflow/react` dual-renderer split was dropped in PRD v3 §4.10,
+  2026-07-12). graphology is scoped to client-side algorithm gaps only — local filtering,
+  subgraph extraction, layout pre-processing — never RBAC or deep traversal, which stay
+  server-side in the Graph Query Service. A permanent boundary, not a migration
+  (`docs/migration-triggers.md`, "Client Rendering: Sigma.js + graphology boundary").
 - **`boto3`/SQS (Python fleet) vs. `bullmq` (Node integration workers)** — a permanent messaging
   split; SQS backs the Python worker fleet, BullMQ backs Node integration workers (GitHub/Jira/
   Linear). No consolidation planned (`docs/migration-triggers.md`, "Async Messaging: SQS +
