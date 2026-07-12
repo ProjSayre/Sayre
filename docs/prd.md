@@ -342,3 +342,19 @@ The original six-sprint (~12 week) MVP plan is preserved; the CI/CD Test Impact 
 **Note:** the Canvas Node Model (Folder/File only — Section 2.2) and the Folder-Level Topological Inheritance rules (Section 4.9) are schema-level and belong in Sprint 0/1 alongside the initial graph schema. The Feature Cluster metadata panel (Section 4.7) lands with Product Tree in Sprint 3. The Interactive Node Overlay panel (Section 4.8) is UI-only over data that already exists by Sprint 4 (ownership, style, tickets, test coverage), so it is scoped into Sprint 4-5 alongside the other node-sidebar work. The Node Risk & Health Signals (Section 4.11) derive from that same data — fan-in at ingestion, ownership/churn from GitHub sync, coverage from the Section 5 pipeline — so signal computation and the overlay's Risk Signals layer land in Sprint 4-5 with the rest of the node-sidebar work. The Macro View (Section 1.2) requires a Project entity and cross-repo edge inference not otherwise needed for a single-repo MVP, so it is scoped as a Sprint 6+ (post-MVP) addition below rather than a committed MVP sprint deliverable.
 
 **Post-MVP (Sprint 6+):** expand language coverage (Go, Java, Rust), add more task-tracker integrations (Asana, GitHub Issues), introduce collaborative annotations on the graph, add the Macro View (Project-to-Repo mapping and inter-repo context — Section 1.2), build the admin billing/plan console, and revisit Cursor Origin integration once its public API/webhook documentation ships.
+
+---
+
+## 8. North Star (added in v3 — directional, expected to evolve)
+
+*This section records where the product is headed so future tickets can trace to it. It is deliberately non-binding: it does not schedule anything — the roadmap (§7) and the backlog's dependency table govern build order — and its scope will be added to and subtracted from as the end goal evolves.*
+
+**The codebase graph is the wedge, not the product.** It is built first because it is a felt pain point, quick to ship, and earns the install — but the durable value is what gets anchored to it.
+
+**Phase 2 — the decision layer.** A service layer connects to the tools where engineering decisions actually live — Jira, Graphite, Notion, Teams, Slack, and their peers — to capture decisions made in writing or in meetings that are today either gated to a subset of engineers or simply not remembered. These supplement the graphs in the interface: tickets viewable by node (already in MVP scope), and **decisions reviewed, then flagged** on the nodes they govern, so an engineer knows at a glance why the code is the way it is. Two properties are non-negotiable in this phase: surfaced decisions must respect the source system's own access gating (a private channel's decision is not a public annotation), and decisions must carry a lifecycle (proposed → confirmed → superseded) — a confidently-surfaced stale decision is worse than none.
+
+**Phase 3 — a world model of development.** As connections increase, the graph stops being a model of the repo and becomes a model of development as a whole. Operationally that means three capabilities layered onto the existing ontology: **entity resolution** across tools (the ticket, the PR stack, the thread, the doc, and the commit resolve to one unit of work); a **temporal dimension** (not just what is true, but what was believed and when); and **provenance** (this code exists *because of* that decision).
+
+**End state — one substrate, two surfaces.** The backend graph-guided RAG system becomes the primary workhorse, serving:
+- **Agents** — impeccable, permission-scoped context for AI coding agents, positioning the platform as the context layer every agent queries before touching a repo rather than a competitor to any of them;
+- **Engineers** — a streamlined, visual understanding layer: the graph-based, always-updating knowledge dashboard this document specifies the foundations of.
