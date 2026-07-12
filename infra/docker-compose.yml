@@ -1,0 +1,66 @@
+# Local datastore infra for the Codebase Visualizer product (not the marketing site).
+# Image tags are pinned exactly per DEPENDENCIES.md — no `latest`.
+#
+# NOTE (deliberate deviation from the ticket's literal wording): the Postgres image is
+# `pgvector/pgvector:pg16`, not plain `postgres:16`. Rationale: the vector store is
+# pgvector (docs/architecture.md, docs/migration-triggers.md), which requires the
+# `vector` extension; the stock `postgres:16` image does not ship it. See DEPENDENCIES.md
+# "Deliberate non-migrations" / infra section for detail.
+#
+# Credentials are pulled from infra/.env.example (placeholders only) — never committed
+# as literal secrets, per .claude/rules/security-multitenancy.md.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: sayre-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: sayre-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.24-community
+    container_name: sayre-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  neo4j_data:
