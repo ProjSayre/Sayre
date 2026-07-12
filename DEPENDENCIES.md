@@ -79,6 +79,10 @@ Graph Query Service, and the vector store client belongs to the Python fleet, no
 | `pydantic` | services/workers (dep) | Data validation (FastAPI 0.115 requires Pydantic v2) | — | — |
 | `pytest` | services/workers (dev group) | Test runner | `CLAUDE.md` Commands (`poetry run pytest`) | — |
 | `pytest-asyncio` | services/workers (dev group) | Async test support for FastAPI/async code paths | — | — |
+| `opentelemetry-api` | services/workers (dep) | Vendor-neutral metrics API — the only surface `vector_metrics.py` and future call sites import (resolved `1.29.0`) | `docs/migration-triggers.md` (Vector Store trigger); W0-06 spec | — (this *is* the swap point's stable surface) |
+| `opentelemetry-sdk` | services/workers (dep) | MeterProvider/View/Resource implementation behind the API — same minor as `opentelemetry-api` (resolved `1.29.0`) | W0-06 spec (`sayre_workers/telemetry/otel.py`) | — |
+| `opentelemetry-exporter-prometheus` | services/workers (dep) | Pull-based Prometheus exporter for `/metrics` — pinned to the release paired with the `1.29.x` api/sdk minor (resolved `0.50b0`, which also pins `opentelemetry-semantic-conventions==0.50b0` transitively) | W0-06 spec | Swapped for an OTLP/vendor reader in prod — see `otel.py`'s `init_metrics()` docstring; zero call-site changes |
+| `prometheus-client` | services/workers (dep) | Arrives transitively via the exporter; pinned explicitly (resolved `0.25.0`) because `otel.py` calls `start_http_server()` directly | W0-06 spec | — |
 
 Not included in this ticket (see `.pipeline/spec.md` open questions): `graphify` (O-9 — named in
 `CLAUDE.md`'s stack list but not enumerated by this ticket; confirm exact package identity when
@@ -91,6 +95,7 @@ the Semantic Enrichment Worker ticket comes up) and a LocalStack/SQS emulator fo
 | `pgvector/pgvector:pg16` | Postgres + `vector` extension — relational system of record *and* vector store backing | `docs/prd.md` §4.3 (Relational Store, Vector Store); `docs/architecture.md` | pgvector → Amazon OpenSearch; see below. **Deviation note:** the ticket's literal text said `postgres:16`; this is deliberately `pgvector/pgvector:pg16` instead because plain `postgres:16` does not ship the `vector` extension required by the Vector Store component. See `.pipeline/changes.md`. |
 | `redis:7.4-alpine` | Redis — BullMQ backing store + Realtime Service pub/sub | `docs/prd.md` §4.2 (Realtime Service); `.claude/rules/async-messaging.md` | — |
 | `neo4j:5.24-community` | Graph DB — codebase ontology (major 5, matching `neo4j-driver` 5.x) | `docs/prd.md` §4.3 (Graph Store) | Neo4j → Amazon Neptune; see below |
+| `prom/prometheus:v3.1.0` | Locally-run Prometheus — scrapes the `sayre-workers` `/metrics` endpoint (`sayre_workers/telemetry/otel.py`) for the pgvector → OpenSearch trigger metrics (`vector_query_duration_ms`, `vector_query_concurrent_count`) | W0-06 spec; `docs/migration-triggers.md` (Vector Store trigger) | Dashboards/Grafana/alert rules are a later, non-blocking ticket (see W0-06 spec Open Questions) |
 
 ## Known future swaps (PRD migration triggers)
 
@@ -104,7 +109,10 @@ Sourced from `docs/migration-triggers.md`, the authoritative source for trigger 
   not an application rewrite.
 - **`pgvector` (Python fleet) → Amazon OpenSearch client.** Trigger: instrumented concurrent
   vector-query load (sustained queries/sec under concurrent multi-tenant access) and/or a p95/p99
-  latency bound — not candidate-set size, corpus size, or customer count.
+  latency bound — not candidate-set size, corpus size, or customer count. The instrumentation that
+  measures this trigger (`vector_query_duration_ms`, `vector_query_concurrent_count`, both tagged
+  by `org_id`) shipped in W0-06 via `sayre_workers/telemetry/` — ahead of any real pgvector call
+  site, since none exist yet; see W0-06 spec for the harness/convention split.
 - **`express` / REST facade → GraphQL server libs + DataLoader batching.** Trigger: client
   data-shape divergence across the Technical/Product/Onboarding views reaching the point where
   REST forces overfetching or a proliferation of bespoke endpoints. Touches only the routing

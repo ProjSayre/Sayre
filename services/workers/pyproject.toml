@@ -16,6 +16,10 @@ dependencies = [
   "pgvector==0.3.*",
   "anthropic==0.40.*",
   "pydantic==2.9.*",
+  "opentelemetry-api==1.29.*",
+  "opentelemetry-sdk==1.29.*",
+  "opentelemetry-exporter-prometheus==0.50b0",
+  "prometheus-client==0.25.*",
 ]
 
 [tool.poetry]
@@ -24,6 +28,10 @@ package-mode = false
 [tool.poetry.group.dev.dependencies]
 pytest = "8.*"
 pytest-asyncio = "0.24.*"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["poetry-core>=2.0"]
