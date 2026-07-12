@@ -573,7 +573,7 @@ export default function LandingPage(): JSX.Element {
           </Reveal>
           <Reveal d={3}>
             <div className="v2-waitlist__form">
-              <WaitlistForm source="landing" compact />
+              <WaitlistForm source="landing" />
             </div>
           </Reveal>
           <p className="v2-waitlist__fine">{WAITLIST_BAND.fine}</p>

@@ -34,16 +34,26 @@ npm run og         # regenerate public/og.png (dev-only script; commit the outpu
 
 ### Waitlist: Google Form mode (accepted tradeoff)
 
+The site's waitlist form mirrors the team's Google Form **field-for-field**
+(name, email, company, website, team size, tools, interest, notes — the
+qualification questions are load-bearing) and posts into it. The site's
+`source` tag (`landing` / `demo-topbar` / `demo-tour`) is auto-reported
+through the form's "How did you hear about us?" *Other* slot as
+`site: <source>` — visitors are never asked.
+
 Google Forms sends no CORS headers, so the **browser cannot read Google's
 response** — the site shows success whenever the request completes, even if
 Google silently rejected it (deleted form, closed responses, changed entry
-ids). This is a deliberate tradeoff (team decision 2026-07-11) in exchange for
-a free, unlimited endpoint with responses in a familiar Sheet.
+ids or option strings, a question flipped to required). This is a deliberate
+tradeoff (team decision 2026-07-11) for a free endpoint with responses in a
+Sheet.
 
 Mitigation: run **`npm run test:waitlist`** periodically — Node *can* read the
-response, so the script submits a real test row and fails loudly if the form
-is gone or the entry ids stopped matching. Run it at minimum before and during
-any email campaign, then delete the test rows from the Responses sheet.
+response, so the script submits a complete test row exactly as the site does
+and fails loudly on any of the above. Run it after ANY edit to the Google Form
+and before/during email campaigns, then delete the test rows from Responses.
+If the form's questions change, update `GOOGLE_FORM` in `src/config.ts`
+(option strings must match verbatim).
 
 ## Deploy
 
