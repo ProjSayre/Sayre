@@ -28,9 +28,9 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Personal Claude agent workflow — teammates use other agent setups
-CLAUDE.md
+# Claude agent workflow — shared with the team (see agent-workflow-materials branch);
+# personal/local overrides and per-ticket run artifacts stay out
 CLAUDE.local.md
-.claude/
-.pipeline/
-scripts/validate-pipeline-only-write.sh
+.claude/settings.local.json
+.pipeline/*.md
+!.pipeline/README.md
