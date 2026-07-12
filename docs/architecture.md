@@ -1,7 +1,7 @@
 # Logical Architecture
 
 ```
-Browser (Next.js, React Flow / Sigma.js + graphology)
+Browser (Next.js, Sigma.js + graphology)
         |
    API Gateway  --  AuthN (JWT/session) + RBAC middleware
         |
