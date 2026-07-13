@@ -1,4 +1,4 @@
-# ./pipeline
+# .pipeline
 
 Shared working folder for the Planner -> Dev -> Tester -> Review -> Security pipeline. Run the whole thing with `/pipeline <ticket>`. Each stage reads the prior stage's file and writes its own:
 

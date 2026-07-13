@@ -1,1 +1,1 @@
-"""Test package marker for services/workers."""
+"""Package marker for services/workers test suite."""
