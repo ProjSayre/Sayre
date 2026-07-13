@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "express": "4.21.x",
@@ -14,7 +17,8 @@
     "ioredis": "5.4.x",
     "neo4j-driver": "5.26.x",
     "pg": "8.13.x",
-    "jsonwebtoken": "9.0.2"
+    "jsonwebtoken": "9.0.2",
+    "@sayre/shared-types": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "5.5.x",
@@ -22,7 +26,11 @@
     "@types/node": "20.x",
     "@types/express": "4.17.x",
     "@types/jsonwebtoken": "9.0.x",
-    "@types/pg": "8.11.x"
+    "@types/pg": "8.11.x",
+    "vitest": "2.1.x",
+    "eslint": "8.57.x",
+    "@typescript-eslint/parser": "7.x",
+    "@typescript-eslint/eslint-plugin": "7.x"
   },
   "engines": {
     "node": ">=20 <21"
