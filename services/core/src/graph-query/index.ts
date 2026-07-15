@@ -1,0 +1,75 @@
+// STUB — replaced by W2-02, no Neo4j driver here.
+//
+// This is a fixture-returning placeholder for the real Graph Query Service.
+// W2-02 replaces the implementation below with an openCypher client against
+// Neo4j (see docs/architecture.md and Open Question 4 in .pipeline/spec.md
+// for W0-03: Node core owns runtime graph queries). Until then this module
+// deliberately ignores `viewport`/`repoId`/`orgId` for filtering/RBAC purposes
+// (that is W2-02's job) but the parameters exist on the interface today so
+// callers never have to change when the real client lands.
+//
+// Do not import `neo4j-driver` (or any other data client) into this file.
+
+import type { GraphEdge, GraphNode, GraphQueryService, Viewport } from './types';
+
+export * from './types';
+
+const ROOT_FOLDER: GraphNode = {
+  id: 'folder-root',
+  label: 'Folder',
+  name: 'src',
+  path: '/src',
+  parentId: null,
+};
+
+const CHILD_FILES: GraphNode[] = [
+  {
+    id: 'file-index',
+    label: 'File',
+    name: 'index.ts',
+    path: '/src/index.ts',
+    parentId: ROOT_FOLDER.id,
+  },
+  {
+    id: 'file-app',
+    label: 'File',
+    name: 'app.ts',
+    path: '/src/app.ts',
+    parentId: ROOT_FOLDER.id,
+  },
+];
+
+const FIXTURE_NODES: GraphNode[] = [ROOT_FOLDER, ...CHILD_FILES];
+
+// Fixture stub ignores repoId/orgId/viewport (real filtering is W2-02); the
+// params exist so callers don't have to change when the real client lands.
+/* eslint-disable @typescript-eslint/no-unused-vars */
+async function getNodesInViewport(
+  _repoId: string,
+  _orgId: string,
+  _viewport: Viewport,
+): Promise<GraphNode[]> {
+  return FIXTURE_NODES;
+}
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
+async function getStructuralEdges(
+  _repoId: string,
+  _orgId: string,
+  nodes: GraphNode[],
+): Promise<GraphEdge[]> {
+  const idsInScope = new Set(nodes.map((node) => node.id));
+  return nodes
+    .filter((node) => node.parentId !== null && idsInScope.has(node.parentId))
+    .map((node) => ({
+      id: `edge-${node.parentId}-${node.id}`,
+      type: 'CONTAINS' as const,
+      source: node.parentId as string,
+      target: node.id,
+    }));
+}
+
+export const graphQueryService: GraphQueryService = {
+  getNodesInViewport,
+  getStructuralEdges,
+};

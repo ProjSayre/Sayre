@@ -11,5 +11,27 @@
     "ecmaVersion": 2022,
     "sourceType": "module"
   },
-  "ignorePatterns": ["dist", "node_modules"]
+  "ignorePatterns": ["dist", "node_modules"],
+  "overrides": [
+    {
+      "files": ["src/routes/**/*.ts"],
+      "excludedFiles": ["**/*.test.ts"],
+      "rules": {
+        "max-statements": ["error", 10],
+        "no-restricted-imports": ["error", {
+          "paths": [
+            { "name": "neo4j-driver", "message": "Routes must not touch the graph driver — call a function in src/services/, which calls src/graph-query/." },
+            { "name": "pg",           "message": "Routes must not query Postgres directly — go through a service." },
+            { "name": "drizzle-orm",  "message": "Routes must not query the DB directly — go through a service." },
+            { "name": "bullmq",       "message": "Routes must not enqueue directly — kick off async work from a service." },
+            { "name": "ioredis",      "message": "Routes must not touch Redis directly — go through a service." }
+          ],
+          "patterns": [
+            { "group": ["**/graph-query", "**/graph-query/*"], "message": "Routes call services, not the Graph Query Service directly (Route → Service → Graph Query Service)." },
+            { "group": ["**/db", "**/db/*"], "message": "Routes must not import the DB layer — go through a service." }
+          ]
+        }]
+      }
+    }
+  ]
 }
