@@ -14,6 +14,7 @@ dependencies = [
   "boto3==1.35.*",
   "psycopg[binary]==3.2.*",
   "pgvector==0.3.*",
+  "neo4j==5.24.*",
   "anthropic==0.40.*",
   "pydantic==2.9.*",
   "opentelemetry-api==1.29.*",
