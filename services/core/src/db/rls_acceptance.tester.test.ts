@@ -172,18 +172,6 @@ interface SeededOrg {
   onboardingStepId: string;
 }
 
-function idsByTable(seed: SeededOrg): Record<TableName, string> {
-  return {
-    organizations: seed.orgId,
-    users: seed.userId,
-    repositories: seed.repoId,
-    permissions: seed.permissionId,
-    ticket_cache: seed.ticketId,
-    style_rules: seed.styleRuleId,
-    onboarding_steps: seed.onboardingStepId,
-  };
-}
-
 /** Seeds one row in every table for a throwaway org, as admin (bypasses RLS). */
 async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
   const orgId = randomUUID();
@@ -254,8 +242,6 @@ let db: ReturnType<typeof createDb>;
 let testDbUrl: string;
 let orgA: SeededOrg;
 let orgB: SeededOrg;
-let idsA: Record<TableName, string>;
-let idsB: Record<TableName, string>;
 
 before(async () => {
   const adminUrl = requireAdminUrl();
@@ -275,8 +261,6 @@ before(async () => {
   await pool.query("TRUNCATE organizations CASCADE");
   orgA = await seedOrg(pool, "A");
   orgB = await seedOrg(pool, "B");
-  idsA = idsByTable(orgA);
-  idsB = idsByTable(orgB);
 });
 
 after(async () => {

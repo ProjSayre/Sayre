@@ -37,6 +37,21 @@ resolved on this machine).
 | `autoprefixer` | apps/web (devDep) | Vendor-prefixing for Tailwind output | — | — |
 | `eslint` | apps/web (devDep) | Lint engine | `CLAUDE.md` Commands (`npm run lint`) | — |
 | `eslint-config-next` | apps/web (devDep) | Next.js lint ruleset (pinned to `next`'s 14.2 minor) | — | — |
+| `vitest` | apps/web (devDep) | Test runner for `apps/web` (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Commands (`npm run test`) | — |
+
+## `packages/shared-types` — cross-package TypeScript contracts
+
+| Package | Runtime/Location | Purpose | Reference | Future swap |
+|---|---|---|---|---|
+| `typescript` | packages/shared-types (devDep) | Type checking / `tsc` build to `dist/` | `CLAUDE.md` Stack | — |
+
+`@sayre/shared-types` (the package itself, `version 0.1.0`, `private`) defines the `HealthStatus`/
+`ServiceName` contract consumed by `services/core` (and mirrored by convention in `apps/web` and
+`services/workers`, which don't import it directly due to the Node/Python split). Introduced by
+W0-01 (D-4) as the first npm-workspace member alongside `apps/web` and `services/core`; resolved
+into `services/core` via plain npm workspace symlinking (`"@sayre/shared-types": "^0.1.0"`), not a
+`file:` path — see W0-01 D-3. `packages/graph-schema` is explicitly **not** created this ticket
+(D-4) — it belongs to a future graph-specific ticket.
 
 ## `services/core` — Node/TypeScript API, service layer, Graph Query Service, BullMQ integration workers
 
@@ -56,6 +71,10 @@ resolved on this machine).
 | `@types/express` | services/core (devDep) | Express type defs | — | — |
 | `@types/jsonwebtoken` | services/core (devDep) | JWT type defs | — | — |
 | `@types/pg` | services/core (devDep) | Postgres client type defs | — | — |
+| `@sayre/shared-types` | services/core (dep) | Cross-package `HealthStatus`/`ServiceName` contract, resolved via npm workspace symlinking (W0-01 D-3/D-4) | `.pipeline/spec.md` W0-01 D-3, D-4; `.claude/rules/service-layer.md` | — |
+| `eslint` | services/core (devDep) | Lint engine, pinned to `apps/web`'s 8.57 minor to avoid cross-runtime drift | `.pipeline/spec.md` W0-01 D-6 | — |
+| `@typescript-eslint/parser` | services/core (devDep) | TypeScript parser for eslint | `.pipeline/spec.md` W0-01 D-6 | — |
+| `@typescript-eslint/eslint-plugin` | services/core (devDep) | TypeScript-aware lint rules | `.pipeline/spec.md` W0-01 D-6 | — |
 | `drizzle-kit` | services/core (devDep) | Migration generator/runner CLI (`db:generate`) — produces the versioned `.sql` migrations under `services/core/drizzle/` from `src/db/schema.ts`. Manifest pins `0.30.x`; resolved `0.30.6` (see `.pipeline/W0-05/changes.md`). | `docs/prd.md` §4.3, §4.5; `.pipeline/W0-05/spec.md` | — |
 
 Note: no direct Graph DB/pgvector convenience dependency was added here — per
@@ -79,6 +98,9 @@ Graph Query Service, and the vector store client belongs to the Python fleet, no
 | `pydantic` | services/workers (dep) | Data validation (FastAPI 0.115 requires Pydantic v2) | — | — |
 | `pytest` | services/workers (dev group) | Test runner | `CLAUDE.md` Commands (`poetry run pytest`) | — |
 | `pytest-asyncio` | services/workers (dev group) | Async test support for FastAPI/async code paths | — | — |
+| `ruff` | services/workers (dev group) | Lint (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Commands (`poetry run ruff check .`) | — |
+| `mypy` | services/workers (dev group) | Typecheck (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Verification | — |
+| `httpx` | services/workers (dev group) | Required transitively by Starlette's `TestClient` (used in `tests/test_health.py`) | `.pipeline/spec.md` W0-01 (Affected files, `services/workers`) | — |
 | `opentelemetry-api` | services/workers (dep) | Vendor-neutral metrics API — the only surface `vector_metrics.py` and future call sites import (resolved `1.29.0`) | `docs/migration-triggers.md` (Vector Store trigger); W0-06 spec | — (this *is* the swap point's stable surface) |
 | `opentelemetry-sdk` | services/workers (dep) | MeterProvider/View/Resource implementation behind the API — same minor as `opentelemetry-api` (resolved `1.29.0`) | W0-06 spec (`sayre_workers/telemetry/otel.py`) | — |
 | `opentelemetry-exporter-prometheus` | services/workers (dep) | Pull-based Prometheus exporter for `/metrics` — pinned to the release paired with the `1.29.x` api/sdk minor (resolved `0.50b0`, which also pins `opentelemetry-semantic-conventions==0.50b0` transitively) | W0-06 spec | Swapped for an OTLP/vendor reader in prod — see `otel.py`'s `init_metrics()` docstring; zero call-site changes |
@@ -90,6 +112,21 @@ the Semantic Enrichment Worker ticket comes up).
 
 **O-10 (LocalStack/SQS emulator for local dev) — resolved by W0-04.** See
 `infra/docker-compose.yml` (`localstack` service) and the pinned image row below.
+
+## Root workspace — monorepo orchestration (W0-01)
+
+| Package | Runtime/Location | Purpose | Reference | Future swap |
+|---|---|---|---|---|
+| `turbo` | root (devDep) | Orchestrates build/lint/typecheck/test across the npm-workspace packages (`apps/web`, `services/core`, `packages/shared-types`); `build` task's `dependsOn: ["^build"]` builds `packages/shared-types` before `services/core` automatically | `.pipeline/spec.md` W0-01 D-3 | — |
+
+Root `package.json` (the marketing site's, `sayre-site`) gained a `"workspaces"` field this ticket
+(`["apps/web", "services/core", "packages/*"]`) plus a `packageManager` field (required by turbo
+2.x to resolve the workspace unambiguously — discovered mid-implementation, not anticipated by the
+spec text; see `.pipeline/changes.md`). The marketing site's own `dev`/`build`/`preview`/`og`/
+`test:waitlist` scripts and dependencies are unchanged; new `dev:workspaces`/`build:workspaces`/
+`lint:workspaces`/`typecheck:workspaces`/`test:workspaces` scripts drive the workspace packages
+via `turbo` instead. `services/workers` (Poetry) is **not** part of this npm workspace at all — see
+`.pipeline/spec.md` W0-01 D-3.
 
 ## `infra/docker-compose.yml` — pinned datastore images
 

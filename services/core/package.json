@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=../../infra/.env --import tsx src/db/migrate.ts",
     "test": "vitest run",
@@ -14,6 +16,7 @@
     "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts"
   },
   "dependencies": {
+    "@sayre/shared-types": "^0.1.0",
     "bullmq": "5.28.x",
     "drizzle-orm": "0.38.x",
     "express": "4.21.x",
@@ -27,7 +30,10 @@
     "@types/jsonwebtoken": "9.0.x",
     "@types/node": "20.x",
     "@types/pg": "8.11.x",
+    "@typescript-eslint/eslint-plugin": "7.x",
+    "@typescript-eslint/parser": "7.x",
     "drizzle-kit": "0.30.x",
+    "eslint": "8.57.x",
     "tsx": "4.x",
     "typescript": "5.5.x",
     "vitest": "2.1.x"

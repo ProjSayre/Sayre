@@ -232,7 +232,6 @@ async def test_provider_swap_rebinds_instruments_to_new_provider():
                         return {dp.attributes["org_id"] for dp in m.data.data_points}
         return set()
 
-    data_a = reader_a.get_metrics_data()
     data_b = reader_b.get_metrics_data()
     # New provider saw org-b; it never saw org-a.
     assert "org-b" in _orgs(data_b, vector_metrics.DURATION_METRIC_NAME)

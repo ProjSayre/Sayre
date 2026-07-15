@@ -3,12 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "npm@11.14.1",
+  "workspaces": ["apps/web", "services/core", "packages/*"],
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "og": "node scripts/og.mjs",
-    "test:waitlist": "node scripts/test-waitlist.mjs"
+    "test:waitlist": "node scripts/test-waitlist.mjs",
+    "dev:workspaces": "turbo run dev --parallel",
+    "build:workspaces": "turbo run build",
+    "lint:workspaces": "turbo run lint",
+    "typecheck:workspaces": "turbo run typecheck",
+    "test:workspaces": "turbo run test"
   },
   "dependencies": {
     "d3-hierarchy": "^3.1.2",
@@ -23,6 +30,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "puppeteer-core": "^25.3.0",
+    "turbo": "2.1.x",
     "typescript": "~5.6.3",
     "vite": "^5.4.11"
   }
