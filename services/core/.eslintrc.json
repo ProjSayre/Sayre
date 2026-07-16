@@ -14,21 +14,56 @@
   "ignorePatterns": ["dist", "node_modules"],
   "overrides": [
     {
-      "files": ["src/routes/**/*.ts"],
+      "files": ["src/routes/**/*.ts", "src/mcp/**/*.ts"],
       "excludedFiles": ["**/*.test.ts"],
       "rules": {
+        "max-lines": ["error", { "max": 15, "skipBlankLines": true, "skipComments": true }],
         "max-statements": ["error", 10],
+        "no-restricted-globals": ["error",
+          { "name": "require", "message": "The CommonJS loader is forbidden in protocol handlers — use static imports from src/services/." },
+          { "name": "module", "message": "The CommonJS module loader is forbidden in protocol handlers — use static imports from src/services/." },
+          { "name": "globalThis", "message": "Node global loader roots are forbidden in protocol handlers — use static imports from src/services/." },
+          { "name": "global", "message": "Node global loader roots are forbidden in protocol handlers — use static imports from src/services/." },
+          { "name": "process", "message": "The Node process loader root is forbidden in protocol handlers — use static imports from src/services/." }
+        ],
+        "no-restricted-syntax": ["error",
+          { "selector": "ImportExpression", "message": "Dynamic imports are forbidden in protocol handlers — use static imports from src/services/." },
+          { "selector": "TSImportType", "message": "Import-type expressions are forbidden in protocol handlers — define shared types outside the protocol layer." },
+          { "selector": "TSImportEqualsDeclaration", "message": "TypeScript import-equals is forbidden in protocol handlers — use static imports from src/services/." },
+          { "selector": ":matches(ImportDeclaration, ExportNamedDeclaration, ExportAllDeclaration)[source.value=/\\/\\/|\\\\/]", "message": "Non-canonical static module specifiers are forbidden in protocol handlers — use single forward-slash separators." },
+          { "selector": ":matches(ImportDeclaration, ExportNamedDeclaration, ExportAllDeclaration)[source.value=/~/]", "message": "NTFS short-name aliases are forbidden in protocol handlers — use canonical module specifiers through src/services/." },
+          { "selector": "VariableDeclaration[declare=true]", "message": "Ambient value declarations are forbidden in protocol handlers — define emitted values in src/services/." },
+          { "selector": "TSDeclareFunction", "message": "Ambient value declarations are forbidden in protocol handlers — define emitted values in src/services/." },
+          { "selector": "ClassDeclaration[declare=true]", "message": "Ambient value declarations are forbidden in protocol handlers — define emitted values in src/services/." },
+          { "selector": "TSEnumDeclaration[declare=true]", "message": "Ambient value declarations are forbidden in protocol handlers — define emitted values in src/services/." },
+          { "selector": "TSModuleDeclaration[declare=true]", "message": "Ambient value declarations are forbidden in protocol handlers — define emitted values in src/services/." },
+          { "selector": "ImportDeclaration[importKind='type'] > ImportSpecifier[local.name=/^(require|module|globalThis|global|process)$/]", "message": "Type-only imports cannot bind Node loader-root names in protocol handlers — rename the type binding." },
+          { "selector": "ImportDeclaration[importKind='type'] > ImportDefaultSpecifier[local.name=/^(require|module|globalThis|global|process)$/]", "message": "Type-only imports cannot bind Node loader-root names in protocol handlers — rename the type binding." },
+          { "selector": "ImportDeclaration[importKind='type'] > ImportNamespaceSpecifier[local.name=/^(require|module|globalThis|global|process)$/]", "message": "Type-only imports cannot bind Node loader-root names in protocol handlers — rename the type binding." },
+          { "selector": "ImportSpecifier[importKind='type'][local.name=/^(require|module|globalThis|global|process)$/]", "message": "Type-only imports cannot bind Node loader-root names in protocol handlers — rename the type binding." },
+          { "selector": "TSEnumDeclaration[const=true]", "message": "Const enums are forbidden in protocol handlers because TypeScript may erase them — use an ordinary emitted enum or move the value to src/services/." }
+        ],
         "no-restricted-imports": ["error", {
           "paths": [
-            { "name": "neo4j-driver", "message": "Routes must not touch the graph driver — call a function in src/services/, which calls src/graph-query/." },
-            { "name": "pg",           "message": "Routes must not query Postgres directly — go through a service." },
-            { "name": "drizzle-orm",  "message": "Routes must not query the DB directly — go through a service." },
-            { "name": "bullmq",       "message": "Routes must not enqueue directly — kick off async work from a service." },
-            { "name": "ioredis",      "message": "Routes must not touch Redis directly — go through a service." }
+            { "name": "neo4j-driver",           "message": "Protocol handlers must not touch the graph driver — call src/services/." },
+            { "name": "pg",                     "message": "Protocol handlers must not query Postgres directly — call src/services/." },
+            { "name": "drizzle-orm",            "message": "Protocol handlers must not query the DB directly — call src/services/." },
+            { "name": "bullmq",                 "message": "Protocol handlers must not enqueue directly — call src/services/." },
+            { "name": "ioredis",                "message": "Protocol handlers must not touch Redis directly — call src/services/." },
+            { "name": "@aws-sdk/client-sqs",    "message": "Protocol handlers must not publish SQS work directly — call src/services/." },
+            { "name": "@aws-sdk/client-sns",    "message": "Protocol handlers must not publish SNS events directly — call src/services/." },
+            { "name": "process",                 "message": "Protocol handlers must not import the Node process loader root." },
+            { "name": "node:process",            "message": "Protocol handlers must not import the Node process loader root." },
+            { "name": "node:module",             "message": "Protocol handlers must not construct alternate module loaders." },
+            { "name": "module",                  "message": "Protocol handlers must not construct alternate module loaders." }
           ],
           "patterns": [
-            { "group": ["**/graph-query", "**/graph-query/*"], "message": "Routes call services, not the Graph Query Service directly (Route → Service → Graph Query Service)." },
-            { "group": ["**/db", "**/db/*"], "message": "Routes must not import the DB layer — go through a service." }
+            { "group": ["neo4j-driver", "neo4j-driver/**", "pg", "pg/**", "drizzle-orm", "drizzle-orm/**", "bullmq", "bullmq/**", "ioredis", "ioredis/**", "@aws-sdk/client-sqs", "@aws-sdk/client-sqs/**", "@aws-sdk/client-sns", "@aws-sdk/client-sns/**", "pgvector", "pgvector/**", "@opensearch-project/opensearch", "@opensearch-project/opensearch/**", "process/**", "node:process/**", "node:module/**", "module/**"], "message": "Protocol handlers must not import storage, queue, or alternate loader subpaths — call src/services/." },
+            { "group": ["**/node_modules/**"], "message": "Protocol handlers must not reach packages through relative node_modules paths — call src/services/." },
+            { "group": ["../graph-query", "../graph-query/**", "./graph-query", "./graph-query/**", "**/../graph-query", "**/../graph-query/**", "**/./graph-query", "**/./graph-query/**", "src/graph-query", "src/graph-query/**", "**/src/graph-query", "**/src/graph-query/**", "**/dist/graph-query", "**/dist/graph-query/**", "@sayre/core/src/graph-query", "@sayre/core/src/graph-query/**"], "message": "Protocol handlers call services, not the Graph Query Service directly." },
+            { "group": ["../db", "../db/**", "./db", "./db/**", "**/../db", "**/../db/**", "**/./db", "**/./db/**", "src/db", "src/db/**", "**/src/db", "**/src/db/**", "**/dist/db", "**/dist/db/**", "@sayre/core/src/db", "@sayre/core/src/db/**"], "message": "Protocol handlers must not import the DB layer — call src/services/." },
+            { "group": ["../queue", "../queue/**", "./queue", "./queue/**", "**/../queue", "**/../queue/**", "**/./queue", "**/./queue/**", "../messaging", "../messaging/**", "./messaging", "./messaging/**", "**/../messaging", "**/../messaging/**", "**/./messaging", "**/./messaging/**", "src/queue", "src/queue/**", "src/messaging", "src/messaging/**", "**/src/queue", "**/src/queue/**", "**/src/messaging", "**/src/messaging/**", "**/dist/queue", "**/dist/queue/**", "**/dist/messaging", "**/dist/messaging/**", "@sayre/core/src/queue", "@sayre/core/src/queue/**", "@sayre/core/src/messaging", "@sayre/core/src/messaging/**"], "message": "Protocol handlers must not import queue clients — call src/services/." },
+            { "group": ["../vector", "../vector/**", "./vector", "./vector/**", "**/../vector", "**/../vector/**", "**/./vector", "**/./vector/**", "../vector-store", "../vector-store/**", "./vector-store", "./vector-store/**", "**/../vector-store", "**/../vector-store/**", "**/./vector-store", "**/./vector-store/**", "src/vector", "src/vector/**", "src/vector-store", "src/vector-store/**", "**/src/vector", "**/src/vector/**", "**/src/vector-store", "**/src/vector-store/**", "**/dist/vector", "**/dist/vector/**", "**/dist/vector-store", "**/dist/vector-store/**", "@sayre/core/src/vector", "@sayre/core/src/vector/**", "@sayre/core/src/vector-store", "@sayre/core/src/vector-store/**"], "message": "Protocol handlers must not import vector storage — call src/services/." }
           ]
         }]
       }
