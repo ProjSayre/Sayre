@@ -18,22 +18,15 @@ longer required.
 
 import functools
 import json
-import os
 import threading
 from uuid import uuid4
 
 import pytest
 
-# Point the SQS client at LocalStack before anything constructs the cached boto3
-# client. setdefault so an orchestrator/CI that already exported these wins.
-os.environ.setdefault("SQS_ENDPOINT_URL", "http://localhost:4566")
-os.environ.setdefault("AWS_REGION", "us-east-1")
-os.environ.setdefault("AWS_ACCESS_KEY_ID", "test")
-os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
-
 import boto3  # noqa: E402
 from botocore.config import Config  # noqa: E402
 
+from sayre_workers.config import MissingConfigError, get_config, reset_secrets_for_tests  # noqa: E402
 from workers.messaging import sqs_client  # noqa: E402
 from workers.messaging.envelope import MessageEnvelope  # noqa: E402
 from workers.messaging.sqs_client import (  # noqa: E402
@@ -51,11 +44,17 @@ from workers.messaging.sqs_client import (  # noqa: E402
 @functools.lru_cache(maxsize=1)
 def _broker_reachable() -> bool:
     """Short-timeout probe so a down broker skips quickly instead of hanging."""
+    try:
+        endpoint_url = get_config("SQS_ENDPOINT_URL")
+    except MissingConfigError:
+        endpoint_url = "http://localhost:4566"
     cfg = Config(connect_timeout=2, read_timeout=3, retries={"max_attempts": 0})
     client = boto3.client(
         "sqs",
-        endpoint_url=os.environ.get("SQS_ENDPOINT_URL") or None,
-        region_name=os.environ.get("AWS_REGION", "us-east-1"),
+        endpoint_url=endpoint_url,
+        region_name=get_config("AWS_REGION"),
+        aws_access_key_id="localstack-test",
+        aws_secret_access_key="localstack-test",
         config=cfg,
     )
     try:
@@ -69,9 +68,25 @@ pytestmark = pytest.mark.skipif(
     not _broker_reachable(),
     reason=(
         "LocalStack SQS unreachable at "
-        f"{os.environ.get('SQS_ENDPOINT_URL')} — skipping SQS integration round-trip"
+        "http://localhost:4566 — skipping SQS integration round-trip"
     ),
 )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _localstack_loader_config():
+    """Configure the real loader through pytest's environment abstraction."""
+    patch = pytest.MonkeyPatch()
+    patch.setenv("SAYRE_ENV", "test")
+    patch.setenv("SQS_ENDPOINT_URL", "http://localhost:4566")
+    patch.setenv("AWS_REGION", "us-east-1")
+    patch.setenv("AWS_ACCESS_KEY_ID", "localstack-test")
+    patch.setenv("AWS_SECRET_ACCESS_KEY", "localstack-test")
+    reset_secrets_for_tests()
+    yield
+    sqs_client.close_client()
+    reset_secrets_for_tests()
+    patch.undo()
 
 
 def _make_env(**overrides) -> MessageEnvelope:

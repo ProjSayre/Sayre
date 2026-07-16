@@ -17,11 +17,22 @@ jobs:
         with:
           node-version: '20'
 
+      # Built-in-only pre-install boundary: these scripts use Node core modules
+      # and Git, so no package lifecycle code runs before the source audit.
+      - name: Secret-access boundary
+        run: npm run check:secret-access && npm run test:secret-access
+
       # Single root-level install — resolves the marketing site + apps/web +
       # services/core + packages/shared-types together via the workspace
       # lockfile. Shared by both the web and core steps below (not repeated).
       - name: Install dependencies (root, single pass)
         run: npm ci
+
+      - name: config — typecheck
+        run: npm run typecheck --workspace @sayre/config
+
+      - name: config — test
+        run: npm test --workspace @sayre/config
 
       - name: web — lint
         run: npx turbo run lint --filter=@sayre/web
@@ -69,7 +80,14 @@ jobs:
         run: poetry run ruff check .
 
       - name: Typecheck (mypy)
-        run: poetry run mypy app
+        run: >-
+          poetry run mypy --explicit-package-bases
+          app
+          sayre_workers/config
+          messaging/sqs_client.py
+          sayre_workers/graph_migrations/runner.py
+          scripts/run_graph_migrations.py
+          sayre_workers/telemetry/otel.py
 
       - name: Test (pytest)
         run: poetry run pytest

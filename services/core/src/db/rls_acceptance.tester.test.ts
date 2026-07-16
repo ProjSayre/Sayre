@@ -11,7 +11,7 @@
 //   - FK + cascade under RLS (cascade delete; documented FK-RI-bypasses-RLS behavior) [edge]
 //   - concurrent sessions with different app.org_id do not bleed                    [edge]
 //   - unknown/unseeded org context -> fail-closed (0 rows)                          [edge]
-//   - missing DATABASE_URL -> createPool fails fast                                 [edge]
+//   - missing resolved database URL -> createPool fails fast                        [edge]
 //   - updated_at BEFORE-UPDATE trigger fires (0002)
 //
 // Runs against its OWN dedicated database (w005_rls_tester) so it never collides
@@ -24,8 +24,9 @@ import { Client, Pool, type PoolClient } from "pg";
 import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { createDb, createPool, withOrgContext } from "./client";
+import { getConfig, getSecret } from "@sayre/config";
 
-const TEST_DB_NAME = process.env.RLS_TESTER_DB_NAME ?? "w005_rls_tester";
+const TEST_DB_NAME = getConfig("RLS_TESTER_DB_NAME");
 
 const TABLE_NAMES = [
   "organizations",
@@ -133,14 +134,14 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
   },
 };
 
-function requireAdminUrl(): string {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
+async function requireAdminUrl(): Promise<string> {
+  try {
+    return await getSecret("env://DATABASE_ADMIN_URL");
+  } catch {
     throw new Error(
-      "rls_acceptance.tester.test.ts requires DATABASE_URL (admin/superuser DSN). Run via node --env-file=../../infra/.env.",
+      "rls_acceptance.tester.test.ts requires DATABASE_ADMIN_URL (admin/superuser DSN). Run via node --env-file=../../infra/.env.",
     );
   }
-  return url;
 }
 
 function withDatabaseName(connectionString: string, dbName: string): string {
@@ -244,7 +245,7 @@ let orgA: SeededOrg;
 let orgB: SeededOrg;
 
 before(async () => {
-  const adminUrl = requireAdminUrl();
+  const adminUrl = await requireAdminUrl();
   await ensureTestDatabaseExists(adminUrl, TEST_DB_NAME);
   testDbUrl = withDatabaseName(adminUrl, TEST_DB_NAME);
 
@@ -648,19 +649,16 @@ test("[edge] a valid-but-unseeded org context returns 0 rows everywhere (fail-cl
 });
 
 // ---------------------------------------------------------------------------
-// Edge: missing DATABASE_URL
+// Edge: missing resolved database URL
 // ---------------------------------------------------------------------------
 
-test("[edge] createPool() fails fast with a clear error when DATABASE_URL is missing", async () => {
-  const saved = process.env.DATABASE_URL;
-  try {
-    delete process.env.DATABASE_URL;
-    assert.throws(() => createPool(), /DATABASE_URL is not set/, "createPool() must fail fast, not hang");
-    // An explicit empty string is also rejected (falsy guard).
-    assert.throws(() => createPool(""), /DATABASE_URL is not set/);
-  } finally {
-    if (saved !== undefined) process.env.DATABASE_URL = saved;
-  }
+test("[edge] createPool() fails fast when its resolved database URL is missing", async () => {
+  assert.throws(
+    () => createPool(undefined),
+    /resolved database URL is not set/,
+    "createPool() must fail fast, not hang",
+  );
+  assert.throws(() => createPool(""), /resolved database URL is not set/);
 });
 
 // ---------------------------------------------------------------------------

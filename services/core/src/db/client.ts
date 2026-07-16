@@ -8,22 +8,30 @@
 import { sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { getSecret, type SecretRef } from "@sayre/config";
 import * as schema from "./schema";
 
 export type Db = NodePgDatabase<typeof schema>;
 
 /**
  * Creates a `pg` connection pool. Fails fast (no hung connection) when
- * `DATABASE_URL` is missing rather than letting `pg` attempt a default
+ * the resolved database URL is missing rather than letting `pg` attempt a default
  * localhost connection silently.
  */
-export function createPool(url: string | undefined = process.env.DATABASE_URL): Pool {
+export function createPool(url: string | undefined): Pool {
   if (!url) {
     throw new Error(
-      "createPool: DATABASE_URL is not set. Provide it via infra/.env (see infra/.env.example) or the environment.",
+      "createPool: resolved database URL is not set. Provide the appropriate secret reference via infra/.env (see infra/.env.example) or the environment.",
     );
   }
   return new Pool({ connectionString: url });
+}
+
+/** Resolve the credential-bearing DSN before constructing the pg client. */
+export async function createPoolFromSecret(
+  ref: SecretRef | string = "env://DATABASE_RUNTIME_URL",
+): Promise<Pool> {
+  return createPool(await getSecret(ref));
 }
 
 export function createDb(pool: Pool): Db {

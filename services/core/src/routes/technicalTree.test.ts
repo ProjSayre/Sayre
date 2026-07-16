@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GraphEdge, GraphNode } from '../graph-query/types';
+import { getConfig } from '@sayre/config';
 
 // Spy on the graph-query singleton so we can assert exactly what orgId reaches
 // it through the full HTTP -> route -> service -> graph-query path, without a
@@ -101,7 +102,7 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
   it('a client-supplied ?orgId=attacker has no effect: the server-side req.orgId is what reaches the graph-query layer', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
-    const expectedOrgId = process.env.DEV_ORG_ID ?? 'org_dev_local';
+    const expectedOrgId = getConfig('DEV_ORG_ID');
 
     const res = await fetch(
       `${baseUrl}/repos/repo-1/technical-tree?x=0&y=0&width=100&height=100&orgId=attacker`,
