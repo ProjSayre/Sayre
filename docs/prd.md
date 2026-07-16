@@ -68,7 +68,7 @@ The MVP MCP surface is **read-only** . Write-path tools (agents proposing change
 
 - **Multi-Language AST Parsing** — Map explicit structural relationships (function calls, class inheritance, module imports) via incremental syntax tree analysis. _Tooling: Tree-sitter, Python, language grammars (JS/TS/Py/Go to start)._ 
 
-- **Semantic Relationship Extraction** — Analyze code semantics, config files, and inline documentation via LLMs to extract high-level functional groupings. Graphify constrains LLM output into graph primitives (nodes, edges, properties) so enrichment results merge directly into the graph store rather than returning free-form prose that would need re-parsing. This is what makes the graph traversable by both the in-product Retrieval Service and external agents over MCP — and it holds regardless of which model, hosted or self-hosted, sits behind the call (Section 2.7). _Tooling: Graphify, LangChain/LangGraph, a pluggable model backend (Section 2.7), Python/FastAPI._ 
+- **Semantic Relationship Extraction** — Analyze code semantics, config files, and inline documentation via LLMs to extract high-level functional groupings. Sayre's `GraphifyAdapter` wraps Graphify to constrain semantic output into graph primitives (nodes, edges, properties), while the `ModelProvider` boundary supplies the configured model. Graphify never replaces or changes W1-01's structural Tree-sitter parser. This makes the graph traversable by Retrieval and MCP regardless of which hosted or self-hosted model sits behind the call (Section 2.7). _Tooling: base Graphify, LangChain/LangGraph orchestration, Sayre adapters, Python/FastAPI._
 
 - **Delta Processing** — Process code deltas incrementally on every push rather than rebuilding the entire codebase graph from scratch. _Tooling: GitHub Webhooks, Python, SQS._ 
 
@@ -137,7 +137,9 @@ Every point in the platform that calls an LLM — the Semantic Enrichment Worker
 
 - **Self-hosted / local** — a customer-supplied, OpenAI-compatible chat-completion endpoint (Ollama, vLLM, Text Generation Inference, or an equivalent serving layer), running on the customer’s own infrastructure or VPC. Because most local-model servers already expose an OpenAI-compatible API, one adapter — “OpenAI-compatible endpoint” — covers OpenAI itself and the large majority of self-hosted setups. This includes both a stock open-weight model (Llama, Mistral, Gemma 4, GLM-5.1, DeepSeek V4, or any future open-weight entrant) and a customer’s own finetune of one, run entirely on infrastructure the platform never touches. 
 
-_Tooling:_ LangChain/LangGraph already abstract over model backends including OpenAI-compatible and locally served endpoints, so this is a configuration and adapter-selection layer, not a parallel enrichment pipeline. 
+_Tooling:_ Sayre's `ModelProvider` owns generation-model selection, endpoint policy, and SDK/client construction. LangChain/LangGraph may orchestrate above that interface but is not the provider or security boundary. This remains one enrichment pipeline, selected by purpose-keyed org configuration.
+
+Embedding inference uses a separate Sayre-owned `EmbeddingProvider`, never an embedding method added to generation `ModelProvider`. The first adapter lands with W1-05 and calls an OpenAI-compatible embeddings endpoint, using local-compatible `Qwen3-Embedding-0.6B` as the default. It returns exactly 1024 finite dimensions; CI uses a deterministic, network-free fake that emits stable 1024-dimensional vectors. Embeddings are asynchronous and therefore outside the structural-sync target.
 
 #### **Structural vs. contractual data sovereignty (new in this edition)** 
 
@@ -155,7 +157,7 @@ Graphify’s output-shaping depends on the underlying model reliably producing s
 
 where it improves domain understanding. 
 
-- Latency and uptime for a self-hosted endpoint are the customer’s responsibility, with direct consequences for the 15-second sync target (Section 4.6) and for how usable the 70x token-reduction KPI is in practice. 
+- Latency and uptime for a self-hosted endpoint are the customer’s responsibility, affecting enrichment readiness and chatbot response time. They never affect the 15-second structural-sync target, which ends after graph commit and accepted `graph.updated` publication (Section 4.6).
 
 - The enrichment worker and retrieval service apply a circuit-breaker/timeout pattern around self-hosted calls so a flaky customer endpoint degrades gracefully rather than blocking ingestion or the chatbot outright. 
 
@@ -170,7 +172,8 @@ where it improves domain understanding.
 |Agent Surface|MCP server (streamable HTTP) over the<br>same service layer|Context provision to external agents,<br>including self-hosted-model clients|
 |AI / Knowledge Graph Engine|Python FastAPI + Graphify + Tree-sitter<br>+ LangChain/LangGraph|Async repo parsing & semantic<br>extraction|
 |Model Backend (new)|Pluggable: Anthropic, OpenAI, or self-<br>hosted OpenAI-compatible endpoint|Enrichment + chatbot model calls,<br>selected per org|
-|Message Bus|SQS (Python worker fleet) + BullMQ on<br>Redis (Node integration workers)|Decoupled write path|
+|Embedding Backend|Separate `EmbeddingProvider`; OpenAI-<br>compatible endpoint, Qwen3-Embedding-<br>0.6B local-compatible default|1024-dimensional cosine vectors,<br>selected per org|
+|Message Bus|SQS/SNS (Python worker/event fleet) +<br>BullMQ on Redis (Node integration workers)|FIFO ingestion, fanout, priority<br>enrichment, async embedding upserts|
 |Relational DB|Amazon RDS (PostgreSQL) with RLS|Orgs, users, permissions, billing, logs|
 |Graph DB|Neo4j now; Amazon Neptune on<br>measured trigger (4.10)|Repository ontology|
 |Vector DB|pgvector now; Amazon OpenSearch on<br>measured trigger (4.10)|Semantic code/doc chunk retrieval|
@@ -186,11 +189,11 @@ Three principles drive every decision:
 
 - **The write path and read path are fully decoupled.** Webhooks, parsing, and LLM enrichment happen asynchronously in workers; neither the frontend nor an MCP client ever blocks on parsing. 
 
-- **Every consumer surface is a projection, not a separate dataset — and every model call is a swappable backend, not a hardcoded vendor.** The three persona views, the MCP tool surface, and the enrichment/chatbot model calls are all interchangeable implementations behind one service layer and one adapter interface, respectively. 
+- **Every consumer surface is a projection, not a separate dataset — and every model call is a swappable backend, not a hardcoded vendor.** The three persona views and MCP tools share one service layer. Generation, embedding, and semantic shaping use the separate Sayre-owned `ModelProvider`, `EmbeddingProvider`, and `GraphifyAdapter` interfaces.
 
 ### **4.1 Logical Architecture** 
 
-The browser client (Next.js + React Flow/Sigma.js) talks to an API Gateway that enforces auth and RBAC, which routes to a Core App Service (Node.js) for fast synchronous reads/writes, and to a Realtime Service (WebSocket + Redis pub/sub) for live graph updates. An MCP Gateway sits beside the API Gateway, terminating MCP connections from external agents — Anthropic, Cursor, or self-hosted-model clients alike — and routing tool calls into the same Core App Service functions. Heavy work — parsing, semantic enrichment, AI retrieval — runs asynchronously in a Python/FastAPI worker fleet coordinated through SQS, with Node integration workers on BullMQ. Model calls from the enrichment worker and retrieval service route through the Model Provider Adapter to whichever backend the org has configured. Three data stores back everything: PostgreSQL, the Graph DB, and the Vector Store. 
+The browser client (Next.js + React Flow/Sigma.js) talks to an API Gateway that enforces auth and RBAC, which routes to a Core App Service (Node.js) for fast synchronous reads/writes, and to a Realtime Service (WebSocket + Redis pub/sub) for live graph updates. An MCP Gateway sits beside the API Gateway, terminating MCP connections from external agents and routing thin tool handlers into the same Core App Service functions. Heavy work runs in a Python/FastAPI fleet: repository work arrives on an SQS FIFO ingestion queue; after an idempotent graph commit, accepted `graph.updated` events publish through SNS to independent realtime and enrichment subscriptions; only then do bounded chunks enter the physical `embedding-upserts` queue; enrichment uses separate physical onboarding-priority and default queues. Work queues have DLQs, visibility heartbeats, and durable idempotency/version checks. Node integration workers remain on BullMQ. Generation calls route through `ModelProvider`, embedding calls through the separate `EmbeddingProvider`, and semantic shaping through `GraphifyAdapter`. PostgreSQL, the Graph DB, and the Vector Store back all reads.
 
 ### **4.2 Component Breakdown** 
 
@@ -212,17 +215,19 @@ Viewport-scoped querying: the client requests only nodes in the current viewport
 
 ##### **MCP Gateway (Node.js)** 
 
-- Terminates MCP connections (streamable HTTP) from external agents; authenticates per-org scoped API keys; attaches the same { agentKeyId, orgId, roles } context the REST middleware attaches; dispatches to the same service-layer functions. 
+- Terminates MCP connections (streamable HTTP) from external agents; authenticates per-org scoped API keys; attaches the same { agentKeyId, orgId, roles } context the REST middleware attaches; dispatches to the same service-layer functions. Each key presents a public identifier/prefix and a 256-bit secret returned only at issuance. Postgres stores an HMAC-SHA-256 digest using a server-held, versioned pepper plus creation, expiry, last-use, and revocation audit fields—never the raw secret. Agent-key scope reuses the existing permissions model and can never exceed the issuing administrator's recorded issuance ceiling or current effective scope.
 
 - Read-only tool surface at MVP. Every response passes through the identical server-side RBAC node-stripping applied to canvas queries. This holds identically for an Anthropic/Cursor client and for a customer’s own MCP client running a self-hosted model — no parallel authorization path exists for either (Section 4.11). Rate limiting and per-tool call metering from day one. 
 
-##### **Model Provider Adapter (Node.js config / Python client) — new** 
+##### **Generation and Embedding Provider Adapters (Node.js config / Python clients) — new**
 
-- Per-org configuration — model_provider , model_endpoint , model_credentials — stored in Postgres, defaulting to Claude. 
+- Purpose-keyed per-org `model_provider_configs` rows store provider, model, endpoint, and a pre-provisioned credential reference for generation or embedding. They never store a raw credential. Generation rows configure `ModelProvider`; embedding rows configure the separate `EmbeddingProvider`.
 
-- One adapter interface implemented three ways: Anthropic-native, OpenAI-native, and OpenAI-compatible-endpoint (covering OpenAI and the large majority of self-hosted servers). Both the Semantic Enrichment Worker and the Retrieval Service call the adapter interface, never a hardcoded SDK client. 
+- Sayre-owned generation `ModelProvider` and `GraphifyAdapter` interfaces are consumed from the first enrichment implementation. W3-07 supplies Anthropic-native and OpenAI-compatible generation implementations (the latter covers hosted OpenAI and local servers) plus the base-Graphify implementation. Workers never construct a hardcoded vendor SDK client outside a provider adapter.
 
-- Endpoint credentials are read exclusively through the secrets loader (Section 4.5) — no new secret-handling path. 
+- `EmbeddingProvider` is a distinct interface with no dependency on `GraphifyAdapter`. W1-05 supplies its first OpenAI-compatible adapter, defaulting local-compatible deployments to `Qwen3-Embedding-0.6B`, and a deterministic network-free CI fake. Both must produce exactly 1024 finite values; persistence rejects any other dimension. W3-07 does not retrofit or absorb this embedding boundary.
+
+- Endpoint credentials are resolved exclusively from pre-provisioned references through the secrets loader (Section 4.5)—no new secret-handling path. W3-09 cannot accept a raw credential before PM-07.
 
 - A circuit-breaker/timeout wrapper around every self-hosted call, with a configurable fallback (retry, degrade to a visible “generating” state, or fail the specific job) chosen per org. 
 
@@ -238,11 +243,11 @@ A WebSocket gateway backed by Redis pub/sub for fan-out across multiple gateway 
 
 ##### **Async Worker Fleet (Python + FastAPI)** 
 
-- **Ingestion/Delta Worker** — clones or diffs the repo, runs Tree-sitter, writes node/edge upserts to the Graph DB, updates embeddings in the Vector Store, publishes a graph.updated event. Operates against a scratch clone destroyed after parsing. 
+- **Ingestion/Delta Worker** — clones or diffs the repo, runs Tree-sitter, and applies idempotent graph upserts for the next accepted repository/ref/revision. Before a delta it verifies the accepted revision is an ancestor of the incoming revision; a force-push or other non-fast-forward divergence triggers a full rebuild of the organization/repository/ref head projection instead of a changed-file delta. After the graph transaction commits, it publishes the accepted `graph.updated` event through SNS. Bounded chunks enter `embedding-upserts` only after that event, so the Technical Tree never waits on embedding/model latency. W1-05's separate embedding consumer calls `EmbeddingProvider` and writes validated vectors. The scratch clone is destroyed after parsing.
 
-- **Semantic Enrichment Worker** — consumes newly parsed nodes on a separate queue so LLM latency never blocks structural sync; calls Graphify + LangChain/LangGraph + the configured Model Provider Adapter to build feature clusters, style tags, and onboarding step summaries. Graphify constrains all output to graph primitives regardless of which model backend produced it. 
+- **Semantic Enrichment Worker** — consumes accepted structural events on queues separate from ingestion; calls Sayre's `GraphifyAdapter` and configured `ModelProvider`, with optional LangChain/LangGraph orchestration above those boundaries. No provider is hardcoded, and Graphify constrains semantic output to graph primitives rather than parsing structural source.
 
-- **Onboarding Priority Lane** — a dedicated priority queue drained ahead of general enrichment, so Onboarding Tree generation completes before general feature clustering on cold start. Instrumented via 
+- **Onboarding Priority Lane** — separate physical onboarding-priority and default queues, with priority-only capacity plus bounded weighted polling so onboarding completes first without permanently starving default work. Instrumented via
 
 ttfc_cold_start_to_onboarding_ready_ms . 
 
@@ -256,17 +261,17 @@ ttfc_cold_start_to_onboarding_ready_ms .
 
 ### **4.3 Data Model** 
 
-**Relational Store (PostgreSQL)** — organizations, users, repositories, permissions (scoped by org/repo/branch/path), a ticket cache, style rules, onboarding steps, GitHub App installation records, MCP client credentials (per-org scoped agent API keys, with revocation and audit fields), and **per-org Model Provider configuration (new)** : provider selection, endpoint, and credential reference — audited the same way permissions are. Postgres is the system of record for permissions and provider configuration, so decisions are always computed against one auditable source. Row-level security is enabled from the start. 
+**Relational Store (PostgreSQL)** — organizations, users, repositories, permissions (scoped by org/repo/ref/path), ticket cache, style rules, onboarding steps, and the foundation datasets `github_app_installations`, audited org-scoped `mcp_client_keys`, purpose-keyed `model_provider_configs`, `repository_refs`, bounded tenant `code_chunks`, and `code_embeddings`. Provider rows store provider/model/endpoint and a pre-provisioned credential reference, never a raw credential. `repository_refs` records each mutable ref's accepted immutable revision and graph version. `mcp_client_keys` records a public key ID/prefix, HMAC-SHA-256 secret digest, pepper version, creator, creation/expiry, last-use, and revocation actor/timestamps; agent-key grants reuse `permissions` and enforce the issuer-scope ceiling. `code_embeddings` records tenant/repository/ref/revision/node/chunk identity, provider/model/dimension metadata, and a 1024-dimensional vector. Postgres is the auditable source for permissions and provider configuration. Every tenant table uses RLS, verified through the actual non-owner, non-superuser runtime role; service-layer authorization and RLS remain independent controls.
 
-**Graph Store (Neo4j, Neptune-compatible)** — unchanged from v4: Project, Repo, Folder, File, Function, Class, Module, Person, Commit, Feature, Ticket, EnvStep, Test node labels; CONTAINS, CONNECTS_TO, IMPORTS, CALLS, INHERITS, OWNS, AUTHORED, MODIFIED, REFERENCES, PART_OF, REQUIRES, DEPENDS_ON, COVERS edges. All migrations openCypher-only. 
+**Graph Store (Neo4j, logically Neptune-portable)** — Project, Repo, Folder, File, Function, Class, Module, Person, Commit, Feature, Ticket, EnvStep, Test node labels; CONTAINS, CONNECTS_TO, IMPORTS, CALLS, INHERITS, OWNS, AUTHORED, MODIFIED, REFERENCES, PART_OF, REQUIRES, DEPENDS_ON, COVERS edges. Repository identity is stable, refs are mutable, and revisions are immutable; scoped entities carry server-resolved org/repository/ref/revision identity. COVERS links Test to a covered node only within the same authorized scope, with nullable `last_run` and `status` of `inferred` or `measured`; Test carries `coverage_status` of `pass`, `fail`, or `unknown`. Logical schema, data migrations, and application queries are openCypher-compatible; constraints/indexes and other physical DDL are target-specific and versioned per target.
 
-**Vector Store (pgvector, OpenSearch-ready)** — code and doc chunks embedded and keyed back to their originating graph node ID, namespaced per organization. 
+**Vector Store (pgvector, OpenSearch-ready)** — bounded tenant-scoped code/document chunks and 1024-dimensional embeddings keyed to originating graph nodes and revision identity. Similarity uses cosine distance and queries match provider/model/dimension metadata before comparison. These retrieval derivatives may persist; repository checkouts and source trees may not.
 
 ### **4.4 Key Flow Walkthroughs** 
 
-**Initial Repository Onboarding (cold start)** — The user installs the GitHub App; the install/OAuth callback stores installation credentials and enqueues a repo.initial_parse job. A full-parse job runs once (Tree-sitter, bulk graph write, full embedding pass). The Onboarding Priority Lane ensures onboarding-step generation is queued ahead of general feature clustering. The Technical Tree becomes available first. 
+**Initial Repository Onboarding (cold start)** — The user installs the GitHub App; the callback stores installation metadata and enqueues `repo.initial_parse` on the FIFO ingestion queue. Tree-sitter performs a full parse and the graph transaction commits. The accepted `graph.updated` event then fans out through SNS, making the Technical Tree available. Only afterward are bounded chunks dispatched on `embedding-upserts` and semantic work dispatched asynchronously; the physical priority lane schedules onboarding ahead of general enrichment. The embedding consumer uses the separate `EmbeddingProvider` and writes 1024-dimensional cosine vectors.
 
-**Steady-State Push Event (the 15-second sync target)** — A push triggers a webhook, the Ingestion Worker parses only the changed files, diffs the AST, writes upserts/deletes in one transaction, and publishes graph.updated , fanned out over WebSocket. 
+**Steady-State Push Event (the 15-second structural target)** — A validated push enters FIFO order for its organization/repository/ref. If the accepted revision is an ancestor of the incoming revision, the worker parses changed files and applies idempotent upserts/deletes. A force-push or other non-fast-forward divergence instead triggers a full rebuild of that organization/repository/ref head projection, removing structural state from the abandoned head. The worker commits and publishes `graph.updated` through SNS to independent realtime and enrichment subscriptions. `embedding-upserts` and LLM work start afterward and are outside the structural target.
 
 **AI Query (Graph-Guided RAG)** — A user question against a node routes to the Retrieval Service, which resolves the anchor node, traverses a bounded number of hops, fetches only in-scope Vector Store chunks, assembles a bounded prompt, and calls the configured Model Provider Adapter — logging context tokens used versus a hypothetical full-repo count. 
 
@@ -278,11 +283,11 @@ ttfc_cold_start_to_onboarding_ready_ms .
 
 - **Granular (node-level) access control** is enforced centrally in the Graph Query Service — unauthorized nodes are filtered server-side before leaving the server. The same filter applies to WebSocket fan-out and every MCP tool response. 
 
-- **MCP credential posture:** agent access uses per-org scoped API keys, created and revocable from the canvas by org admins, stored and audited in Postgres alongside user permissions. Keys are scoped no wider than the inviting admin’s own scope. All MCP traffic is metered per key. 
+- **MCP credential posture:** agent access uses per-org scoped API keys created and revocable by org admins. Issuance produces a public key ID/prefix plus a 256-bit random secret returned once; Postgres stores only its pepper-versioned HMAC-SHA-256 digest and expiry/last-use/revocation audit data. Agent-key grants reuse the existing permissions model. Creation rejects scope broader than the issuer, and effective access remains the intersection of key permissions, its recorded issuance ceiling, and the issuer's current effective scope. All MCP traffic is metered per public key ID.
 
-- **Model Provider credential posture (new):** self-hosted endpoint URLs and credentials, and hosted-provider API keys, are read exclusively through the secrets loader. Switching an org’s provider is an audited configuration change, not a code deploy. 
+- **Model Provider credential posture (new):** through W3-09, provider configuration selects a pre-provisioned credential reference resolved exclusively by the secrets loader. Raw credentials are not accepted or stored. PM-07 supplies the later KMS-backed write/issuance/rotation phase. Switching provider remains an audited configuration change, not a deploy.
 
-- **Data ephemerality:** the Ingestion Worker operates against a scratch clone destroyed after parsing; only structural metadata and embeddings persist, never raw source trees. 
+- **Data ephemerality:** the Ingestion Worker destroys its scratch clone after parsing. Structural metadata, bounded tenant-scoped code/document chunks, and embeddings may persist for retrieval; a checkout, source tree, or derivative that reconstructs one may not.
 
 - **Secrets (staged posture):** MVP uses environment files behind a single loader module in each language. On the trigger defined in Section 4.10, the loader backend is swapped to a KMS-backed secrets manager and every previously issued secret is rotated. 
 
@@ -324,7 +329,7 @@ Every deferred migration is gated by a measured trigger, never a calendar date o
 |REST -> GraphQL (+ DataLoader)|View-specific data-shape divergence<br>forcing overfetching or endpoint<br>proliferation|Endpoint/overfetch audit|
 |Env-file secrets -> KMS-backed manager|First external customer or first<br>production pitch, whichever comes first|Business event|
 |MCP read-only -> write/propose tools|Sustained MCP adoption baseline plus<br>explicit customer demand plus a defined<br>reliability bar|MCP Gateway metering|
-|Default-Claude -> customer-selectable<br>provider, including self-hosted (new)|Design-time decision — ships as a<br>configuration option from initial release,<br>not load-gated, since the value<br>proposition (data sovereignty, cost<br>control) doesn’t depend on scale|N/A — availability decision|
+|Customer-selectable provider, including<br>self-hosted (new)|Design-time boundary: `ModelProvider` and<br>`GraphifyAdapter` exist from first enrichment;<br>W3-07 supplies concrete implementations.<br>Availability is not load-gated.|N/A — initial-release architecture|
 |Expanding supported self-hosted server<br>types beyond the OpenAI-compatible-<br>endpoint adapter (new)|Customer demand for a serving layer<br>that isn’t OpenAI-compatible|Support/sales request volume|
 
 
@@ -349,7 +354,7 @@ The graph carries first-class test topology so both humans and agents can reason
 
 - **Static COVERS inference** — COVERS edges inferred statically from imports at ingestion time. 
 
-- **Dynamic COVERS refresh** — a nightly coverage-instrumented run refreshes COVERS edges with actual execution data; each edge carries lastRun and status. 
+- **Dynamic COVERS refresh** — a nightly coverage-instrumented run refreshes COVERS edges with actual execution data; each edge carries nullable `last_run` and `status` (`inferred` or `measured`).
 
 - **Pass/fail badge overlay** — the Technical Tree renders per-node coverage badges. 
 
