@@ -7,24 +7,50 @@
 # `vector` extension; the stock `postgres:16` image does not ship it. See DEPENDENCIES.md
 # "Deliberate non-migrations" / infra section for detail.
 #
-# Credentials are pulled from infra/.env.example (placeholders only) — never committed
-# as literal secrets, per .claude/rules/security-multitenancy.md.
+# Local datastore credentials are generated at runtime into a Docker-managed volume.
+# They never enter the Compose model, the host environment, or application containers.
 
 services:
+  local-secrets:
+    image: alpine:3.20
+    restart: "no"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        umask 077
+        mkdir -p /run/local-secrets
+        generate_secret() {
+          target="$$1"
+          if [ ! -s "$$target" ]; then
+            od -An -N32 -tx1 /dev/urandom | tr -d ' \n' > "$$target.tmp"
+            mv "$$target.tmp" "$$target"
+          fi
+          chmod 0444 "$$target"
+        }
+        generate_secret /run/local-secrets/postgres_password
+        generate_secret /run/local-secrets/neo4j_password
+    volumes:
+      - local_secrets:/run/local-secrets
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: sayre-postgres
     restart: unless-stopped
+    depends_on:
+      local-secrets:
+        condition: service_completed_successfully
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: sayre_dev
+      POSTGRES_PASSWORD_FILE: /run/local-secrets/postgres_password
+      POSTGRES_DB: sayre_dev
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - local_secrets:/run/local-secrets:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U sayre_dev -d sayre_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,13 +73,21 @@ services:
     image: neo4j:5.24-community
     container_name: sayre-neo4j
     restart: unless-stopped
-    environment:
-      NEO4J_AUTH: ${NEO4J_AUTH}
+    depends_on:
+      local-secrets:
+        condition: service_completed_successfully
+    entrypoint:
+      - /bin/bash
+      - -ec
+      - |
+        export NEO4J_AUTH="neo4j/$$(cat /run/local-secrets/neo4j_password)"
+        exec /startup/docker-entrypoint.sh neo4j
     ports:
       - "7474:7474"
       - "7687:7687"
     volumes:
       - neo4j_data:/data
+      - local_secrets:/run/local-secrets:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
       interval: 10s
@@ -70,7 +104,7 @@ services:
     environment:
       SERVICES: sqs
       DEBUG: "0"
-      AWS_DEFAULT_REGION: ${AWS_REGION}
+      AWS_DEFAULT_REGION: us-east-1
     ports:
       - "4566:4566"
     volumes:
@@ -95,7 +129,103 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"   # host reachability on Linux; Docker Desktop resolves it natively
 
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3000/api/health').then(async response => {
+            const body = await response.json();
+            if (!response.ok || body.status !== 'ok' || body.service !== 'web') process.exit(1);
+          }).catch(() => process.exit(1));
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  core:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: core
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      CORE_PORT: "4000"
+      DEV_ORG_ID: org_dev_local
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4000/health').then(async response => {
+            const body = await response.json();
+            if (!response.ok || body.status !== 'ok' || body.service !== 'core') process.exit(1);
+          }).catch(() => process.exit(1));
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  workers:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: workers
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    environment:
+      SAYRE_ENV: development
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          body = json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3));
+          assert body.get('status') == 'ok' and body.get('service') == 'workers'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
 volumes:
+  local_secrets:
   postgres_data:
   redis_data:
   neo4j_data:
