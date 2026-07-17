@@ -6,6 +6,7 @@ from .config import (
     EmptyConfigError,
     MissingConfigError,
     get_config,
+    get_bool_config,
     reset_config_for_tests,
     set_config_override_for_tests,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "UnauthorizedSecretReferenceError",
     "UnsupportedSecretSchemeError",
     "get_config",
+    "get_bool_config",
     "get_secret",
     "reset_config_for_tests",
     "reset_secrets_for_tests",

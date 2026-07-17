@@ -8,6 +8,8 @@ from typing import Literal, TypeAlias, cast
 ConfigName: TypeAlias = Literal[
     "SAYRE_ENV",
     "SQS_ENDPOINT_URL",
+    "SNS_ENDPOINT_URL",
+    "MESSAGING_INTEGRATION_REQUIRED",
     "AWS_REGION",
     "NEO4J_URI",
     "NEO4J_USER",
@@ -20,6 +22,8 @@ _SUPPORTED_NAMES = frozenset(
     {
         "SAYRE_ENV",
         "SQS_ENDPOINT_URL",
+        "SNS_ENDPOINT_URL",
+        "MESSAGING_INTEGRATION_REQUIRED",
         "AWS_REGION",
         "NEO4J_URI",
         "NEO4J_USER",
@@ -31,6 +35,7 @@ _SUPPORTED_NAMES = frozenset(
 _DEFAULTS: dict[str, str] = {
     "SAYRE_ENV": "development",
     "AWS_REGION": "us-east-1",
+    "MESSAGING_INTEGRATION_REQUIRED": "false",
     "NEO4J_URI": "bolt://localhost:7687",
     "NEO4J_USER": "neo4j",
     "OTEL_METRICS_EXPORTER": "prometheus",
@@ -75,6 +80,16 @@ def get_config(name: ConfigName) -> str:
     if not value.strip():
         raise EmptyConfigError(f"Configuration {checked} is empty.")
     return value
+
+
+def get_bool_config(name: Literal["MESSAGING_INTEGRATION_REQUIRED"]) -> bool:
+    """Return a centrally validated boolean setting."""
+    value = get_config(name).strip().lower()
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    raise ConfigError(f"Configuration {name} must be true or false.")
 
 
 def set_config_override_for_tests(name: ConfigName, value: str | None) -> None:

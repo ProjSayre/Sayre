@@ -1,10 +1,11 @@
 // Standard tenant-scoped message envelope — Node side of the shared wire contract.
 //
 // This is one half of a byte-for-byte-compatible wire contract with
-// `services/workers/queue/envelope.py` (see W0-04 spec, "Standard message envelope").
+// `services/workers/messaging/envelope.py` (see W0-04 spec, "Envelope").
 // Wire keys are snake_case in *both* languages (not idiomatic-JS camelCase): a
-// `graph.updated` event is published by the Python fleet over SQS and later consumed
-// by the Node Realtime/gateway service (`docs/architecture.md` "Steady-state push";
+// `graph.updated` event is published by the Python fleet to SNS, then delivered to
+// independent SQS subscriptions consumed by realtime and enrichment services
+// (`docs/architecture.md` "Steady-state push";
 // `.claude/rules/async-messaging.md`), so the envelope crosses the Python<->Node
 // boundary. One snake_case wire format in both languages avoids a serialization
 // mapping layer and a whole class of `orgId` vs `org_id` bugs. Keep both definitions
@@ -22,12 +23,15 @@ import { randomUUID } from 'node:crypto';
 
 export interface MessageEnvelope<TPayload = unknown> {
   message_id: string;
+  idempotency_key: string;
   org_id: string; // REQUIRED tenant context — never from client/webhook input
   type: string;
   schema_version: number;
   occurred_at: string; // ISO-8601 UTC
   source: string;
   trace_id?: string | null;
+  graph_scope_key?: string;
+  graph_version?: number;
   payload: TPayload;
 }
 
@@ -38,7 +42,7 @@ export class EnvelopeValidationError extends Error {
   }
 }
 
-/** Build a fully-formed envelope, filling message_id/occurred_at/schema_version defaults. */
+/** Build a fully formed envelope, including a stable default idempotency key. */
 export function makeEnvelope<T>(input: {
   org_id: string;
   type: string;
@@ -46,17 +50,26 @@ export function makeEnvelope<T>(input: {
   payload: T;
   trace_id?: string | null;
   message_id?: string;
+  idempotency_key?: string;
   occurred_at?: string;
   schema_version?: number;
+  graph_scope_key?: string;
+  graph_version?: number;
 }): MessageEnvelope<T> {
+  const messageId = input.message_id ?? randomUUID();
   const envelope: MessageEnvelope<T> = {
-    message_id: input.message_id ?? randomUUID(),
+    message_id: messageId,
+    idempotency_key: input.idempotency_key ?? messageId,
     org_id: input.org_id,
     type: input.type,
     schema_version: input.schema_version ?? 1,
     occurred_at: input.occurred_at ?? new Date().toISOString(),
     source: input.source,
     trace_id: input.trace_id ?? null,
+    ...(input.graph_scope_key !== undefined
+      ? { graph_scope_key: input.graph_scope_key }
+      : {}),
+    ...(input.graph_version !== undefined ? { graph_version: input.graph_version } : {}),
     payload: input.payload,
   };
 
@@ -67,8 +80,7 @@ export function makeEnvelope<T>(input: {
 
 /**
  * Runtime guard — TS types are erased, BullMQ job.data is untyped JSON. Throws
- * `EnvelopeValidationError` if message_id/org_id/type/source missing or empty, or
- * schema_version not a number.
+ * `EnvelopeValidationError` if required fields or graph-version metadata are invalid.
  */
 export function assertValidEnvelope(data: unknown): asserts data is MessageEnvelope {
   if (typeof data !== 'object' || data === null) {
@@ -79,11 +91,20 @@ export function assertValidEnvelope(data: unknown): asserts data is MessageEnvel
 
   for (const field of ['message_id', 'org_id', 'type', 'source'] as const) {
     const value = candidate[field];
-    if (typeof value !== 'string' || value.length === 0) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
       throw new EnvelopeValidationError(
-        `Envelope field "${field}" must be a non-empty string (got ${JSON.stringify(value)}).`,
+        `Envelope field "${field}" must be a non-blank string (got ${JSON.stringify(value)}).`,
       );
     }
+  }
+
+  if (
+    typeof candidate.idempotency_key !== 'string' ||
+    candidate.idempotency_key.trim().length === 0
+  ) {
+    throw new EnvelopeValidationError(
+      'Envelope field "idempotency_key" must be a non-blank string.',
+    );
   }
 
   if (typeof candidate.schema_version !== 'number') {
@@ -106,5 +127,39 @@ export function assertValidEnvelope(data: unknown): asserts data is MessageEnvel
 
   if (!('payload' in candidate)) {
     throw new EnvelopeValidationError('Envelope field "payload" is required (may be an empty object).');
+  }
+
+  const hasGraphScope = candidate.graph_scope_key !== undefined;
+  const hasGraphVersion = candidate.graph_version !== undefined;
+  if (hasGraphScope !== hasGraphVersion) {
+    throw new EnvelopeValidationError(
+      'Envelope fields "graph_scope_key" and "graph_version" must be supplied together.',
+    );
+  }
+
+  if (hasGraphScope) {
+    if (
+      typeof candidate.graph_scope_key !== 'string' ||
+      candidate.graph_scope_key.trim().length === 0
+    ) {
+      throw new EnvelopeValidationError(
+        'Envelope field "graph_scope_key" must be a non-blank string.',
+      );
+    }
+    if (
+      typeof candidate.graph_version !== 'number' ||
+      !Number.isInteger(candidate.graph_version) ||
+      candidate.graph_version < 0
+    ) {
+      throw new EnvelopeValidationError(
+        'Envelope field "graph_version" must be a nonnegative integer.',
+      );
+    }
+  }
+
+  if (candidate.type === 'graph.updated' && !hasGraphScope) {
+    throw new EnvelopeValidationError(
+      'A graph.updated envelope requires "graph_scope_key" and "graph_version".',
+    );
   }
 }

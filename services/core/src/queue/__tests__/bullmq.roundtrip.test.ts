@@ -1,12 +1,13 @@
 // BullMQ enqueue -> worker round-trip against the shared local Redis.
 //
-// Acceptance criterion 2 (Node round-trip) plus the BullMQ edge cases: a job whose
+// Acceptance criterion 9 (Node round-trip) plus the BullMQ edge cases: a job whose
 // data fails assertValidEnvelope moves to `failed` (attempts: 1) and never reaches
 // the handler body; enqueue rejects an envelope with an empty org_id and adds nothing.
 //
 // INTEGRATION test: requires Redis reachable at REDIS_HOST/REDIS_PORT. When Redis is
-// unreachable the whole describe SKIPS (never fails) so `npm run test` still passes
-// without infra (spec edge case "LocalStack or Redis not running -> tests skip").
+// unreachable the whole describe skips for ordinary local runs. CI sets
+// MESSAGING_INTEGRATION_REQUIRED=true, which turns an unavailable broker into a hard
+// failure rather than silently losing integration coverage.
 
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
@@ -32,6 +33,10 @@ import {
   createRedisConnection,
   QUEUE_NAMES,
   type GithubSyncPayload,
+  type JiraSyncPayload,
+  type LinearSyncPayload,
+  type QueueName,
+  type QueuePayloads,
 } from '../bullmq';
 
 // Broker-independent surface checks (always run).
@@ -169,22 +174,77 @@ async function redisReachable(): Promise<boolean> {
   }
 }
 
+const brokerRequired = getConfig('MESSAGING_INTEGRATION_REQUIRED') === 'true';
 const brokerUp = await redisReachable();
 if (!brokerUp) {
+  const endpoint = `${getConfig('REDIS_HOST')}:${getConfig('REDIS_PORT')}`;
+  if (brokerRequired) {
+    throw new Error(
+      `[bullmq.roundtrip] Redis is required but unreachable at ${endpoint}.`,
+    );
+  }
   // eslint-disable-next-line no-console
   console.warn(
-    `[bullmq.roundtrip] Redis unreachable at ${getConfig('REDIS_HOST')}:${getConfig(
-      'REDIS_PORT',
-    )} — skipping BullMQ integration round-trip tests.`,
+    `[bullmq.roundtrip] Redis unreachable at ${endpoint} — skipping BullMQ integration round-trip tests.`,
   );
 }
 
 describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
   const workers: Worker[] = [];
 
+  async function assertRoundTrip<Q extends QueueName>(
+    queueName: Q,
+    envelope: MessageEnvelope<QueuePayloads[Q]>,
+    assertPayload: (payload: QueuePayloads[Q]) => void,
+  ): Promise<void> {
+    let resolveProcessed!: (value: MessageEnvelope<QueuePayloads[Q]>) => void;
+    let rejectProcessed!: (reason: unknown) => void;
+    const processed = new Promise<MessageEnvelope<QueuePayloads[Q]>>((resolve, reject) => {
+      resolveProcessed = resolve;
+      rejectProcessed = reject;
+    });
+
+    let resolveCompleted!: (value: { jobId: string; result: unknown }) => void;
+    let rejectCompleted!: (reason: unknown) => void;
+    const completed = new Promise<{ jobId: string; result: unknown }>((resolve, reject) => {
+      resolveCompleted = resolve;
+      rejectCompleted = reject;
+    });
+
+    const worker = await createWorker(queueName, async (received) => {
+      if (received.message_id === envelope.message_id) resolveProcessed(received);
+    });
+    workers.push(worker);
+    worker.on('completed', (job, result) => {
+      if ((job.data as MessageEnvelope).message_id === envelope.message_id) {
+        resolveCompleted({ jobId: job.id ?? '', result });
+      }
+    });
+    worker.on('error', (error) => {
+      rejectProcessed(error);
+      rejectCompleted(error);
+    });
+
+    const jobId = await enqueue(queueName, envelope, { removeOnComplete: false });
+    expect(jobId).toBeTruthy();
+
+    const [received, completion] = await Promise.all([processed, completed]);
+    expect(received.org_id).toBe(envelope.org_id);
+    expect(received.idempotency_key).toBe(envelope.idempotency_key);
+    assertPayload(received.payload);
+    expect(completion.jobId).toBe(jobId);
+    // createWorker intentionally exposes a Promise<void> handler today. Observing the
+    // completed event (including its result) proves BullMQ committed each job.
+    expect(completion).toHaveProperty('result');
+  }
+
   beforeAll(async () => {
     // Clear any leftovers from a prior run before any worker is attached.
-    await (await getQueue('github-sync')).obliterate({ force: true });
+    await Promise.all(
+      QUEUE_NAMES.map(async (queueName) =>
+        (await getQueue(queueName)).obliterate({ force: true }),
+      ),
+    );
   });
 
   afterEach(async () => {
@@ -195,16 +255,20 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
   });
 
   afterAll(async () => {
-    try {
-      await (await getQueue('github-sync')).obliterate({ force: true });
-    } catch {
-      // ignore teardown errors
-    }
+    await Promise.allSettled(
+      QUEUE_NAMES.map(async (queueName) =>
+        (await getQueue(queueName)).obliterate({ force: true }),
+      ),
+    );
     await closeQueues();
   });
 
-  it('AC2: enqueue -> worker processes; handler sees same org_id / typed payload', async () => {
-    const env = makeEnvelope<GithubSyncPayload>({
+  it('AC9: all three physical queues process typed jobs to completion', async () => {
+    const queues = await Promise.all(QUEUE_NAMES.map((queueName) => getQueue(queueName)));
+    expect(new Set(queues.map((queue) => queue.name)).size).toBe(3);
+    expect(new Set(queues.map((queue) => queue.toKey('wait'))).size).toBe(3);
+
+    const github = makeEnvelope<GithubSyncPayload>({
       org_id: 'org_gh_1',
       type: 'github.push',
       source: 'github-webhook',
@@ -216,28 +280,42 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
         delivery_id: 'dlv-1',
       },
     });
-
-    let resolveProcessed!: (value: MessageEnvelope<GithubSyncPayload>) => void;
-    let rejectProcessed!: (reason: unknown) => void;
-    const processed = new Promise<MessageEnvelope<GithubSyncPayload>>((resolve, reject) => {
-      resolveProcessed = resolve;
-      rejectProcessed = reject;
+    const jira = makeEnvelope<JiraSyncPayload>({
+      org_id: 'org_jira_1',
+      type: 'jira.issue.updated',
+      source: 'jira-webhook',
+      payload: {
+        site_id: 'site-42',
+        event: 'issue_updated',
+        issue_key: 'SAY-104',
+      },
     });
-    const worker = await createWorker('github-sync', async (envelope) => {
-      if (envelope.message_id === env.message_id) resolveProcessed(envelope);
+    const linear = makeEnvelope<LinearSyncPayload>({
+      org_id: 'org_linear_1',
+      type: 'linear.issue.updated',
+      source: 'linear-webhook',
+      payload: {
+        workspace_id: 'workspace-42',
+        event: 'issue_updated',
+        issue_id: 'linear-104',
+      },
     });
-    workers.push(worker);
-    worker.on('error', rejectProcessed);
 
-    const jobId = await enqueue('github-sync', env);
-    expect(jobId).toBeTruthy();
-
-    const got = await processed;
-    expect(got.org_id).toBe('org_gh_1');
-    // Exercises GithubSyncPayload typing at compile time as well as runtime.
-    expect(got.payload.provider).toBe('github');
-    expect(got.payload.repo_full_name).toBe('acme/widgets');
-    expect(got.payload.delivery_id).toBe('dlv-1');
+    await Promise.all([
+      assertRoundTrip('github-sync', github, (payload) => {
+        expect(payload.provider).toBe('github');
+        expect(payload.repo_full_name).toBe('acme/widgets');
+        expect(payload.delivery_id).toBe('dlv-1');
+      }),
+      assertRoundTrip('jira-sync', jira, (payload) => {
+        expect(payload.site_id).toBe('site-42');
+        expect(payload.issue_key).toBe('SAY-104');
+      }),
+      assertRoundTrip('linear-sync', linear, (payload) => {
+        expect(payload.workspace_id).toBe('workspace-42');
+        expect(payload.issue_id).toBe('linear-104');
+      }),
+    ]);
   });
 
   it('invalid job.data fails the job (attempts:1) and never runs the handler body', async () => {

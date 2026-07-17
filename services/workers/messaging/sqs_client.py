@@ -19,24 +19,45 @@ implement webhook receivers (out of scope for this ticket).
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
+import math
 import threading
 from concurrent.futures import Future
-from typing import Any, Callable
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Literal, Mapping
+from uuid import uuid4
 
 import boto3
 from pydantic import ValidationError
 from sayre_workers.config import MissingConfigError, SecretNotFoundError, get_config, get_secret
 
 from .envelope import MessageEnvelope
+from .idempotency import DeliveryStore
 
 logger = logging.getLogger(__name__)
 
-# Baseline SQS queue names (per-work-type, NOT per-tenant — org_id lives in the envelope).
-INGESTION_QUEUE = "ingestion"  # structural sync / Tree-sitter delta parse jobs
-ENRICHMENT_QUEUE = "enrichment"  # LLM semantic enrichment — SEPARATE queue (see rule)
-GRAPH_EVENTS_QUEUE = "graph-events"  # graph.updated fan-out events (consumed by Realtime Svc)
+# Canonical physical queues (per-work-type, NOT per-tenant).
+INGESTION_QUEUE = "ingestion.fifo"
+REALTIME_QUEUE = "graph-updated-realtime"
+ENRICHMENT_DEFAULT_QUEUE = "enrichment-default"
+ENRICHMENT_PRIORITY_QUEUE = "enrichment-onboarding-priority"
+EMBEDDING_UPSERTS_QUEUE = "embedding-upserts"
 SELFTEST_QUEUE = "w0-04-selftest"  # used only by the round-trip integration test
+
+# Source-compatible aliases for the pre-v5 wrapper surface.
+ENRICHMENT_QUEUE = ENRICHMENT_DEFAULT_QUEUE
+GRAPH_EVENTS_QUEUE = REALTIME_QUEUE
+
+_PRODUCTION_QUEUES = frozenset(
+    {
+        INGESTION_QUEUE,
+        REALTIME_QUEUE,
+        ENRICHMENT_DEFAULT_QUEUE,
+        ENRICHMENT_PRIORITY_QUEUE,
+        EMBEDDING_UPSERTS_QUEUE,
+    }
+)
 
 _client_lock = threading.Lock()
 _client = None
@@ -303,11 +324,23 @@ def _client_binding_is_current(client: Any, generation: int) -> bool:
 
 
 def ensure_queue(queue_name: str) -> str:
-    """Idempotent create-queue; returns the queue URL. Safe to call repeatedly."""
+    """Test-only idempotent queue creation helper.
+
+    Production callers use ``get_queue_url`` and fail visibly if checked-in
+    provisioning has not created the canonical queue with its DLQ/policy.
+    """
+    if queue_name in _PRODUCTION_QUEUES:
+        return get_queue_url(queue_name)
     while True:
         client, generation, _ = _bind_client_and_cached_queue_url(queue_name)
         try:
-            response = client.create_queue(QueueName=queue_name)
+            create_args: dict[str, Any] = {"QueueName": queue_name}
+            if queue_name.endswith(".fifo"):
+                create_args["Attributes"] = {
+                    "FifoQueue": "true",
+                    "ContentBasedDeduplication": "false",
+                }
+            response = client.create_queue(**create_args)
         except Exception:
             if _client_binding_is_current(client, generation):
                 raise
@@ -336,83 +369,378 @@ def get_queue_url(queue_name: str) -> str:
             return queue_url
 
 
-def publish(queue_name: str, message: MessageEnvelope) -> str:
-    """Serialize the (already-validated) envelope and SendMessage.
+def ingestion_group_id(org_id: str, repo_id: str, ref_name: str) -> str:
+    """Hash an unambiguous length-prefixed org/repo/ref tuple for FIFO grouping."""
+    components = (org_id, repo_id, ref_name)
+    encoded = bytearray()
+    for name, component in zip(("org_id", "repo_id", "ref_name"), components, strict=True):
+        if not isinstance(component, str) or not component.strip():
+            raise ValueError(f"{name} must not be blank")
+        part = component.encode("utf-8")
+        encoded.extend(len(part).to_bytes(8, "big"))
+        encoded.extend(part)
+    return hashlib.sha256(encoded).hexdigest()
 
-    Returns the SQS MessageId. `message` is a `MessageEnvelope`, so `org_id` is
-    guaranteed present by construction — this function never accepts a raw payload.
-    """
-    queue_url = ensure_queue(queue_name)
+
+def _validated_envelope(
+    payload: MessageEnvelope | Mapping[str, object],
+) -> MessageEnvelope:
+    if isinstance(payload, MessageEnvelope):
+        return payload
+    return MessageEnvelope.model_validate(payload)
+
+
+def publish(
+    queue_name: str,
+    payload: MessageEnvelope | Mapping[str, object],
+    *,
+    message_group_id: str | None = None,
+    deduplication_id: str | None = None,
+) -> str:
+    """Validate an envelope and publish only to an already-provisioned queue."""
+    message = _validated_envelope(payload)
+    is_fifo = queue_name.endswith(".fifo")
+    if is_fifo:
+        if message_group_id is None or not message_group_id.strip():
+            raise ValueError("message_group_id is required for FIFO queues")
+        if deduplication_id is not None and not deduplication_id.strip():
+            raise ValueError("deduplication_id must not be blank")
+    elif message_group_id is not None or deduplication_id is not None:
+        raise ValueError("FIFO publishing arguments are invalid for a standard queue")
+
+    queue_url = get_queue_url(queue_name)
     client = get_client()
-    response = client.send_message(QueueUrl=queue_url, MessageBody=message.to_body())
+    send_args: dict[str, Any] = {"QueueUrl": queue_url, "MessageBody": message.to_body()}
+    if is_fifo:
+        send_args["MessageGroupId"] = message_group_id
+        send_args["MessageDeduplicationId"] = deduplication_id or message.idempotency_key
+    response = client.send_message(**send_args)
     return response["MessageId"]
+
+
+class _HeartbeatController:
+    """Renew one SQS visibility timeout and its matching durable claim."""
+
+    def __init__(
+        self,
+        *,
+        client: Any,
+        queue_url: str,
+        receipt_handle: str,
+        queue_name: str,
+        consumer_id: str,
+        idempotency_key: str,
+        owner_id: str,
+        visibility_timeout_seconds: int,
+        interval_seconds: float,
+        delivery_store: DeliveryStore | None,
+        global_stop: threading.Event | None,
+    ) -> None:
+        self._client = client
+        self._queue_url = queue_url
+        self._receipt_handle = receipt_handle
+        self._queue_name = queue_name
+        self._consumer_id = consumer_id
+        self._idempotency_key = idempotency_key
+        self._owner_id = owner_id
+        self._visibility_timeout_seconds = visibility_timeout_seconds
+        self._interval_seconds = interval_seconds
+        self._delivery_store = delivery_store
+        self._global_stop = global_stop
+        self._stop = threading.Event()
+        self.lost = threading.Event()
+        self._thread = threading.Thread(
+            target=self._run,
+            name=f"sqs-heartbeat-{queue_name}",
+            daemon=True,
+        )
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def _run(self) -> None:
+        while not self._stop.wait(self._interval_seconds):
+            if self._global_stop is not None and self._global_stop.is_set():
+                self.lost.set()
+                return
+            lease_until = datetime.now(timezone.utc) + timedelta(
+                seconds=self._visibility_timeout_seconds
+            )
+            try:
+                self._client.change_message_visibility(
+                    QueueUrl=self._queue_url,
+                    ReceiptHandle=self._receipt_handle,
+                    VisibilityTimeout=self._visibility_timeout_seconds,
+                )
+                if self._delivery_store is not None and not self._delivery_store.renew(
+                    self._consumer_id,
+                    self._idempotency_key,
+                    self._owner_id,
+                    lease_until,
+                ):
+                    self.lost.set()
+                    return
+            except Exception:
+                logger.warning(
+                    "Visibility/claim heartbeat failed for queue %r; delivery is fenced.",
+                    self._queue_name,
+                )
+                self.lost.set()
+                return
+
+    def stop_and_join(self) -> None:
+        self._stop.set()
+        self._thread.join()
+
+
+def _safe_release(
+    delivery_store: DeliveryStore | None,
+    consumer_id: str,
+    idempotency_key: str,
+    owner_id: str,
+) -> None:
+    if delivery_store is None:
+        return
+    try:
+        delivery_store.release(consumer_id, idempotency_key, owner_id)
+    except Exception:
+        logger.warning("Delivery claim release failed for consumer %r.", consumer_id)
+
+
+def _require_consumer_id(consumer_id: str) -> None:
+    if not isinstance(consumer_id, str) or not consumer_id.strip():
+        raise ValueError("consumer_id must not be blank")
+
+
+def consume_once(
+    queue_name: str,
+    handler: Callable[[MessageEnvelope], None],
+    *,
+    consumer_id: str,
+    delivery_store: DeliveryStore | None = None,
+    stop_event: threading.Event | None = None,
+    wait_seconds: int = 0,
+    visibility_timeout_seconds: int = 30,
+    heartbeat_interval_seconds: float | None = None,
+) -> int:
+    """Receive and safely acknowledge at most one delivery."""
+    _require_consumer_id(consumer_id)
+    if queue_name in _PRODUCTION_QUEUES and delivery_store is None:
+        raise ValueError("A durable delivery_store is required for production work queues.")
+    if not 0 <= wait_seconds <= 20:
+        raise ValueError("wait_seconds must be between 0 and 20")
+    if not 1 <= visibility_timeout_seconds <= 43_200:
+        raise ValueError("visibility_timeout_seconds must be between 1 and 43200")
+    interval = (
+        heartbeat_interval_seconds
+        if heartbeat_interval_seconds is not None
+        else max(0.1, visibility_timeout_seconds / 3)
+    )
+    if (
+        isinstance(interval, bool)
+        or not isinstance(interval, (int, float))
+        or not math.isfinite(interval)
+        or interval <= 0
+        or interval >= visibility_timeout_seconds / 2
+    ):
+        raise ValueError("heartbeat_interval_seconds must be positive and below half visibility")
+    if stop_event is not None and stop_event.is_set():
+        return 0
+
+    queue_url = get_queue_url(queue_name)
+    client = get_client()
+    response = client.receive_message(
+        QueueUrl=queue_url,
+        WaitTimeSeconds=wait_seconds,
+        MaxNumberOfMessages=1,
+        VisibilityTimeout=visibility_timeout_seconds,
+    )
+    messages = response.get("Messages", [])
+    if not messages or (stop_event is not None and stop_event.is_set()):
+        return 0
+
+    raw_message = messages[0]
+    receipt_handle = raw_message["ReceiptHandle"]
+    try:
+        envelope = MessageEnvelope.from_body(raw_message.get("Body", ""))
+    except (ValidationError, ValueError):
+        logger.warning(
+            "Malformed envelope on queue %r (sqs message id %s); not deleting.",
+            queue_name,
+            raw_message.get("MessageId"),
+        )
+        return 0
+
+    idempotency_key = envelope.idempotency_key
+    if idempotency_key is None:  # guarded by MessageEnvelope validation
+        return 0
+    owner_id = str(uuid4())
+    if delivery_store is not None:
+        try:
+            status = delivery_store.claim(
+                consumer_id,
+                idempotency_key,
+                owner_id,
+                datetime.now(timezone.utc) + timedelta(seconds=visibility_timeout_seconds),
+                graph_scope_key=envelope.graph_scope_key,
+                graph_version=envelope.graph_version,
+            )
+        except Exception:
+            logger.warning("Delivery claim failed for queue %r; not deleting.", queue_name)
+            return 0
+        if status in {"completed", "stale"}:
+            client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+            return 1
+        if status == "busy":
+            return 0
+        if status != "acquired":
+            logger.warning("Delivery store returned an invalid claim status for queue %r.", queue_name)
+            return 0
+
+    heartbeat = _HeartbeatController(
+        client=client,
+        queue_url=queue_url,
+        receipt_handle=receipt_handle,
+        queue_name=queue_name,
+        consumer_id=consumer_id,
+        idempotency_key=idempotency_key,
+        owner_id=owner_id,
+        visibility_timeout_seconds=visibility_timeout_seconds,
+        interval_seconds=interval,
+        delivery_store=delivery_store,
+        global_stop=stop_event,
+    )
+    heartbeat.start()
+    handler_succeeded = False
+    try:
+        handler(envelope)
+        handler_succeeded = True
+    except Exception:
+        logger.warning(
+            "Handler failed for message_id=%s on queue %r; not deleting.",
+            envelope.message_id,
+            queue_name,
+        )
+    finally:
+        heartbeat.stop_and_join()
+
+    if not handler_succeeded or heartbeat.lost.is_set():
+        _safe_release(delivery_store, consumer_id, idempotency_key, owner_id)
+        return 0
+    if delivery_store is not None:
+        try:
+            completed = delivery_store.complete(consumer_id, idempotency_key, owner_id)
+        except Exception:
+            logger.warning("Delivery claim completion failed for queue %r; not deleting.", queue_name)
+            _safe_release(delivery_store, consumer_id, idempotency_key, owner_id)
+            return 0
+        if not completed:
+            _safe_release(delivery_store, consumer_id, idempotency_key, owner_id)
+            return 0
+
+    client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+    return 1
 
 
 def consume(
     queue_name: str,
     handler: Callable[[MessageEnvelope], None],
     *,
+    consumer_id: str,
+    delivery_store: DeliveryStore | None = None,
+    stop_event: threading.Event | None = None,
     wait_seconds: int = 20,
-    max_messages: int = 10,
-    visibility_timeout: int = 30,
+    visibility_timeout_seconds: int = 30,
+    # Legacy keyword aliases remain accepted; receiving is intentionally fixed at one.
+    max_messages: int | None = None,
+    visibility_timeout: int | None = None,
     stop: threading.Event | None = None,
 ) -> None:
-    """Long-poll loop until `stop` is set (runs forever if `stop` is None).
-
-    Per message: parse+validate -> handler -> DeleteMessage on success.
-
-    - On parse/validation failure (bad JSON or missing/empty `org_id`/`type`/`source`):
-      log (with message_id if recoverable) and do NOT delete and do NOT call the
-      handler — the message redelivers after the visibility timeout expires.
-    - On handler exception: log and do NOT delete (at-least-once redelivery).
-    """
-    queue_url = ensure_queue(queue_name)
-    client = get_client()
-
-    while stop is None or not stop.is_set():
-        response = client.receive_message(
-            QueueUrl=queue_url,
-            WaitTimeSeconds=wait_seconds,
-            MaxNumberOfMessages=max_messages,
-            VisibilityTimeout=visibility_timeout,
+    """Long-poll using the single-delivery, heartbeat-safe primitive."""
+    _require_consumer_id(consumer_id)
+    del max_messages
+    if stop_event is not None and stop is not None and stop_event is not stop:
+        raise ValueError("stop_event and stop cannot disagree")
+    effective_stop = stop_event or stop
+    if visibility_timeout is not None:
+        visibility_timeout_seconds = visibility_timeout
+    while effective_stop is None or not effective_stop.is_set():
+        consume_once(
+            queue_name,
+            handler,
+            consumer_id=consumer_id,
+            delivery_store=delivery_store,
+            stop_event=effective_stop,
+            wait_seconds=wait_seconds,
+            visibility_timeout_seconds=visibility_timeout_seconds,
         )
-        messages = response.get("Messages", [])
 
-        for raw_message in messages:
-            receipt_handle = raw_message["ReceiptHandle"]
-            body = raw_message.get("Body", "")
 
-            try:
-                envelope = MessageEnvelope.from_body(body)
-            except ValidationError:
-                logger.exception(
-                    "Malformed/invalid envelope on queue %r (sqs message id %s); "
-                    "leaving for redelivery, not deleting.",
-                    queue_name,
-                    raw_message.get("MessageId"),
-                )
-                continue
-            except ValueError:
-                logger.exception(
-                    "Non-JSON body on queue %r (sqs message id %s); leaving for "
-                    "redelivery, not deleting.",
-                    queue_name,
-                    raw_message.get("MessageId"),
-                )
-                continue
+def consume_enrichment(
+    handler: Callable[[MessageEnvelope], None],
+    *,
+    consumer_id: str,
+    mode: Literal["priority_only", "weighted"] = "weighted",
+    priority_weight: int = 3,
+    delivery_store: DeliveryStore,
+    stop_event: threading.Event | None = None,
+    visibility_timeout_seconds: int = 30,
+) -> None:
+    """Consume the priority lane alone or with deterministic bounded fairness."""
+    _require_consumer_id(consumer_id)
+    if mode not in {"priority_only", "weighted"}:
+        raise ValueError("mode must be priority_only or weighted")
+    if (
+        isinstance(priority_weight, bool)
+        or not isinstance(priority_weight, int)
+        or priority_weight < 1
+    ):
+        raise ValueError("priority_weight must be a positive integer")
 
-            try:
-                handler(envelope)
-            except Exception:
-                logger.exception(
-                    "Handler raised for message_id=%s on queue %r; leaving for "
-                    "at-least-once redelivery, not deleting.",
-                    envelope.message_id,
-                    queue_name,
-                )
-                continue
+    if mode == "priority_only":
+        while stop_event is None or not stop_event.is_set():
+            consume_once(
+                ENRICHMENT_PRIORITY_QUEUE,
+                handler,
+                consumer_id=consumer_id,
+                delivery_store=delivery_store,
+                stop_event=stop_event,
+                wait_seconds=1,
+                visibility_timeout_seconds=visibility_timeout_seconds,
+            )
+        return
 
-            client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
-
-        if stop is not None and stop.is_set():
-            return
+    schedule = [ENRICHMENT_PRIORITY_QUEUE] * priority_weight + [ENRICHMENT_DEFAULT_QUEUE]
+    slot = 0
+    while stop_event is None or not stop_event.is_set():
+        scheduled = schedule[slot % len(schedule)]
+        slot += 1
+        handled = consume_once(
+            scheduled,
+            handler,
+            consumer_id=consumer_id,
+            delivery_store=delivery_store,
+            stop_event=stop_event,
+            wait_seconds=0,
+            visibility_timeout_seconds=visibility_timeout_seconds,
+        )
+        if handled == 0 and (stop_event is None or not stop_event.is_set()):
+            alternate = (
+                ENRICHMENT_DEFAULT_QUEUE
+                if scheduled == ENRICHMENT_PRIORITY_QUEUE
+                else ENRICHMENT_PRIORITY_QUEUE
+            )
+            handled = consume_once(
+                alternate,
+                handler,
+                consumer_id=consumer_id,
+                delivery_store=delivery_store,
+                stop_event=stop_event,
+                wait_seconds=0,
+                visibility_timeout_seconds=visibility_timeout_seconds,
+            )
+        if handled == 0:
+            if stop_event is not None:
+                stop_event.wait(0.1)
+            else:
+                threading.Event().wait(0.1)

@@ -4,6 +4,7 @@ import pytest
 
 from sayre_workers.config import (
     ConfigError,
+    get_bool_config,
     get_config,
     reset_config_for_tests,
     set_config_override_for_tests,
@@ -49,3 +50,13 @@ def test_mutating_helpers_reject_outside_exact_test_environment(monkeypatch):
         set_config_override_for_tests("AWS_REGION", "eu-west-1")
     with pytest.raises(ConfigError):
         reset_config_for_tests()
+
+
+def test_messaging_required_boolean_is_centrally_validated():
+    set_config_override_for_tests("MESSAGING_INTEGRATION_REQUIRED", None)
+    assert get_bool_config("MESSAGING_INTEGRATION_REQUIRED") is False
+    set_config_override_for_tests("MESSAGING_INTEGRATION_REQUIRED", " TrUe ")
+    assert get_bool_config("MESSAGING_INTEGRATION_REQUIRED") is True
+    set_config_override_for_tests("MESSAGING_INTEGRATION_REQUIRED", "1")
+    with pytest.raises(ConfigError, match="must be true or false"):
+        get_bool_config("MESSAGING_INTEGRATION_REQUIRED")

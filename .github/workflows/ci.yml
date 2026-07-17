@@ -8,6 +8,16 @@ jobs:
   node:
     name: web + core (lint, typecheck, test)
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,6 +65,16 @@ jobs:
       - name: core — test
         run: npx turbo run test --filter=@sayre/core
 
+      - name: core messaging — Redis required (zero broker skips)
+        env:
+          NODE_ENV: test
+          REDIS_HOST: localhost
+          REDIS_PORT: '6379'
+          MESSAGING_INTEGRATION_REQUIRED: 'true'
+        run: >-
+          npm test --workspace @sayre/core --
+          --run src/queue/__tests__/bullmq.roundtrip.test.ts
+
   workers:
     name: workers (ruff, mypy, pytest)
     runs-on: ubuntu-latest
@@ -76,6 +96,12 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: Start LocalStack SQS/SNS topology
+        working-directory: ${{ github.workspace }}
+        run: >-
+          docker compose --env-file infra/.env.example
+          -f infra/docker-compose.yml up -d --wait localstack
+
       - name: Lint (ruff)
         run: poetry run ruff check .
 
@@ -84,6 +110,9 @@ jobs:
           poetry run mypy --explicit-package-bases
           app
           sayre_workers/config
+          messaging/envelope.py
+          messaging/idempotency.py
+          messaging/sns_client.py
           messaging/sqs_client.py
           sayre_workers/graph_migrations/runner.py
           scripts/run_graph_migrations.py
@@ -91,3 +120,36 @@ jobs:
 
       - name: Test (pytest)
         run: poetry run pytest
+
+      - name: Messaging integration — LocalStack required (zero broker skips)
+        env:
+          SAYRE_ENV: test
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: localstack-test
+          AWS_SECRET_ACCESS_KEY: localstack-test
+          SQS_ENDPOINT_URL: http://localhost:4566
+          SNS_ENDPOINT_URL: http://localhost:4566
+          MESSAGING_INTEGRATION_REQUIRED: 'true'
+        run: >-
+          poetry run pytest
+          tests/test_messaging_topology.py
+          tests/test_sqs_roundtrip.py
+          -q --junitxml=.messaging-junit.xml
+
+      - name: Assert no Python broker tests skipped
+        run: >-
+          python -c "import xml.etree.ElementTree as E;
+          root=E.parse('.messaging-junit.xml').getroot();
+          skipped=sum(int(s.attrib.get('skipped', 0)) for s in
+          ([root] if root.tag == 'testsuite' else root.findall('testsuite')));
+          assert skipped == 0, f'{skipped} broker tests skipped'"
+
+      - name: LocalStack logs on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: docker compose --env-file infra/.env.example -f infra/docker-compose.yml logs localstack
+
+      - name: Stop LocalStack
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: docker compose --env-file infra/.env.example -f infra/docker-compose.yml down --volumes

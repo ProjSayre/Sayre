@@ -19,15 +19,17 @@ from sayre_workers.config import (
     reset_secrets_for_tests,
     set_secret_backend_for_tests,
 )
-from workers.messaging import sqs_client
+from workers.messaging import sns_client, sqs_client
 
 
 @pytest.fixture(autouse=True)
 def _test_environment(monkeypatch):
     monkeypatch.setenv("SAYRE_ENV", "test")
+    sns_client.close_client()
     sqs_client.close_client()
     reset_secrets_for_tests()
     yield
+    sns_client.close_client()
     sqs_client.close_client()
     monkeypatch.setenv("SAYRE_ENV", "test")
     reset_secrets_for_tests()

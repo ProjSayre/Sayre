@@ -19,6 +19,18 @@ describe('getConfig', () => {
     expect(getConfig('CORE_PORT')).toBe(' 4100 ');
   });
 
+  it('defaults broker-required mode off and validates boolean overrides centrally', () => {
+    expect(getConfig('MESSAGING_INTEGRATION_REQUIRED')).toBe('false');
+
+    setConfigOverrideForTests('MESSAGING_INTEGRATION_REQUIRED', ' TRUE ');
+    expect(getConfig('MESSAGING_INTEGRATION_REQUIRED')).toBe('true');
+
+    setConfigOverrideForTests('MESSAGING_INTEGRATION_REQUIRED', 'sometimes');
+    expect(() => getConfig('MESSAGING_INTEGRATION_REQUIRED')).toThrow(
+      /MESSAGING_INTEGRATION_REQUIRED.*true.*false/,
+    );
+  });
+
   it('treats an explicit undefined override as missing instead of reading the environment', () => {
     vi.stubEnv('CORE_PORT', '9999');
     setConfigOverrideForTests('CORE_PORT', undefined);
