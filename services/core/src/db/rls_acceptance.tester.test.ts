@@ -2,7 +2,7 @@
 //
 // This file covers the spec's acceptance criteria and "Edge cases (for Tester)"
 // that the dev's rls.test.ts does not already assert:
-//   - schema/DDL shape (all 7 tables, columns, uniques, FK cascade, prefix index)  [AC-3]
+//   - schema/DDL shape (all 9 tables, columns, uniques, FK cascade, prefix index)  [AC-3]
 //   - RLS enabled+FORCED + org_isolation policy metadata per table                 [AC-4]
 //   - sayre_app role privileges / non-ownership / NOBYPASSRLS                       [AC-5]
 //   - withOrgContext: UUID validation + transaction-local GUC + fail-closed reset   [AC-6]
@@ -13,6 +13,21 @@
 //   - unknown/unseeded org context -> fail-closed (0 rows)                          [edge]
 //   - missing DATABASE_URL -> createPool fails fast                                 [edge]
 //   - updated_at BEFORE-UPDATE trigger fires (0002)
+//
+// W0-05 follow-up (mcp_client_keys, model_provider) table-specific coverage added
+// by the tester stage per spec.md's "Edge cases (for Tester)" list:
+//   - no-plaintext-key-column guard on mcp_client_keys; no raw-credential column
+//     on model_provider beyond credential_ref
+//   - mcp_client_keys.key_prefix global uniqueness (not just per-org)
+//   - model_provider one-row-per-org (unique(org_id)) enforcement
+//   - created_by/revoked_by SET NULL on the referenced users row being deleted
+//   - soft-revocation semantics (revoked_at set != row removed/hidden)
+//   - roles jsonb round-trip
+//   - updated_at trigger on both new tables
+//   - documented FK-RI-bypasses-RLS case for mcp_client_keys.created_by
+//   - both new tables folded into the existing generic TABLE_NAMES-driven loops
+//     (columns, RLS enabled+forced+policy, privileges, cascade-delete, concurrent
+//     sessions, unknown-org fail-closed, migrate idempotency count)
 //
 // Runs against its OWN dedicated database (w005_rls_tester) so it never collides
 // with rls.test.ts's w005_rls_test nor with the shared sayre_dev database.
@@ -35,6 +50,8 @@ const TABLE_NAMES = [
   "ticket_cache",
   "style_rules",
   "onboarding_steps",
+  "mcp_client_keys",
+  "model_provider",
 ] as const;
 type TableName = (typeof TABLE_NAMES)[number];
 
@@ -47,6 +64,8 @@ const POLICY_KEY: Record<TableName, string> = {
   ticket_cache: "org_id",
   style_rules: "org_id",
   onboarding_steps: "org_id",
+  mcp_client_keys: "org_id",
+  model_provider: "org_id",
 };
 
 /** Expected column shape per spec's "Table shapes" section: [dataType, nullable]. */
@@ -131,6 +150,31 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
     created_at: ["timestamp with time zone", false],
     updated_at: ["timestamp with time zone", false],
   },
+  mcp_client_keys: {
+    id: ["uuid", false],
+    org_id: ["uuid", false],
+    name: ["text", false],
+    key_prefix: ["text", false],
+    key_hash: ["text", false],
+    roles: ["jsonb", false],
+    created_by: ["uuid", true],
+    revoked_at: ["timestamp with time zone", true],
+    revoked_by: ["uuid", true],
+    last_used_at: ["timestamp with time zone", true],
+    created_at: ["timestamp with time zone", false],
+    updated_at: ["timestamp with time zone", false],
+  },
+  model_provider: {
+    id: ["uuid", false],
+    org_id: ["uuid", false],
+    provider_type: ["text", false],
+    endpoint_url: ["text", true],
+    credential_ref: ["text", true],
+    default_model: ["text", true],
+    config: ["jsonb", true],
+    created_at: ["timestamp with time zone", false],
+    updated_at: ["timestamp with time zone", false],
+  },
 };
 
 function requireAdminUrl(): string {
@@ -170,6 +214,8 @@ interface SeededOrg {
   ticketId: string;
   styleRuleId: string;
   onboardingStepId: string;
+  mcpClientKeyId: string;
+  modelProviderId: string;
 }
 
 /** Seeds one row in every table for a throwaway org, as admin (bypasses RLS). */
@@ -181,6 +227,8 @@ async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
   const ticketId = randomUUID();
   const styleRuleId = randomUUID();
   const onboardingStepId = randomUUID();
+  const mcpClientKeyId = randomUUID();
+  const modelProviderId = randomUUID();
 
   await execPool.query("INSERT INTO organizations (id, name, slug) VALUES ($1, $2, $3)", [
     orgId,
@@ -213,8 +261,36 @@ async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
     "INSERT INTO onboarding_steps (id, org_id, repo_id, sequence, title) VALUES ($1, $2, $3, $4, $5)",
     [onboardingStepId, orgId, repoId, 1, `Step 1 for ${label}`],
   );
+  // key_prefix is globally unique (mcp_client_keys_key_prefix_unique) -- derive
+  // from the org label + an id slice so it's unique per org across the suite.
+  await execPool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash, roles) VALUES ($1, $2, $3, $4, $5, $6)",
+    [
+      mcpClientKeyId,
+      orgId,
+      `MCP key for ${label}`,
+      `mcp_live_${label.toLowerCase()}_${mcpClientKeyId.slice(0, 8)}`,
+      `sha256:${mcpClientKeyId}`,
+      JSON.stringify(["read"]),
+    ],
+  );
+  // model_provider is one row per org (model_provider_org_id_unique).
+  await execPool.query(
+    "INSERT INTO model_provider (id, org_id, provider_type, default_model) VALUES ($1, $2, $3, $4)",
+    [modelProviderId, orgId, "anthropic", "claude-opus-4"],
+  );
 
-  return { orgId, userId, repoId, permissionId, ticketId, styleRuleId, onboardingStepId };
+  return {
+    orgId,
+    userId,
+    repoId,
+    permissionId,
+    ticketId,
+    styleRuleId,
+    onboardingStepId,
+    mcpClientKeyId,
+    modelProviderId,
+  };
 }
 
 /** Runs fn as the least-privilege, org-scoped tenant session (sayre_app + app.org_id). */
@@ -274,7 +350,7 @@ after(async () => {
 // AC-3: schema / DDL shape
 // ---------------------------------------------------------------------------
 
-test("[AC-3] all 7 tables exist with exactly the spec's columns (type + nullability)", async () => {
+test("[AC-3] all 9 tables exist with exactly the spec's columns (type + nullability)", async () => {
   for (const table of TABLE_NAMES) {
     const res = await pool.query(
       `SELECT column_name, data_type, is_nullable
@@ -325,6 +401,8 @@ test("[AC-3] composite UNIQUE + slug UNIQUE constraints exist", async () => {
     uniques.has("ticket_cache:org_id,provider,external_ticket_id"),
     "ticket_cache(org_id,provider,external_ticket_id) UNIQUE missing",
   );
+  assert.ok(uniques.has("mcp_client_keys:key_prefix"), "mcp_client_keys(key_prefix) UNIQUE missing");
+  assert.ok(uniques.has("model_provider:org_id"), "model_provider(org_id) UNIQUE missing");
 });
 
 test("[AC-3] every non-organizations table has an org_id FK to organizations with ON DELETE CASCADE", async () => {
@@ -376,7 +454,7 @@ test("[AC-4] every table has RLS ENABLED and FORCED", async () => {
       WHERE relnamespace = 'public'::regnamespace AND relname = ANY($1)`,
     [TABLE_NAMES],
   );
-  assert.equal(res.rowCount, TABLE_NAMES.length, "expected all 7 tables present in pg_class");
+  assert.equal(res.rowCount, TABLE_NAMES.length, `expected all ${TABLE_NAMES.length} tables present in pg_class`);
   for (const row of res.rows) {
     assert.equal(row.relrowsecurity, true, `${row.relname}: ROW LEVEL SECURITY must be ENABLED`);
     assert.equal(row.relforcerowsecurity, true, `${row.relname}: ROW LEVEL SECURITY must be FORCED`);
@@ -429,7 +507,7 @@ test("[AC-5] sayre_app role exists as non-super, NOBYPASSRLS, NOLOGIN", async ()
   assert.equal(res.rows[0].rolcanlogin, false, "sayre_app must be NOLOGIN (privilege bundle only)");
 });
 
-test("[AC-5] sayre_app has SELECT/INSERT/UPDATE/DELETE on all 7 tables and owns none of them", async () => {
+test("[AC-5] sayre_app has SELECT/INSERT/UPDATE/DELETE on all 9 tables and owns none of them", async () => {
   for (const table of TABLE_NAMES) {
     for (const priv of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
       const res = await pool.query("SELECT has_table_privilege('sayre_app', $1, $2) AS ok", [table, priv]);
@@ -553,6 +631,88 @@ test("[edge] cross-org INSERT (org_id = A) into a child table is rejected under 
   });
 });
 
+test(
+  "[edge] unset context -> INSERT into mcp_client_keys / model_provider is rejected by WITH CHECK (fail-closed writes)",
+  async () => {
+    await withTenantSession(pool, undefined, async (c) => {
+      await assert.rejects(
+        c.query(
+          "INSERT INTO mcp_client_keys (org_id, name, key_prefix, key_hash) VALUES ($1, $2, $3, $4)",
+          [orgA.orgId, "noctx-key", `mcp_live_noctx_${randomUUID().slice(0, 8)}`, "sha256:noctx"],
+        ),
+        /row-level security/i,
+        "mcp_client_keys insert with no org context must be blocked",
+      );
+    });
+    await withTenantSession(pool, undefined, async (c) => {
+      await assert.rejects(
+        c.query("INSERT INTO model_provider (org_id, provider_type) VALUES ($1, $2)", [orgA.orgId, "openai"]),
+        /row-level security/i,
+        "model_provider insert with no org context must be blocked",
+      );
+    });
+  },
+);
+
+test(
+  "[edge] cross-org INSERT (org_id = B) into mcp_client_keys / model_provider is rejected under context A",
+  async () => {
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      await assert.rejects(
+        c.query(
+          "INSERT INTO mcp_client_keys (org_id, name, key_prefix, key_hash) VALUES ($1, $2, $3, $4)",
+          [orgB.orgId, "cross-org-key", `mcp_live_cross_${randomUUID().slice(0, 8)}`, "sha256:cross"],
+        ),
+        /row-level security/i,
+        "mcp_client_keys insert with a foreign org_id must be blocked",
+      );
+    });
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      await assert.rejects(
+        c.query("INSERT INTO model_provider (org_id, provider_type) VALUES ($1, $2)", [orgB.orgId, "openai"]),
+        /row-level security/i,
+        "model_provider insert with a foreign org_id must be blocked",
+      );
+    });
+  },
+);
+
+test(
+  "[edge] cross-org UPDATE ... SET org_id = B on mcp_client_keys / model_provider under context A is rejected by WITH CHECK",
+  async () => {
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      await assert.rejects(
+        c.query("UPDATE mcp_client_keys SET org_id = $1 WHERE id = $2", [orgB.orgId, orgA.mcpClientKeyId]),
+        /row-level security/i,
+        "reparenting an mcp_client_keys row to another org must be blocked",
+      );
+    });
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      await assert.rejects(
+        c.query("UPDATE model_provider SET org_id = $1 WHERE id = $2", [orgB.orgId, orgA.modelProviderId]),
+        /row-level security/i,
+        "reparenting a model_provider row to another org must be blocked",
+      );
+    });
+  },
+);
+
+test(
+  "[edge] UPDATE targeting the other org's mcp_client_keys / model_provider row affects 0 rows (USING filters it out)",
+  async () => {
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      const res = await c.query("UPDATE mcp_client_keys SET name = 'hacked' WHERE id = $1", [orgB.mcpClientKeyId]);
+      assert.equal(res.rowCount, 0, "org A must not be able to update org B's mcp_client_keys row");
+    });
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      const res = await c.query("UPDATE model_provider SET default_model = 'hacked' WHERE id = $1", [
+        orgB.modelProviderId,
+      ]);
+      assert.equal(res.rowCount, 0, "org A must not be able to update org B's model_provider row");
+    });
+  },
+);
+
 // ---------------------------------------------------------------------------
 // Edge: FK + cascade under RLS
 // ---------------------------------------------------------------------------
@@ -564,7 +724,16 @@ test("[edge] deleting an org as admin cascades to all its child rows", async () 
 
   await pool.query("DELETE FROM organizations WHERE id = $1", [orgC.orgId]);
 
-  for (const table of ["users", "repositories", "permissions", "ticket_cache", "style_rules", "onboarding_steps"]) {
+  for (const table of [
+    "users",
+    "repositories",
+    "permissions",
+    "ticket_cache",
+    "style_rules",
+    "onboarding_steps",
+    "mcp_client_keys",
+    "model_provider",
+  ]) {
     const res = await pool.query(`SELECT count(*)::int AS n FROM ${table} WHERE org_id = $1`, [orgC.orgId]);
     assert.equal(res.rows[0].n, 0, `${table}: org C's rows must be cascade-deleted`);
   }
@@ -597,6 +766,35 @@ test("[edge][documented] FK RI bypasses RLS: an own-org row MAY reference anothe
   });
 });
 
+test(
+  "[edge][documented] FK RI bypasses RLS: mcp_client_keys.created_by may reference a user hidden by RLS, without leaking cross-tenant reads",
+  async () => {
+    // Same documented FK-RI-vs-RLS behavior as ticket_cache.repo_id above, but for
+    // the new table's created_by -> users.id FK: org A's key can reference org B's
+    // (RLS-hidden) user as its issuer, but the key row itself stays org A's and
+    // invisible to org B.
+    const crossId = randomUUID();
+    const prefix = `mcp_live_fkri_${crossId.slice(0, 8)}`;
+    await withTenantSession(pool, orgA.orgId, async (c) => {
+      await c.query(
+        "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash, created_by) VALUES ($1, $2, $3, $4, $5, $6)",
+        [crossId, orgA.orgId, "fk-ri-key", prefix, `sha256:${crossId}`, orgB.userId],
+      );
+      const mine = await c.query("SELECT id FROM mcp_client_keys WHERE id = $1", [crossId]);
+      assert.equal(
+        mine.rowCount,
+        1,
+        "org A owns the row it just inserted, even though created_by references org B's (RLS-hidden) user",
+      );
+    });
+    await withTenantSession(pool, orgB.orgId, async (c) => {
+      const res = await c.query("SELECT id FROM mcp_client_keys WHERE id = $1", [crossId]);
+      assert.equal(res.rowCount, 0, "org B must not see org A's key merely because created_by references one of its users");
+    });
+    await pool.query("DELETE FROM mcp_client_keys WHERE id = $1", [crossId]);
+  },
+);
+
 // ---------------------------------------------------------------------------
 // Edge: concurrent sessions
 // ---------------------------------------------------------------------------
@@ -625,6 +823,29 @@ test("[edge] two concurrent sessions with different app.org_id do not bleed into
     assert.equal(b1.rows[0].id, orgB.orgId);
     assert.equal(a2.rowCount, 0, "session A must not see org B even by direct PK");
     assert.equal(b2.rowCount, 0, "session B must not see org A even by direct PK");
+
+    // Same interleaved check for the two W0-05-follow-up tables.
+    const mcA1 = await cA.query("SELECT id FROM mcp_client_keys");
+    const mcB1 = await cB.query("SELECT id FROM mcp_client_keys");
+    const mcA2 = await cA.query("SELECT id FROM mcp_client_keys WHERE id = $1", [orgB.mcpClientKeyId]);
+    const mcB2 = await cB.query("SELECT id FROM mcp_client_keys WHERE id = $1", [orgA.mcpClientKeyId]);
+    assert.equal(mcA1.rowCount, 1);
+    assert.equal(mcA1.rows[0].id, orgA.mcpClientKeyId);
+    assert.equal(mcB1.rowCount, 1);
+    assert.equal(mcB1.rows[0].id, orgB.mcpClientKeyId);
+    assert.equal(mcA2.rowCount, 0, "session A must not see org B's mcp_client_keys row");
+    assert.equal(mcB2.rowCount, 0, "session B must not see org A's mcp_client_keys row");
+
+    const mpA1 = await cA.query("SELECT id FROM model_provider");
+    const mpB1 = await cB.query("SELECT id FROM model_provider");
+    const mpA2 = await cA.query("SELECT id FROM model_provider WHERE id = $1", [orgB.modelProviderId]);
+    const mpB2 = await cB.query("SELECT id FROM model_provider WHERE id = $1", [orgA.modelProviderId]);
+    assert.equal(mpA1.rowCount, 1);
+    assert.equal(mpA1.rows[0].id, orgA.modelProviderId);
+    assert.equal(mpB1.rowCount, 1);
+    assert.equal(mpB1.rows[0].id, orgB.modelProviderId);
+    assert.equal(mpA2.rowCount, 0, "session A must not see org B's model_provider row");
+    assert.equal(mpB2.rowCount, 0, "session B must not see org A's model_provider row");
   } finally {
     await cA.query("ROLLBACK");
     await cB.query("ROLLBACK");
@@ -686,4 +907,155 @@ test("[0002] BEFORE UPDATE trigger overwrites a caller-supplied updated_at with 
   assert.notEqual(res.rows[0].yr, 2000, "trigger must overwrite the caller-supplied stale updated_at");
   assert.equal(res.rows[0].advanced, true, "updated_at must advance past created_at after an UPDATE");
   await pool.query("DELETE FROM organizations WHERE id = $1", [orgId]);
+});
+
+test("[0002] BEFORE UPDATE trigger overwrites a caller-supplied updated_at on mcp_client_keys and model_provider", async () => {
+  const keyId = randomUUID();
+  const prefix = `mcp_live_trig_${keyId.slice(0, 8)}`;
+  await pool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash) VALUES ($1, $2, $3, $4, $5)",
+    [keyId, orgA.orgId, "trigger-key", prefix, `sha256:${keyId}`],
+  );
+  await pool.query(
+    "UPDATE mcp_client_keys SET name = 'renamed', updated_at = '2000-01-01T00:00:00Z' WHERE id = $1",
+    [keyId],
+  );
+  const keyRes = await pool.query(
+    "SELECT extract(year from updated_at)::int AS yr, updated_at > created_at AS advanced FROM mcp_client_keys WHERE id = $1",
+    [keyId],
+  );
+  assert.notEqual(keyRes.rows[0].yr, 2000, "mcp_client_keys trigger must overwrite the caller-supplied stale updated_at");
+  assert.equal(keyRes.rows[0].advanced, true, "mcp_client_keys.updated_at must advance past created_at after an UPDATE");
+  await pool.query("DELETE FROM mcp_client_keys WHERE id = $1", [keyId]);
+
+  await pool.query(
+    "UPDATE model_provider SET default_model = 'gpt-4', updated_at = '2000-01-01T00:00:00Z' WHERE id = $1",
+    [orgA.modelProviderId],
+  );
+  const mpRes = await pool.query(
+    "SELECT extract(year from updated_at)::int AS yr, updated_at > created_at AS advanced FROM model_provider WHERE id = $1",
+    [orgA.modelProviderId],
+  );
+  assert.notEqual(mpRes.rows[0].yr, 2000, "model_provider trigger must overwrite the caller-supplied stale updated_at");
+  assert.equal(mpRes.rows[0].advanced, true, "model_provider.updated_at must advance past created_at after an UPDATE");
+  // Restore the seed value so any later test relying on orgA's original model_provider row is unaffected.
+  await pool.query("UPDATE model_provider SET default_model = 'claude-opus-4' WHERE id = $1", [orgA.modelProviderId]);
+});
+
+// ---------------------------------------------------------------------------
+// W0-05 follow-up: mcp_client_keys / model_provider table-specific edge cases
+// ---------------------------------------------------------------------------
+
+test("[AC-5/no-plaintext] mcp_client_keys has no raw key/secret column; model_provider has no raw-credential column", async () => {
+  const mcpCols = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'mcp_client_keys'`,
+  );
+  const mcpColNames = new Set(mcpCols.rows.map((r) => r.column_name as string));
+  for (const forbidden of ["key", "secret", "raw_key", "token", "password"]) {
+    assert.ok(!mcpColNames.has(forbidden), `mcp_client_keys must NOT have a '${forbidden}' column`);
+  }
+  assert.ok(mcpColNames.has("key_hash"), "mcp_client_keys must have key_hash (the only key-material column)");
+  assert.ok(mcpColNames.has("key_prefix"), "mcp_client_keys must have key_prefix (non-secret lookup id)");
+
+  const mpCols = await pool.query(
+    `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'model_provider'`,
+  );
+  const mpColNames = new Set(mpCols.rows.map((r) => r.column_name as string));
+  for (const forbidden of ["credential", "raw_credential", "token", "password", "secret", "api_key"]) {
+    assert.ok(!mpColNames.has(forbidden), `model_provider must NOT have a '${forbidden}' column`);
+  }
+  assert.ok(mpColNames.has("credential_ref"), "model_provider must have credential_ref (a reference, not a raw secret)");
+});
+
+test("[edge] mcp_client_keys.key_prefix is globally unique across orgs, not just per-org", async () => {
+  const sharedPrefix = `mcp_live_dup_${randomUUID().slice(0, 8)}`;
+  const idOne = randomUUID();
+  await pool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash) VALUES ($1, $2, $3, $4, $5)",
+    [idOne, orgA.orgId, "dup-1", sharedPrefix, `sha256:${idOne}`],
+  );
+  const idTwo = randomUUID();
+  await assert.rejects(
+    pool.query(
+      "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash) VALUES ($1, $2, $3, $4, $5)",
+      [idTwo, orgB.orgId, "dup-2", sharedPrefix, `sha256:${idTwo}`],
+    ),
+    /mcp_client_keys_key_prefix_unique/,
+    "a second key with the same key_prefix in a DIFFERENT org must violate the global unique constraint",
+  );
+  await pool.query("DELETE FROM mcp_client_keys WHERE id = $1", [idOne]);
+});
+
+test("[edge][AC-6/O-1] model_provider enforces one row per org: a second insert for an org that already has one fails", async () => {
+  await assert.rejects(
+    pool.query("INSERT INTO model_provider (id, org_id, provider_type) VALUES ($1, $2, $3)", [
+      randomUUID(),
+      orgA.orgId,
+      "openai",
+    ]),
+    /model_provider_org_id_unique/,
+    "a second model_provider row for an org that already has one must violate unique(org_id)",
+  );
+});
+
+test("[edge] deleting a users row referenced by created_by/revoked_by sets both to NULL (key row survives)", async () => {
+  const adminUserId = randomUUID();
+  await pool.query("INSERT INTO users (id, org_id, email) VALUES ($1, $2, $3)", [
+    adminUserId,
+    orgA.orgId,
+    `admin-${adminUserId.slice(0, 8)}@example.com`,
+  ]);
+  const keyId = randomUUID();
+  const prefix = `mcp_live_setnull_${keyId.slice(0, 8)}`;
+  await pool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash, created_by, revoked_by, revoked_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    [keyId, orgA.orgId, "set-null-key", prefix, `sha256:${keyId}`, adminUserId, adminUserId, new Date().toISOString()],
+  );
+
+  await pool.query("DELETE FROM users WHERE id = $1", [adminUserId]);
+
+  const res = await pool.query("SELECT created_by, revoked_by FROM mcp_client_keys WHERE id = $1", [keyId]);
+  assert.equal(res.rowCount, 1, "the key row must survive the admin user's deletion (SET NULL, not CASCADE/blocked)");
+  assert.equal(res.rows[0].created_by, null, "created_by must be set NULL after the referenced user is deleted");
+  assert.equal(res.rows[0].revoked_by, null, "revoked_by must be set NULL after the referenced user is deleted");
+
+  await pool.query("DELETE FROM mcp_client_keys WHERE id = $1", [keyId]);
+});
+
+test("[edge] soft revocation: setting revoked_at does not remove the row; it stays SELECT-able under its own org context", async () => {
+  await withTenantSession(pool, orgA.orgId, async (c) => {
+    const before = await c.query("SELECT revoked_at FROM mcp_client_keys WHERE id = $1", [orgA.mcpClientKeyId]);
+    assert.equal(before.rowCount, 1);
+    assert.equal(before.rows[0].revoked_at, null, "precondition: seeded key starts active (revoked_at NULL)");
+  });
+
+  await pool.query("UPDATE mcp_client_keys SET revoked_at = now() WHERE id = $1", [orgA.mcpClientKeyId]);
+
+  await withTenantSession(pool, orgA.orgId, async (c) => {
+    const after = await c.query("SELECT revoked_at FROM mcp_client_keys WHERE id = $1", [orgA.mcpClientKeyId]);
+    assert.equal(
+      after.rowCount,
+      1,
+      "a revoked key must still be SELECT-able under its own org context -- RLS does not enforce revocation, only org_id",
+    );
+    assert.notEqual(after.rows[0].revoked_at, null, "revoked_at must be persisted");
+  });
+
+  // Restore to active so later/other tests relying on orgA.mcpClientKeyId's default state are unaffected.
+  await pool.query("UPDATE mcp_client_keys SET revoked_at = NULL WHERE id = $1", [orgA.mcpClientKeyId]);
+});
+
+test("[edge] mcp_client_keys.roles jsonb round-trips as a JSON array under a tenant session", async () => {
+  const keyId = randomUUID();
+  const prefix = `mcp_live_roles_${keyId.slice(0, 8)}`;
+  await pool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash, roles) VALUES ($1, $2, $3, $4, $5, $6)",
+    [keyId, orgA.orgId, "roles-key", prefix, `sha256:${keyId}`, JSON.stringify(["read"])],
+  );
+  await withTenantSession(pool, orgA.orgId, async (c) => {
+    const res = await c.query("SELECT roles FROM mcp_client_keys WHERE id = $1", [keyId]);
+    assert.equal(res.rowCount, 1);
+    assert.deepEqual(res.rows[0].roles, ["read"]);
+  });
+  await pool.query("DELETE FROM mcp_client_keys WHERE id = $1", [keyId]);
 });

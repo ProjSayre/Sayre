@@ -22,6 +22,20 @@
       "when": 1783832241586,
       "tag": "0002_triggers_and_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784254366052,
+      "tag": "0003_curvy_wolfpack",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784254374344,
+      "tag": "0004_rls_and_triggers_mcp_model_provider",
+      "breakpoints": true
     }
   ]
 }

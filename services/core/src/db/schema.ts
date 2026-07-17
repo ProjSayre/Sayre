@@ -1,8 +1,11 @@
-// Drizzle table definitions for the seven relational system-of-record tables.
+// Drizzle table definitions for the relational system-of-record tables.
 //
-// Column list here is authoritative for this ticket (W0-05); downstream tickets
-// may add columns via new migrations. RLS (org_id tenant isolation) is enforced
-// by hand-authored raw SQL in drizzle/0001_*_rls_and_role.sql, NOT expressed here
+// The first seven tables are authoritative from W0-05; `mcpClientKeys` and
+// `modelProvider` were added as a W0-05 follow-up (see spec.md in that
+// ticket's .pipeline/ run) to unblock W4-06/W3-07. Downstream tickets may add
+// further columns via new migrations. RLS (org_id tenant isolation) is
+// enforced by hand-authored raw SQL in drizzle/0001_*_rls_and_role.sql and
+// drizzle/0004_rls_and_triggers_mcp_model_provider.sql, NOT expressed here
 // (Drizzle's pgTable schema has no first-class RLS-policy builder for this).
 //
 // Node-level (org/repo/branch/path) RBAC evaluation is explicitly OUT of scope
@@ -205,6 +208,83 @@ export const onboardingSteps = pgTable(
   (table) => [index("onboarding_steps_org_id_idx").on(table.orgId)],
 );
 
+/**
+ * Org-scoped agent API keys (W4-06 issues/resolves; consumed there). Security-
+ * sensitive: only a hash of the key is ever stored, never the raw secret.
+ */
+export const mcpClientKeys = pgTable(
+  "mcp_client_keys",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Admin-facing label for the settings UI (W4-06).
+    name: text("name").notNull(),
+    // Public, non-secret lookup identifier (e.g. "mcp_live_ab12cd34"). Globally
+    // unique so a presented key resolves to exactly one row before hash compare.
+    keyPrefix: text("key_prefix").notNull(),
+    // SHA-256 hex digest of the raw key. The raw key is NEVER stored/logged.
+    // (API keys are high-entropy random secrets, so a fast crypto hash is the
+    // standard choice — not a password KDF. Hashing itself is W4-06.)
+    keyHash: text("key_hash").notNull(),
+    // Scope: the `roles` half of the { orgId, roles } context shape (W1-03).
+    // Array of role strings; exact vocabulary is W1-03/W4-06's (see spec O-2).
+    roles: jsonb("roles").notNull().default(sql`'[]'::jsonb`),
+    // Audit: who issued the key. SET NULL (not cascade) — deleting the admin
+    // must not delete a still-valid org key.
+    createdBy: uuid("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // Revocation: NULL = active. Soft revoke (row is kept for audit).
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // Audit/metering hook (last successful use). Nullable; enforcement is W4-06.
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    unique("mcp_client_keys_key_prefix_unique").on(table.keyPrefix),
+    index("mcp_client_keys_org_id_idx").on(table.orgId),
+  ],
+);
+
+/**
+ * Per-org AI provider/endpoint/credential-reference config (consumed by
+ * W3-07). One row per org (unique on org_id) — see spec O-1.
+ */
+export const modelProvider = pgTable(
+  "model_provider",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Selects which W3-07 adapter runs: 'anthropic' | 'openai' | 'openai_compatible'.
+    providerType: text("provider_type").notNull(),
+    // Endpoint URL for self-hosted / OpenAI-compatible servers.
+    // NULL = use the adapter's native SDK default (Anthropic/OpenAI hosted).
+    endpointUrl: text("endpoint_url"),
+    // REFERENCE to where the real secret lives (env var name / secrets-manager
+    // key path), resolved by the W0-07 loader. NEVER a raw credential.
+    // NULL = endpoint needs no credential (e.g. unauthenticated local server).
+    credentialRef: text("credential_ref"),
+    // Default model id for this provider (e.g. 'claude-opus-4', 'llama-3.1-70b').
+    defaultModel: text("default_model"),
+    // Adapter-specific options (api version, temperature defaults, etc.).
+    config: jsonb("config"),
+    ...timestamps,
+  },
+  (table) => [
+    unique("model_provider_org_id_unique").on(table.orgId),
+    // NOTE: do NOT add a separate org_id index — the unique constraint above
+    // already creates the btree index RLS needs (mirrors how `organizations`
+    // keys RLS on its already-indexed PK and adds no redundant index).
+  ],
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -219,3 +299,7 @@ export type StyleRule = typeof styleRules.$inferSelect;
 export type NewStyleRule = typeof styleRules.$inferInsert;
 export type OnboardingStep = typeof onboardingSteps.$inferSelect;
 export type NewOnboardingStep = typeof onboardingSteps.$inferInsert;
+export type McpClientKey = typeof mcpClientKeys.$inferSelect;
+export type NewMcpClientKey = typeof mcpClientKeys.$inferInsert;
+export type ModelProvider = typeof modelProvider.$inferSelect;
+export type NewModelProvider = typeof modelProvider.$inferInsert;

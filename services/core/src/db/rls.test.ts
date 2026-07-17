@@ -29,6 +29,8 @@ const TABLE_NAMES = [
   "ticket_cache",
   "style_rules",
   "onboarding_steps",
+  "mcp_client_keys",
+  "model_provider",
 ] as const;
 type TableName = (typeof TABLE_NAMES)[number];
 
@@ -79,6 +81,8 @@ interface SeededOrg {
   ticketId: string;
   styleRuleId: string;
   onboardingStepId: string;
+  mcpClientKeyId: string;
+  modelProviderId: string;
 }
 
 function idsByTable(seed: SeededOrg): Record<TableName, string> {
@@ -90,10 +94,12 @@ function idsByTable(seed: SeededOrg): Record<TableName, string> {
     ticket_cache: seed.ticketId,
     style_rules: seed.styleRuleId,
     onboarding_steps: seed.onboardingStepId,
+    mcp_client_keys: seed.mcpClientKeyId,
+    model_provider: seed.modelProviderId,
   };
 }
 
-/** Seeds one row in every one of the seven tables for a throwaway org, as the admin (bypasses RLS). */
+/** Seeds one row in every one of the nine tables for a throwaway org, as the admin (bypasses RLS). */
 async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
   const orgId = randomUUID();
   const userId = randomUUID();
@@ -102,6 +108,8 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
   const ticketId = randomUUID();
   const styleRuleId = randomUUID();
   const onboardingStepId = randomUUID();
+  const mcpClientKeyId = randomUUID();
+  const modelProviderId = randomUUID();
 
   await pool.query("INSERT INTO organizations (id, name, slug) VALUES ($1, $2, $3)", [
     orgId,
@@ -134,8 +142,36 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
     "INSERT INTO onboarding_steps (id, org_id, repo_id, sequence, title) VALUES ($1, $2, $3, $4, $5)",
     [onboardingStepId, orgId, repoId, 1, `Step 1 for ${label}`],
   );
+  // key_prefix is globally unique (mcp_client_keys_key_prefix_unique) -- derive
+  // from the org label + an id slice so it's unique per org across the suite.
+  await pool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hash, roles) VALUES ($1, $2, $3, $4, $5, $6)",
+    [
+      mcpClientKeyId,
+      orgId,
+      `MCP key for ${label}`,
+      `mcp_live_${label.toLowerCase()}_${mcpClientKeyId.slice(0, 8)}`,
+      `sha256:${mcpClientKeyId}`,
+      JSON.stringify([]),
+    ],
+  );
+  // model_provider is one row per org (model_provider_org_id_unique).
+  await pool.query(
+    "INSERT INTO model_provider (id, org_id, provider_type, default_model) VALUES ($1, $2, $3, $4)",
+    [modelProviderId, orgId, "anthropic", "claude-opus-4"],
+  );
 
-  return { orgId, userId, repoId, permissionId, ticketId, styleRuleId, onboardingStepId };
+  return {
+    orgId,
+    userId,
+    repoId,
+    permissionId,
+    ticketId,
+    styleRuleId,
+    onboardingStepId,
+    mcpClientKeyId,
+    modelProviderId,
+  };
 }
 
 /**
@@ -195,7 +231,7 @@ after(async () => {
   await pool.end();
 });
 
-test("org A tenant session sees only its own row (and zero org B rows) across all 7 tables", async () => {
+test("org A tenant session sees only its own row (and zero org B rows) across all 9 tables", async () => {
   await withTenantSession(pool, orgA.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
@@ -208,7 +244,7 @@ test("org A tenant session sees only its own row (and zero org B rows) across al
   });
 });
 
-test("org B tenant session sees only its own row (and zero org A rows) across all 7 tables", async () => {
+test("org B tenant session sees only its own row (and zero org A rows) across all 9 tables", async () => {
   await withTenantSession(pool, orgB.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
