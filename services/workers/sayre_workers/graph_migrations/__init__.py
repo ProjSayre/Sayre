@@ -1,21 +1,19 @@
-"""Graph DB migration runner package (W0-02).
-
-Applies the versioned openCypher migration scripts under
-`services/workers/graph-migrations/` to Neo4j and records applied versions in
-Postgres (the system of record for infra bookkeeping — see
-`.pipeline/spec.md` W0-02, Open Question 4). See `runner.py` for the
-discovery/apply/tracking implementation and `scripts/run_graph_migrations.py`
-for the CLI entrypoint.
-"""
-
-from __future__ import annotations
+"""Public graph migration runner contract."""
 
 from .runner import (
     AppliedMigration,
+    LegacyMigrationHistoryError,
+    MigrationChecksumMismatchError,
     MigrationFile,
+    MigrationHistory,
+    MigrationHistoryConflictError,
+    MigrationHistorySchemaError,
+    MigrationKey,
     applied_versions,
+    canonical_migration_bytes,
     discover_migrations,
     ensure_tracking_table,
+    migration_checksum,
     record_applied,
     run_migrations,
     split_statements,
@@ -23,10 +21,18 @@ from .runner import (
 
 __all__ = [
     "AppliedMigration",
+    "LegacyMigrationHistoryError",
+    "MigrationChecksumMismatchError",
     "MigrationFile",
+    "MigrationHistory",
+    "MigrationHistoryConflictError",
+    "MigrationHistorySchemaError",
+    "MigrationKey",
     "applied_versions",
+    "canonical_migration_bytes",
     "discover_migrations",
     "ensure_tracking_table",
+    "migration_checksum",
     "record_applied",
     "run_migrations",
     "split_statements",

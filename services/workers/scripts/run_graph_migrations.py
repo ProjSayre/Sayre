@@ -1,4 +1,4 @@
-"""CLI entrypoint for the Neo4j graph-schema migration runner (W0-02).
+"""CLI entrypoint for layered, target-aware graph-schema migrations (W0-02).
 
 Mirrors `scripts/synthetic_vector_load.py`'s structure: `sys.path.insert(0, ".")` so
 this runs as `poetry run python scripts/run_graph_migrations.py` from
@@ -8,7 +8,7 @@ Usage:
     poetry run python scripts/run_graph_migrations.py            # apply pending, target=neo4j
     poetry run python scripts/run_graph_migrations.py --status   # print applied vs pending, apply nothing
     poetry run python scripts/run_graph_migrations.py --dry-run  # print plan, touch nothing
-    poetry run python scripts/run_graph_migrations.py --target neptune   # skip 003
+    poetry run python scripts/run_graph_migrations.py --target neptune   # logical plan only
 
 Opens the Neo4j driver + a psycopg connection from env (fails fast on missing
 `NEO4J_PASSWORD`/`DATABASE_ADMIN_URL` -- see `neo4j_driver_from_env`/`pg_connection_from_env`
@@ -77,14 +77,15 @@ def _print_summary(results) -> None:
     for result in results:
         status = "skipped" if result.skipped else "applied"
         print(
-            f"  [{status}] version={result.version:03d} file={result.filename} "
+            f"  [{status}] target={result.graph_target} layer={result.layer} "
+            f"version={result.version:03d} file={result.filename} "
             f"statements_run={result.statements_run}",
             flush=True,
         )
 
 
-async def _run_status() -> int:
-    """`--status`: report applied vs. pending against the current DB, mutate nothing."""
+async def _run_status(target: str) -> int:
+    """Report only the selected target's logical + physical plan."""
     try:
         pg_conn = await pg_connection_from_env()
     except Exception:
@@ -93,24 +94,29 @@ async def _run_status() -> int:
     operation_failed = False
     try:
         ensure_tracking_table(pg_conn)
-        recorded = applied_versions(pg_conn)
-        migrations = discover_migrations(DEFAULT_MIGRATIONS_DIR)
-        print("Graph migration status:", flush=True)
+        recorded = applied_versions(pg_conn, target=target)
+        migrations = discover_migrations(DEFAULT_MIGRATIONS_DIR, target=target)
+        print(f"Graph migration status (target={target}):", flush=True)
         for migration in migrations:
-            if migration.version not in recorded:
+            existing = recorded.get(migration.key)
+            prefix = (
+                f"target={migration.graph_target} layer={migration.layer} "
+                f"version={migration.version:03d} file={migration.filename}"
+            )
+            if existing is None:
                 print(
-                    f"  [pending] version={migration.version:03d} file={migration.filename}",
+                    f"  [pending] {prefix}",
                     flush=True,
                 )
-            elif recorded[migration.version] != migration.checksum:
+            elif existing.filename != migration.filename or existing.checksum != migration.checksum:
                 print(
-                    f"  [MISMATCH] version={migration.version:03d} file={migration.filename} "
+                    f"  [MISMATCH] {prefix} "
                     "-- on-disk checksum differs from recorded checksum",
                     flush=True,
                 )
             else:
                 print(
-                    f"  [applied] version={migration.version:03d} file={migration.filename}",
+                    f"  [applied] {prefix}",
                     flush=True,
                 )
     except Exception:
@@ -147,12 +153,12 @@ async def main() -> int:
         "--target",
         choices=["neo4j", "neptune"],
         default="neo4j",
-        help="'neptune' skips Neo4j-only DDL files (currently just 003).",
+        help="Select logical migrations plus only this target's physical layer.",
     )
     args = parser.parse_args()
 
     if args.status:
-        return await _run_status()
+        return await _run_status(args.target)
 
     try:
         pg_conn = await pg_connection_from_env()
