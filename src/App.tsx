@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import LandingPage from "./landing/LandingPage";
+import PrivacyPage from "./legal/PrivacyPage";
 import { ROOT_FILE_COUNT } from "./data";
 
 // kick off the demo chunk immediately on /demo deep links — don't wait for
@@ -21,7 +22,7 @@ function DemoShellFallback(): JSX.Element {
           <span className="topbar__repo">acme/monorepo</span>
           <span className="topbar__meta">main · {ROOT_FILE_COUNT.toLocaleString("en-US")} files · synced 2m ago</span>
           <div className="topbar__right">
-            <span className="btn btn--primary btn--small">get early access</span>
+            <span className="btn btn--primary btn--small">join the waitlist</span>
           </div>
         </div>
         <div className="topbar__row topbar__row--tabs" aria-hidden="true">
@@ -50,6 +51,7 @@ export default function App(): JSX.Element {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/demo"
         element={

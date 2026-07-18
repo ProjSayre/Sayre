@@ -39,7 +39,7 @@ export function TopBar({ onEarlyAccess, isMobile }: { onEarlyAccess: () => void;
         <div className="topbar__right">
           {!isMobile && <PersonaSegments />}
           <Button small onClick={onEarlyAccess} className="topbar__cta">
-            {isMobile ? "early access" : "get early access"}
+            {isMobile ? "join waitlist" : "join the waitlist"}
           </Button>
           {isMobile && <OverflowMenu />}
         </div>

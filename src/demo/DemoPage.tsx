@@ -247,8 +247,8 @@ export default function DemoPage(): JSX.Element {
               {searchOpen && <CommandK onClose={() => setSearchOpen(false)} />}
 
               {waitlistSource !== null && (
-                <Modal onClose={() => setWaitlistSource(null)} label="get early access">
-                  <h2 className="waitlist-modal__title">get early access</h2>
+                <Modal onClose={() => setWaitlistSource(null)} label="join the waitlist">
+                  <h2 className="waitlist-modal__title">join the waitlist</h2>
                   <p className="waitlist-modal__body">
                     linked here from an email? this demo is sample data — the waitlist gets sayre on yours.
                   </p>

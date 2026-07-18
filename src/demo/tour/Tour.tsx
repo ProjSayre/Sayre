@@ -135,7 +135,7 @@ export function Tour({
           {step.final ? (
             <span className="tour__actions">
               <Button small onClick={onConvert}>
-                get early access
+                join the waitlist
               </Button>
               <Button small variant="secondary" onClick={onFinish}>
                 keep exploring

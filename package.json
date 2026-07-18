@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "og": "node scripts/og.mjs",
+    "hero:render": "node scripts/render-anime-hero.mjs",
     "test:waitlist": "node scripts/test-waitlist.mjs",
     "dev:workspaces": "turbo run dev --parallel",
     "build:workspaces": "turbo run build",

@@ -1,11 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CONTACT_EMAIL } from "../config";
 import { NODE_BY_ID, SUGGESTED_FILES } from "../data";
 import { HOW_IT_WORKS, PROBLEM, V2_FRAME, V2_HERO, V2_HOW, V2_LAYERS, V2_LENSES, WAITLIST_BAND } from "../data/copy";
 import { prefersReducedMotion } from "../demo/canvas/useCamera";
 import { WaitlistForm } from "../shared/WaitlistForm";
-import { HeroTreeAmbient } from "./HeroTreeScene";
+import { FeatureDeck } from "./FeatureDeck";
+import { HeroAnimeVideo } from "./HeroAnimeVideo";
 import { lensGraphs } from "./lensGraphs";
 import type { LensGraph } from "./lensGraphs";
 import { GraphDivider, Reveal } from "./Reveal";
@@ -34,9 +35,46 @@ const PROBLEM_DECOS: {
   { x: 87, y: 84, kind: "folder", label: "checkout/", th: 0.92, side: "left", accent: true },
 ];
 
-function LensSvg({ g, halo }: { g: LensGraph; halo: string }): JSX.Element {
+function fittedViewBox(g: LensGraph, padding = 55): string {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  const include = (x: number, y: number): void => {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  };
+
+  g.edges.forEach((edge) => {
+    include(edge.x1, edge.y1);
+    include(edge.x2, edge.y2);
+  });
+  g.rings.forEach((node) => {
+    include(node.x - node.r, node.y - node.r);
+    include(node.x + node.r, node.y + node.r);
+  });
+  g.dots.forEach((node) => {
+    include(node.x - node.r, node.y - node.r);
+    include(node.x + node.r, node.y + node.r);
+  });
+  g.labels.forEach((label) => {
+    const width = label.label.length * label.fs * 0.62;
+    const left = label.anchor === "middle" ? label.x - width / 2 : label.anchor === "end" ? label.x - width : label.x;
+    const right = label.anchor === "middle" ? label.x + width / 2 : label.anchor === "end" ? label.x : label.x + width;
+    include(left, label.y - label.fs);
+    include(right, label.y + label.fs * 0.4);
+  });
+
+  if (![minX, minY, maxX, maxY].every(Number.isFinite)) return g.vb;
+  return `${(minX - padding).toFixed(1)} ${(minY - padding).toFixed(1)} ${(maxX - minX + padding * 2).toFixed(1)} ${(maxY - minY + padding * 2).toFixed(1)}`;
+}
+
+function LensSvg({ g, halo, viewBox = g.vb }: { g: LensGraph; halo: string; viewBox?: string }): JSX.Element {
   return (
-    <svg viewBox={g.vb} preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }} aria-hidden="true">
+    <svg viewBox={viewBox} preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }} aria-hidden="true">
       {g.edges.map((e, i) => (
         <line key={i} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} stroke={e.stroke} strokeWidth={e.w} opacity={e.op} strokeDasharray={e.dash === "none" ? undefined : e.dash} />
       ))}
@@ -62,6 +100,7 @@ function LensSvg({ g, halo }: { g: LensGraph; halo: string }): JSX.Element {
 }
 
 export default function LandingPage(): JSX.Element {
+  const [heroSettled, setHeroSettled] = useState(false);
   const heroTreeRef = useRef<HTMLDivElement | null>(null);
   const heroGlowRef = useRef<HTMLDivElement | null>(null);
   const heroContentRef = useRef<HTMLDivElement | null>(null);
@@ -69,10 +108,6 @@ export default function LandingPage(): JSX.Element {
   const wordsRef = useRef<HTMLSpanElement[]>([]);
   const decosRef = useRef<HTMLDivElement[]>([]);
   const answerRef = useRef<HTMLDivElement | null>(null);
-  const pinRef = useRef<HTMLDivElement | null>(null);
-  const lensTextsRef = useRef<HTMLDivElement[]>([]);
-  const lensGraphsRef = useRef<HTMLDivElement[]>([]);
-  const lensCountRef = useRef<HTMLDivElement | null>(null);
   const howRef = useRef<HTMLElement | null>(null);
   const drawPathRef = useRef<SVGPathElement | null>(null);
   const drawLenRef = useRef(1);
@@ -90,9 +125,11 @@ export default function LandingPage(): JSX.Element {
   // the headline's last word renders hollow — unfilled, i.e. unlabeled
   const [h2Pre, h2Post] = PROBLEM.h2.split("labels");
   const graphs = lensGraphs();
+  const filetreeViewBox = fittedViewBox(graphs.g2);
+  const filetreeLens = V2_LENSES.items[1];
   const paymentForm = NODE_BY_ID.get("apps/web/src/checkout/PaymentForm.tsx");
 
-  // scroll-driven fx controller (parallax, word scrub, lens phase, path draw, sweep)
+  // scroll-driven fx controller (parallax, word scrub, path draw, sweep)
   useEffect(() => {
     const reduced = prefersReducedMotion();
     let raf = 0;
@@ -108,33 +145,6 @@ export default function LandingPage(): JSX.Element {
       }
     }
 
-    const setLensPhase = (p: number): void => {
-      const n = 3;
-      const vis = (i: number): number => {
-        const c = i / (n - 1);
-        return Math.max(0, 1 - Math.abs(p - c) * (n - 1) * 2.2);
-      };
-      lensTextsRef.current.forEach((el) => {
-        const i = parseInt(el.dataset.i ?? "0", 10);
-        const v = vis(i);
-        el.style.opacity = String(v);
-        el.style.visibility = v < 0.05 ? "hidden" : "visible";
-        el.style.transform = reduced ? "none" : "translateY(" + (p - i / (n - 1)) * -46 + "px)";
-        el.style.pointerEvents = v > 0.5 ? "auto" : "none";
-      });
-      lensGraphsRef.current.forEach((el) => {
-        const i = parseInt(el.dataset.i ?? "0", 10);
-        const v = vis(i);
-        el.style.opacity = String(v);
-        el.style.visibility = v < 0.05 ? "hidden" : "visible";
-        el.style.transform = reduced ? "none" : "scale(" + (0.94 + v * 0.06) + ")";
-      });
-      if (lensCountRef.current) {
-        const idx = Math.min(n - 1, Math.max(0, Math.round(p * (n - 1))));
-        lensCountRef.current.textContent = "0" + (idx + 1) + " / 03";
-      }
-    };
-
     // avoid layout thrash: ALL rect reads happen before ANY style writes, every
     // offscreen subsystem is skipped, and words only repaint when they flip
     let lastLit = -1;
@@ -148,7 +158,6 @@ export default function LandingPage(): JSX.Element {
 
       // ---- read phase ----
       const problemRect = problemRef.current && wordsRef.current.length ? problemRef.current.getBoundingClientRect() : null;
-      const pinRect = pinRef.current ? pinRef.current.getBoundingClientRect() : null;
       const howRect = drawPathRef.current && howRef.current && !reduced ? howRef.current.getBoundingClientRect() : null;
       const frameRect = frameGlowRef.current ? frameGlowRef.current.getBoundingClientRect() : null;
 
@@ -163,7 +172,7 @@ export default function LandingPage(): JSX.Element {
       }
 
       if (problemRect && onScreen(problemRect, vh)) {
-        const p = Math.min(1, Math.max(0, (vh * 0.8 - problemRect.top) / (problemRect.height + vh * 0.25)));
+        const p = Math.min(1, Math.max(0, (vh * 0.95 - problemRect.top) / (problemRect.height + vh * 0.25)));
         const scrub = p * 1.25;
         const lit = Math.round(Math.min(wordsRef.current.length, Math.max(0, scrub * wordsRef.current.length)));
         if (lit !== lastLit) {
@@ -184,12 +193,6 @@ export default function LandingPage(): JSX.Element {
           el.classList.toggle("is-on", scrub >= parseFloat(el.dataset.th ?? "1"));
         }
         answerRef.current?.classList.toggle("is-on", scrub >= 1.04);
-      }
-
-      if (pinRect && onScreen(pinRect, vh)) {
-        const total = pinRect.height - vh;
-        const p = Math.min(1, Math.max(0, -pinRect.top / total));
-        setLensPhase(p);
       }
 
       if (howRect && onScreen(howRect, vh) && drawPathRef.current) {
@@ -228,19 +231,12 @@ export default function LandingPage(): JSX.Element {
   const collectDeco = (el: HTMLDivElement | null): void => {
     if (el && !decosRef.current.includes(el)) decosRef.current.push(el);
   };
-  const collectLensText = (el: HTMLDivElement | null): void => {
-    if (el && !lensTextsRef.current.includes(el)) lensTextsRef.current.push(el);
-  };
-  const collectLensGraph = (el: HTMLDivElement | null): void => {
-    if (el && !lensGraphsRef.current.includes(el)) lensGraphsRef.current.push(el);
-  };
-
   return (
     <div className="landing-v2">
       {/* ═══ s1 · hero — the tree grows into the graph ═══ */}
-      <header className="v2-hero">
+      <header className={heroSettled ? "v2-hero is-settled" : "v2-hero"}>
         <div className="v2-hero__scene" ref={heroTreeRef} aria-hidden="true">
-          <HeroTreeAmbient />
+          <HeroAnimeVideo onComplete={() => setHeroSettled(true)} />
         </div>
         <div className="v2-hero__glow" ref={heroGlowRef} aria-hidden="true" />
         <div className="v2-hero__vignette" aria-hidden="true" />
@@ -251,34 +247,40 @@ export default function LandingPage(): JSX.Element {
             <Link className="v2-nav__demo" to="/demo">
               demo
             </Link>
-            <a className="btn btn--primary btn--glow v2-nav__cta" href="#waitlist">
-              get early access
+            <a className="btn btn--secondary v2-nav__cta" href="#waitlist">
+              join the waitlist
             </a>
           </div>
         </nav>
 
-        <div className="v2-hero__content" ref={heroContentRef}>
-          <Reveal d={0}>
-            <span className="v2-eyebrow v2-eyebrow--accent">{V2_HERO.eyebrow}</span>
-          </Reveal>
-          <Reveal d={1} blur>
-            <h1 className="v2-hero__title">{V2_HERO.h1}</h1>
-          </Reveal>
-          <Reveal d={2}>
-            <div className="v2-hero__ctas">
-              <Link to="/demo" className="btn btn--primary btn--lg btn--glow">
+        {heroSettled && (
+          <>
+            <div className="v2-hero__content" ref={heroContentRef}>
+              <Reveal d={0}>
+                <span className="v2-eyebrow v2-eyebrow--accent">{V2_HERO.eyebrow}</span>
+              </Reveal>
+              <Reveal d={1} blur>
+                <h1 className="v2-hero__title">{V2_HERO.h1}</h1>
+              </Reveal>
+            </div>
+
+            <div className="v2-hero__final-cta">
+              <Link to="/demo" className="btn btn--primary btn--lg btn--glow v2-hero__demo-cta">
                 {V2_HERO.cta}
               </Link>
+              <a className="btn btn--secondary v2-hero__waitlist-cta" href="#waitlist">
+                join the waitlist
+              </a>
             </div>
-          </Reveal>
-        </div>
 
-        <div className="v2-scrollhint" aria-hidden="true">
-          <span className="v2-scrollhint__label">{V2_HERO.scrollHint}</span>
-          <span className="v2-scrollhint__track">
-            <span className="v2-scrollhint__drop" />
-          </span>
-        </div>
+            <div className="v2-scrollhint" aria-hidden="true">
+              <span className="v2-scrollhint__label">{V2_HERO.scrollHint}</span>
+              <span className="v2-scrollhint__track">
+                <span className="v2-scrollhint__drop" />
+              </span>
+            </div>
+          </>
+        )}
       </header>
 
       {/* ═══ s2 · problem — the kitchen labels itself as you read ═══ */}
@@ -339,39 +341,127 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      {/* ═══ s3 · pinned split-viewport — one graph, three lenses ═══ */}
-      <div className="v2-pin" ref={pinRef}>
-        <div className="v2-pin__sticky">
-          <div className="v2-pin__grid">
-            <div>
-              <span className="v2-eyebrow">{V2_LENSES.eyebrow}</span>
-              <h2 className="v2-h2">{V2_LENSES.h2}</h2>
-              <div className="v2-pin__count" ref={lensCountRef}>
-                01 / 03
+      {/* ═══ s3 · agent-human context carried by the graph ═══ */}
+      <section className="v2-layers">
+        <Reveal d={0}>
+          <span className="v2-eyebrow">{V2_LAYERS.eyebrow}</span>
+        </Reveal>
+        <Reveal d={1}>
+          <h2 className="v2-h2 v2-layers__title">{V2_LAYERS.h2}</h2>
+        </Reveal>
+        <Reveal d={2}>
+          <div className="v2-grid">
+            <div className="v2-cell">
+              <div className="v2-cell__kind">tests</div>
+              <div className="v2-cell__lead v2-cell__lead--fail">failing</div>
+              <div className="v2-cell__mono">useCheckout.test.ts</div>
+              <p>promo-merge case times out since the guest-cart merge landed</p>
+            </div>
+            <div className="v2-cell">
+              <div className="v2-cell__kind">owners</div>
+              <div className="v2-cell__lead">checkout/</div>
+              <div className="v2-cell__mono">dana park · miguel reyes</div>
+              <p>ownership read from history, not a stale CODEOWNERS</p>
+            </div>
+            <div className="v2-cell">
+              <div className="v2-cell__kind">tickets</div>
+              <div className="v2-cell__ticket">
+                <span className="chip">LIN-482</span>
+                <span className="v2-cell__faint">in progress</span>
               </div>
-              <div className="v2-pin__texts">
-                {V2_LENSES.items.map((item, i) => (
-                  <div key={i} className="v2-pin__text" data-i={i} ref={collectLensText}>
-                    <span className="v2-eyebrow v2-eyebrow--accent">{item.eyebrow}</span>
-                    <h3>{item.h3}</h3>
-                    <p>{item.body}</p>
-                  </div>
-                ))}
+              <p>stripe payment-intent migration — pinned to the four files it touches</p>
+            </div>
+            <div className="v2-cell">
+              <div className="v2-cell__kind">recent changes</div>
+              <p className="v2-cell__bright">migrate PaymentForm to payment intents</p>
+              <div className="v2-cell__faintmono">a1b2c3f · dana park · 2d ago · pr #482</div>
+            </div>
+            <div className="v2-cell v2-cell--wide">
+              <div className="v2-cell__kind">agent / skill md · scoped to acme/</div>
+              <div className="v2-cell__md">
+                — pnpm workspaces; never npm install inside a package
+                <br />— shared logic lives in packages/ — apps import it, never each other
+                <br />— money is integer minor units everywhere
               </div>
             </div>
-            <div className="v2-pin__stage">
-              <div className="v2-pin__stage-glow" aria-hidden="true" />
-              {[graphs.g1, graphs.g2, graphs.g3].map((g, i) => (
-                <div key={i} className="v2-pin__graph" data-i={i} ref={collectLensGraph}>
-                  <LensSvg g={g} halo="#0D0E0C" />
-                </div>
-              ))}
+            <div className="v2-cell">
+              <div className="v2-cell__kind">dependencies</div>
+              <div className="v2-cell__lead">stripe cli</div>
+              <div className="v2-cell__cmd">stripe listen --forward-to localhost:3000</div>
+            </div>
+            <div className="v2-cell">
+              <div className="v2-cell__kind">relations</div>
+              <div className="v2-cell__lead">currency.ts</div>
+              <div className="v2-cell__mono">6 in · 1 out</div>
+              <p>six importers across web, api, and the indexer — breaking changes announce themselves</p>
             </div>
           </div>
-        </div>
-      </div>
+        </Reveal>
+      </section>
 
-      {/* ═══ s4 · the demo, framed in light ═══ */}
+      {/* ═══ s4 · standalone filetree ═══ */}
+      <section className="v2-filetree" aria-labelledby="filetree-title">
+        <Reveal d={0}>
+          <div className="v2-filetree__intro">
+            <div>
+              <span className="v2-eyebrow v2-eyebrow--accent">{filetreeLens.eyebrow}</span>
+              <h2 className="v2-filetree__title" id="filetree-title">
+                {filetreeLens.h3}
+              </h2>
+            </div>
+            <p className="v2-filetree__body">{filetreeLens.body}</p>
+          </div>
+        </Reveal>
+        <Reveal d={1}>
+          <div
+            className="v2-filetree__stage"
+            role="img"
+            aria-label="Filetree graph centered on apps/web/src/checkout/PaymentForm.tsx"
+          >
+            <div className="v2-filetree__glow" aria-hidden="true" />
+            <div className="v2-filetree__graph">
+              <LensSvg g={graphs.g2} halo="#0D0E0C" viewBox={filetreeViewBox} />
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ═══ s5 · feature deck — reader-controlled, no scroll capture ═══ */}
+      <FeatureDeck />
+
+      {/* ═══ s6 · how it works — diagonal cascade; step cards sit clear of the path ═══ */}
+      <section className="v2-how" ref={howRef}>
+        <Reveal d={0}>
+          <span className="v2-eyebrow">{V2_HOW.eyebrow}</span>
+        </Reveal>
+        <Reveal d={1}>
+          <h2 className="v2-h2 v2-how__title">{V2_HOW.h2}</h2>
+        </Reveal>
+        <div className="v2-how__stage">
+          <svg viewBox="0 0 1160 700" preserveAspectRatio="none" aria-hidden="true" className="v2-how__path">
+            <path d="M 60 46 L 350 46 L 470 260 L 700 260 L 820 474 L 1080 474" className="v2-how__path-base" />
+            <path ref={drawPathRef} d="M 60 46 L 350 46 L 470 260 L 700 260 L 820 474 L 1080 474" className="v2-how__path-draw" />
+            <circle cx="60" cy="46" r="6.5" className="v2-how__node" />
+            <circle cx="470" cy="260" r="6.5" className="v2-how__node" />
+            <circle cx="820" cy="474" r="6.5" className="v2-how__node" />
+            <circle cx="1080" cy="474" r="4.5" className="v2-how__dot" />
+          </svg>
+          {HOW_IT_WORKS.rows.map((row, i) => (
+            <Reveal key={row.num} d={i}>
+              {/* cards sit below their path segment (relocated so lines never strike through) */}
+              <div className={`v2-how__step v2-how__step--${i + 1}`}>
+                <span className="v2-how__num">{row.num}</span>
+                <div>
+                  <h3>{row.h3}</h3>
+                  <p>{row.body}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ s7 · the demo hook, framed in light ═══ */}
       <section className="v2-frame-section">
         <div className="v2-frame-head">
           <Reveal d={0}>
@@ -468,97 +558,7 @@ export default function LandingPage(): JSX.Element {
         </Reveal>
       </section>
 
-      {/* ═══ s5 · how it works — diagonal cascade; step cards sit clear of the path ═══ */}
-      <section className="v2-how" ref={howRef}>
-        <Reveal d={0}>
-          <span className="v2-eyebrow">{V2_HOW.eyebrow}</span>
-        </Reveal>
-        <Reveal d={1}>
-          <h2 className="v2-h2 v2-how__title">{V2_HOW.h2}</h2>
-        </Reveal>
-        <div className="v2-how__stage">
-          <svg viewBox="0 0 1160 700" preserveAspectRatio="none" aria-hidden="true" className="v2-how__path">
-            <path d="M 60 46 L 350 46 L 470 260 L 700 260 L 820 474 L 1080 474" className="v2-how__path-base" />
-            <path ref={drawPathRef} d="M 60 46 L 350 46 L 470 260 L 700 260 L 820 474 L 1080 474" className="v2-how__path-draw" />
-            <circle cx="60" cy="46" r="6.5" className="v2-how__node" />
-            <circle cx="470" cy="260" r="6.5" className="v2-how__node" />
-            <circle cx="820" cy="474" r="6.5" className="v2-how__node" />
-            <circle cx="1080" cy="474" r="4.5" className="v2-how__dot" />
-          </svg>
-          {HOW_IT_WORKS.rows.map((row, i) => (
-            <Reveal key={row.num} d={i}>
-              {/* cards sit below their path segment (relocated so lines never strike through) */}
-              <div className={`v2-how__step v2-how__step--${i + 1}`}>
-                <span className="v2-how__num">{row.num}</span>
-                <div>
-                  <h3>{row.h3}</h3>
-                  <p>{row.body}</p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ s6 · density moment — what the graph carries ═══ */}
-      <section className="v2-layers">
-        <Reveal d={0}>
-          <span className="v2-eyebrow">{V2_LAYERS.eyebrow}</span>
-        </Reveal>
-        <Reveal d={1}>
-          <h2 className="v2-h2 v2-layers__title">{V2_LAYERS.h2}</h2>
-        </Reveal>
-        <Reveal d={2}>
-          <div className="v2-grid">
-            <div className="v2-cell">
-              <div className="v2-cell__kind">tests</div>
-              <div className="v2-cell__lead v2-cell__lead--fail">failing</div>
-              <div className="v2-cell__mono">useCheckout.test.ts</div>
-              <p>promo-merge case times out since the guest-cart merge landed</p>
-            </div>
-            <div className="v2-cell">
-              <div className="v2-cell__kind">owners</div>
-              <div className="v2-cell__lead">checkout/</div>
-              <div className="v2-cell__mono">dana park · miguel reyes</div>
-              <p>ownership read from history, not a stale CODEOWNERS</p>
-            </div>
-            <div className="v2-cell">
-              <div className="v2-cell__kind">tickets</div>
-              <div className="v2-cell__ticket">
-                <span className="chip">LIN-482</span>
-                <span className="v2-cell__faint">in progress</span>
-              </div>
-              <p>stripe payment-intent migration — pinned to the four files it touches</p>
-            </div>
-            <div className="v2-cell">
-              <div className="v2-cell__kind">recent changes</div>
-              <p className="v2-cell__bright">migrate PaymentForm to payment intents</p>
-              <div className="v2-cell__faintmono">a1b2c3f · dana park · 2d ago · pr #482</div>
-            </div>
-            <div className="v2-cell v2-cell--wide">
-              <div className="v2-cell__kind">agent / skill md · scoped to acme/</div>
-              <div className="v2-cell__md">
-                — pnpm workspaces; never npm install inside a package
-                <br />— shared logic lives in packages/ — apps import it, never each other
-                <br />— money is integer minor units everywhere
-              </div>
-            </div>
-            <div className="v2-cell">
-              <div className="v2-cell__kind">dependencies</div>
-              <div className="v2-cell__lead">stripe cli</div>
-              <div className="v2-cell__cmd">stripe listen --forward-to localhost:3000</div>
-            </div>
-            <div className="v2-cell">
-              <div className="v2-cell__kind">relations</div>
-              <div className="v2-cell__lead">currency.ts</div>
-              <div className="v2-cell__mono">6 in · 1 out</div>
-              <p>six importers across web, api, and the indexer — breaking changes announce themselves</p>
-            </div>
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ═══ s7 · waitlist finale — a single node blooming ═══ */}
+      {/* ═══ conversion footer · waitlist finale ═══ */}
       <section className="v2-waitlist" id="waitlist">
         <div className="v2-waitlist__glow" aria-hidden="true" />
         <div className="v2-waitlist__inner">
@@ -576,12 +576,15 @@ export default function LandingPage(): JSX.Element {
               <WaitlistForm source="landing" />
             </div>
           </Reveal>
-          <p className="v2-waitlist__fine">{WAITLIST_BAND.fine}</p>
+          <p className="v2-waitlist__fine">
+            {WAITLIST_BAND.fine} · <Link to="/privacy">privacy policy</Link>
+          </p>
         </div>
         <footer className="v2-footer">
           <span className="wordmark">sayre_</span>
           <span className="v2-footer__links">
             <Link to="/demo">demo</Link>
+            <Link to="/privacy">privacy</Link>
             <a href={`mailto:${CONTACT_EMAIL}`}>contact</a>
           </span>
           <span className="v2-footer__copyright">© 2026 sayre</span>
