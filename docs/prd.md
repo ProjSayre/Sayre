@@ -1,360 +1,397 @@
-# Product Requirement Document
-## AI-Powered Codebase Ontology & Visualization Platform
+# **Product Requirement Document** 
 
-*Annotated Edition v3 — Tooling, Scaling & Service-Layer Architecture Update. Adds locked tool choices with numeric migration triggers (§4.10), Node Risk & Health Signals (§4.11), the CI/CD Test Impact Analysis Addendum (§5), the service-layer convention with reference implementations (§4.2), and the MVP secrets posture (§4.5). Supersedes v2.*
+AI-Powered Codebase Ontology, Visualization, Agent Context & Model Provider Platform — Unified Edition v5 · July 2026 
 
----
+## **Change Log** 
 
-## 1. Project Overview & Core Value Proposition
+##### **v3 to v4:** 
 
-Modern development teams face massive friction when onboarding engineers, managing context switching, and aligning technical architecture with product objectives. Current tooling treats repositories as flat file structures or disconnected documentation.
+1. **New capability — the Agent Context Layer (MCP Server).** The graph is exposed to external AI agents (Claude Code, Cursor, and eventually Cursor Origin) through a Model Context Protocol server. The interactive canvas remains the human surface; MCP becomes the agent surface over the same graph, service layer, and RBAC. See Sections 1.3, 2.6, 4.2. The Cursor Origin integration (Section 6) is inverted accordingly: this platform is the MCP _server_ ; agents are the _clients_ . 
 
-This platform is an AI-powered, context-aware codebase ontology and visualization web application. By parsing codebases into interactive, multi-dimensional knowledge graphs, the platform translates raw source code into tailored "tree maps" for different organizational stakeholders (technical, product, onboarding). It solves the "kitchen without labels" dilemma by mapping explicit code dependencies, task management tickets, ownership history, and required skills directly onto a visual graph canvas.
+2. **Resolved tooling decisions.** Sigma.js + graphology; REST first, GraphQL later behind a shared service layer; SQS for the Python worker fleet and BullMQ for Node integration workers; Neo4j first with a measured, trigger-gated cutover to Amazon Neptune; pgvector first with a measured, trigger-gated cutover to Amazon OpenSearch; env-file secrets for MVP with a trigger-gated cutover to a KMS-backed secrets manager. Triggers defined in Section 4.10. 
 
-### 1.1 Target Audience
+3. **Gap fixes.** The GitHub App authorization flow, the onboarding priority queue behind the TTFC target, graphdatabase concurrency instrumentation, the staged secrets posture, and the provider-generic Integration Worker requirement are stated explicitly. 
 
-- **New Hire Engineers** — Accelerate time-to-productivity by visualizing branch-specific context, architectural dependencies, and onboarding workflows.
-- **Technical Leads & Architects** — Maintain a clear structural map of code semantics, identify ownership, track style adherence, enforce modular boundaries.
-- **Product Managers** — Track feature shipping progress and map Jira/Linear tasks directly to real-world code components.
+##### **v4 to v5 (this edition — supersedes the standalone “PRD Amendment v5”):** 
 
-### 1.2 Macro View: Multi-Repo Architecture
+4. **New capability — Pluggable Model Provider Layer.** The Semantic Enrichment Worker and the Graph-Guided RAG chatbot no longer hardcode a call to the Claude API. An org selects Claude, GPT, or a self-hosted model as the model behind graph building and the AI chatbot. See Sections 2.7, 4.2, 4.3, 4.6, 4.10. 
 
-Before any file tree renders, the platform supports a highest-level, multi-repo view of how work is actually organized across an engineering org. This Macro View is its own graph layer, sitting above the Unified File Skeleton (Section 4.3), and is what a viewer lands on before drilling into a specific repo's Technical/Product/Onboarding Tree.
+5. **New capability — Local-Model Interoperability for the Agent Context Layer.** The existing MCP surface (Section 2.6) is verified and documented to work identically for a customer’s own agent running on a self-hosted model, with no new authorization path. See Section 4.11. 
 
-- **Project-to-Repo Mapping** — A Project is a top-level organizational entity that can map to a single repository or span several (e.g., a "Checkout" project spanning a frontend repo, a backend-api repo, and a shared-libs repo). The Macro View renders Project nodes connected to one or more Repo nodes before any folder or file is shown.
-- **Inter-Repo Context** — Distinct repositories are connected by cross-repo edges (e.g., a frontend repo's calls into a backend-api repo, or a shared dependency on a common library repo), inferred from detected API contracts, shared package versions, and cross-repo import statements. This lets a viewer see how repos relate to one another before opening any single repo's file tree.
+6. **Structural vs. contractual data-sovereignty distinction (new in this edition, resolving a gap identified after the standalone amendment shipped).** Section 2.7 now states, as a testable requirement rather than an implied side-effect, that a self-hosted open-weight model configuration gives a _structural_ no-egress guarantee — no vendor server is ever in the request path — as distinct from the _contractual_ guarantee a hosted provider offers (a data-use policy governing a request that necessarily does leave the customer’s network). This distinction is now a verified property (Section 4.2, Model Provider Adapter) rather than an architectural implication left untested. 
 
-Selecting a Repo node in the Macro View drills down into that repo's Unified File Skeleton, preserving the same Technical/Product/Onboarding view toggle described in Section 2.2. See Section 4.3 for the Project/Repo node and edge additions to the graph schema.
+## **1. Project Overview & Core Value Proposition** 
 
----
+Modern development teams face massive friction when onboarding engineers, managing context switching, and aligning technical architecture with product objectives. Current tooling treats repositories as flat file structures or disconnected documentation. 
 
-## 2. Functional Requirements — with Required Tooling
+This platform is an AI-powered, context-aware codebase ontology and visualization web application. By parsing codebases into interactive, multi-dimensional knowledge graphs, the platform translates raw source code into tailored “tree maps” for different organizational stakeholders (technical, product, onboarding). It solves the “kitchen without labels” dilemma by mapping explicit code dependencies, task management tickets, ownership history, and required skills directly onto a visual graph canvas. 
 
-Each capability below is tagged with the concrete languages, libraries, and services needed to implement it.
+The same knowledge graph that powers the human-facing canvas is also exposed as a live context layer for external AI coding agents (Section 1.3), and the models that build and query that graph are themselves swappable — including to models an organization runs entirely on its own infrastructure (Section 2.7). 
 
-### 2.1 Unified Graph-Based Repository Parsing
+### **1.1 Target Audience** 
 
-- **Multi-Language AST Parsing** — Map explicit structural relationships (function calls, class inheritance, module imports) via incremental syntax tree analysis. *Tooling: Tree-sitter, Python, language grammars (JS/TS/Py/Go/etc.).*
-- **Semantic Relationship Extraction** — Analyze code semantics, config files, and inline documentation via LLMs to extract high-level functional groupings. *Tooling: Graphify, LangChain/LangGraph, Anthropic API (Claude), Python/FastAPI.*
-- **Delta Processing** — Process code deltas incrementally on every push rather than rebuilding the entire codebase graph from scratch. *Tooling: GitHub Webhooks, Python, Queue (SQS/Redis Streams).*
+- **New Hire Engineers** — Accelerate time-to-productivity by visualizing branch-specific context, architectural dependencies, and onboarding workflows. 
 
-### 2.2 Multi-View Interactive Tree Canvas
+- **Technical Leads & Architects** — Maintain a clear structural map of code semantics, identify ownership, track style adherence, enforce modular boundaries — and author the Agent/Skill MD rules that govern how AI agents may modify each part of the codebase. 
 
-**Canvas Node Model** — Regardless of which view is active, the rendered canvas is built from exactly two node types: Folder ("F") and File (including API endpoint files). Functions and classes are parsed and stored as graph data — used to compute IMPORTS/CALLS/INHERITS edges and node-level metadata — but are never surfaced as their own canvas nodes, so the visual graph stays legible at repo scale instead of cluttering down to function/class granularity.
+- **Product Managers** — Track feature shipping progress and map Jira/Linear tasks directly to real-world code components. 
 
-| View | Target Users | Scope | Tooling |
+- **AI Coding Agents** — Claude Code, Cursor, and other MCP-compatible agents — including a customer’s own agents running on self-hosted models — consume the graph as structured context: which nodes are relevant to a task, what rules govern them, which tests cover them, and who owns them. 
+
+- **Security & Compliance Reviewers (new)** — Organizations with data-residency or vendor-exposure requirements evaluate the self-hosted model option (Section 2.7) as a structural, not contractual, guarantee that source code never leaves their environment. 
+
+### **1.2 Macro View: Multi-Repo Architecture** 
+
+Before any file tree renders, the platform supports a highest-level, multi-repo view of how work is actually organized across an engineering org. This Macro View is its own graph layer, sitting above the Unified File Skeleton (Section 4.3), and is what a viewer lands on before drilling into a specific repo’s Technical/Product/Onboarding Tree. 
+
+- **Project-to-Repo Mapping** — A Project is a top-level organizational entity that can map to a single repository or span several. The Macro View renders Project nodes connected to one or more Repo nodes before any folder or file is shown. 
+
+- **Inter-Repo Context** — Distinct repositories are connected by cross-repo edges, inferred from detected API contracts, shared package versions, and cross-repo import statements. 
+
+Selecting a Repo node in the Macro View drills down into that repo’s Unified File Skeleton, preserving the same Technical/Product/Onboarding view toggle described in Section 2.2. See Section 4.3 for the Project/Repo node and edge additions to the graph schema. 
+
+### **1.3 The Agent Context Layer** 
+
+The strategic observation behind this addition: **the moat is the graph, not the agent.** Agent vendors will always ship better agent loops, faster. What they do not have is a queryable, semantically enriched, multi-tenant graph of a customer’s specific codebase — with ownership, tickets, tests, style rules, and per-node agent operating parameters already resolved. Rather than building a competing agent, the platform exposes its graph to _every_ agent through MCP — including agents built on a customer’s own models (Section 4.11). 
+
+The two surfaces divide responsibility cleanly: 
+
+- **The canvas is where humans understand and configure.** See the architecture, trace ownership, read feature descriptions — and author the Agent/Skill MD (Section 4.8) and folder-level style rules (Section 4.9) that govern agent behavior. 
+
+- **MCP is where agents act.** An agent working in Claude Code, Cursor, or a customer’s own MCP client calls the platform’s MCP tools to find relevant nodes, pull bounded context, read the Agent/Skill MD for any node it intends to touch, resolve effective style rules, and identify covering tests — bound by the same RBAC and tenant isolation a human session is bound by. 
+
+The MVP MCP surface is **read-only** . Write-path tools (agents proposing changes back through the platform) are post-MVP and trigger-gated (Section 7). 
+
+## **2. Functional Requirements — with Required Tooling** 
+
+### **2.1 Unified Graph-Based Repository Parsing** 
+
+- **Multi-Language AST Parsing** — Map explicit structural relationships (function calls, class inheritance, module imports) via incremental syntax tree analysis. _Tooling: Tree-sitter, Python, language grammars (JS/TS/Py/Go to start)._ 
+
+- **Semantic Relationship Extraction** — Analyze code semantics, config files, and inline documentation via LLMs to extract high-level functional groupings. Sayre's `GraphifyAdapter` wraps Graphify to constrain semantic output into graph primitives (nodes, edges, properties), while the `ModelProvider` boundary supplies the configured model. Graphify never replaces or changes W1-01's structural Tree-sitter parser. This makes the graph traversable by Retrieval and MCP regardless of which hosted or self-hosted model sits behind the call (Section 2.7). _Tooling: base Graphify, LangChain/LangGraph orchestration, Sayre adapters, Python/FastAPI._
+
+- **Delta Processing** — Process code deltas incrementally on every push rather than rebuilding the entire codebase graph from scratch. _Tooling: GitHub Webhooks, Python, SQS._ 
+
+### **2.2 Multi-View Interactive Tree Canvas** 
+
+**Canvas Node Model** — Regardless of which view is active, the rendered canvas is built from exactly two node types: Folder (“F”) and File (including API endpoint files). Functions and classes are parsed and stored as graph data but never surfaced as their own canvas nodes. 
+
+|**View**|**Target Users**|**Scope**|**Tooling**|
 |---|---|---|---|
-| Technical Tree | Architects, Core Devs | Syntax hierarchies, data models, infra nodes, imports, API routing paths. | Sigma.js (WebGL) + graphology, TypeScript |
-| Product Tree | PMs, UX | High-level feature groupings mapping files to user-facing capabilities. | Sigma.js, Next.js, Tailwind CSS |
-| Onboarding Tree | New Hires, DevOps | Sequenced setup workflows, dependencies, required dev environments per service/branch. | Sigma.js, Next.js API routes, shell script execution sandbox |
+|Technical Tree|Architects, Core Devs|Syntax hierarchies, data<br>models, infra nodes, imports,<br>API routing paths|React Flow, Sigma.js (WebGL)<br>+ graphology, TypeScript|
+|Product Tree|PMs, UX|High-level feature groupings<br>mapping files to user-facing<br>capabilities|React Flow, Next.js, Tailwind<br>CSS|
+|Onboarding Tree|New Hires, DevOps|Sequenced setup workflows,<br>dependencies, required dev<br>environments per<br>service/branch|React Flow, Next.js API<br>routes, sandboxed shell<br>execution|
 
-### 2.3 Context & Metadata Labeling Engine
 
-- **Ownership & Git History** — Automatically map previous contributors, recent editors, and primary code owners to specific nodes based on Git history. *Tooling: GitHub REST API, git log parsing, Node.js/TypeScript.*
-- **Coding Style & Guidelines** — Tag branches and folders with localized architectural expectations, styling rules, and design patterns. *Tooling: LLM classification (Claude API), PostgreSQL metadata store.*
-- **Onboarding Automation** — Embed branch-specific onboarding tasks, pre-requisite reading, and executable local environment terminal setup commands inside node sidebars. *Tooling: Next.js, Node.js sandboxed exec (or containerized runner), PostgreSQL.*
 
-### 2.4 Asynchronous Tooling Integrations
+**Renderer decision:** React Flow renders small/medium graphs (under ~500 visible nodes); Sigma.js (WebGL) takes over above that threshold, chosen automatically based on a node-count signal from the backend. graphology handles clientside algorithm gaps behind a documented allowlist; RBAC filtering and deep traversal always remain server-side. 
 
-- **GitHub Integration** — Native GitHub App authorization capturing live commits, pull requests, and branch creations via webhooks to keep tree structures continually synchronized. *Tooling: GitHub Apps/OAuth, Webhooks, Node.js/TypeScript.*
-- **Task Management Integration** — Bidirectional syncing via Jira REST API and Linear API to dynamically map open issue tickets, bug tracking, and user stories onto relevant feature trees or file nodes. *Tooling: Jira REST API, Linear API (GraphQL), Node.js/TypeScript, Queue worker (BullMQ).*
-- **Cursor Origin Compatibility (NEW, forward-looking)** — Provider-agnostic git integration layer designed to accept Cursor Origin as an additional git-hosting source once its API/webhook surface is public. See Section 6.
+### **2.3 Context & Metadata Labeling Engine** 
 
-### 2.5 Persistent Memory & Token-Optimized RAG Architecture
+- **Ownership & Git History** — Automatically map previous contributors, recent editors, and primary code owners to specific nodes based on Git history. _Tooling: GitHub REST API, git log parsing, Node.js/TypeScript._ 
 
-- **Graph-Guided Retrieval** — Use the repository graph to pinpoint localized dependencies; the AI only retrieves code from nodes adjacent to the active file/branch, avoiding whole-repo dumps. *Tooling: LangGraph, Neo4j/Amazon Neptune Cypher queries, Python/FastAPI.*
-- **Hybrid Storage Engine** — Split long-term memory across a transactional DB (users/permissions), a graph DB (codebase topology), and a vector store (chunked semantic lookups). *Tooling: Amazon RDS (PostgreSQL), Neo4j/Amazon Neptune, pgvector/Amazon OpenSearch.*
+- **Coding Style & Guidelines** — Tag branches and folders with localized architectural expectations, styling rules, and design patterns. _Tooling: LLM classification via the pluggable model backend (Section 2.7), PostgreSQL metadata store._ 
 
----
+- **Onboarding Automation** — Embed branch-specific onboarding tasks, pre-requisite reading, and executable local environment terminal setup commands inside node sidebars. _Tooling: Next.js, containerized/sandboxed runner, PostgreSQL._ 
 
-## 3. Technical Stack & Infrastructure Architecture — Summary
+### **2.4 Asynchronous Tooling Integrations** 
 
-| Layer | Choice | Purpose |
-|---|---|---|
-| Frontend Framework | Next.js (React) + TypeScript | Visualization web app shell |
-| Graph Rendering | Sigma.js (WebGL) + graphology | One renderer at every scale (1000s of nodes); graphology covers client-side algorithm gaps only — heavy graph computation stays server-side (§4.10) |
-| Styling | Tailwind CSS | Dashboard layouts, context inspectors |
-| Core API | Node.js/TypeScript (Express service layer; REST facade now → GraphQL later, §4.10) | Auth, permissions, webhooks |
-| AI / Knowledge Graph Engine | Python FastAPI + Graphify + Tree-sitter + LangChain/LangGraph | Async repo parsing & semantic extraction |
-| Relational DB | Amazon RDS (PostgreSQL) | Orgs, users, permissions, billing, logs |
-| Graph DB | Neo4j (launch) → Amazon Neptune (trigger-gated, §4.10) | Repository ontology (files, authors, tasks, commits, tests) |
-| Vector DB | pgvector (launch) → Amazon OpenSearch (trigger-gated, §4.10) | Semantic code/doc chunk retrieval |
+- **GitHub Integration** — Native GitHub App authorization capturing live commits, pull requests, and branch creations via webhooks. The GitHub App registration manifest, install/OAuth callback flow, installation-credential storage, and the trigger that kicks off the initial full-parse job are a first-class deliverable (Section 4.4’s cold-start flow has no entry point without it). _Tooling: GitHub Apps/OAuth, Webhooks, Node.js/TypeScript._ 
 
----
+- **Task Management Integration** — Bidirectional syncing via Jira REST API and Linear API. _Tooling: Jira REST API, Linear API (GraphQL), Node.js/TypeScript, BullMQ._ 
 
-## 4. System Design Architecture
+- **Provider-Generic Git Integration (hard requirement)** — The git Integration Worker carries a provider field, a normalized event schema, and pluggable auth from its first version, so a second git-hosting provider (Cursor Origin, Section 6) is a plug-in rather than a pipeline rewrite. 
 
-This section defines how the platform is actually built: the services, data stores, and flows that implement the functional requirements above. Three principles drive every decision here:
+### **2.5 Persistent Memory & Token-Optimized RAG Architecture** 
 
-- The graph is the source of truth, not the repo. Once ingested, all reads (canvas rendering, AI retrieval, integrations) hit the graph/vector/relational stores — never the raw git checkout.
-- The write path and read path are fully decoupled. Webhooks, parsing, and LLM enrichment happen asynchronously in workers; the frontend never blocks on parsing.
-- Every persona view (Technical / Product / Onboarding Tree) is a projection, not a separate dataset. One graph schema; three query/filter/layout strategies over the same nodes and edges.
+- **Graph-Guided Retrieval** — Use the repository graph to pinpoint localized dependencies; the AI only retrieves code from nodes adjacent to the active file/branch, avoiding whole-repo dumps. This is the mechanism behind the 70x token-reduction KPI. _Tooling: LangGraph, Neo4j Cypher (openCypher-only, Neptune-compatible), a pluggable model backend (Section 2.7), Python/FastAPI._ 
 
-### 4.1 Logical Architecture
+- **Hybrid Storage Engine** — Split long-term memory across a transactional DB, a graph DB, and a vector store. _Tooling: Amazon RDS (PostgreSQL), Neo4j (Neptune later, Section 4.10), pgvector (OpenSearch later, Section 4.10)._ 
 
-At a high level: the browser client (Next.js + Sigma.js/graphology) talks to an API Gateway that enforces auth and RBAC, which routes to a Core App Service (Node.js) for fast synchronous reads/writes, and to a Realtime Service (WebSocket + Redis pub/sub) for live graph updates. Heavy work — parsing, semantic enrichment, AI retrieval — runs asynchronously in a Python/FastAPI worker fleet, coordinated through a message bus (SQS/Redis Streams/BullMQ). Three data stores back everything: PostgreSQL (orgs, users, permissions, tickets), a Graph DB — Neo4j or Neptune — (the codebase ontology), and a Vector Store — pgvector or OpenSearch — (semantic code/doc chunks).
+### **2.6 Agent Context Provision over MCP** 
 
-### 4.2 Component Breakdown
+The platform runs an MCP server exposing the graph to external, MCP-compatible agents. The v1 tool surface is readonly: 
 
-**Client — Next.js Visualization Shell**
-- Sigma.js (WebGL) is the single canvas renderer at every scale — no dual-renderer switch, no node-count cutover. graphology sits alongside it strictly for client-side algorithm gaps (local filtering, subgraph extraction, layout pre-processing); anything heavier — deep traversal, RBAC filtering, cross-repo computation — runs server-side in the Graph Query Service (§4.10).
-- The Technical/Product/Onboarding tabs re-issue a graph query with a different view parameter rather than maintaining three separate in-memory graphs.
-- Viewport-scoped querying: the client requests only nodes in the current viewport plus a one-hop buffer, not the whole graph.
-- Live updates arrive over a WebSocket subscription per open project, patching the canvas in place instead of triggering a refetch.
-
-**API Gateway / Edge Layer (Node.js)**
-- AuthN via JWT/session validation; AuthZ middleware filters every request through RBAC before it reaches any data service.
-- Exposed as a GraphQL or REST facade, since client data needs vary significantly by view.
-
-**Core App Service (Node.js/TypeScript)**
-- Handles org/user/permission management, node sidebar metadata assembly, and the Graph Query Service that translates viewport/view-filter requests into Cypher/Gremlin queries with RBAC-based node stripping.
-- Kicks off async jobs onto the message bus rather than doing heavy work inline.
-
-**Service-Layer Convention (Route → Service → Graph Query Service → Neo4j/Neptune)**
-
-Business logic is never written inside REST route handlers (or, later, GraphQL resolvers). It lives in plain functions/services; REST endpoints and future GraphQL resolvers are thin wrappers that both call those same functions. This is what makes the REST → GraphQL migration (§4.10) a routing-layer change rather than a rewrite.
-
-Service layer (the reusable core):
-
-```typescript
-// services/technicalTreeService.ts
-async function getTechnicalTree(repoId: string, viewport: Viewport) {
-  const nodes = await graphQueryService.getNodesInViewport(repoId, viewport);
-  const edges = await graphQueryService.getStructuralEdges(nodes);
-  return { nodes, edges };
-}
-```
-
-REST endpoint (thin wrapper):
-
-```typescript
-app.get('/repos/:id/technical-tree', async (req, res) => {
-  const result = await getTechnicalTree(req.params.id, req.query.viewport);
-  res.json(result);
-});
-```
-
-GraphQL resolver later (same wrapper, different shape):
-
-```typescript
-const resolvers = {
-  Query: {
-    technicalTree: async (_, { repoId, viewport }) => {
-      return getTechnicalTree(repoId, viewport);
-    }
-  }
-};
-```
-
-Caveat carried forward: when GraphQL resolvers do land on this service layer, DataLoader-style batching must be added at that point — GraphQL's resolver-per-field execution model can call the service layer redundantly when a query requests nested data across many nodes. The abstraction saves the rewrite; it does not remove the need to think about batching when GraphQL enters the picture.
-
-**Realtime Service**
-- A WebSocket gateway backed by Redis pub/sub for fan-out across multiple gateway instances; every push is re-filtered through the receiving client's RBAC scope before delivery.
-
-**Async Worker Fleet (Python + FastAPI)**
-- *Ingestion/Delta Worker* — clones or diffs the repo, runs Tree-sitter (incremental on delta pushes, full parse only on initial onboarding), writes node/edge upserts to the Graph DB, updates embeddings in the Vector Store, publishes a `graph.updated` event.
-- *Semantic Enrichment Worker* — consumes newly parsed nodes on a separate queue so LLM latency never blocks structural sync; calls Graphify + LangChain/LangGraph + the Claude API to build feature clusters (Product Tree), style tags, and onboarding step summaries.
-- *Retrieval Service (Graph-Guided RAG)* — resolves an anchor node, traverses a bounded number of hops across structural edges, pulls only the Vector Store chunks for that subgraph, and calls the Claude API with a bounded context window — the mechanism behind the 70x token-reduction target.
-
-**Integration Workers (Node.js)**
-- GitHub sync: webhook receiver validates signatures, normalizes events onto the message bus, and updates ownership/PR/commit metadata directly on Graph DB node properties.
-- Jira/Linear sync: scheduled + webhook-driven bidirectional sync via a BullMQ-backed worker, mapping ticket IDs to file/feature nodes.
-
-### 4.3 Data Model
-
-**Relational Store (PostgreSQL) — who, permissions, config**
-
-Owns organizations, users, repositories, permissions (scoped by org/repo/branch/path), a ticket cache linking to graph node references, style rules, and onboarding steps. Postgres is the system of record for permissions specifically, so RBAC decisions are always computed against one auditable source.
-
-**Graph Store (Neo4j / Amazon Neptune) — the ontology**
-
-Node labels: Project, Repo, Folder, File (including API endpoint files), Function, Class, Module, Person, Commit, Feature (LLM-derived), Ticket (mirror pointer), EnvStep (onboarding), and Test (new — see Section 5). Only Folder and File nodes are ever rendered on the canvas, in any of the three tree views; Function and Class remain graph-internal, used to derive structural edges and node metadata rather than to draw their own boxes (Section 2.2).
-
-Edge types: CONTAINS (Project→Repo, Folder→Folder/File), CONNECTS_TO (cross-repo, Macro View — Section 1.2), IMPORTS, CALLS, INHERITS, OWNS, AUTHORED, MODIFIED, REFERENCES, PART_OF, REQUIRES, DEPENDS_ON, and COVERS (new — links Test nodes to the Function/File nodes they exercise).
-
-The three tree views are query shapes over this one schema:
-- **Technical Tree** = Folder/File nodes plus their structural edges (IMPORTS/CALLS/INHERITS, computed from the underlying Function/Class data)
-- **Product Tree** = Feature nodes plus PART_OF/REFERENCES edges, with dashed-boundary grouping over the same Folder/File nodes (Section 4.7)
-- **Onboarding Tree** = EnvStep nodes ordered by sequence
-
-The Macro View (Section 1.2) sits above all three as a Project/Repo-level projection of the same graph.
-
-**Vector Store (pgvector / OpenSearch) — semantic chunks**
-
-Code and doc chunks are embedded and keyed back to their originating graph node ID, namespaced per organization, so Graph-Guided Retrieval can fetch only the chunks belonging to a graph-bounded candidate set rather than running a similarity search over the whole corpus.
-
-### 4.4 Key Flow Walkthroughs
-
-**Initial Repository Onboarding (cold start)**
-
-User authorizes the GitHub App, a full-parse job runs once across the whole repo (Tree-sitter parse, bulk graph write, full embedding pass), then Semantic Enrichment runs feature clustering, style tagging, and onboarding-step generation across the repo. The Technical Tree becomes available first; Product/Onboarding trees may briefly show a "generating" state.
-
-**Steady-State Push Event (the 15-second sync target)**
-
-A push triggers a webhook, the Ingestion Worker parses only the changed files, diffs the AST against the existing graph, writes upserts/deletes in one transaction, and publishes a `graph.updated` event that the Realtime Service fans out over WebSocket — the canvas patches only the affected nodes. Semantic re-enrichment for the changed nodes happens in parallel, slightly after, and is explicitly out-of-band from the 15-second budget.
-
-**AI Query (Graph-Guided RAG)**
-
-A user question against a node routes to the Retrieval Service, which resolves the anchor node, traverses a bounded number of hops, fetches only the in-scope Vector Store chunks, assembles a bounded prompt, and calls the Claude API — logging context tokens used versus a hypothetical full-repo token count to make the 70x reduction KPI measurable rather than aspirational.
-
-### 4.5 Security & Multi-Tenancy
-
-- Tenant isolation is structural, not just a WHERE clause: `org_id` is stamped on every graph write and injected server-side on every query; the vector store uses per-tenant namespaces/indices; Postgres uses row-level security as defense-in-depth.
-- Granular (node-level) access control is enforced centrally in the Graph Query Service — unauthorized nodes are filtered server-side before leaving the server, and the same filter applies to WebSocket fan-out.
-- Data ephemerality: the Ingestion Worker operates against a scratch clone destroyed after parsing; only structural metadata and embeddings persist, never raw source trees.
-- Secrets (GitHub App keys, Jira/Linear OAuth tokens) — phased posture (v3): during MVP development, secrets live in local `.env` files that are gitignored, seeded from committed placeholder-only `*.env.example` templates; real values never enter git, log lines, or the graph. Once the product is being pitched to or used by external customers, secrets move to a KMS-backed secrets manager, which then becomes the only allowed store. In both phases, webhook payloads are signature-validated before being trusted onto the message bus.
-
-### 4.6 Success Metrics Mapped to Architecture
-
-| Metric | Target | Architectural Lever |
-|---|---|---|
-| Token Optimization Rate | ≥ 70x reduction vs. full-repo context | Graph-Guided Retrieval structurally bounds context to a traversal-derived candidate set. |
-| Time-to-First-Commit (TTFC) | Reduce by 40%+ | Onboarding Tree generation prioritized on initial ingestion via its own priority queue. |
-| Sync Latency | Canvas updates within 15s of webhook | Delta-only parsing, decoupled LLM enrichment, WebSocket push instead of polling. |
-
-### 4.7 Feature Cluster Visualization & Metadata Panel
-
-Feature Clusters render as dashed boundary lines drawn around the set of Folder/File nodes the Semantic Enrichment Worker groups into a given Feature node, independent of folder structure — a single feature routinely spans files in unrelated directories (e.g., an API route file, a shared util, and a frontend component). Clicking a boundary opens a metadata panel with four fields:
-
-- **Description** — an AI-generated summary of the feature's user-facing capability, produced by the Semantic Enrichment Worker (Section 4.2) and cached alongside the Feature node.
-- **Team** — the owning pod/group, resolved from a CODEOWNERS-style mapping or a manually assigned override.
-- **Files Included** — the live list of File/Folder nodes currently inside the dashed boundary, kept in sync via the PART_OF edge whenever the Ingestion Worker's delta pass adds or removes files from the feature.
-- **Recent Edits** — Git history and recent pull requests scoped to just the files inside the boundary, pulled from the same GitHub sync pipeline described in Sections 2.4 and 4.2, rather than a repo-wide commit feed.
-
-### 4.8 Interactive Node Overlay Panel (Node-Level Toggles)
-
-Each Folder and File node exposes a set of independently toggleable overlay layers in its sidebar/tooltip, so a viewer sees only the data relevant to their current question rather than every property at once. Toggling a layer re-renders just that panel section; it does not re-query the graph.
-
-- **Dependencies** — auto-extracted tool requirements (e.g., `package.json`/`requirements.txt`/`go.mod` data) merged with manually added tech-lead prerequisites, each rendered as an actionable download link or copyable setup command.
-- **Recent Changes** — Git metadata — recent editors, commit messages, linked PRs — scoped to that specific node, sourced from the ownership pipeline in Sections 2.3/4.2.
-- **Specific Features** — tags naming which Feature Cluster(s) (Section 4.7) this node belongs to, with a click-through back to that cluster's dashed boundary.
-- **Agent / Skill MD** — metadata describing the developer skills or AI-agent operating parameters (allowed tools, required context, guardrails) needed to safely modify this node, authored as node-scoped Markdown — analogous to a per-file AGENTS.md/SKILL.md — and surfaced to both human viewers and the platform's own Retrieval Service (Section 4.2) before it proposes a change.
-- **Description** — a natural-language summary of what the file/folder does, generated by the Semantic Enrichment Worker.
-- **Specific Tickets** — Jira/Linear tickets mapped to the node via the ticket-to-node references already in the relational store (Section 4.3), surfaced without leaving the canvas.
-- **Risk Signals (new in v3)** — the four Node Risk & Health Signals from Section 4.11 (fan-in count, test coverage, git churn/recency, ownership) rendered as compact badges, so a viewer can gauge how dangerous a node is to touch — and who to ask — before opening anything else.
-
-### 4.9 Folder-Level Topological Inheritance
-
-To avoid re-tagging every file in a domain, two rule types are attached to Folder ('F') nodes and cascade down to every nested child File by default, overridable at a deeper folder or file level:
-
-- **Coding Style** — architectural guidelines and localized syntax rules (naming conventions, preferred patterns) tagged once on a Folder node and inherited by all files beneath it, via the same LLM classification pipeline described in Section 2.3.
-- **Comment Style** — documentation and inline-comment formatting expectations (docstring format, required header blocks) inherited the same way, tracked as a rule set separate from Coding Style so the two can diverge independently — a folder can inherit strict comment requirements without inheriting a different folder's naming convention.
-
-Inheritance resolves top-down at query time in the Graph Query Service (Section 4.2): a file's effective style is its nearest ancestor Folder's rule unless the file itself carries an override, so style data is stored once per Folder rather than duplicated onto every File node.
-
-### 4.10 Chosen Tools, Scaling Posture & Migration Triggers (new in v3)
-
-Every tool below is a locked launch choice paired with a trigger-gated migration path. Migrations fire on instrumented, numeric triggers — never a calendar date or a customer count. `docs/migration-triggers.md` mirrors this section for quick reference; keep the two in sync.
-
-**Graph DB — Neo4j at launch → Amazon Neptune as usage grows.** Neptune is built by AWS to absorb variable, high-concurrency, multi-tenant load without a single fixed instance being the ceiling. All Cypher is written against openCypher syntax from Sprint 0, so the cutover is a data-store swap behind the Graph Query Service, not an application rewrite. Trigger: sustained concurrent multi-tenant query load (initial threshold below) — not raw data size.
-
-**Vector store — pgvector at launch → Amazon OpenSearch as usage grows.** Concurrent query load (not candidate-set size, corpus size, or customer count) is instrumented from day one: every pgvector call emits `vector_query_duration_ms` (histogram) and `vector_query_concurrent_count`, tagged by `org_id`, via OpenTelemetry exported to Prometheus (swappable exporter; call sites never change). The migration trigger is a real measured threshold — "we signed our 200th customer" is explicitly not a trigger.
-
-**Canvas rendering — Sigma.js (WebGL) at every scale, paired with graphology.** graphology covers the client-side algorithm gaps only (local filtering, subgraph extraction, layout pre-processing); the Graph Query Service does the heavier graph computation server-side wherever possible. This is a permanent boundary, not a migration path — and RBAC/traversal never moves client-side (§4.5).
-
-**API — REST facade now → GraphQL when the data shapes demand it.** Trigger: view-specific data-shape divergence across the Technical/Product/Onboarding views reaching the point where REST forces overfetching or bespoke-endpoint proliferation. Because business logic lives in the service layer (§4.2), the migration only touches the routing layer; DataLoader-style batching is added at that point.
-
-**Async messaging — SQS (Python worker fleet) + BullMQ (Node integration workers).** A permanent split, not a migration path. A new integration is a new job type on the fleet that owns it, never a new queue technology.
-
-**Secrets — `.env` files for MVP → KMS-backed secrets manager once pitching/customers arrive.** Detail in §4.5.
-
-**Initial numeric thresholds** *(working values set 2026-07, ahead of real load; the first 30 days of baseline data from the vector-store instrumentation (W0-06) and the migration-trigger dashboard (PM-02) recalibrate them. The principle is fixed even while the numbers are provisional: the trigger is a measured number, not a guess.)*
-
-| Migration | Initial trigger (either condition) |
+|**MCP Tool**|**What it returns**|
 |---|---|
-| pgvector → OpenSearch | Sustained ≥ 30 concurrent tenant queries/sec against the vector store for ≥ 10 consecutive minutes; **or** p95 `vector_query_duration_ms` > 250 ms sustained over a 1-hour window at ≥ 10 concurrent queries |
-| Neo4j → Neptune | Sustained ≥ 50 concurrent multi-tenant graph queries/sec for ≥ 10 consecutive minutes; **or** p95 graph-query latency > 300 ms under concurrent load sustained over a 1-hour window |
-| REST → GraphQL | Qualitative gate: a third bespoke per-view endpoint variant for the same underlying data, or sustained overfetch ratio (payload delivered vs. rendered) > 3× on canvas queries |
+|find_relevant_nodes(query)|Graph nodes most relevant to a natural-language task<br>description|
+|get_node_context(node_id)|Bounded context for a node: description, structural neighbors,<br>key metadata|
+|traverse_from(node_id, intent)|The bounded-hop neighborhood relevant to a stated intent|
+|get_agent_skill_md(node_id)|The node-scoped Agent/Skill MD (Section 4.8): allowed tools,<br>required context, guardrails|
+|get_style_rules(node_id)|The node’s effective Coding Style and Comment Style,<br>resolved through folder inheritance (Section 4.9)|
+|get_covering_tests(node_id)|Test nodes linked via COVERS edges, with freshness/status<br>(Section 5)|
+|get_feature_cluster(node_id)|The Feature cluster(s) the node belongs to, with member lists|
+|get_recent_changes(node_id)|Recent editors, commits, and linked PRs scoped to the node|
 
-### 4.11 Node Risk & Health Signals (new in v3)
 
-Every canvas-rendered Folder/File node carries four computed signals. They surface in the §4.8 overlay panel as the Risk Signals layer, and the Retrieval Service (§4.2) reads the same values to prioritize context before proposing any change. Signals are stored as node properties in the graph — not a separate store — so all three tree views and the RAG pipeline see identical values.
 
-- **Fan-in count** — how many things call or import this node: inbound CALLS/IMPORTS edges, computed from the graph-internal Function/Class data, aggregated to File level and rolled up to Folders. High fan-in = risky to change carelessly; it is the blast radius a viewer sees before touching anything. Computed at ingestion, refreshed on every delta pass.
-- **Test coverage** — is this code covered by tests, so a change is at least checkable? Derived from COVERS edges (§5): covered / uncovered / stale (dynamic coverage data older than the §5.3 freshness window).
-- **Git churn / recency** — commit frequency over a rolling 90-day window plus last-touched timestamp, from the Commit/MODIFIED data the GitHub sync pipeline already maintains. Frequently-changed = actively evolving, context needed before editing; untouched-for-years = maybe fragile, maybe stable — worth flagging either way rather than hiding.
-- **Ownership** — primary code owner and most recent editors (OWNS/AUTHORED/MODIFIED, §2.3): who last touched this, and who to ask before changing it.
+Every MCP tool is a thin wrapper over the same service layer the REST endpoints call — no business logic lives in the MCP handler itself. Every call is authenticated (per-org scoped keys), RBAC-filtered, and tenant-isolated identically to a human canvas session. This holds regardless of what model or client software is on the agent side of the connection (Section 4.11). _Tooling: MCP over streamable HTTP, Node.js/TypeScript, existing Graph Query Service._ 
 
----
+### **2.7 Pluggable Model Provider Layer (new in v5)** 
 
-## 5. CI/CD Test Impact Analysis Addendum (restored in v3)
+Every point in the platform that calls an LLM — the Semantic Enrichment Worker (feature clustering, style tagging, onboarding summaries) and the Graph-Guided RAG chatbot — sits behind a **Model Provider abstraction** rather than a hardcoded Anthropic call. An organization chooses its provider per-org, with three supported shapes: 
 
-*Referenced by §4.3's Test node and COVERS edge; previously promised by the v2 header but absent from the document.*
+##### **Anthropic (Claude)** — the default. 
 
-### 5.1 Graph model
+- **OpenAI (GPT)** — a second hosted option. 
 
-Test files are parsed as **Test** nodes during Tree-sitter ingestion, recognized per-language by convention (`*.test.*`, `*_test.*`, `test_*.py`, `__tests__/`, etc.). **COVERS** edges link a Test node to the File (and graph-internal Function) nodes it exercises, built in two passes:
+- **Self-hosted / local** — a customer-supplied, OpenAI-compatible chat-completion endpoint (Ollama, vLLM, Text Generation Inference, or an equivalent serving layer), running on the customer’s own infrastructure or VPC. Because most local-model servers already expose an OpenAI-compatible API, one adapter — “OpenAI-compatible endpoint” — covers OpenAI itself and the large majority of self-hosted setups. This includes both a stock open-weight model (Llama, Mistral, Gemma 4, GLM-5.1, DeepSeek V4, or any future open-weight entrant) and a customer’s own finetune of one, run entirely on infrastructure the platform never touches. 
 
-- **Static inference (Sprint 1)** — a test file that imports module X gets a COVERS edge to X. Cheap, available immediately after ingestion, deliberately over-approximate.
-- **Dynamic refresh (Sprint 5)** — a nightly coverage-instrumented run rewrites COVERS edges from actually-executed coverage, superseding static edges for the files it observed.
+_Tooling:_ Sayre's `ModelProvider` owns generation-model selection, endpoint policy, and SDK/client construction. LangChain/LangGraph may orchestrate above that interface but is not the provider or security boundary. This remains one enrichment pipeline, selected by purpose-keyed org configuration.
 
-### 5.2 Impact analysis
+Embedding inference uses a separate Sayre-owned `EmbeddingProvider`, never an embedding method added to generation `ModelProvider`. The first adapter lands with W1-05 and calls an OpenAI-compatible embeddings endpoint, using local-compatible `Qwen3-Embedding-0.6B` as the default. It returns exactly 1024 finite dimensions; CI uses a deterministic, network-free fake that emits stable 1024-dimensional vectors. Embeddings are asynchronous and therefore outside the structural-sync target.
 
-On every push, the changed-file set from the delta parse is reverse-traversed across COVERS edges to select the impacted test set; CI runs just that set instead of the full suite.
+#### **Structural vs. contractual data sovereignty (new in this edition)** 
 
-### 5.3 Confidence & safe fallback
+This distinction is the actual substance of the self-hosted option’s value proposition, and it is stated here as a requirement, not left as an implied side-effect: 
 
-The impacted set is **inconclusive** — and CI falls back to the full suite — when any of the following holds:
+- **Hosted providers (Claude, GPT) offer a contractual guarantee.** A request necessarily leaves the customer’s network and reaches the vendor’s infrastructure to be answered. The vendor’s standard terms govern what happens to that data once it arrives (e.g., not used to train future models by default) — but the code _did_ leave the customer’s environment, and the guarantee rests on trusting that policy. 
 
-- a changed file has no COVERS edges at all (nothing is known to exercise it);
-- dynamic coverage data for a changed file is older than **7 days** (the freshness window — also what marks coverage "stale" in §4.11);
-- the delta parse failed or was partial for the push;
-- the change touches build/CI/dependency-manifest files, whose blast radius is inherently non-local.
+- **The self-hosted / local option offers a structural guarantee.** No vendor server is ever in the request path. There is no third party to trust a policy from, because there is no third party in the loop at all. This is an architectural property, not a promise — and it holds whether the model is a stock open-weight release or a customer’s own fine-tune, since either way the request never targets an address outside the customer’s own infrastructure. 
 
-Safe fallback is a hard rule: impact analysis is an optimization, never a gate that skips tests it cannot reason about.
+- **This structural guarantee is a verified, testable property of the platform (Section 4.2), not merely an architectural implication.** When an org is configured for a self-hosted provider, the Model Provider Adapter makes zero outbound calls to any Anthropic, OpenAI, or other third-party endpoint for enrichment or chatbot traffic. This is confirmed by a network-isolated test, not assumed from the design. 
 
-### 5.4 Canvas surfacing
+##### **Known tradeoffs, stated for customers rather than glossed over:** 
 
-The Technical Tree overlays a pass/fail badge per node from the latest CI status of the tests covering it, plus a "stale coverage" badge when dynamic data is beyond the freshness window. The same data feeds the Test-coverage signal in §4.11.
+Graphify’s output-shaping depends on the underlying model reliably producing structured output. Smaller or narrowly fine-tuned self-hosted models may produce noisier feature-clustering and style-tagging results than Claude or GPT — fine-tuning on a narrow internal codebase does not automatically improve JSON-schema-following, even 
 
----
+where it improves domain understanding. 
 
-## 6. Forward-Looking Integration: Cursor Origin
+- Latency and uptime for a self-hosted endpoint are the customer’s responsibility, affecting enrichment readiness and chatbot response time. They never affect the 15-second structural-sync target, which ends after graph commit and accepted `graph.updated` publication (Section 4.6).
 
-Cursor announced Origin, an agent-native git hosting platform, on June 16, 2026, positioned as a git-compatible alternative to GitHub built around AI agents as primary users of version control rather than humans. As of this writing it remains waitlist-only, with general availability targeted for fall 2026, and no public API or webhook documentation has been released.
+- The enrichment worker and retrieval service apply a circuit-breaker/timeout pattern around self-hosted calls so a flaky customer endpoint degrades gracefully rather than blocking ingestion or the chatbot outright. 
 
-### 6.1 Why It's Relevant to This Product
+## **3. Technical Stack & Infrastructure Architecture — Summary** 
 
-- Origin is described as git-compatible and extensible via API and the Model Context Protocol (MCP), which suggests it should be integrable through the same abstraction already used for GitHub — a webhook-driven event source feeding the Ingestion Worker — rather than requiring a parallel subsystem.
-- Its MCP extensibility is notable because the platform's Semantic Enrichment and Retrieval services could potentially interact with Origin as an MCP server directly, rather than through a bespoke REST integration.
+|**Layer**|**Choice (resolved)**|**Purpose**|
+|---|---|---|
+|Frontend Framework|Next.js (React) + TypeScript|Visualization web app shell|
+|Graph Rendering|React Flow (<~500 nodes) + Sigma.js<br>WebGL + graphology (above)|Node-based canvas at scale (1000s of<br>nodes)|
+|Styling|Tailwind CSS|Dashboard layouts, context inspectors|
+|Core API|Node.js/TypeScript, REST first; GraphQL<br>later over the same service layer|Auth, permissions, webhooks|
+|Agent Surface|MCP server (streamable HTTP) over the<br>same service layer|Context provision to external agents,<br>including self-hosted-model clients|
+|AI / Knowledge Graph Engine|Python FastAPI + Graphify + Tree-sitter<br>+ LangChain/LangGraph|Async repo parsing & semantic<br>extraction|
+|Model Backend (new)|Pluggable: Anthropic, OpenAI, or self-<br>hosted OpenAI-compatible endpoint|Enrichment + chatbot model calls,<br>selected per org|
+|Embedding Backend|Separate `EmbeddingProvider`; OpenAI-<br>compatible endpoint, Qwen3-Embedding-<br>0.6B local-compatible default|1024-dimensional cosine vectors,<br>selected per org|
+|Message Bus|SQS/SNS (Python worker/event fleet) +<br>BullMQ on Redis (Node integration workers)|FIFO ingestion, fanout, priority<br>enrichment, async embedding upserts|
+|Relational DB|Amazon RDS (PostgreSQL) with RLS|Orgs, users, permissions, billing, logs|
+|Graph DB|Neo4j now; Amazon Neptune on<br>measured trigger (4.10)|Repository ontology|
+|Vector DB|pgvector now; Amazon OpenSearch on<br>measured trigger (4.10)|Semantic code/doc chunk retrieval|
+|Secrets|Env-file convention behind a single<br>loader module now; KMS-backed secrets<br>manager on customer trigger (4.10)|Credential handling|
 
-### 6.2 Recommended Approach
 
-- Design the git Integration Worker generically now — provider field, normalized event schema, pluggable auth — so a second provider can be added without refactoring the ingestion pipeline.
-- Do not build a concrete Origin integration until its API/webhook documentation is public; treat this as a placeholder integration point tracked for fall 2026, not a committed sprint item.
-- Re-evaluate once Origin ships public docs, particularly around how it exposes commit/branch events and whether its MCP surface can replace a portion of the custom webhook-handling code.
 
----
+## **4. System Design Architecture** 
 
-## 7. Development Roadmap — Updated Sprint Plan
+Three principles drive every decision: 
 
-The original six-sprint (~12 week) MVP plan is preserved; the CI/CD Test Impact feature is folded into Sprints 4-5 alongside the existing Jira/Linear and RBAC work, and Cursor Origin is tracked as a post-MVP watch item rather than a committed sprint deliverable.
+- **The graph is the source of truth, not the repo.** Once ingested, all reads — canvas rendering, AI retrieval, integrations, MCP tool calls — hit the graph/vector/relational stores, never the raw git checkout. 
 
-| Sprint | Weeks | Goal | New items added |
+- **The write path and read path are fully decoupled.** Webhooks, parsing, and LLM enrichment happen asynchronously in workers; neither the frontend nor an MCP client ever blocks on parsing. 
+
+- **Every consumer surface is a projection, not a separate dataset — and every model call is a swappable backend, not a hardcoded vendor.** The three persona views and MCP tools share one service layer. Generation, embedding, and semantic shaping use the separate Sayre-owned `ModelProvider`, `EmbeddingProvider`, and `GraphifyAdapter` interfaces.
+
+### **4.1 Logical Architecture** 
+
+The browser client (Next.js + React Flow/Sigma.js) talks to an API Gateway that enforces auth and RBAC, which routes to a Core App Service (Node.js) for fast synchronous reads/writes, and to a Realtime Service (WebSocket + Redis pub/sub) for live graph updates. An MCP Gateway sits beside the API Gateway, terminating MCP connections from external agents and routing thin tool handlers into the same Core App Service functions. Heavy work runs in a Python/FastAPI fleet: repository work arrives on an SQS FIFO ingestion queue; after an idempotent graph commit, accepted `graph.updated` events publish through SNS to independent realtime and enrichment subscriptions; only then do bounded chunks enter the physical `embedding-upserts` queue; enrichment uses separate physical onboarding-priority and default queues. Work queues have DLQs, visibility heartbeats, and durable idempotency/version checks. Node integration workers remain on BullMQ. Generation calls route through `ModelProvider`, embedding calls through the separate `EmbeddingProvider`, and semantic shaping through `GraphifyAdapter`. PostgreSQL, the Graph DB, and the Vector Store back all reads.
+
+### **4.2 Component Breakdown** 
+
+##### **Client — Next.js Visualization Shell** 
+
+- React Flow renders small/medium graphs (<~500 visible nodes); Sigma.js (WebGL) takes over above that threshold. graphology fills client-side algorithm gaps behind a documented operation allowlist; it never performs RBAC filtering or deep traversal. 
+
+The Technical/Product/Onboarding tabs re-issue a graph query with a different view parameter. 
+
+Viewport-scoped querying: the client requests only nodes in the current viewport plus a one-hop buffer. 
+
+- Live updates arrive over a WebSocket subscription per open project, patching the canvas in place. 
+
+##### **API Gateway / Edge Layer (Node.js)** 
+
+- AuthN via JWT/session validation; AuthZ middleware filters every request through RBAC before it reaches any data service. 
+
+- REST facade for MVP; GraphQL added later over the same service layer when view-specific data-shape divergence forces overfetching or endpoint proliferation. Business logic is never written in route handlers, resolvers, or MCP handlers: the pattern is Route/Resolver/MCP-tool (thin) -> Service Layer (real logic) -> Graph Query Service -> Graph DB. 
+
+##### **MCP Gateway (Node.js)** 
+
+- Terminates MCP connections (streamable HTTP) from external agents; authenticates per-org scoped API keys; attaches the same { agentKeyId, orgId, roles } context the REST middleware attaches; dispatches to the same service-layer functions. Each key presents a public identifier/prefix and a 256-bit secret returned only at issuance. Postgres stores an HMAC-SHA-256 digest using a server-held, versioned pepper plus creation, expiry, last-use, and revocation audit fields—never the raw secret. Agent-key scope reuses the existing permissions model and can never exceed the issuing administrator's recorded issuance ceiling or current effective scope.
+
+- Read-only tool surface at MVP. Every response passes through the identical server-side RBAC node-stripping applied to canvas queries. This holds identically for an Anthropic/Cursor client and for a customer’s own MCP client running a self-hosted model — no parallel authorization path exists for either (Section 4.11). Rate limiting and per-tool call metering from day one. 
+
+##### **Generation and Embedding Provider Adapters (Node.js config / Python clients) — new**
+
+- Purpose-keyed per-org `model_provider_configs` rows store provider, model, endpoint, and a pre-provisioned credential reference for generation or embedding. They never store a raw credential. Generation rows configure `ModelProvider`; embedding rows configure the separate `EmbeddingProvider`.
+
+- Sayre-owned generation `ModelProvider` and `GraphifyAdapter` interfaces are consumed from the first enrichment implementation. W3-07 supplies Anthropic-native and OpenAI-compatible generation implementations (the latter covers hosted OpenAI and local servers) plus the base-Graphify implementation. Workers never construct a hardcoded vendor SDK client outside a provider adapter.
+
+- `EmbeddingProvider` is a distinct interface with no dependency on `GraphifyAdapter`. W1-05 supplies its first OpenAI-compatible adapter, defaulting local-compatible deployments to `Qwen3-Embedding-0.6B`, and a deterministic network-free CI fake. Both must produce exactly 1024 finite values; persistence rejects any other dimension. W3-07 does not retrofit or absorb this embedding boundary.
+
+- Endpoint credentials are resolved exclusively from pre-provisioned references through the secrets loader (Section 4.5)—no new secret-handling path. W3-09 cannot accept a raw credential before PM-07.
+
+- A circuit-breaker/timeout wrapper around every self-hosted call, with a configurable fallback (retry, degrade to a visible “generating” state, or fail the specific job) chosen per org. 
+
+- **When configured for self-hosted, the adapter is verified to make zero outbound calls to any third-party model endpoint** — the mechanism behind the structural data-sovereignty guarantee in Section 2.7, confirmed by a network-isolated test rather than assumed from the adapter’s design. 
+
+##### **Core App Service (Node.js/TypeScript)** 
+
+Handles org/user/permission management, node sidebar metadata assembly, and the Graph Query Service that translates viewport/view-filter requests into Cypher queries with RBAC-based node stripping. Kicks off async jobs onto the message bus rather than doing heavy work inline. 
+
+##### **Realtime Service** 
+
+A WebSocket gateway backed by Redis pub/sub for fan-out across multiple gateway instances; every push is refiltered through the receiving client’s RBAC scope before delivery. 
+
+##### **Async Worker Fleet (Python + FastAPI)** 
+
+- **Ingestion/Delta Worker** — clones or diffs the repo, runs Tree-sitter, and applies idempotent graph upserts for the next accepted repository/ref/revision. Before a delta it verifies the accepted revision is an ancestor of the incoming revision; a force-push or other non-fast-forward divergence triggers a full rebuild of the organization/repository/ref head projection instead of a changed-file delta. After the graph transaction commits, it publishes the accepted `graph.updated` event through SNS. Bounded chunks enter `embedding-upserts` only after that event, so the Technical Tree never waits on embedding/model latency. W1-05's separate embedding consumer calls `EmbeddingProvider` and writes validated vectors. The scratch clone is destroyed after parsing.
+
+- **Semantic Enrichment Worker** — consumes accepted structural events on queues separate from ingestion; calls Sayre's `GraphifyAdapter` and configured `ModelProvider`, with optional LangChain/LangGraph orchestration above those boundaries. No provider is hardcoded, and Graphify constrains semantic output to graph primitives rather than parsing structural source.
+
+- **Onboarding Priority Lane** — separate physical onboarding-priority and default queues, with priority-only capacity plus bounded weighted polling so onboarding completes first without permanently starving default work. Instrumented via
+
+ttfc_cold_start_to_onboarding_ready_ms . 
+
+- **Retrieval Service (Graph-Guided RAG)** — resolves an anchor node, traverses a bounded number of hops, pulls only the Vector Store chunks for that subgraph, and calls the configured Model Provider Adapter with a bounded context window — the mechanism behind the 70x token-reduction target, independent of which model backend answers the call. The same anchor-resolution and bounded-traversal primitives back the MCP tools find_relevant_nodes and traverse_from . 
+
+##### **Integration Workers (Node.js)** 
+
+- **Git sync (provider-generic)** — webhook receiver validates signatures, normalizes events onto the message bus, and updates ownership/PR/commit metadata directly on Graph DB node properties. Carries a provider field, normalized event schema, and pluggable auth from v1. 
+
+- **Jira/Linear sync** — scheduled + webhook-driven bidirectional sync via a BullMQ-backed worker, mapping ticket IDs to file/feature nodes. 
+
+### **4.3 Data Model** 
+
+**Relational Store (PostgreSQL)** — organizations, users, repositories, permissions (scoped by org/repo/ref/path), ticket cache, style rules, onboarding steps, and the foundation datasets `github_app_installations`, audited org-scoped `mcp_client_keys`, purpose-keyed `model_provider_configs`, `repository_refs`, bounded tenant `code_chunks`, and `code_embeddings`. Provider rows store provider/model/endpoint and a pre-provisioned credential reference, never a raw credential. `repository_refs` records each mutable ref's accepted immutable revision and graph version. `mcp_client_keys` records a public key ID/prefix, HMAC-SHA-256 secret digest, pepper version, creator, creation/expiry, last-use, and revocation actor/timestamps; agent-key grants reuse `permissions` and enforce the issuer-scope ceiling. `code_embeddings` records tenant/repository/ref/revision/node/chunk identity, provider/model/dimension metadata, and a 1024-dimensional vector. Postgres is the auditable source for permissions and provider configuration. Every tenant table uses RLS, verified through the actual non-owner, non-superuser runtime role; service-layer authorization and RLS remain independent controls.
+
+**Graph Store (Neo4j, logically Neptune-portable)** — Project, Repo, Folder, File, Function, Class, Module, Person, Commit, Feature, Ticket, EnvStep, Test node labels; CONTAINS, CONNECTS_TO, IMPORTS, CALLS, INHERITS, OWNS, AUTHORED, MODIFIED, REFERENCES, PART_OF, REQUIRES, DEPENDS_ON, COVERS edges. Repository identity is stable, refs are mutable, and revisions are immutable; scoped entities carry server-resolved org/repository/ref/revision identity. COVERS links Test to a covered node only within the same authorized scope, with nullable `last_run` and `status` of `inferred` or `measured`; Test carries `coverage_status` of `pass`, `fail`, or `unknown`. Logical schema, data migrations, and application queries are openCypher-compatible; constraints/indexes and other physical DDL are target-specific and versioned per target.
+
+**Vector Store (pgvector, OpenSearch-ready)** — bounded tenant-scoped code/document chunks and 1024-dimensional embeddings keyed to originating graph nodes and revision identity. Similarity uses cosine distance and queries match provider/model/dimension metadata before comparison. These retrieval derivatives may persist; repository checkouts and source trees may not.
+
+### **4.4 Key Flow Walkthroughs** 
+
+**Initial Repository Onboarding (cold start)** — The user installs the GitHub App; the callback stores installation metadata and enqueues `repo.initial_parse` on the FIFO ingestion queue. Tree-sitter performs a full parse and the graph transaction commits. The accepted `graph.updated` event then fans out through SNS, making the Technical Tree available. Only afterward are bounded chunks dispatched on `embedding-upserts` and semantic work dispatched asynchronously; the physical priority lane schedules onboarding ahead of general enrichment. The embedding consumer uses the separate `EmbeddingProvider` and writes 1024-dimensional cosine vectors.
+
+**Steady-State Push Event (the 15-second structural target)** — A validated push enters FIFO order for its organization/repository/ref. If the accepted revision is an ancestor of the incoming revision, the worker parses changed files and applies idempotent upserts/deletes. A force-push or other non-fast-forward divergence instead triggers a full rebuild of that organization/repository/ref head projection, removing structural state from the abandoned head. The worker commits and publishes `graph.updated` through SNS to independent realtime and enrichment subscriptions. `embedding-upserts` and LLM work start afterward and are outside the structural target.
+
+**AI Query (Graph-Guided RAG)** — A user question against a node routes to the Retrieval Service, which resolves the anchor node, traverses a bounded number of hops, fetches only in-scope Vector Store chunks, assembles a bounded prompt, and calls the configured Model Provider Adapter — logging context tokens used versus a hypothetical full-repo count. 
+
+**Agent Context Query over MCP** — A developer working in Claude Code, Cursor, or their own MCP client asks their agent to modify part of the codebase. The agent calls find_relevant_nodes , then per node calls get_agent_skill_md , get_style_rules , and get_covering_tests before proposing any change. Every tool call is logged with the org, the agent key, the node scope, and the tokens of context served — identically whether the agent runs on Claude, GPT, or a selfhosted model (Section 4.11). 
+
+### **4.5 Security & Multi-Tenancy** 
+
+- **Tenant isolation is structural, not just a WHERE clause:** org_id is stamped on every graph write and injected server-side on every query; the vector store uses per-tenant namespaces/indices; Postgres uses row-level security as defense-in-depth. 
+
+- **Granular (node-level) access control** is enforced centrally in the Graph Query Service — unauthorized nodes are filtered server-side before leaving the server. The same filter applies to WebSocket fan-out and every MCP tool response. 
+
+- **MCP credential posture:** agent access uses per-org scoped API keys created and revocable by org admins. Issuance produces a public key ID/prefix plus a 256-bit random secret returned once; Postgres stores only its pepper-versioned HMAC-SHA-256 digest and expiry/last-use/revocation audit data. Agent-key grants reuse the existing permissions model. Creation rejects scope broader than the issuer, and effective access remains the intersection of key permissions, its recorded issuance ceiling, and the issuer's current effective scope. All MCP traffic is metered per public key ID.
+
+- **Model Provider credential posture (new):** through W3-09, provider configuration selects a pre-provisioned credential reference resolved exclusively by the secrets loader. Raw credentials are not accepted or stored. PM-07 supplies the later KMS-backed write/issuance/rotation phase. Switching provider remains an audited configuration change, not a deploy.
+
+- **Data ephemerality:** the Ingestion Worker destroys its scratch clone after parsing. Structural metadata, bounded tenant-scoped code/document chunks, and embeddings may persist for retrieval; a checkout, source tree, or derivative that reconstructs one may not.
+
+- **Secrets (staged posture):** MVP uses environment files behind a single loader module in each language. On the trigger defined in Section 4.10, the loader backend is swapped to a KMS-backed secrets manager and every previously issued secret is rotated. 
+
+### **4.6 Success Metrics Mapped to Architecture** 
+
+|**Metric**|**Target**|**Architectural Lever**|
+|---|---|---|
+|Token Optimization Rate|>= 70x reduction vs. full-repo context|Graph-Guided Retrieval structurally<br>bounds context to a traversal-derived<br>candidate set|
+|Time-to-First-Commit (TTFC)|Reduce by 40%+|Onboarding Priority Lane on initial<br>ingestion, instrumented via<br>ttfc_cold_start_to_onboarding_ready_ms|
+|Sync Latency|Canvas updates within 15s of webhook|Delta-only parsing, decoupled LLM<br>enrichment, WebSocket push|
+|Agent Context Adoption|MCP tool calls per active org per week|MCP Gateway metering per key/tool|
+|Agent Context Efficiency|Tokens of context served per agent<br>task, trending down|Per-call context-token logging on the MCP<br>Gateway|
+|Provider Portability (new)|Feature-clustering and chatbot quality<br>remain within an acceptable band<br>across at least one hosted and one self-<br>hosted provider on a fixture repo|Model Provider Adapter tested against<br>Claude, GPT, and one open-weight self-<br>hosted reference model per release|
+|Local-Client MCP Parity (new)|Zero behavioral divergence between an<br>Anthropic/Cursor MCP client and a<br>verified third-party local-model client<br>against the same tool calls|MCP interoperability test suite, run against<br>the published tool contract|
+|Structural Data-Sovereignty Verification<br>(new)|Zero outbound calls to any third-party<br>model endpoint when an org is<br>configured for self-hosted|Network-isolated test of the Model<br>Provider Adapter’s self-hosted path|
+
+
+
+### **4.7 Feature Cluster Visualization & Metadata Panel** 
+
+Feature Clusters render as dashed boundary lines drawn around the set of Folder/File nodes the Semantic Enrichment Worker groups into a given Feature node. Clicking a boundary opens a metadata panel with four fields: Description, Team, Files Included, Recent Edits. Feature membership is also served to agents via the get_feature_cluster MCP tool. 
+
+### **4.8 Interactive Node Overlay Panel (Node-Level Toggles)** 
+
+Six independently toggleable layers per Folder/File node: Dependencies, Recent Changes, Specific Features, Agent/Skill MD, Description, Specific Tickets. **Agent/Skill MD is a dual-surface contract:** the canvas is its authoring surface (RBAC-gated, versioned, attributed); its two runtime consumers are the platform’s own Retrieval Service and external agents via the get_agent_skill_md MCP tool — identically whether that external agent runs on a hosted or self-hosted model. 
+
+### **4.9 Folder-Level Topological Inheritance** 
+
+Coding Style and Comment Style are tagged once on a Folder node, tracked as separate properties, and inherited by nested files unless overridden. Inheritance resolves top-down at query time in the Graph Query Service; the get_style_rules MCP tool returns the same resolved answer the canvas displays. 
+
+### **4.10 Scaling & Migration Triggers** 
+
+Every deferred migration is gated by a measured trigger, never a calendar date or customer count. 
+
+|**Migration**|**Trigger**|**Measurement source**|
+|---|---|---|
+|Neo4j -> Amazon Neptune|Sustained multi-tenant concurrent load<br>against Neo4j crossing a defined<br>threshold|Graph-DB query instrumentation|
+|pgvector -> Amazon OpenSearch|Sustained concurrent tenant queries/sec<br>(or p95 latency) crossing a defined<br>threshold|Vector-store instrumentation|
+|REST -> GraphQL (+ DataLoader)|View-specific data-shape divergence<br>forcing overfetching or endpoint<br>proliferation|Endpoint/overfetch audit|
+|Env-file secrets -> KMS-backed manager|First external customer or first<br>production pitch, whichever comes first|Business event|
+|MCP read-only -> write/propose tools|Sustained MCP adoption baseline plus<br>explicit customer demand plus a defined<br>reliability bar|MCP Gateway metering|
+|Customer-selectable provider, including<br>self-hosted (new)|Design-time boundary: `ModelProvider` and<br>`GraphifyAdapter` exist from first enrichment;<br>W3-07 supplies concrete implementations.<br>Availability is not load-gated.|N/A — initial-release architecture|
+|Expanding supported self-hosted server<br>types beyond the OpenAI-compatible-<br>endpoint adapter (new)|Customer demand for a serving layer<br>that isn’t OpenAI-compatible|Support/sales request volume|
+
+
+
+The concrete threshold values are defined and documented as part of the migration dashboard’s acceptance criteria. 
+
+### **4.11 Local-Model Interoperability for the Agent Context Layer (new in v5)** 
+
+The MCP Gateway (Section 4.2) is, by protocol design, agnostic to what powers the client on the other end of the connection. MCP defines the contract between an agent and a context server — it says nothing about the model driving that agent. A customer running an internal agent built on a self-hosted open-weight model (Llama, Mistral, Gemma 4, GLM-5.1, DeepSeek V4, or any future entrant, stock or fine-tuned) can be an MCP client against this platform’s tool surface exactly as Claude Code or Cursor’s IDE agent are today — same per-org scoped key, same RBAC-filtered responses, same tenant isolation, same metering. 
+
+This is largely already true by construction; the requirement here is to verify and document it, not build a new authorization path: 
+
+- **Interoperability verification** — a real test connecting a non-Anthropic, non-Cursor MCP client, built against a selfhosted open-weight model, confirming all v1 read-only tools function identically regardless of client identity. **Published tool contract** — the tool schemas defined in Section 2.6 are documented clearly enough for a customer’s engineering team to build their own MCP client without platform-team assistance. 
+
+- **No change to auth, RBAC, or metering** — a locally-modeled agent authenticates with the same scoped API key as any other MCP client and receives identical RBAC-filtered, tenant-isolated results. 
+
+## **5. CI/CD Test Impact Analysis** 
+
+The graph carries first-class test topology so both humans and agents can reason about coverage: 
+
+- **Test node type** — test files are parsed as Test nodes during Tree-sitter ingestion. 
+
+- **Static COVERS inference** — COVERS edges inferred statically from imports at ingestion time. 
+
+- **Dynamic COVERS refresh** — a nightly coverage-instrumented run refreshes COVERS edges with actual execution data; each edge carries nullable `last_run` and `status` (`inferred` or `measured`).
+
+- **Pass/fail badge overlay** — the Technical Tree renders per-node coverage badges. 
+
+- **Safe fallback** — when impact analysis cannot determine the affected test set with confidence, the full suite runs. 
+
+- **Agent consumption** — the get_covering_tests MCP tool serves the same COVERS topology to external agents, hosted-model or self-hosted alike. 
+
+## **6. Forward-Looking Integration: Cursor Origin** 
+
+Cursor announced Origin, an agent-native git hosting platform, on June 16, 2026, positioned as a git-compatible alternative to GitHub built around AI agents as primary users of version control. As of this writing it remains waitlist-only, with general availability targeted for fall 2026, and no public API or webhook documentation has been released. 
+
+### **6.1 Why It’s Relevant** 
+
+With the Agent Context Layer, the strategically important relationship is: **this platform is the MCP server; Origin’s agents are clients.** An agent-native git host is, by definition, a host whose primary users need exactly the context this platform’s graph provides. Origin’s MCP extensibility means its agents should connect to this platform’s MCP surface the same way Claude Code and Cursor’s IDE agent do — and the same way a customer’s self-hosted-model agent does — with zero Origin-specific work on our side. 
+
+The ingestion-side integration (Origin as a git provider feeding the graph) remains gated on Origin publishing public API/webhook documentation, and plugs into the provider-generic Integration Worker as a new provider. 
+
+### **6.2 Recommended Approach** 
+
+Keep the git Integration Worker provider-generic — a hard acceptance criterion. Do not build a concrete Origin ingestion integration until its API/webhook documentation is public. The MCP surface requires no Origin-specific work: it is client- and model-agnostic by protocol. 
+
+## **7. Development Roadmap — Updated Plan** 
+
+The six-sprint (~12 week) MVP plan is preserved. The Agent Context Layer and the Model Provider Layer are folded into Sprints 3-5; write-path MCP tools remain post-MVP and trigger-gated. 
+
+|**Sprint**|**Weeks**|**Goal**|**Items added**|
 |---|---|---|---|
-| Sprint 0 | 1-2 | Foundations & infra skeleton | Add Test node type and COVERS edge type to the initial graph schema definition. |
-| Sprint 1 | 3-4 | Repository parsing pipeline | Parse test files as Test nodes during Tree-sitter ingestion; static COVERS edge inference from imports. |
-| Sprint 2 | 5-6 | Technical Tree Canvas (MVP UI) | No change. |
-| Sprint 3 | 7-8 | Semantic layer & Product Tree | No change. |
-| Sprint 4 | 9-10 | Integrations: GitHub, Jira, Linear | Design git Integration Worker to be provider-generic in anticipation of Cursor Origin. |
-| Sprint 5 | 11-12 | Onboarding Tree, permissions & hardening | Add dynamic COVERS edge refresh job (coverage-instrumented nightly run); pass/fail badge overlay on Technical Tree; safe-fallback-to-full-suite logic. |
+|Sprint 0|1-2|Foundations & infra skeleton|Test node + COVERS edge in<br>initial schema; secrets loader<br>convention; graph-DB and<br>vector-store concurrency<br>instrumentation; dependency<br>baseline|
+|Sprint 1|3-4|Repository parsing pipeline|Parse test files as Test nodes;<br>static COVERS inference;<br>GitHub App registration +<br>install flow|
+|Sprint 2|5-6|Technical Tree Canvas (MVP<br>UI)|Onboarding priority queue<br>lane (TTFC lever)|
+|Sprint 3|7-8|Semantic layer & Product<br>Tree|Model Provider Adapter<br>(Anthropic/OpenAI/self-<br>hosted), circuit-breaker<br>handling, provider settings UI|
+|Sprint 4|9-10|Integrations: GitHub, Jira,<br>Linear|Provider-generic git<br>Integration Worker; MCP<br>Gateway scaffold + first read-<br>only tools|
+|Sprint 5|11-12|Onboarding Tree, permissions<br>& hardening|Dynamic COVERS refresh +<br>badges; Agent/Skill MD dual-<br>surface contract; full MCP<br>read-only tool set; local-<br>model MCP interoperability<br>verification; structural data-<br>sovereignty network-isolation<br>test; hardening pass<br>extended to cover the MCP<br>and Model Provider surfaces|
 
-**Note:** the Canvas Node Model (Folder/File only — Section 2.2) and the Folder-Level Topological Inheritance rules (Section 4.9) are schema-level and belong in Sprint 0/1 alongside the initial graph schema. The Feature Cluster metadata panel (Section 4.7) lands with Product Tree in Sprint 3. The Interactive Node Overlay panel (Section 4.8) is UI-only over data that already exists by Sprint 4 (ownership, style, tickets, test coverage), so it is scoped into Sprint 4-5 alongside the other node-sidebar work. The Node Risk & Health Signals (Section 4.11) derive from that same data — fan-in at ingestion, ownership/churn from GitHub sync, coverage from the Section 5 pipeline — so signal computation and the overlay's Risk Signals layer land in Sprint 4-5 with the rest of the node-sidebar work. The Macro View (Section 1.2) requires a Project entity and cross-repo edge inference not otherwise needed for a single-repo MVP, so it is scoped as a Sprint 6+ (post-MVP) addition below rather than a committed MVP sprint deliverable.
 
-**Post-MVP (Sprint 6+):** expand language coverage (Go, Java, Rust), add more task-tracker integrations (Asana, GitHub Issues), introduce collaborative annotations on the graph, add the Macro View (Project-to-Repo mapping and inter-repo context — Section 1.2), build the admin billing/plan console, and revisit Cursor Origin integration once its public API/webhook documentation ships.
 
----
+**Post-MVP (trigger-gated, per Section 4.10):** Macro View; migration dashboard with defined thresholds; Neo4j -> Neptune cutover; pgvector -> OpenSearch cutover; GraphQL + DataLoader; env-file -> KMS secrets cutover; Cursor Origin ingestion provider plug-in; MCP write/propose tool surface; expanded self-hosted server-type support beyond OpenAI-compatible; expanded language coverage; additional task-tracker integrations; collaborative annotations; admin 
 
-## 8. North Star (added in v3 — directional, expected to evolve)
+billing console. 
 
-*This section records where the product is headed so future tickets can trace to it. It is deliberately non-binding: it does not schedule anything — the roadmap (§7) and the backlog's dependency table govern build order — and its scope will be added to and subtracted from as the end goal evolves.*
-
-**The codebase graph is the wedge, not the product.** It is built first because it is a felt pain point, quick to ship, and earns the install — but the durable value is what gets anchored to it.
-
-**Phase 2 — the decision layer.** A service layer connects to the tools where engineering decisions actually live — Jira, Graphite, Notion, Teams, Slack, and their peers — to capture decisions made in writing or in meetings that are today either gated to a subset of engineers or simply not remembered. These supplement the graphs in the interface: tickets viewable by node (already in MVP scope), and **decisions reviewed, then flagged** on the nodes they govern, so an engineer knows at a glance why the code is the way it is. Two properties are non-negotiable in this phase: surfaced decisions must respect the source system's own access gating (a private channel's decision is not a public annotation), and decisions must carry a lifecycle (proposed → confirmed → superseded) — a confidently-surfaced stale decision is worse than none.
-
-**Phase 3 — a world model of development.** As connections increase, the graph stops being a model of the repo and becomes a model of development as a whole. Operationally that means three capabilities layered onto the existing ontology: **entity resolution** across tools (the ticket, the PR stack, the thread, the doc, and the commit resolve to one unit of work); a **temporal dimension** (not just what is true, but what was believed and when); and **provenance** (this code exists *because of* that decision).
-
-**End state — one substrate, two surfaces.** The backend graph-guided RAG system becomes the primary workhorse, serving:
-- **Agents** — impeccable, permission-scoped context for AI coding agents, positioning the platform as the context layer every agent queries before touching a repo rather than a competitor to any of them;
-- **Engineers** — a streamlined, visual understanding layer: the graph-based, always-updating knowledge dashboard this document specifies the foundations of.
