@@ -64,3 +64,30 @@ Any static host. The SPA needs a fallback rewrite so `/demo` deep links resolve:
 
 `public/og.png` is a committed static file (1200×630), not produced by `npm run build`.
 Regenerate with `npm run og` after visual changes and commit the result.
+
+## Product platform local stack (Docker)
+
+The product web app, core API, Python workers, Postgres/pgvector, Redis, Neo4j,
+LocalStack, and Prometheus run separately from the marketing site above. A fresh checkout
+needs only Docker Engine with the Docker Compose plugin; no host Node/Python install or
+populated `.env` file is required. Local datastore passwords are generated inside a
+Docker-managed volume and are removed by the cleanup command below.
+
+From the repository root, build the images and wait for the stack to become healthy:
+
+```sh
+docker compose -f infra/docker-compose.yml up --build --wait --wait-timeout 300
+```
+
+The application health endpoints return the service name and the existing `status: "ok"`
+payload once Docker reports each container healthy:
+
+- web: http://localhost:3000/api/health
+- core: http://localhost:4000/health
+- workers: http://localhost:8000/health
+
+Stop the stack and remove its local datastore and generated-secret volumes with:
+
+```sh
+docker compose -f infra/docker-compose.yml down --volumes --remove-orphans
+```

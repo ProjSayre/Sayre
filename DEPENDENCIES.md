@@ -145,11 +145,17 @@ via `turbo` instead. `services/workers` (Poetry) is **not** part of this npm wor
 
 | Image | Purpose | Reference | Future swap |
 |---|---|---|---|
+| `node:20.19.5-bookworm-slim` | Reproducible Debian-slim build/runtime base for the product web and core Compose targets | W0-01; `.nvmrc` | Keep on Node 20 LTS for the current workspace engine contract |
+| `python:3.12.13-slim-bookworm` | Reproducible Debian-slim runtime base for the Python worker Compose target | W0-01; `services/workers/pyproject.toml` | Keep on Python 3.12 for the current worker contract |
+| `alpine:3.20` | One-shot, local-only generator for independent Postgres and Neo4j development passwords stored in a Docker volume | W0-01; `.claude/rules/security-multitenancy.md` | Remove when local secret provisioning is replaced by managed development infrastructure |
 | `pgvector/pgvector:pg16` | Postgres + `vector` extension — relational system of record *and* vector store backing | `docs/prd.md` §4.3 (Relational Store, Vector Store); `docs/architecture.md` | pgvector → Amazon OpenSearch; see below. **Deviation note:** the ticket's literal text said `postgres:16`; this is deliberately `pgvector/pgvector:pg16` instead because plain `postgres:16` does not ship the `vector` extension required by the Vector Store component. See `.pipeline/changes.md`. |
 | `redis:7.4-alpine` | Redis — BullMQ backing store + Realtime Service pub/sub | `docs/prd.md` §4.2 (Realtime Service); `.claude/rules/async-messaging.md` | — |
 | `neo4j:5.24-community` | Graph DB — codebase ontology (major 5, matching `neo4j-driver` 5.x) | `docs/prd.md` §4.3 (Graph Store) | Neo4j → Amazon Neptune; see below |
 | `localstack/localstack:3.8` | SQS/SNS emulator for the Python worker/event fleet (local dev only; real AWS services in production) | `docs/prd.md` §2.1, §4.2; W0-04 | Not a future swap; production provisioning/IAM remains separate infra work |
 | `prom/prometheus:v3.1.0` | Locally-run Prometheus — scrapes the `sayre-workers` `/metrics` endpoint (`sayre_workers/telemetry/otel.py`) for the pgvector → OpenSearch trigger metrics (`vector_query_duration_ms`, `vector_query_concurrent_count`) | W0-06 spec; `docs/prd.md` §4.10; `docs/migration-triggers.md` (Vector Store trigger) | Dashboards/Grafana/alert rules are a later, non-blocking ticket (see W0-06 spec Open Questions) |
+
+The worker image and the GitHub Actions worker job both pin Poetry to `2.2.0`, matching
+the version recorded in the generated `services/workers/poetry.lock` header.
 
 ## Known future swaps (PRD migration triggers)
 
