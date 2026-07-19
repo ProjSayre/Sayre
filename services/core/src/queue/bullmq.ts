@@ -15,7 +15,8 @@
 // for this ticket).
 
 import { Queue, Worker, Job, JobsOptions, WorkerOptions } from 'bullmq';
-import IORedis from 'ioredis';
+import IORedis, { type RedisOptions } from 'ioredis';
+import { getConfig, getSecret, SecretNotFoundError } from '@sayre/config';
 import { MessageEnvelope, assertValidEnvelope } from './envelope';
 
 // One queue per integration (locked by ticket). This set is closed at the QUEUE level; a NEW
@@ -50,40 +51,111 @@ export interface QueuePayloads {
 }
 
 let redisConnection: IORedis | null = null;
+let redisConnectionPending: Promise<IORedis> | null = null;
 const queues = new Map<QueueName, Queue>();
+const queuePending = new Map<QueueName, Promise<Queue>>();
+let lifecycleGeneration = 0;
+let closePending: Promise<void> | null = null;
+
+export class QueueInitializationCancelledError extends Error {
+  constructor() {
+    super('Queue initialization was cancelled by shutdown.');
+    this.name = 'QueueInitializationCancelledError';
+  }
+}
+
+export type RedisConnectionFactory = (options: RedisOptions) => IORedis;
+
+/** Resolve every setting before handing options to the client constructor. */
+export async function createRedisConnection(
+  factory: RedisConnectionFactory = (options) => new IORedis(options),
+): Promise<IORedis> {
+  const port = Number(getConfig('REDIS_PORT'));
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('REDIS_PORT must be an integer between 1 and 65535.');
+  }
+
+  let password: string | undefined;
+  try {
+    password = await getSecret('env://REDIS_PASSWORD');
+  } catch (error) {
+    if (!(error instanceof SecretNotFoundError)) throw error;
+  }
+
+  return factory({
+    host: getConfig('REDIS_HOST'),
+    port,
+    password,
+    maxRetriesPerRequest: null,
+  });
+}
 
 /**
  * Singleton ioredis connection. MUST set `maxRetriesPerRequest: null` (BullMQ
  * requirement for blocking commands used by workers). Host/port/password from
- * `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` env, defaulting to localhost:6379 / no
- * password.
+ * the central config/secret loaders, defaulting to localhost:6379 / no password.
  */
-export function getRedisConnection(): IORedis {
+export async function getRedisConnection(): Promise<IORedis> {
+  if (closePending) await closePending;
   if (redisConnection) {
     return redisConnection;
   }
+  if (redisConnectionPending) return redisConnectionPending;
 
-  redisConnection = new IORedis({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379,
-    password: process.env.REDIS_PASSWORD || undefined,
-    maxRetriesPerRequest: null,
-  });
+  const generation = lifecycleGeneration;
+  const pending = (async () => {
+    const connection = await createRedisConnection();
+    if (generation !== lifecycleGeneration) {
+      await closeRedisConnection(connection);
+      throw new QueueInitializationCancelledError();
+    }
+    redisConnection = connection;
+    return connection;
+  })();
+  redisConnectionPending = pending;
 
-  return redisConnection;
+  try {
+    return await pending;
+  } finally {
+    if (redisConnectionPending === pending) redisConnectionPending = null;
+  }
 }
 
-export function getQueue<Q extends QueueName>(name: Q): Queue<MessageEnvelope<QueuePayloads[Q]>> {
+export async function getQueue<Q extends QueueName>(
+  name: Q,
+): Promise<Queue<MessageEnvelope<QueuePayloads[Q]>>> {
+  if (closePending) await closePending;
   const existing = queues.get(name);
   if (existing) {
     return existing as Queue<MessageEnvelope<QueuePayloads[Q]>>;
   }
+  const existingPending = queuePending.get(name);
+  if (existingPending) {
+    return existingPending as Promise<Queue<MessageEnvelope<QueuePayloads[Q]>>>;
+  }
 
-  const queue = new Queue<MessageEnvelope<QueuePayloads[Q]>>(name, {
-    connection: getRedisConnection(),
-  });
-  queues.set(name, queue);
-  return queue;
+  const generation = lifecycleGeneration;
+  const pending = (async () => {
+    const connection = await getRedisConnection();
+    if (generation !== lifecycleGeneration) {
+      throw new QueueInitializationCancelledError();
+    }
+
+    const queue = new Queue<MessageEnvelope<QueuePayloads[Q]>>(name, { connection });
+    if (generation !== lifecycleGeneration) {
+      await queue.close();
+      throw new QueueInitializationCancelledError();
+    }
+    queues.set(name, queue);
+    return queue;
+  })();
+  queuePending.set(name, pending as Promise<Queue>);
+
+  try {
+    return await pending;
+  } finally {
+    if (queuePending.get(name) === pending) queuePending.delete(name);
+  }
 }
 
 /**
@@ -97,7 +169,7 @@ export async function enqueue<Q extends QueueName>(
 ): Promise<string> {
   assertValidEnvelope(envelope);
 
-  const queue = getQueue(name);
+  const queue = await getQueue(name);
   const job = await queue.add(envelope.type, envelope, {
     attempts: 1,
     removeOnComplete: true,
@@ -112,33 +184,69 @@ export async function enqueue<Q extends QueueName>(
  * BEFORE the handler runs — an envelope missing `org_id` fails the job instead of
  * reaching business code.
  */
-export function createWorker<Q extends QueueName>(
+export async function createWorker<Q extends QueueName>(
   name: Q,
   handler: (envelope: MessageEnvelope<QueuePayloads[Q]>, job: Job) => Promise<void>,
-  opts?: WorkerOptions,
-): Worker {
-  return new Worker(
+  opts?: Omit<WorkerOptions, 'connection'>,
+): Promise<Worker> {
+  const generation = lifecycleGeneration;
+  const connection = await getRedisConnection();
+  if (generation !== lifecycleGeneration) {
+    throw new QueueInitializationCancelledError();
+  }
+
+  const worker = new Worker(
     name,
     async (job: Job) => {
       assertValidEnvelope(job.data);
       await handler(job.data as MessageEnvelope<QueuePayloads[Q]>, job);
     },
     {
-      connection: getRedisConnection(),
       ...opts,
+      connection,
     },
   );
+
+  if (generation !== lifecycleGeneration) {
+    await Promise.allSettled([worker.close()]);
+    throw new QueueInitializationCancelledError();
+  }
+
+  return worker;
 }
 
-/** Close cached queues + connection (graceful shutdown / test teardown). */
-export async function closeQueues(): Promise<void> {
-  for (const queue of queues.values()) {
-    await queue.close();
+async function closeRedisConnection(connection: IORedis): Promise<void> {
+  try {
+    await connection.quit();
+  } catch {
+    connection.disconnect();
   }
-  queues.clear();
+}
 
-  if (redisConnection) {
-    await redisConnection.quit();
+/** Close cached and in-flight queues + connection (graceful shutdown / test teardown). */
+export function closeQueues(): Promise<void> {
+  if (closePending) return closePending;
+
+  lifecycleGeneration += 1;
+  const pending = (async () => {
+    const initialization = [
+      ...queuePending.values(),
+      ...(redisConnectionPending ? [redisConnectionPending] : []),
+    ];
+    await Promise.allSettled(initialization);
+
+    const queuesToClose = [...queues.values()];
+    queues.clear();
+    await Promise.allSettled(queuesToClose.map(async (queue) => queue.close()));
+
+    const connection = redisConnection;
     redisConnection = null;
-  }
+    if (connection) await closeRedisConnection(connection);
+  })();
+  closePending = pending;
+  const clearCloseBarrier = () => {
+    if (closePending === pending) closePending = null;
+  };
+  void pending.then(clearCloseBarrier, clearCloseBarrier);
+  return pending;
 }

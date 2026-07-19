@@ -1,4 +1,9 @@
 import { createApp } from './app';
+import { getConfig } from '@sayre/config';
 
-const PORT = Number(process.env.CORE_PORT ?? 4000);
-createApp().listen(PORT, () => console.log(`[core] listening on :${PORT}`));
+const portText = getConfig('CORE_PORT');
+const port = Number(portText);
+if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+  throw new Error('CORE_PORT must be an integer between 1 and 65535.');
+}
+createApp().listen(port, () => console.log(`[core] listening on :${port}`));

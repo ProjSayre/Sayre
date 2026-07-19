@@ -1,0 +1,22 @@
+{
+  "name": "@sayre/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Central non-secret configuration and secret-reference loaders.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "typescript": "5.5.x",
+    "vitest": "2.1.x"
+  },
+  "engines": {
+    "node": ">=20 <21"
+  }
+}

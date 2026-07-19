@@ -9,15 +9,27 @@
 // without infra (spec edge case "LocalStack or Redis not running -> tests skip").
 
 import { randomUUID } from 'node:crypto';
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import IORedis from 'ioredis';
 import type { Worker, Job } from 'bullmq';
+import {
+  getConfig,
+  getSecret,
+  EmptySecretError,
+  resetConfigForTests,
+  resetSecretsForTests,
+  SecretNotFoundError,
+  setConfigOverrideForTests,
+  setSecretBackendForTests,
+} from '@sayre/config';
 import { makeEnvelope, MessageEnvelope, EnvelopeValidationError } from '../envelope';
+import { createPoolFromSecret } from '../../db/client';
 import {
   enqueue,
   createWorker,
   getQueue,
   closeQueues,
+  createRedisConnection,
   QUEUE_NAMES,
   type GithubSyncPayload,
 } from '../bullmq';
@@ -26,6 +38,87 @@ import {
 describe('bullmq surface', () => {
   it('AC3/AC6: exposes exactly the three integration queues, no more', () => {
     expect([...QUEUE_NAMES]).toEqual(['github-sync', 'jira-sync', 'linear-sync']);
+  });
+
+  it('resolves config and secret values before invoking a network-free Redis factory', async () => {
+    setConfigOverrideForTests('REDIS_HOST', 'redis.internal');
+    setConfigOverrideForTests('REDIS_PORT', '6380');
+    setSecretBackendForTests(async () => 'resolved-redis-password');
+    let received: Record<string, unknown> | undefined;
+    const fakeConnection = { kind: 'fake-redis' };
+
+    try {
+      const result = await createRedisConnection((options) => {
+        received = options as unknown as Record<string, unknown>;
+        return fakeConnection as unknown as IORedis;
+      });
+      expect(result).toBe(fakeConnection);
+      expect(received).toMatchObject({
+        host: 'redis.internal',
+        port: 6380,
+        password: 'resolved-redis-password',
+        maxRetriesPerRequest: null,
+      });
+    } finally {
+      resetConfigForTests();
+      resetSecretsForTests();
+    }
+  });
+
+  it('rejects an explicitly empty environment password before Redis construction', async () => {
+    vi.stubEnv('REDIS_PASSWORD', '   ');
+    resetSecretsForTests();
+    const factory = vi.fn(() => ({ kind: 'must-not-construct' }) as unknown as IORedis);
+    try {
+      await expect(createRedisConnection(factory)).rejects.toBeInstanceOf(EmptySecretError);
+      expect(factory).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      resetSecretsForTests();
+    }
+  });
+
+  it('rejects an explicitly empty backend password before Redis construction', async () => {
+    setSecretBackendForTests(async () => '   ');
+    const factory = vi.fn(() => ({ kind: 'must-not-construct' }) as unknown as IORedis);
+    try {
+      await expect(createRedisConnection(factory)).rejects.toBeInstanceOf(EmptySecretError);
+      expect(factory).not.toHaveBeenCalled();
+    } finally {
+      resetSecretsForTests();
+    }
+  });
+
+  it('allows a genuinely missing password to select the local no-auth fallback', async () => {
+    setSecretBackendForTests(async () => {
+      throw new SecretNotFoundError('untrusted-backend-name');
+    });
+    const fakeConnection = { kind: 'fake-no-auth-redis' };
+    const factory = vi.fn(() => fakeConnection as unknown as IORedis);
+    try {
+      await expect(createRedisConnection(factory)).resolves.toBe(fakeConnection);
+      expect(factory).toHaveBeenCalledWith(
+        expect.objectContaining({ password: undefined, maxRetriesPerRequest: null }),
+      );
+    } finally {
+      resetSecretsForTests();
+    }
+  });
+
+  it('defaults network-free runtime pools to the non-admin database reference', async () => {
+    const references: string[] = [];
+    setSecretBackendForTests(async (ref) => {
+      references.push(ref);
+      return 'postgresql://resolved.invalid/sayre';
+    });
+    try {
+      const pool = await createPoolFromSecret();
+      expect(references).toEqual(['env://DATABASE_RUNTIME_URL']);
+      expect(pool.options.connectionString).toBe('postgresql://resolved.invalid/sayre');
+      await pool.end();
+    } finally {
+      resetSecretsForTests();
+    }
   });
 
   it('AC6: a new git provider is a `provider` value on github-sync, not a new queue', () => {
@@ -48,10 +141,16 @@ describe('bullmq surface', () => {
 });
 
 async function redisReachable(): Promise<boolean> {
+  let password: string | undefined;
+  try {
+    password = await getSecret('env://REDIS_PASSWORD');
+  } catch (error) {
+    if (!(error instanceof SecretNotFoundError)) throw error;
+  }
   const conn = new IORedis({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT ? Number(process.env.REDIS_PORT) : 6379,
-    password: process.env.REDIS_PASSWORD || undefined,
+    host: getConfig('REDIS_HOST'),
+    port: Number(getConfig('REDIS_PORT')),
+    password,
     maxRetriesPerRequest: 0,
     connectTimeout: 2000,
     lazyConnect: true,
@@ -74,9 +173,9 @@ const brokerUp = await redisReachable();
 if (!brokerUp) {
   // eslint-disable-next-line no-console
   console.warn(
-    `[bullmq.roundtrip] Redis unreachable at ${process.env.REDIS_HOST || 'localhost'}:${
-      process.env.REDIS_PORT || '6379'
-    } — skipping BullMQ integration round-trip tests.`,
+    `[bullmq.roundtrip] Redis unreachable at ${getConfig('REDIS_HOST')}:${getConfig(
+      'REDIS_PORT',
+    )} — skipping BullMQ integration round-trip tests.`,
   );
 }
 
@@ -85,7 +184,7 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
 
   beforeAll(async () => {
     // Clear any leftovers from a prior run before any worker is attached.
-    await getQueue('github-sync').obliterate({ force: true });
+    await (await getQueue('github-sync')).obliterate({ force: true });
   });
 
   afterEach(async () => {
@@ -97,7 +196,7 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
 
   afterAll(async () => {
     try {
-      await getQueue('github-sync').obliterate({ force: true });
+      await (await getQueue('github-sync')).obliterate({ force: true });
     } catch {
       // ignore teardown errors
     }
@@ -118,15 +217,17 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
       },
     });
 
+    let resolveProcessed!: (value: MessageEnvelope<GithubSyncPayload>) => void;
+    let rejectProcessed!: (reason: unknown) => void;
     const processed = new Promise<MessageEnvelope<GithubSyncPayload>>((resolve, reject) => {
-      const w = createWorker('github-sync', async (envelope) => {
-        if (envelope.message_id === env.message_id) {
-          resolve(envelope);
-        }
-      });
-      workers.push(w);
-      w.on('error', reject);
+      resolveProcessed = resolve;
+      rejectProcessed = reject;
     });
+    const worker = await createWorker('github-sync', async (envelope) => {
+      if (envelope.message_id === env.message_id) resolveProcessed(envelope);
+    });
+    workers.push(worker);
+    worker.on('error', rejectProcessed);
 
     const jobId = await enqueue('github-sync', env);
     expect(jobId).toBeTruthy();
@@ -142,17 +243,19 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
   it('invalid job.data fails the job (attempts:1) and never runs the handler body', async () => {
     let handlerRan = false;
 
+    let resolveFailure!: (value: { job?: Job; err: Error }) => void;
     const failure = new Promise<{ job?: Job; err: Error }>((resolve) => {
-      const w = createWorker('github-sync', async () => {
-        handlerRan = true;
-      });
-      workers.push(w);
-      w.on('failed', (job, err) => resolve({ job, err }));
+      resolveFailure = resolve;
     });
+    const worker = await createWorker('github-sync', async () => {
+      handlerRan = true;
+    });
+    workers.push(worker);
+    worker.on('failed', (job, err) => resolveFailure({ job, err }));
 
     // Bypass enqueue()'s validation to inject data that would come off the wire
     // without ever having passed through makeEnvelope/enqueue.
-    await getQueue('github-sync').add(
+    await (await getQueue('github-sync')).add(
       'bogus',
       { not: 'an envelope' } as unknown as MessageEnvelope<GithubSyncPayload>,
       { attempts: 1, removeOnComplete: false, removeOnFail: false },
@@ -166,7 +269,7 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
   });
 
   it('enqueue rejects an envelope with empty org_id and adds nothing', async () => {
-    const queue = getQueue('github-sync');
+    const queue = await getQueue('github-sync');
     const before = await queue.getWaitingCount();
 
     const bad = {
