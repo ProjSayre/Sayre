@@ -1,6 +1,9 @@
-# Ticket Backlog — Codebase Ontology & Visualization Platform
+# SUPERSEDED — historical PRD v3 backlog
 
-Derived from **PRD v3** (`docs/prd.md`, Annotated Edition v3 — Tooling, Scaling & Service-Layer Architecture Update). Reconciled 2026-07-12: section references repaired (§4.10/§5 now exist), tool choices locked per §4.10, drift against the repo corrected, and coverage gaps closed with new tickets (W0-07, W1-06, W1-07, W3-07, PM-07…PM-10).
+> **Do not use this file for current scope, status, dependencies, scheduling, or implementation.**
+> The authoritative product requirements are `docs/prd.md` (PRD v5), and the authoritative ticket
+> backlog is `docs/PRD_Tickets.md` (Ticket Backlog v3). Everything below is retained only as a
+> historical record of the older PRD v3 plan and may intentionally contradict current requirements.
 
 **How to read this — scheduling contract (v3, corrected):** the **Quick-reference dependency table at the bottom is the single source of scheduling truth.** A ticket may start when every ticket it depends on has landed — nothing more, nothing less. (The v2 claim that "every ticket within a wave has no dependency on any other ticket in that same wave" was false — e.g. W1-05→W1-01, W2-04→W2-01/W2-02, W3-02→W3-01, W4-04→W4-01 — and has been removed. Waves remain as loose phase groupings only.)
 
@@ -182,7 +185,7 @@ Per §5: nightly coverage-instrumented COVERS refresh; pass/fail + stale badges 
 
 ---
 
-## Quick-reference dependency table — **the scheduling source of truth**
+## Historical quick-reference only — **not a scheduling source**
 
 | Ticket | Depends on | Wave |
 |---|---|---|

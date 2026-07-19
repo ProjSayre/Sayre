@@ -4,7 +4,7 @@ Codebase Ontology, Visualization, Agent Context & Model Provider Platform — de
 
 ## **How to read this** 
 
-Tickets are grouped into waves. A wave can only start once every ticket it depends on has landed; **every ticket within a wave has no dependency on any other ticket in that same wave** , so they are safe to hand to different developers or agents simultaneously. (v2 fixed two violations of this rule from v1: the Technical Tree end-to-end ticket moved from Wave 2 to Wave 3, and the final hardening pass moved to its own closeout Wave 5. v3 introduces no new violations — verify against the integrity check at the end of the dependency table.) 
+Tickets are grouped into waves, but the dependency table—not wave membership—controls readiness. A ticket starts only when its listed dependencies have landed. Tickets in the same wave may therefore require sequencing; independent tickets may run in parallel after their prerequisites land.
 
 “Executor” is a suggestion, not a rule: **AI agent** = well-specified, low-ambiguity, easy to verify by tests or diffing against the spec; **Human** = needs a judgment call, touches production infra, or has security/cost consequences; **Pair** = an agent can draft it but a human should review before merge. 
 
@@ -12,7 +12,7 @@ Tickets are grouped into waves. A wave can only start once every ticket it depen
 
 **What changed in v3 (this edition — corrects an omission):** four tickets implementing PRD v5’s Pluggable Model Provider Layer and Local-Model Interoperability were previously drafted in a standalone amendment document but never actually merged into this backlog — that omission is fixed here. Added: **W3-07** (Model Provider adapter interface — Anthropic/OpenAI/self-hosted), **W3-08** (circuit breaker & degraded states for self-hosted endpoints), **W3-09** (provider settings UI), **W4-07** (MCP local-model client interoperability verification). W3-07’s acceptance criteria are also extended in v3 to cover the structural data-sovereignty guarantee (PRD v5 §2.7/§4.2): a network-isolated test proving zero outbound calls to any third-party model endpoint when an org is configured for self-hosted. Ticket IDs are stable across all editions; wave assignment is authoritative from the table at the end, not from the ID prefix. 
 
-## **Wave 0 — Foundations (start immediately, all 9 in parallel)** 
+## **Wave 0 — Foundations (dependency-gated; not all nine start together)**
 
 ### **W0-00 — Dependency & environment baseline** 
 
@@ -22,14 +22,14 @@ The one ticket every other ticket implicitly assumes is already done. Pins every
 
 #### **What it should look like:** 
 
-|apps/web/package.json<br> <br>services/core/package.json<br> <br>|next, react, react-flow, sigma, graphology,<br>graphology-layout, tailwindcss, typescript<br>express (or next api routes), bullmq, ioredis,<br>neo4j-driver, pg, jsonwebtoken,<br>@modelcontextprotocol/sdk, typescript|
+|apps/web/package.json<br> <br>services/core/package.json<br> <br>|next, react, @xyflow/react 12.11.x, sigma, graphology,<br>graphology-layout, tailwindcss, typescript<br>express, bullmq, ioredis, neo4j-driver, pg, jsonwebtoken,<br>@modelcontextprotocol/sdk 1.29.x, zod 4.4.x,<br>@aws-sdk/client-sqs, @aws-sdk/client-sns,<br>@opentelemetry/api, sdk-metrics, exporter-prometheus|
 |---|---|
-|services/workers/requirements<br> <br> <br>|.txt<br>fastapi, uvicorn, tree-sitter + language grammars,<br>langchain, langgraph, graphify, boto3 (SQS),<br>psycopg[binary], pgvector, anthropic|
+|services/workers/pyproject.toml<br> <br> <br>|fastapi, uvicorn, tree-sitter + language grammars,<br>langchain, langgraph, base graphifyy==0.9.16,<br>openai 2.45.*, boto3 (SQS/SNS), psycopg[binary],<br>pgvector, anthropic|
 |infra/<br>|docker-compose service images pinned to specific<br>tags (postgres:16, redis:7, neo4j:5-community)|
 
 
 
-DEPENDENCIES.md records which packages have a known future swap (neo4j-driver -> Neptune-compatible driver, pgvector client -> OpenSearch client, express/REST -> GraphQL libs) so the §4.10 migrations aren’t a surprise dependency hunt. v2 adds the MCP SDK (server-side, Node) and Graphify to the pinned set. 
+DEPENDENCIES.md records each package and known future swap. Graphify is installed base-only and is reachable only through Sayre's `GraphifyAdapter`; it never replaces W1-01's structural Tree-sitter parser. Model SDK construction is owned by `ModelProvider`, and no LangChain provider-adapter package is added in this baseline. Node remains 20 and Python remains 3.12.
 
 **Acceptance criteria:** a fresh clone installs every dependency with zero version-resolution warnings/conflicts across apps/web, services/core, and services/workers; DEPENDENCIES.md lists every package plus its PRD section reference. 
 
@@ -45,19 +45,19 @@ Scaffold the repo: apps/web (Next.js + TypeScript), services/core (Node.js API),
 
 **Depends on:** W0-00 · **Executor:** AI agent (schema review by human before merge) 
 
-Define the initial Neo4j schema per PRD §4.3: node labels Project, Repo, Folder, File, Function, Class, Module, Person, Commit, Feature, Ticket, EnvStep, Test; edge types CONTAINS, CONNECTS_TO, IMPORTS, CALLS, INHERITS, OWNS, AUTHORED, MODIFIED, REFERENCES, PART_OF, REQUIRES, DEPENDS_ON, COVERS. Written as versioned migration scripts, openCypher-only (no Neo4j-proprietary syntax) so they replay unmodified against Neptune later. 
+Define the logical graph schema per PRD §4.3: node labels Project, Repo, Folder, File, Function, Class, Module, Person, Commit, Feature, Ticket, EnvStep, Test; edge types CONTAINS, CONNECTS_TO, IMPORTS, CALLS, INHERITS, OWNS, AUTHORED, MODIFIED, REFERENCES, PART_OF, REQUIRES, DEPENDS_ON, COVERS. Logical schema, data migrations, and application queries use portable openCypher-compatible constructs. Constraints, indexes, and other physical DDL are target-specific, versioned per graph target, and must not be represented as Neo4j DDL that replays unmodified on Neptune.
 
-**Node properties:** Feature: description, team. Folder: codingStyle and commentStyle as two distinct properties (a folder can inherit strict comment requirements without inheriting a different folder’s naming convention, §4.9). File/Folder: agentSkillMd — note that per PRD v4 §4.8 this property is a load-bearing contract read over MCP by external agents (W406), not only sidebar display; schema-wise it is unchanged, but treat its shape as API-stable from day one. Commit: sha, message, timestamp, author. Person: name, email/GitHub identity. Ticket: externalId, system, status. EnvStep: sequence, command. Test: coverage-status field. Every node: org_id. 
+**Identity and node properties:** Repository identity is stable, ref identity is mutable, and revision identity is an immutable commit SHA. Repository-scoped data carries server-resolved org_id/repo_id; ref-scoped data also carries ref_name; revision-bearing data records revision_sha. Stable node UIDs include repository/ref scope and canonical path/symbol identity. Feature: description, team. Folder: codingStyle and commentStyle as distinct properties. File/Folder: agentSkillMd, an API-stable MCP contract. Commit: sha, message, timestamp, author. Person: name, email/GitHub identity. Ticket: externalId, system, status. EnvStep: sequence, command. Test: coverage_status (`pass`, `fail`, or `unknown`).
 
-**Edge properties:** COVERS carries lastRun/status (so W4-03’s dynamic refresh can distinguish stale vs fresh); AUTHORED/MODIFIED carry timestamps. 
+**Edge properties:** COVERS links Test to a covered graph node only when both endpoints share authorized org/repository/ref/revision scope. It carries nullable last_run and status (`inferred` or `measured`); AUTHORED/MODIFIED carry timestamps.
 
 #### **What it should look like:** 
 
 services/workers/graph-migrations/ 001_init_node_labels.cypher 002_init_edge_types.cypher 003_constraints_and_indexes.cypher 
 
-Every migration is idempotent (MERGE, not CREATE), with org_id on every node label from day one. 
+Logical data migrations are idempotent (`MERGE`, not `CREATE`) with org_id on every node label. Target-specific physical migrations are independently idempotent for that target.
 
-**Acceptance criteria:** running all migrations twice produces no duplicate nodes/constraints; a migration-runner script tracks applied versions in Postgres. 
+**Acceptance criteria:** replaying logical data migrations produces no duplicate data; replaying each target's physical migrations produces no duplicate constraints/indexes; migration history is tracked by logical/physical layer and graph target; identity and same-scope COVERS invariants are tested.
 
 ### **W0-03 — Service-layer convention & REST scaffold** 
 
@@ -79,17 +79,19 @@ A services/exampleService.ts + routes/example.ts pair, plus a lint rule (or code
 
 #### **Depends on:** W0-00 · **Executor:** AI agent 
 
-Stand up both queues with local dev equivalents: LocalStack for SQS (Python worker fleet), Redis for BullMQ (Node integration workers). Base publisher/consumer wrapper in each language. Queue topology must support priority lanes (consumed by W2-08) — either separate queues drained in priority order or a priority tier, decided and documented here. 
+Stand up the approved local messaging topology: LocalStack for SQS/SNS (Python worker/event fleet) and Redis for BullMQ (Node integration workers). Repository ingestion uses an SQS FIFO queue grouped by org/repository/ref. After an idempotent graph transaction commits, the accepted `graph.updated` event is published to SNS and fanned out to independent realtime and enrichment subscriptions. W0-04 also provisions a physical `embedding-upserts` SQS work queue so W1-05 can dispatch vector work only after the accepted structural event. Enrichment uses separate physical `enrichment-onboarding-priority` and `enrichment-default` queues with priority-only capacity plus bounded weighted polling. Every work queue, including `embedding-upserts`, has a DLQ (five receives, 14-day retention); long-running consumers extend visibility with a heartbeat, and durable idempotency/graph-version checks protect all at-least-once deliveries.
 
-**Acceptance criteria:** a test message published from Python is consumed by a Python worker; a test job enqueued from Node is processed by a BullMQ worker; the chosen priority mechanism is demonstrated with a test showing a priority message drained ahead of a backlog of default messages. 
+**Acceptance criteria:** local tests prove Python FIFO publish/consume ordering, SNS fanout to independent subscriptions, `embedding-upserts` publication/consumption, priority work draining ahead of default backlog without permanent starvation, DLQ redrive, visibility heartbeat, durable duplicate suppression, and a Node BullMQ round trip.
 
 ### **W0-05 — PostgreSQL schema & migrations** 
 
 #### **Depends on:** W0-00 · **Executor:** AI agent 
 
-Per PRD §4.3: organizations, users, repositories, permissions (scoped by org/repo/branch/path), ticket cache, style rules, onboarding steps, GitHub App installation records (consumed by W1-06), and **MCP client credentials** (new in v2, consumed by W4-06): per-org scoped agent API keys with creation/revocation audit fields. Row-level security enabled from the start. 
+Per PRD §4.3: organizations, users, repositories, permissions (scoped by org/repo/ref/path), ticket cache, style rules, onboarding steps, and the following foundation datasets: `github_app_installations`; audited org-scoped `mcp_client_keys`; purpose-keyed `model_provider_configs` for generation and embedding, storing endpoint/model and a pre-provisioned credential reference but never a raw credential; `repository_refs` recording each mutable ref's accepted revision and graph version; bounded tenant `code_chunks`; and `code_embeddings` keyed to their originating graph node/chunk. Embeddings are `vector(1024)` values compared with cosine distance and record provider, model, and dimension metadata. Row-level security is enabled from the start.
 
-**Acceptance criteria:** a query executed under one org’s session cannot see another org’s rows, verified by an automated RLS test; the mcp_client_keys table carries org scoping, revocation, and audit columns. 
+`mcp_client_keys` use a public key ID/prefix and a 256-bit cryptographically random secret returned only once. Rows store only an HMAC-SHA-256 digest made with a server-held pepper plus `pepper_version`, `created_by_user_id`, `created_at`, `expires_at`, `last_used_at`, `revoked_at`, and `revoked_by_user_id`; the raw secret is never persisted. Key scope reuses existing `permissions` rows with an agent-key subject. Creation rejects any requested scope broader than the issuer's effective org/repo/ref/path scope, and effective key scope remains the intersection of the key permissions, the recorded issuance ceiling, and the issuer's current scope.
+
+**Acceptance criteria:** an automated test using the actual non-owner, non-superuser, `NOBYPASSRLS` runtime role proves that one org cannot see or mutate another org's rows across every tenant table. MCP tests prove 256-bit issuance, public ID/prefix lookup, HMAC-SHA-256 verification by pepper version, expiry/last-use/revocation audit behavior, permission reuse, and rejection of issuer-scope escalation; no raw key or provider credential is stored. Repository/ref/version and chunk/embedding tenant-consistency constraints, provider/model/dimension metadata, `vector(1024)`, and cosine-distance behavior are tested.
 
 ### **W0-06 — Vector-store concurrency instrumentation** 
 
@@ -107,7 +109,7 @@ vector_query_concurrent_count , tagged by org_id, to the chosen metrics backend 
 
 PRD v4 §4.5 defines a staged secrets posture: env files for MVP behind a single loader, KMS-backed manager on customer trigger (PM-07). This ticket establishes the convention once, before W1-02, W1-06, W3-04, and W3-05 each start consuming GitHub App keys and Jira/Linear OAuth tokens. 
 
-**What it should look like:** a single packages/config/secrets.ts (Node) and services/workers/config/secrets.py (Python) — the only code paths allowed to read a secret, shaped as getSecret(name) so PM-07’s backend swap touches no call sites. A committed .env.example listing every secret name; .gitignore for .env* ; a CI grep failing the build if process.env. or os.environ[ appears outside the loaders; a SECRETS.md naming each secret, its consumer, and the PM07 cutover plan. 
+**What it should look like:** a single packages/config/secrets.ts (Node) and services/workers/config/secrets.py (Python)—the only code paths allowed to resolve a secret, shaped as getSecret(reference) so PM-07's backend swap touches no call sites. Credential references are pre-provisioned and server-controlled; local references may resolve to a gitignored environment value. A committed .env.example lists placeholders; CI rejects secret reads outside the loaders; SECRETS.md names each secret, consumer, reference, and PM-07 cutover plan. Provider settings through W3-09 select a reference and cannot submit raw credentials.
 
 **Acceptance criteria:** a fresh clone with a populated .env boots all three services; a PR reading a secret outside the loader fails CI; SECRETS.md names every secret Waves 1-3 will need. 
 
@@ -155,17 +157,17 @@ Application shell, auth screens, and a React Flow canvas rendering a static/mock
 
 ### **W1-05 — Ingestion/Delta Worker core** 
 
-**Depends on:** W1-01, W0-02, W0-04 · **Executor:** AI agent 
+**Depends on:** W1-01, W0-02, W0-04, W0-05, W0-06, W0-07 · **Executor:** AI agent
 
-Clones/diffs a repo, runs Tree-sitter (full on cold start, incremental on delta), writes node/edge upserts to the Graph DB, writes embeddings to pgvector, publishes graph.updated over SQS. Operates against a scratch clone destroyed after parsing (§4.5 ephemerality). Recognizes two job types: repo.initial_parse (full, cold-start — enqueued by W1-06) and delta jobs from W1-02’s webhook events. 
+Clones/diffs a repo, runs Tree-sitter (full on cold start, changed-file delta thereafter), and applies idempotent node/edge upserts for the next accepted repository/ref/revision. Before a delta, it verifies that the accepted revision is an ancestor of the incoming revision; a force-push or other non-fast-forward divergence triggers a full rebuild of that organization/repository/ref head projection instead of applying a changed-file delta. After the graph transaction commits, it publishes the accepted `graph.updated` event through W0-04's SNS fanout, making structural data available. Only then does it dispatch bounded chunks to W0-04's asynchronous `embedding-upserts` queue; embedding latency is never inside the 15-second structural target. W1-05 owns the first Sayre `EmbeddingProvider` implementation, separate from generation `ModelProvider`: an OpenAI-compatible embeddings adapter using local-compatible `Qwen3-Embedding-0.6B` by default, with exactly 1024 finite dimensions, plus a deterministic network-free 1024-dimensional CI fake. The embedding consumer persists cosine vectors with provider/model/dimension metadata. It recognizes `repo.initial_parse` and delta jobs, uses W0-05 repository-ref version state, and destroys the scratch clone after parsing. Bounded tenant code/document chunks may persist for RAG, but a checkout or source tree may not.
 
-**Acceptance criteria:** pushing to a fixture repo results in correct Folder/File/Function nodes in Neo4j and a graph.updated event on SQS, end to end, within the 15s sync target on a small repo; a repo.initial_parse job triggers the full-parse path. 
+**Acceptance criteria:** a fixture initial parse and fast-forward delta produce correct scoped Folder/File/Function nodes and deletes; stale/replayed revisions are harmless; a force-push fixture performs a full scoped rebuild and removes structural nodes from the abandoned head; the graph commit and accepted `graph.updated` event complete within 15 seconds before `embedding-upserts` publication. The deterministic fake proves stable 1024-dimensional output and the concrete adapter rejects non-1024/non-finite output; stored vectors use cosine distance and provider/model/dimension metadata. The scratch checkout is removed and cannot be reconstructed from persisted chunks.
 
 ### **W1-06 — GitHub App: registration, install flow & initial-parse trigger** **_(new in v2)_** 
 
 **Depends on:** W0-05, W0-07 · **Executor:** Pair (OAuth is security-sensitive) 
 
-The cold-start walkthrough (§4.4) begins “user installs the GitHub App” — this ticket owns that entry point: the App manifest, install/OAuth callback, installation-credential storage, and enqueueing the first full-parse job. Note: this ticket lands the flow and the credential storage; the end-to-end proof that a fresh install produces graph nodes requires W1-05 and is verified as part of Wave 2 integration testing rather than blocking this ticket on a same-wave dependency. 
+The cold-start walkthrough (§4.4) begins “user installs the GitHub App”—this ticket owns that entry point: the App manifest, install/OAuth callback, installation metadata plus a pre-provisioned credential reference, and enqueueing the first full-parse job. It never stores a raw installation credential. The end-to-end proof that a fresh install produces graph nodes requires W1-05 and is verified later rather than folding that dependency into this ticket.
 
 **What it should look like:** a GitHub App manifest checked into infra/github-app/ so the App is recreatable per environment; GET /integrations/github/install starting the flow; GET /integrations/github/callback storing the installation ID in Postgres against the org (credentials via the W0-07 loader) and enqueueing repo.initial_parse onto the SQS queue W1-05 consumes; uninstall webhook marking the installation revoked without erroring on later inbound events. 
 
@@ -201,9 +203,9 @@ Realtime Service fanning out graph.updated events, re-filtered per client’s RB
 
 **Depends on:** W1-05, W0-04 · **Executor:** AI agent 
 
-Consumes newly parsed nodes off a queue separate from the Ingestion Worker’s, so LLM latency never blocks structural sync. Calls Graphify + LangChain/LangGraph + Claude API; Graphify constrains all output to graph primitives (nodes/edges/properties) written straight back to Neo4j — never free-form prose requiring re-parsing (§2.1). Consumes from both the default lane and W2-08’s priority lane, draining priority first. 
+Consumes accepted structural events from queues separate from ingestion, so LLM latency never blocks structural sync. From day one it calls Sayre-owned `GraphifyAdapter` and `ModelProvider` interfaces; orchestration may use LangChain/LangGraph, but no worker path hardcodes Claude or any other vendor or imports a vendor SDK directly. `GraphifyAdapter` constrains semantic output to graph primitives and never replaces W1-01's Tree-sitter parser. It consumes the physical default and onboarding-priority lanes W0-04 provisioned.
 
-**Acceptance criteria:** enrichment runs asynchronously and visibly after structural sync completes, never blocking the Technical Tree; enrichment output lands as graph writes, verified by inspecting Neo4j after a fixture run. 
+**Acceptance criteria:** fake `GraphifyAdapter` and `ModelProvider` implementations prove enrichment starts only after structural sync, never blocks Technical Tree availability, and writes valid graph primitives; tests fail on direct vendor SDK construction outside adapter implementations.
 
 ### **W2-06 — Tenant isolation enforcement** 
 
@@ -219,7 +221,7 @@ holds even if RBAC middleware is bypassed at a lower layer.
 
 **Depends on:** W1-01, W0-02 · **Executor:** AI agent 
 
-Parse test files as Test nodes during Tree-sitter ingestion; infer COVERS edges statically from imports, stamping lastRun/status as “inferred” so W4-03’s dynamic refresh can distinguish them. 
+Parse test files as Test nodes during Tree-sitter ingestion; infer COVERS edges statically from imports, setting `status` to `inferred` and leaving nullable `last_run` unset so W4-03’s measured refresh can distinguish them.
 
 **Acceptance criteria:** a fixture repo with test files produces correct Test nodes and COVERS edges pointing at the modules they import. 
 
@@ -227,9 +229,9 @@ Parse test files as Test nodes during Tree-sitter ingestion; infer COVERS edges 
 
 **Depends on:** W0-04, W1-05 · **Executor:** AI agent 
 
-§4.6 names the lever behind the 40% TTFC target: Onboarding Tree generation prioritized on initial ingestion via its own priority queue. This ticket adds the lane during Wave 2 so W2-05’s enrichment worker and W4-01’s tree generation consume from it without a queue-topology retrofit. Uses the priority mechanism W0-04 established. 
+§4.6 names the lever behind the 40% TTFC target: Onboarding Tree generation prioritized on initial ingestion. W0-04 already provisions the physical lane; this ticket activates the onboarding workload, routing and TTFC measurement on that existing topology rather than adding or retrofitting a queue.
 
-**What it should look like:** an enrichment.onboarding_priority lane drained ahead of enrichment.default by the same worker pool; W1-05’s cold-start path publishes onboarding.generate onto the priority lane alongside the standard graph.updated event; a logged ttfc_cold_start_to_onboarding_ready_ms metric tagged by org_id/repo_id — the measurement side of the TTFC KPI, matching W3-03’s treatment of the 70x token KPI. 
+**What it should look like:** W1-05’s cold-start path publishes `onboarding.generate` to `enrichment-onboarding-priority` after the accepted `graph.updated` event; priority-only capacity plus bounded weighted polling drains it ahead of `enrichment-default` without permanently starving default work. A logged `ttfc_cold_start_to_onboarding_ready_ms` metric tagged by org_id/repo_id is the measurement side of the TTFC KPI, matching W3-03’s treatment of the 70x token KPI.
 
 **Acceptance criteria:** a cold-start ingestion produces the onboarding-ready signal before general feature-cluster enrichment completes for the same repo; the TTFC metric appears in the metrics backend for every cold start. 
 
@@ -263,7 +265,7 @@ Dashed-boundary rendering around Feature Cluster members (§4.7) with a metadata
 
 **Depends on:** W2-02, W0-06 · **Executor:** AI agent 
 
-Retrieval Service: resolve anchor node -> bounded hop traversal -> in-scope vector chunks only -> bounded Claude prompt -> log tokens-used vs. hypothetical full-repo count for the 70x KPI. **v2 note:** expose anchor resolution and bounded traversal as service-layer functions (not private internals) — W4-06’s find_relevant_nodes and traverse_from MCP tools wrap these same functions. 
+Retrieval Service: resolve anchor node -> bounded hop traversal -> in-scope bounded tenant chunks only -> bounded prompt through the configured `ModelProvider` -> log tokens-used vs. hypothetical full-repo count for the 70x KPI. Expose anchor resolution and bounded traversal as service-layer functions (not private internals)—W4-06's find_relevant_nodes and traverse_from MCP tools wrap these same functions.
 
 **Acceptance criteria:** an AI query against a node returns an answer using demonstrably fewer tokens than a full-repo baseline, with the ratio logged; anchor resolution and traversal are callable as standalone service functions with the auth context parameter. 
 
@@ -291,25 +293,25 @@ LLM classification tags Coding Style and Comment Style on Folder nodes (tracked 
 
 **Acceptance criteria:** a File with no explicit override reports its nearest ancestor Folder’s style; a File with an override reports its own; resolution is exposed as a standalone service function. 
 
-### **W3-07 — Model Provider adapter interface** **_(new in v3)_** 
+### **W3-07 — Concrete Model Provider and Graphify adapters** **_(new in v3)_**
 
 **Depends on:** W2-05, W0-07 · **Executor:** AI agent 
 
-Implements PRD v5 §2.7/§4.2: a single adapter interface ( generate(prompt, options) , generateStructured(prompt, schema, options) ) with three concrete implementations — Anthropic-native, OpenAI-native, and OpenAI-compatible-endpoint (covers OpenAI plus the large majority of self-hosted servers: Ollama, vLLM, TGI). The Semantic Enrichment Worker and Retrieval Service are refactored to call the adapter interface exclusively — no direct SDK imports outside the adapter module. 
+Implements concrete adapters for the Sayre-owned generation `ModelProvider` and `GraphifyAdapter` interfaces already consumed by W2-05. `ModelProvider` exposes generate and generateStructured operations. Concrete implementations are Anthropic-native and OpenAI-compatible-endpoint; the latter covers hosted OpenAI and the large majority of self-hosted servers (Ollama, vLLM, TGI). The Graphify implementation wraps base `graphifyy` strictly for semantic graph-output shaping and never parses structural source. Enrichment and retrieval already call these interfaces, so this ticket adds implementations rather than introducing or retrofitting the boundary. The separate `EmbeddingProvider` and its first concrete adapter already belong to W1-05 and are not absorbed into this ticket.
 
 #### **What it should look like:** 
 
-services/workers/model_provider/ adapter.py            # interface: generate(), generate_structured() anthropic_adapter.py openai_compatible_adapter.py   # covers OpenAI + local/self-hosted 
+services/workers/model_provider/ protocol.py anthropic_adapter.py openai_compatible_adapter.py<br>services/workers/enrichment/graphify_adapter.py
 
-A per-org model_provider config row (Postgres, extends W0-05’s schema) resolved once per job and passed down to whichever adapter is selected. Endpoint credentials read exclusively via the W0-07 secrets loader. 
+A purpose-keyed per-org `model_provider_configs` row from W0-05 is resolved once per job and passed to the selected adapter. Endpoint credentials are pre-provisioned references resolved exclusively through W0-07.
 
 **Acceptance criteria:** 
 
-- The same enrichment fixture run produces valid (if quality-varying) structured output against at least Claude and one OpenAI-compatible local endpoint (e.g., a locally served open-weight model such as Llama or Mistral in a test container). 
+- The same enrichment fixture produces schema-valid structured output against Anthropic and one OpenAI-compatible local endpoint.
 
 Switching an org’s provider setting requires no code change, only configuration. 
 
-- No SDK client is instantiated outside the adapter module (enforced by lint/code-review checklist, matching the W003 pattern). 
+- No vendor SDK client is instantiated outside a concrete `ModelProvider`, and Graphify is not imported outside `GraphifyAdapter` (enforced by lint).
 
 - **(v3 addition — structural data-sovereignty verification, PRD v5 §2.7):** with an org configured for a selfhosted provider, a network-isolated test run (no route to any Anthropic, OpenAI, or other third-party endpoint) completes the same enrichment fixture successfully, proving zero outbound calls leave the customer’s network for that org’s traffic. This is a release-blocking test for the self-hosted path, not an optional check — it is the verified property the platform’s data-sovereignty claim rests on. 
 
@@ -325,9 +327,9 @@ Self-hosted endpoints are the customer’s infrastructure, not the platform’s 
 
 #### **Depends on:** W3-07 · **Executor:** AI agent 
 
-Org-admin settings surface on the canvas for choosing and configuring the model provider: Claude / GPT / self-hosted, with the self-hosted path prompting for an endpoint URL and credentials (stored via W0-07). Includes the known-tradeoffs messaging (PRD v5 §2.7) surfaced in-product — a short, honest note that local-model quality and latency are the customer’s tradeoff to manage — not just in documentation. 
+Org-admin settings surface for choosing provider, endpoint, and model by purpose, and selecting a pre-provisioned credential reference. Generation-purpose settings configure `ModelProvider`; embedding-purpose settings configure the separate `EmbeddingProvider`. Through this phase the UI never accepts or stores a raw provider credential; PM-07 supplies that later secret-manager/write path. The self-hosted path validates the endpoint server-side and presents PRD v5 §2.7's quality/latency tradeoffs.
 
-**Acceptance criteria:** an org admin can switch providers and see the change take effect on the next enrichment run and the next chatbot query without a deploy; the self-hosted configuration form validates the endpoint is reachable before saving. 
+**Acceptance criteria:** an org admin can switch providers and select an authorized pre-provisioned reference, with the change taking effect on the next enrichment/chatbot job without a deploy; endpoint validation cannot probe arbitrary/internal addresses; no raw credential appears in request bodies, logs, or Postgres.
 
 ## **Wave 4 — Onboarding, overlay, agent surface (needs Wave 3)** 
 
@@ -363,7 +365,7 @@ All six overlay layers per §4.8: Dependencies, Recent Changes, Specific Feature
 
 **Depends on:** W2-07, W2-04 · **Executor:** AI agent 
 
-Nightly coverage-instrumented run refreshing COVERS edges dynamically (stamping lastRun/status as “measured”); pass/fail badge overlay on the Technical Tree; safe-fallback-to-full-suite logic when impact analysis is inconclusive. 
+Nightly coverage-instrumented run refreshing COVERS edges dynamically (stamping `last_run` and setting `status` to `measured`); pass/fail badge overlay on the Technical Tree; safe-fallback-to-full-suite logic when impact analysis is inconclusive.
 
 **Acceptance criteria:** a code change without corresponding test updates shows a stale/failing badge; the fallback path runs the full suite when the impacted-test set can’t be determined with confidence. 
 
@@ -443,7 +445,7 @@ Surfaces W0-06’s vector-store metrics and W0-08’s graph-DB metrics side by s
 
 **Gated by:** W0-08 metrics, rendered on PM-02, crossing PM-02’s defined threshold · **Executor:** Human (infra-critical) 
 
-Executed only once sustained multi-tenant concurrent load is measured against Neo4j — never on a calendar date or customer count. openCypher-only migrations (W0-02) replay unmodified. 
+Executed only once sustained multi-tenant concurrent load is measured against Neo4j—never on a calendar date or customer count. W0-02's portable logical contract and data migrations are reused; Neptune-specific physical DDL is applied through the target-specific migration layer.
 
 ### **PM-04 — pgvector -> Amazon OpenSearch cutover** 
 
@@ -465,7 +467,7 @@ Two halves with opposite directions. **Ingestion (gated):** Origin as a git prov
 
 **Gated by:** first external customer or first production pitch, whichever comes first · **Executor:** Human (security-critical) 
 
-Executes the migration W0-07’s loader was designed for: chosen manager (AWS Secrets Manager assumed given the stack; not binding) provisioned per environment; getSecret backend swapped from env-var read to manager fetch with a short-lived in-memory cache; every existing secret rotated (env-file values treated as compromised); W0-07’s CI lint stays in force. 
+Executes the later secret-manager/write phase W0-07's loader was designed for: the chosen manager is provisioned per environment; getSecret swaps from local-reference resolution to manager fetch with a short-lived cache; every existing secret is rotated; and audited issuance, rotation, revocation, and self-service credential provisioning become available without changing consumers. W0-07's CI lint stays in force.
 
 **Acceptance criteria:** no service reads any secret from an environment variable in production; every previously issued secret rotated; a runbook exists for issuing, rotating, and revoking a secret without a code deploy. 
 
@@ -485,7 +487,7 @@ Extends the MCP surface beyond read-only context: tools letting agents propose c
 |W1-02|W0-04, W0-07|1|
 |W1-03|W0-05, W0-03|1|
 |W1-04|W0-01, W0-03|1|
-|W1-05|W1-01, W0-02, W0-04|1|
+|W1-05|W1-01, W0-02, W0-04, W0-05, W0-06,<br>W0-07|1|
 |W1-06|W0-05, W0-07|1|
 |W2-01|W1-04|2|
 |W2-02|W1-03, W0-02, W1-05|2|
@@ -523,5 +525,5 @@ Extends the MCP surface beyond read-only context: tools letting agents propose c
 
 
 
-**Wave integrity check (v2/v3):** within each wave, no ticket depends on another ticket of the same wave. W2-04’s Wave 3 placement and W4-04’s Wave 5 placement restore the guarantee the header makes. v3’s four additions preserve it: W3-07 depends only on Wave 2 (W2-05) and Wave 0 (W0-07) tickets; W3-08 and W3-09 depend only on W3-07 — note this means W3-08 and W3-09 technically depend on a same-wave ticket (W3-07), which is a real, narrow exception to the parallelism rule, flagged here rather than hidden: hand W3-07 to a developer first, then W3-08/W3-09 can go out in parallel to two others once it lands, rather than treating all of Wave 3 as simultaneously assignable on day one. W4-07 depends only on W4-06, the same pre-existing exception pattern as W4-01 relying on W2-08 from an earlier wave — no new same-wave violation beyond the one just noted. 
+**Dependency integrity rule:** the table is authoritative. Same-wave dependencies are allowed and must be sequenced (for example W3-08/W3-09 after W3-07 and W4-07 after W4-06). Parallel work is safe only for tickets whose complete prerequisite sets have landed; wave labels alone never imply simultaneous readiness.
 

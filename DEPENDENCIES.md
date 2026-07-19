@@ -10,12 +10,13 @@ specified one); the committed lockfile (`package-lock.json` / `poetry.lock`) fre
 resolved graph. See `.pipeline/changes.md` for install verification notes (what was actually
 resolved on this machine).
 
-> **PRD section note (updated for PRD v3):** `docs/prd.md` is now the Annotated Edition v3,
-> which added the previously-missing §4.10 (Chosen Tools, Scaling Posture & Migration Triggers,
-> including the initial numeric thresholds) and restored §5 (CI/CD Test Impact Analysis
-> Addendum). References below cite §4.10/§5 directly; `docs/migration-triggers.md` mirrors
-> §4.10 and the two are kept in sync. (An earlier revision of this note documented the v2
-> numbering gap — that inconsistency no longer exists.)
+When a support package is not named by a PRD section, its Reference cell says **Not named in PRD;
+build/test support** rather than using an ambiguous dash.
+
+> **Authority:** `docs/prd.md` (PRD v5) and `docs/PRD_Tickets.md` (Ticket Backlog v3) are the
+> current product and scheduling sources. `docs/wave0-foundation-contracts.md` summarizes the
+> approved cross-ticket identities, persistence, queue, adapter, and secrets contracts. The older
+> `docs/backlog.md` is historical only.
 
 ## `apps/web` — Next.js product visualization client
 
@@ -24,19 +25,20 @@ resolved on this machine).
 | `next` | apps/web (dep) | App framework/router/build for the visualization shell | `docs/prd.md` §3 (Frontend Framework), `CLAUDE.md` Stack | — |
 | `react` | apps/web (dep) | UI library | `docs/prd.md` §3, `CLAUDE.md` Stack | — |
 | `react-dom` | apps/web (dep) | React DOM renderer | `docs/prd.md` §3 | — |
-| `sigma` | apps/web (dep) | WebGL canvas renderer at every scale (Technical/Product/Onboarding trees) — single renderer, no node-count cutover (PRD v3 §4.10; `@xyflow/react` dropped 2026-07-12) | `docs/prd.md` §2.2, §3, §4.10; `docs/architecture.md`; `docs/migration-triggers.md` (Client Rendering boundary) | See "Deliberate non-migrations" below |
+| `@xyflow/react` | apps/web (dep) | React Flow renderer for fewer than about 500 visible nodes | `docs/prd.md` §2.2, §3; `docs/architecture.md` | Permanent dual-renderer boundary with Sigma.js |
+| `sigma` | apps/web (dep) | WebGL renderer above the ~500-visible-node threshold | `docs/prd.md` §2.2, §3; `docs/architecture.md`; `docs/migration-triggers.md` | Permanent dual-renderer boundary with React Flow |
 | `graphology` | apps/web (dep) | Client-side graph data structure backing Sigma + local algorithms | `docs/prd.md` §2.2; `docs/migration-triggers.md` (Client Rendering boundary) | — |
 | `graphology-layout` | apps/web (dep) | Client-side layout algorithms (local pre-processing only, never RBAC/traversal) | `.claude/rules/security-multitenancy.md` | — |
 | `typescript` | apps/web (devDep) | Type checking | `CLAUDE.md` Stack | — |
-| `@types/react` | apps/web (devDep) | React type defs | — | — |
-| `@types/react-dom` | apps/web (devDep) | React-DOM type defs | — | — |
+| `@types/react` | apps/web (devDep) | React type defs | Not named in PRD; build/test support | — |
+| `@types/react-dom` | apps/web (devDep) | React-DOM type defs | Not named in PRD; build/test support | — |
 | `@types/node` | apps/web (devDep) | Node type defs (Node 20 LTS target) | `.nvmrc` | — |
-| `graphology-types` | apps/web (devDep) | Type defs peer for graphology/sigma | — | — |
+| `graphology-types` | apps/web (devDep) | Type defs peer for graphology/sigma | Not named in PRD; build/test support | — |
 | `tailwindcss` | apps/web (devDep) | Utility CSS for dashboard/inspector layouts | `docs/prd.md` §3 (Styling) | — |
-| `postcss` | apps/web (devDep) | Tailwind's CSS transform pipeline | — | — |
-| `autoprefixer` | apps/web (devDep) | Vendor-prefixing for Tailwind output | — | — |
+| `postcss` | apps/web (devDep) | Tailwind's CSS transform pipeline | Not named in PRD; build/test support | — |
+| `autoprefixer` | apps/web (devDep) | Vendor-prefixing for Tailwind output | Not named in PRD; build/test support | — |
 | `eslint` | apps/web (devDep) | Lint engine | `CLAUDE.md` Commands (`npm run lint`) | — |
-| `eslint-config-next` | apps/web (devDep) | Next.js lint ruleset (pinned to `next`'s 14.2 minor) | — | — |
+| `eslint-config-next` | apps/web (devDep) | Next.js lint ruleset (pinned to `next`'s 14.2 minor) | Not named in PRD; build/test support | — |
 | `vitest` | apps/web (devDep) | Test runner for `apps/web` (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Commands (`npm run test`) | — |
 
 ## `packages/shared-types` — cross-package TypeScript contracts
@@ -58,6 +60,13 @@ into `services/core` via plain npm workspace symlinking (`"@sayre/shared-types":
 | Package | Runtime/Location | Purpose | Reference | Future swap |
 |---|---|---|---|---|
 | `express` | services/core (dep) | REST facade for the Core App Service | `docs/prd.md` §3 (Core API), §4.2 (API Gateway/Core App Service) | REST → GraphQL; see below |
+| `@modelcontextprotocol/sdk` | services/core (dep) | MCP streamable-HTTP server primitives for thin MCP handlers | `docs/prd.md` §2.6, §4.2; W0-00/W4-06 | — |
+| `zod` | services/core (dep) | Runtime schema validation for MCP and message boundaries | W0-00; `docs/wave0-foundation-contracts.md` | — |
+| `@aws-sdk/client-sqs` | services/core (dep) | Typed access to approved SQS event/queue boundaries from Node-owned orchestration points | W0-04; `docs/wave0-foundation-contracts.md` | — |
+| `@aws-sdk/client-sns` | services/core (dep) | Typed access to accepted `graph.updated` SNS fanout | W0-04; `docs/wave0-foundation-contracts.md` | — |
+| `@opentelemetry/api` | services/core (dep) | Stable metrics API for sanctioned graph calls | W0-08; `docs/migration-triggers.md` | Exporter remains swappable |
+| `@opentelemetry/sdk-metrics` | services/core (dep) | Node metrics SDK paired with the pinned API | W0-08 | — |
+| `@opentelemetry/exporter-prometheus` | services/core (dep) | Local Prometheus reader/exporter paired with the metrics SDK | W0-08 | Production exporter may change without call-site changes |
 | `bullmq` | services/core (dep) | Queue for Node integration workers (GitHub/Jira/Linear) | `docs/prd.md` §2.4; `.claude/rules/async-messaging.md` | No consolidation planned (permanent split) |
 | `ioredis` | services/core (dep) | Redis client required by BullMQ | `.claude/rules/async-messaging.md` | — |
 | `neo4j-driver` | services/core (dep) | Driver for the Graph Query Service (server-side traversal/RBAC filtering only) | `docs/prd.md` §4.2, §4.3 (Graph Store); `.claude/rules/security-multitenancy.md`, `.claude/rules/graph-schema.md` | Neo4j → Amazon Neptune; see below |
@@ -65,12 +74,12 @@ into `services/core` via plain npm workspace symlinking (`"@sayre/shared-types":
 | `jsonwebtoken` | services/core (dep) | JWT AuthN for the API Gateway/AuthZ middleware | `docs/prd.md` §4.2 (API Gateway) | — |
 | `drizzle-orm` | services/core (dep) | ORM/query builder + migrator for the Postgres system-of-record tables (org/user/repo/permission/ticket_cache/style_rules/onboarding_steps), layered on the pinned `pg` driver. Manifest pins `0.38.x`; resolved `0.38.4` (see `.pipeline/W0-05/changes.md`). | `docs/prd.md` §4.3, §4.5 (RLS); `.pipeline/W0-05/spec.md` | — |
 | `typescript` | services/core (devDep) | Type checking | `CLAUDE.md` Stack | — |
-| `tsx` | services/core (devDep) | Dev/runtime TS execution (`dev` script; unused until a later ticket implements `src/`) | — | — |
+| `tsx` | services/core (devDep) | Dev/runtime TS execution (`dev` script; unused until a later ticket implements `src/`) | Not named in PRD; build/test support | — |
 | `vitest` | services/core (devDep) | Test runner (`npm run test`/`test:integration`) — none existed before W0-04; required for the BullMQ round-trip integration test | `CLAUDE.md` Commands (`npm run test`); W0-04 spec R1 | — |
 | `@types/node` | services/core (devDep) | Node type defs (Node 20 LTS target) | `.nvmrc` | — |
-| `@types/express` | services/core (devDep) | Express type defs | — | — |
-| `@types/jsonwebtoken` | services/core (devDep) | JWT type defs | — | — |
-| `@types/pg` | services/core (devDep) | Postgres client type defs | — | — |
+| `@types/express` | services/core (devDep) | Express type defs | Not named in PRD; build/test support | — |
+| `@types/jsonwebtoken` | services/core (devDep) | JWT type defs | Not named in PRD; build/test support | — |
+| `@types/pg` | services/core (devDep) | Postgres client type defs | Not named in PRD; build/test support | — |
 | `@sayre/shared-types` | services/core (dep) | Cross-package `HealthStatus`/`ServiceName` contract, resolved via npm workspace symlinking (W0-01 D-3/D-4) | `.pipeline/spec.md` W0-01 D-3, D-4; `.claude/rules/service-layer.md` | — |
 | `eslint` | services/core (devDep) | Lint engine, pinned to `apps/web`'s 8.57 minor to avoid cross-runtime drift | `.pipeline/spec.md` W0-01 D-6 | — |
 | `@typescript-eslint/parser` | services/core (devDep) | TypeScript parser for eslint | `.pipeline/spec.md` W0-01 D-6 | — |
@@ -89,16 +98,18 @@ Graph Query Service, and the vector store client belongs to the Python fleet, no
 | `uvicorn[standard]` | services/workers (dep) | ASGI server for FastAPI | `docs/prd.md` §4.2 | — |
 | `tree-sitter` | services/workers (dep) | Incremental AST parsing core | `docs/prd.md` §2.1 (Multi-Language AST Parsing) | — |
 | `tree-sitter-language-pack` | services/workers (dep) | Bundled multi-language grammars for Tree-sitter | `docs/prd.md` §2.1 | Individual per-language grammar packages deferred to the Ingestion Worker ticket (O-8) |
-| `langchain` | services/workers (dep) | LLM orchestration for Semantic Enrichment | `docs/prd.md` §2.1 (Semantic Relationship Extraction), §4.2 | — |
+| `graphifyy` | services/workers (dep) | Base Graphify distribution, reachable only through Sayre's future `GraphifyAdapter`; semantic output shaping only, never the W1-01 parser | `docs/prd.md` §2.1; W0-00/W2-05/W3-07 | No provider extras |
+| `openai` | services/workers (dep) | OpenAI-compatible SDK reserved for generation `ModelProvider` adapters and W1-05's separate `EmbeddingProvider` adapter | `docs/prd.md` §2.7; W1-05/W3-07 | No direct use outside provider adapters |
+| `langchain` | services/workers (dep) | LLM workflow orchestration above Sayre's provider boundary | `docs/prd.md` §2.1 (Semantic Relationship Extraction), §4.2 | Provider selection and SDK construction remain in `ModelProvider` |
 | `langgraph` | services/workers (dep) | Graph-based agent orchestration (Graph-Guided RAG) | `docs/prd.md` §2.5, §4.2, §4.4 (AI Query flow) | — |
-| `boto3` | services/workers (dep) | AWS SDK — SQS client for the Python fleet | `docs/prd.md` §2.1 (Delta Processing queue); `.claude/rules/async-messaging.md` | — |
+| `boto3` | services/workers (dep) | AWS SDK — SQS/SNS client for FIFO ingestion, fanout subscriptions, priority lanes, and `embedding-upserts` | `docs/prd.md` §2.1, §4.1; W0-04 | — |
 | `psycopg[binary]` | services/workers (dep) | Postgres client (metadata/style-rule reads from the worker fleet; also backs the `graph_migrations` version-tracking table written by the graph migration runner, W0-02) | `docs/prd.md` §4.3 | — |
-| `pgvector` | services/workers (dep) | Vector store client (semantic chunk embeddings) | `docs/prd.md` §2.5 (Hybrid Storage Engine), §4.3 (Vector Store) | pgvector → Amazon OpenSearch; see below |
+| `pgvector` | services/workers (dep) | Vector store client for 1024-dimensional cosine embeddings with provider/model/dimension metadata | `docs/prd.md` §2.5 (Hybrid Storage Engine), §4.3 (Vector Store); W0-05/W1-05 | pgvector → Amazon OpenSearch; see below |
 | `neo4j` | services/workers (dep) | Python Bolt driver for the Graph Store — used only by `sayre_workers/graph_migrations/runner.py` (W0-02) to apply the openCypher migration scripts under `services/workers/graph-migrations/`; the Ingestion Worker (W1-01+) will reuse the same driver for real graph writes. Manifest pins `5.24.*` (matches the `neo4j:5.24-community` server image major.minor pinned in `infra/docker-compose.yml`); resolved `5.24.0`. Distinct from `neo4j-driver` (the Node/TS driver already pinned in `services/core`, used only by the Graph Query Service) — this is the Python-fleet driver, since the fleet owns all graph writes per `.claude/rules/async-messaging.md`/`CLAUDE.md` Structure. | `docs/prd.md` §4.3/§4.10 (Graph Store); `.claude/rules/graph-schema.md`; `.pipeline/spec.md` (W0-02) | Neo4j → Amazon Neptune; same trigger as `neo4j-driver` below — the Python runner's `--target neptune` flag already skips the one Neo4j-only DDL file (`003_constraints_and_indexes.cypher`) in anticipation |
-| `anthropic` | services/workers (dep) | Claude API client for semantic enrichment + Graph-Guided RAG | `docs/prd.md` §2.3, §2.5, §4.4 (AI Query flow) | — |
-| `pydantic` | services/workers (dep) | Data validation (FastAPI 0.115 requires Pydantic v2) | — | — |
+| `anthropic` | services/workers (dep) | Anthropic SDK reserved for the concrete Anthropic `ModelProvider` adapter | `docs/prd.md` §2.7; W3-07 | No direct use outside provider adapters |
+| `pydantic` | services/workers (dep) | Data validation (FastAPI 0.115 requires Pydantic v2) | Not named in PRD; build/test support | — |
 | `pytest` | services/workers (dev group) | Test runner | `CLAUDE.md` Commands (`poetry run pytest`) | — |
-| `pytest-asyncio` | services/workers (dev group) | Async test support for FastAPI/async code paths | — | — |
+| `pytest-asyncio` | services/workers (dev group) | Async test support for FastAPI/async code paths | Not named in PRD; build/test support | — |
 | `ruff` | services/workers (dev group) | Lint (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Commands (`poetry run ruff check .`) | — |
 | `mypy` | services/workers (dev group) | Typecheck (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Verification | — |
 | `httpx` | services/workers (dev group) | Required transitively by Starlette's `TestClient` (used in `tests/test_health.py`) | `.pipeline/spec.md` W0-01 (Affected files, `services/workers`) | — |
@@ -107,9 +118,10 @@ Graph Query Service, and the vector store client belongs to the Python fleet, no
 | `opentelemetry-exporter-prometheus` | services/workers (dep) | Pull-based Prometheus exporter for `/metrics` — pinned to the release paired with the `1.29.x` api/sdk minor (resolved `0.50b0`, which also pins `opentelemetry-semantic-conventions==0.50b0` transitively) | W0-06 spec | Swapped for an OTLP/vendor reader in prod — see `otel.py`'s `init_metrics()` docstring; zero call-site changes |
 | `prometheus-client` | services/workers (dep) | Arrives transitively via the exporter; pinned explicitly (resolved `0.25.0`) because `otel.py` calls `start_http_server()` directly | W0-06 spec | — |
 
-Not included in this ticket (see `.pipeline/spec.md` open questions): `graphify` (O-9 — named in
-`CLAUDE.md`'s stack list but not enumerated by this ticket; confirm exact package identity when
-the Semantic Enrichment Worker ticket comes up).
+`Qwen3-Embedding-0.6B` is the local-compatible embedding-model default, served behind the
+OpenAI-compatible endpoint consumed by W1-05's `EmbeddingProvider`; Sayre does not bundle a model
+runtime in this dependency baseline. CI uses a deterministic network-free fake that emits stable
+1024-dimensional vectors.
 
 **O-10 (LocalStack/SQS emulator for local dev) — resolved by W0-04.** See
 `infra/docker-compose.yml` (`localstack` service) and the pinned image row below.
@@ -136,19 +148,17 @@ via `turbo` instead. `services/workers` (Poetry) is **not** part of this npm wor
 | `pgvector/pgvector:pg16` | Postgres + `vector` extension — relational system of record *and* vector store backing | `docs/prd.md` §4.3 (Relational Store, Vector Store); `docs/architecture.md` | pgvector → Amazon OpenSearch; see below. **Deviation note:** the ticket's literal text said `postgres:16`; this is deliberately `pgvector/pgvector:pg16` instead because plain `postgres:16` does not ship the `vector` extension required by the Vector Store component. See `.pipeline/changes.md`. |
 | `redis:7.4-alpine` | Redis — BullMQ backing store + Realtime Service pub/sub | `docs/prd.md` §4.2 (Realtime Service); `.claude/rules/async-messaging.md` | — |
 | `neo4j:5.24-community` | Graph DB — codebase ontology (major 5, matching `neo4j-driver` 5.x) | `docs/prd.md` §4.3 (Graph Store) | Neo4j → Amazon Neptune; see below |
-| `localstack/localstack:3.8` | SQS emulator for the Python worker fleet (local dev only — real AWS SQS in prod) | `docs/prd.md` §2.1 (Delta Processing queue), §4.2; `.claude/rules/async-messaging.md`; W0-04 spec R5 (O-10 resolved) | Not a future swap — LocalStack is dev-only tooling; real AWS SQS provisioning/IAM/Terraform is separate, out-of-scope infra work |
+| `localstack/localstack:3.8` | SQS/SNS emulator for the Python worker/event fleet (local dev only; real AWS services in production) | `docs/prd.md` §2.1, §4.2; W0-04 | Not a future swap; production provisioning/IAM remains separate infra work |
 | `prom/prometheus:v3.1.0` | Locally-run Prometheus — scrapes the `sayre-workers` `/metrics` endpoint (`sayre_workers/telemetry/otel.py`) for the pgvector → OpenSearch trigger metrics (`vector_query_duration_ms`, `vector_query_concurrent_count`) | W0-06 spec; `docs/prd.md` §4.10; `docs/migration-triggers.md` (Vector Store trigger) | Dashboards/Grafana/alert rules are a later, non-blocking ticket (see W0-06 spec Open Questions) |
 
 ## Known future swaps (PRD migration triggers)
 
-Sourced from `docs/migration-triggers.md` and PRD v3 §4.10, which now defines the initial
-numeric thresholds (the earlier "no literal Section 4.10" caveat predates PRD v3 and no
-longer applies):
+Sourced from `docs/migration-triggers.md` and PRD v5 §4.10:
 
 - **`neo4j-driver` (Neo4j) → Amazon Neptune-compatible driver.** Trigger: sustained concurrent,
   multi-tenant query load — not raw data size. Stays a data-store swap behind the Graph Query
-  Service because Cypher is written openCypher-only from day one (`.claude/rules/graph-schema.md`),
-  not an application rewrite.
+  Service. Logical schema, data migrations, and application queries stay openCypher-compatible;
+  constraints/indexes and other physical DDL are versioned for each target.
 - **`pgvector` (Python fleet) → Amazon OpenSearch client.** Trigger: instrumented concurrent
   vector-query load (sustained queries/sec under concurrent multi-tenant access) and/or a p95/p99
   latency bound — not candidate-set size, corpus size, or customer count. The instrumentation that
@@ -164,16 +174,13 @@ longer applies):
 
 So nobody mistakes these permanent splits for pending future swaps:
 
-- **`sigma` + `graphology` client boundary** — Sigma.js is the single WebGL renderer at every
-  scale (the earlier React Flow/`@xyflow/react` dual-renderer split was dropped in PRD v3 §4.10,
-  2026-07-12). graphology is scoped to client-side algorithm gaps only — local filtering,
-  subgraph extraction, layout pre-processing — never RBAC or deep traversal, which stay
-  server-side in the Graph Query Service. A permanent boundary, not a migration
-  (`docs/migration-triggers.md`, "Client Rendering: Sigma.js + graphology boundary").
-- **`boto3`/SQS (Python fleet) vs. `bullmq` (Node integration workers)** — a permanent messaging
-  split; SQS backs the Python worker fleet, BullMQ backs Node integration workers (GitHub/Jira/
-  Linear). No consolidation planned (`docs/migration-triggers.md`, "Async Messaging: SQS +
-  BullMQ"; `.claude/rules/async-messaging.md`).
+- **React Flow / Sigma.js + graphology client boundary** — React Flow renders fewer than about
+  500 visible nodes; Sigma.js renders above that threshold. graphology is scoped to documented
+  client-side algorithm gaps only—never RBAC or deep traversal. This is a permanent boundary, not
+  a migration.
+- **AWS SQS/SNS (Python worker/event fleet) vs. `bullmq` (Node integration workers)** — a
+  permanent messaging split. The AWS side includes FIFO ingestion, SNS fanout, physical
+  priority/default enrichment lanes, DLQs, heartbeats, and durable idempotency.
 
 ## Infra image deviation summary
 
