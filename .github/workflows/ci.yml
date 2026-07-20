@@ -84,6 +84,7 @@ jobs:
           poetry run mypy --explicit-package-bases
           app
           sayre_workers/config
+          sayre_workers/graph_schema
           messaging/sqs_client.py
           sayre_workers/graph_migrations/runner.py
           scripts/run_graph_migrations.py
