@@ -8,6 +8,18 @@ jobs:
   node:
     name: web + core (lint, typecheck, test)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16   # plain postgres:16 lacks the `vector` ext code_embeddings needs
+        env:
+          POSTGRES_USER: sayre_dev
+          POSTGRES_PASSWORD: changeme_local_only
+          POSTGRES_DB: sayre_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sayre_dev -d sayre_dev"
+          --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,6 +55,16 @@ jobs:
 
       - name: core — test
         run: npx turbo run test --filter=@sayre/core
+
+      - name: core — RLS isolation tests (dev suite)
+        run: npm --prefix services/core run test:rls:ci
+        env:
+          DATABASE_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+
+      - name: core — RLS acceptance tests (tester suite)
+        run: npm --prefix services/core run test:rls:acceptance:ci
+        env:
+          DATABASE_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 
   workers:
     name: workers (ruff, mypy, pytest)

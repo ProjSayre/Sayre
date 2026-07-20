@@ -38,11 +38,29 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * accept it from client input (see .claude/rules/security-multitenancy.md).
  *
  * Key invariants:
- *  (a) `set_config(..., true)` is transaction-local (is_local = true) — it
+ *  (a) `SET LOCAL ROLE sayre_app` drops the connection off the login role
+ *      (`sayre_dev`, a superuser in local dev per infra/.env.example) onto
+ *      the NOBYPASSRLS, non-owner runtime role, BEFORE `set_config` runs —
+ *      without this, FORCE-RLS is silently bypassed and tenant queries are
+ *      NOT actually isolated (this was a live defect; see W0-05 v2 spec.md
+ *      "client.ts — the RLS-enforcement fix"). `SET LOCAL` is transaction-
+ *      scoped, so it auto-resets on commit/rollback — pool-safe.
+ *  (b) `set_config(..., true)` is transaction-local (is_local = true) — it
  *      MUST run inside the transaction so a pooled connection never carries
  *      stale org context into the next checkout from the pool.
- *  (b) `orgId` is validated as a UUID before any SQL is issued; a malformed
+ *  (c) `orgId` is validated as a UUID before any SQL is issued; a malformed
  *      value never reaches Postgres.
+ *
+ * Deployment dependency: this works in local dev because the login role
+ * (`sayre_dev`) is a superuser (superusers may `SET ROLE` to any role). In
+ * production, the login role must be `GRANT`ed membership in `sayre_app` —
+ * that grant is a later infra concern (already flagged in 0001's header
+ * comment). This fix is fail-closed if the membership is missing (`SET
+ * LOCAL ROLE` errors rather than silently bypassing RLS).
+ *
+ * The migrate/admin path (`migrate.ts`, any direct `createDb(pool)` use)
+ * does NOT go through `withOrgContext` and is unaffected — migrations must
+ * run as the superuser/owner.
  */
 export async function withOrgContext<T>(
   db: Db,
@@ -53,6 +71,10 @@ export async function withOrgContext<T>(
     throw new Error("withOrgContext: orgId must be a UUID");
   }
   return db.transaction(async (tx) => {
+    // Role name is a trusted constant, not user input -- a static
+    // `sql`set local role sayre_app`` (no interpolation) is correct; `SET
+    // ROLE` takes an identifier, not a bindable value.
+    await tx.execute(sql`set local role sayre_app`);
     await tx.execute(sql`select set_config('app.org_id', ${orgId}, true)`);
     return fn(tx);
   });
