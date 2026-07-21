@@ -1,0 +1,149 @@
+{
+  "calls": [
+    {
+      "callee_name": "super",
+      "caller_qualified_name": "Circle.constructor",
+      "file_path": "models.ts",
+      "start_line": 21
+    },
+    {
+      "callee_name": "this.computeArea",
+      "caller_qualified_name": "Circle.area",
+      "file_path": "models.ts",
+      "start_line": 26
+    },
+    {
+      "callee_name": "shape.describe",
+      "caller_qualified_name": "describe",
+      "file_path": "models.ts",
+      "start_line": 35
+    }
+  ],
+  "classes": [
+    {
+      "base_names": [],
+      "end_line": 15,
+      "file_path": "models.ts",
+      "name": "Shape",
+      "qualified_name": "Shape",
+      "start_line": 11
+    },
+    {
+      "base_names": [
+        "Shape"
+      ],
+      "end_line": 32,
+      "file_path": "models.ts",
+      "name": "Circle",
+      "qualified_name": "Circle",
+      "start_line": 17
+    }
+  ],
+  "deleted_file_paths": [],
+  "functions": [
+    {
+      "enclosing_class": "Shape",
+      "end_line": 14,
+      "file_path": "models.ts",
+      "name": "describe",
+      "qualified_name": "Shape.describe",
+      "signature": "describe() : string",
+      "start_line": 12
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 23,
+      "file_path": "models.ts",
+      "name": "constructor",
+      "qualified_name": "Circle.constructor",
+      "signature": "constructor(radius: number)",
+      "start_line": 20
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 27,
+      "file_path": "models.ts",
+      "name": "area",
+      "qualified_name": "Circle.area",
+      "signature": "area() : number",
+      "start_line": 25
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 31,
+      "file_path": "models.ts",
+      "name": "computeArea",
+      "qualified_name": "Circle.computeArea",
+      "signature": "computeArea() : number",
+      "start_line": 29
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 36,
+      "file_path": "models.ts",
+      "name": "describe",
+      "qualified_name": "describe",
+      "signature": "describe(shape: Shape) : string",
+      "start_line": 34
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 40,
+      "file_path": "models.ts",
+      "name": "makeCircle",
+      "qualified_name": "makeCircle",
+      "signature": "makeCircle(radius: number) : Circle",
+      "start_line": 38
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 12,
+      "file_path": "widget.tsx",
+      "name": "Widget",
+      "qualified_name": "Widget",
+      "signature": "Widget(props: WidgetProps)",
+      "start_line": 10
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 16,
+      "file_path": "widget.tsx",
+      "name": "List",
+      "qualified_name": "List",
+      "signature": "List(props: { items: string[] })",
+      "start_line": 14
+    }
+  ],
+  "imports": [
+    {
+      "file_path": "models.ts",
+      "is_relative": true,
+      "module": "./types",
+      "start_line": 5,
+      "symbols": [
+        "Describable"
+      ]
+    },
+    {
+      "file_path": "widget.tsx",
+      "is_relative": false,
+      "module": "react",
+      "start_line": 4,
+      "symbols": [
+        "React"
+      ]
+    }
+  ],
+  "inherits": [
+    {
+      "base_name": "Shape",
+      "file_path": "models.ts",
+      "subclass_qualified_name": "Circle"
+    }
+  ],
+  "parsed_files": [
+    "models.ts",
+    "widget.tsx"
+  ],
+  "skipped_files": []
+}

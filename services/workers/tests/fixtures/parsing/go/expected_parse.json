@@ -1,0 +1,123 @@
+{
+  "calls": [
+    {
+      "callee_name": "NewCircle",
+      "caller_qualified_name": "main",
+      "file_path": "main.go",
+      "start_line": 11
+    },
+    {
+      "callee_name": "Getenv",
+      "caller_qualified_name": "main",
+      "file_path": "main.go",
+      "start_line": 12
+    },
+    {
+      "callee_name": "fmt.Println",
+      "caller_qualified_name": "main",
+      "file_path": "main.go",
+      "start_line": 12
+    },
+    {
+      "callee_name": "fmt.Sprintf",
+      "caller_qualified_name": "Circle.Describe",
+      "file_path": "shapes.go",
+      "start_line": 24
+    },
+    {
+      "callee_name": "c.Describe",
+      "caller_qualified_name": "NewCircle",
+      "file_path": "shapes.go",
+      "start_line": 29
+    },
+    {
+      "callee_name": "fmt.Println",
+      "caller_qualified_name": "NewCircle",
+      "file_path": "shapes.go",
+      "start_line": 29
+    }
+  ],
+  "classes": [],
+  "deleted_file_paths": [],
+  "functions": [
+    {
+      "enclosing_class": null,
+      "end_line": 13,
+      "file_path": "main.go",
+      "name": "main",
+      "qualified_name": "main",
+      "signature": "func main()",
+      "start_line": 10
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 21,
+      "file_path": "shapes.go",
+      "name": "Area",
+      "qualified_name": "Circle.Area",
+      "signature": "func Area() float64",
+      "start_line": 19
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 25,
+      "file_path": "shapes.go",
+      "name": "Describe",
+      "qualified_name": "Circle.Describe",
+      "signature": "func Describe() string",
+      "start_line": 23
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 31,
+      "file_path": "shapes.go",
+      "name": "NewCircle",
+      "qualified_name": "NewCircle",
+      "signature": "func NewCircle(radius float64) *Circle",
+      "start_line": 27
+    }
+  ],
+  "imports": [
+    {
+      "file_path": "main.go",
+      "is_relative": false,
+      "module": "fmt",
+      "start_line": 6,
+      "symbols": []
+    },
+    {
+      "file_path": "main.go",
+      "is_relative": false,
+      "module": "net/http/pprof",
+      "start_line": 7,
+      "symbols": []
+    },
+    {
+      "file_path": "main.go",
+      "is_relative": false,
+      "module": "os",
+      "start_line": 8,
+      "symbols": []
+    },
+    {
+      "file_path": "shapes.go",
+      "is_relative": false,
+      "module": "fmt",
+      "start_line": 11,
+      "symbols": []
+    },
+    {
+      "file_path": "shapes.go",
+      "is_relative": false,
+      "module": "math",
+      "start_line": 12,
+      "symbols": []
+    }
+  ],
+  "inherits": [],
+  "parsed_files": [
+    "main.go",
+    "shapes.go"
+  ],
+  "skipped_files": []
+}
