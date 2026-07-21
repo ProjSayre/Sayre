@@ -1,0 +1,220 @@
+{
+  "calls": [
+    {
+      "callee_name": "makeCircle",
+      "caller_qualified_name": "main",
+      "file_path": "index.js",
+      "start_line": 17
+    },
+    {
+      "callee_name": "describe",
+      "caller_qualified_name": "main",
+      "file_path": "index.js",
+      "start_line": 18
+    },
+    {
+      "callee_name": "super",
+      "caller_qualified_name": "Circle.constructor",
+      "file_path": "shapes.js",
+      "start_line": 14
+    },
+    {
+      "callee_name": "this.computeArea",
+      "caller_qualified_name": "Circle.area",
+      "file_path": "shapes.js",
+      "start_line": 19
+    },
+    {
+      "callee_name": "shape.area",
+      "caller_qualified_name": "describe",
+      "file_path": "shapes.js",
+      "start_line": 28
+    }
+  ],
+  "classes": [
+    {
+      "base_names": [],
+      "end_line": 10,
+      "file_path": "shapes.js",
+      "name": "Shape",
+      "qualified_name": "Shape",
+      "start_line": 6
+    },
+    {
+      "base_names": [
+        "Shape"
+      ],
+      "end_line": 25,
+      "file_path": "shapes.js",
+      "name": "Circle",
+      "qualified_name": "Circle",
+      "start_line": 12
+    }
+  ],
+  "deleted_file_paths": [],
+  "functions": [
+    {
+      "enclosing_class": null,
+      "end_line": 14,
+      "file_path": "index.js",
+      "name": "loadShapesAsync",
+      "qualified_name": "loadShapesAsync",
+      "signature": "loadShapesAsync()",
+      "start_line": 12
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 19,
+      "file_path": "index.js",
+      "name": "main",
+      "qualified_name": "main",
+      "signature": "main()",
+      "start_line": 16
+    },
+    {
+      "enclosing_class": "Shape",
+      "end_line": 9,
+      "file_path": "shapes.js",
+      "name": "area",
+      "qualified_name": "Shape.area",
+      "signature": "area()",
+      "start_line": 7
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 16,
+      "file_path": "shapes.js",
+      "name": "constructor",
+      "qualified_name": "Circle.constructor",
+      "signature": "constructor(radius)",
+      "start_line": 13
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 20,
+      "file_path": "shapes.js",
+      "name": "area",
+      "qualified_name": "Circle.area",
+      "signature": "area()",
+      "start_line": 18
+    },
+    {
+      "enclosing_class": "Circle",
+      "end_line": 24,
+      "file_path": "shapes.js",
+      "name": "computeArea",
+      "qualified_name": "Circle.computeArea",
+      "signature": "computeArea()",
+      "start_line": 22
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 29,
+      "file_path": "shapes.js",
+      "name": "describe",
+      "qualified_name": "describe",
+      "signature": "describe(shape)",
+      "start_line": 27
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 33,
+      "file_path": "shapes.js",
+      "name": "makeCircle",
+      "qualified_name": "makeCircle",
+      "signature": "makeCircle(radius)",
+      "start_line": 31
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 9,
+      "file_path": "widget.jsx",
+      "name": "Widget",
+      "qualified_name": "Widget",
+      "signature": "Widget(props)",
+      "start_line": 7
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 13,
+      "file_path": "widget.jsx",
+      "name": "List",
+      "qualified_name": "List",
+      "signature": "List(props)",
+      "start_line": 11
+    }
+  ],
+  "imports": [
+    {
+      "file_path": "index.js",
+      "is_relative": true,
+      "module": "./shapes",
+      "start_line": 5,
+      "symbols": [
+        "Circle"
+      ]
+    },
+    {
+      "file_path": "index.js",
+      "is_relative": true,
+      "module": "./shapes",
+      "start_line": 6,
+      "symbols": [
+        "describe",
+        "makeCircle"
+      ]
+    },
+    {
+      "file_path": "index.js",
+      "is_relative": true,
+      "module": "./shapes",
+      "start_line": 7,
+      "symbols": [
+        "shapes"
+      ]
+    },
+    {
+      "file_path": "index.js",
+      "is_relative": true,
+      "module": "./polyfill",
+      "start_line": 8,
+      "symbols": []
+    },
+    {
+      "file_path": "index.js",
+      "is_relative": true,
+      "module": "./legacy-shapes",
+      "start_line": 10,
+      "symbols": []
+    },
+    {
+      "file_path": "index.js",
+      "is_relative": true,
+      "module": "./shapes",
+      "start_line": 13,
+      "symbols": []
+    },
+    {
+      "file_path": "widget.jsx",
+      "is_relative": false,
+      "module": "react",
+      "start_line": 5,
+      "symbols": [
+        "React"
+      ]
+    }
+  ],
+  "inherits": [
+    {
+      "base_name": "Shape",
+      "file_path": "shapes.js",
+      "subclass_qualified_name": "Circle"
+    }
+  ],
+  "parsed_files": [
+    "index.js",
+    "shapes.js",
+    "widget.jsx"
+  ],
+  "skipped_files": []
+}
