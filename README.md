@@ -1,8 +1,8 @@
-# sayre_ — marketing site + staged demo
+# sayre_ — marketing site
 
-Static marketing site with a fully client-side interactive demo of Sayre, an AI-powered
-codebase visualization platform. Everything the demo shows runs on a hand-authored,
-fictional dataset (`acme/monorepo`) baked into the bundle — no backend, no auth, no live AI.
+Static marketing site for Sayre, an engineering memory graph for developers and AI agents.
+The previously staged interactive prototype remains in source for possible future use, but
+it is not linked or shipped as a production route.
 
 Spec: `Documents/Spec/SAYRE_FRONTEND_SPEC.md` · Design system: `Design System/SAYRE_DESIGN_SYSTEM.md`
 
@@ -16,7 +16,7 @@ capped at `react`, `react-dom`, `react-router-dom`, `d3-hierarchy`.
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173  (routes: /, /demo, and /privacy)
+npm run dev        # http://localhost:5173  (routes: / and /privacy; /demo redirects home)
 npm run build      # tsc --noEmit + vite build → dist/
 npm run preview    # serve the production build
 npm run og         # regenerate public/og.png (dev-only script; commit the output)
@@ -45,9 +45,9 @@ The site's two-step waitlist form mirrors the team's Google Form and posts
 into it. Name and email are required on step one; company, website, team size,
 tools, interest, referral source, and notes are optional on step two. Both
 Google Form questions that support *Other* expose a matching free-text field.
-The site's internal `source` tag (`landing` / `demo-topbar` / `demo-tour`) is
-also reported through the form's "How did you hear about us?" *Other* slot as
-`site: <source>`; a visitor-supplied Other answer is combined with that tag.
+The site's internal `source` tag is also reported through the form's
+"How did you hear about us?" *Other* slot as `site: <source>`; a
+visitor-supplied Other answer is combined with that tag.
 
 Google Forms sends no CORS headers, so the **browser cannot read Google's
 response** — the site shows success whenever the request completes, even if
@@ -65,10 +65,10 @@ If the form's questions change, update `GOOGLE_FORM` in `src/config.ts`
 
 ## Deploy
 
-Any static host. The SPA needs a fallback rewrite so deep links such as `/demo` and `/privacy` resolve:
+Any static host. The SPA needs a fallback rewrite so `/privacy` resolves, plus a temporary redirect from `/demo` to `/`:
 
-- **Vercel** — `vercel.json` is committed: `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`
-- **Netlify** — add a `_redirects` file: `/* /index.html 200`
+- **Vercel** — `vercel.json` contains both the temporary demo redirect and SPA rewrite.
+- **Cloudflare Pages / Netlify** — `public/_redirects` contains the same redirect and fallback.
 
 `public/og.png` is a committed static file (1200×630), not produced by `npm run build`.
 Regenerate with `npm run og` after visual changes and commit the result.

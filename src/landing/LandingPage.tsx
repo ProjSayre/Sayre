@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CONTACT_EMAIL } from "../config";
-import { NODE_BY_ID, SUGGESTED_FILES } from "../data";
-import { HOW_IT_WORKS, PROBLEM, V2_FRAME, V2_HERO, V2_HOW, V2_LAYERS, V2_LENSES, WAITLIST_BAND } from "../data/copy";
+import { HOW_IT_WORKS, PROBLEM, V2_HERO, V2_HOW, V2_LAYERS, V2_LENSES, WAITLIST_BAND } from "../data/copy";
 import { prefersReducedMotion } from "../demo/canvas/useCamera";
 import { WaitlistForm } from "../shared/WaitlistForm";
 import { FeatureDeck } from "./FeatureDeck";
@@ -10,8 +9,6 @@ import { HeroAnimeVideo } from "./HeroAnimeVideo";
 import { lensGraphs } from "./lensGraphs";
 import type { LensGraph } from "./lensGraphs";
 import { GraphDivider, Reveal } from "./Reveal";
-
-const GLOW = 0.65;
 
 // s2 set dressing: scattered engineering sources in the margins connect and
 // identify themselves as the memory-graph statement illuminates.
@@ -111,8 +108,6 @@ export default function LandingPage(): JSX.Element {
   const howRef = useRef<HTMLElement | null>(null);
   const drawPathRef = useRef<SVGPathElement | null>(null);
   const drawLenRef = useRef(1);
-  const frameGlowRef = useRef<HTMLDivElement | null>(null);
-  const frameHoverRef = useRef(false);
 
   useEffect(() => {
     document.title = "sayre_ — your codebase, mapped";
@@ -124,9 +119,8 @@ export default function LandingPage(): JSX.Element {
   const graphs = lensGraphs();
   const filetreeViewBox = fittedViewBox(graphs.g2);
   const filetreeLens = V2_LENSES.items[1];
-  const paymentForm = NODE_BY_ID.get("apps/web/src/checkout/PaymentForm.tsx");
 
-  // scroll-driven fx controller (parallax, word scrub, path draw, sweep)
+  // scroll-driven fx controller (parallax, word scrub, path draw)
   useEffect(() => {
     const reduced = prefersReducedMotion();
     let raf = 0;
@@ -145,10 +139,9 @@ export default function LandingPage(): JSX.Element {
     // avoid layout thrash: ALL rect reads happen before ANY style writes, every
     // offscreen subsystem is skipped, and words only repaint when they flip
     let lastLit = -1;
-    let frameGlowStaticSet = false;
     const onScreen = (r: DOMRect, vh: number): boolean => r.bottom > -vh * 0.25 && r.top < vh * 1.25;
 
-    const tick = (ts: number): void => {
+    const tick = (): void => {
       if (dead) return;
       const sy = window.scrollY;
       const vh = window.innerHeight;
@@ -156,7 +149,6 @@ export default function LandingPage(): JSX.Element {
       // ---- read phase ----
       const problemRect = problemRef.current && wordsRef.current.length ? problemRef.current.getBoundingClientRect() : null;
       const howRect = drawPathRef.current && howRef.current && !reduced ? howRef.current.getBoundingClientRect() : null;
-      const frameRect = frameGlowRef.current ? frameGlowRef.current.getBoundingClientRect() : null;
 
       // ---- write phase ----
       if (!reduced && sy < vh * 1.2) {
@@ -197,22 +189,6 @@ export default function LandingPage(): JSX.Element {
         drawPathRef.current.style.strokeDashoffset = String(drawLenRef.current * (1 - p));
       }
 
-      if (frameGlowRef.current && frameRect) {
-        if (reduced) {
-          if (!frameGlowStaticSet) {
-            frameGlowRef.current.style.background = "#262723";
-            frameGlowStaticSet = true;
-          }
-        } else if (onScreen(frameRect, vh)) {
-          // re-rasterizing this gradient is the priciest write in the loop —
-          // never do it while the frame section is offscreen
-          const hov = frameHoverRef.current ? 1 : 0.45;
-          const a = (ts * 0.03) % 360;
-          frameGlowRef.current.style.background =
-            "conic-gradient(from " + a + "deg at 50% 50%, rgba(79,127,93,0) 0deg, rgba(116,165,131," + 0.75 * hov * GLOW + ") 24deg, rgba(79,127,93,0) 70deg), #262723";
-        }
-      }
-
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -241,9 +217,6 @@ export default function LandingPage(): JSX.Element {
         <nav className="v2-nav">
           <span className="wordmark">sayre_</span>
           <div className="v2-nav__right">
-            <Link className="v2-nav__demo" to="/demo">
-              demo
-            </Link>
             <a className="btn btn--secondary v2-nav__cta" href="#waitlist">
               join the waitlist
             </a>
@@ -262,10 +235,7 @@ export default function LandingPage(): JSX.Element {
             </div>
 
             <div className="v2-hero__final-cta">
-              <Link to="/demo" className="btn btn--primary btn--lg btn--glow v2-hero__demo-cta">
-                {V2_HERO.cta}
-              </Link>
-              <a className="btn btn--secondary v2-hero__waitlist-cta" href="#waitlist">
+              <a className="btn btn--primary btn--lg btn--glow v2-hero__waitlist-cta" href="#waitlist">
                 join the waitlist
               </a>
             </div>
@@ -455,103 +425,6 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      {/* ═══ s7 · the demo hook, framed in light ═══ */}
-      <section className="v2-frame-section">
-        <div className="v2-frame-head">
-          <Reveal d={0}>
-            <span className="v2-eyebrow">{V2_FRAME.eyebrow}</span>
-          </Reveal>
-          <Reveal d={1}>
-            <h2 className="v2-h2">{V2_FRAME.h2}</h2>
-          </Reveal>
-          <Reveal d={2}>
-            <p className="v2-frame-head__body">{V2_FRAME.body}</p>
-          </Reveal>
-        </div>
-        <Reveal d={1}>
-          <div className="v2-frame-wrap">
-            <div className="v2-frame-underglow" aria-hidden="true" />
-            <Link
-              to="/demo"
-              className="v2-frame-link"
-              aria-label="open the live demo"
-              onMouseEnter={() => {
-                frameHoverRef.current = true;
-              }}
-              onMouseLeave={() => {
-                frameHoverRef.current = false;
-              }}
-            >
-              <div className="v2-frame-glow" ref={frameGlowRef}>
-                <div className="v2-frame">
-                  <div className="v2-frame__chrome">
-                    <div className="v2-frame__brandrow">
-                      <span className="v2-frame__wordmark">sayre_</span>
-                      <span className="v2-frame__repo">acme/monorepo</span>
-                      <span className="v2-frame__meta">main · 1,204 files · synced 2m ago</span>
-                      <span className="v2-frame__segments">
-                        <span>new hire</span>
-                        <span className="is-active">tech lead</span>
-                        <span>pm</span>
-                      </span>
-                    </div>
-                    <div className="v2-frame__tabrow">
-                      <span className="v2-frame__tab is-active">
-                        <span className="v2-frame__tabdot" />
-                        filetree
-                      </span>
-                      <span className="v2-frame__tab">features</span>
-                      <span className="v2-frame__tab">relations</span>
-                      <span className="v2-frame__crumb">acme/ › apps/ › web/ › src/ › checkout/</span>
-                    </div>
-                  </div>
-                  <div className="v2-frame__body">
-                    <div className="v2-frame__panel">
-                      <div className="v2-frame__paneltabs">
-                        <span>tree</span>
-                        <span className="is-active">search</span>
-                      </div>
-                      <div className="v2-frame__searchbox">
-                        <span className="v2-frame__searchtext">
-                          payment<span className="v2-frame__caret">|</span>
-                        </span>
-                        <span className="v2-frame__searchhint">⌘k</span>
-                      </div>
-                      <div className="v2-frame__results">
-                        {SUGGESTED_FILES.slice(0, 5).map((id, i) => {
-                          const n = NODE_BY_ID.get(id);
-                          return (
-                            <div key={id} className={i === 0 ? "v2-frame__result is-active" : "v2-frame__result"}>
-                              <span className="v2-frame__resultname">{n?.name ?? id}</span>
-                              <span className="v2-frame__resultpath">{id}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className="v2-frame__canvas">
-                      <LensSvg g={graphs.g2} halo="#131412" />
-                      <div className="v2-frame__status">zoom 100% · tree layout · depth 6 · sample data</div>
-                    </div>
-                    <div className="v2-frame__inspector">
-                      <div className="v2-frame__path">
-                        checkout/<span>PaymentForm.tsx</span>
-                      </div>
-                      <div className="v2-frame__stat">
-                        tsx · 214 loc · <span className="v2-frame__pass">passing</span>
-                      </div>
-                      <p className="v2-frame__desc">{paymentForm?.meta.description?.split(".")[0]}.</p>
-                      <div className="v2-frame__change">a1b2c3f · dana park · 2d ago</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <span className="v2-frame__chip">{V2_FRAME.chip}</span>
-            </Link>
-          </div>
-        </Reveal>
-      </section>
-
       {/* ═══ conversion footer · waitlist finale ═══ */}
       <section className="v2-waitlist" id="waitlist">
         <div className="v2-waitlist__glow" aria-hidden="true" />
@@ -577,11 +450,13 @@ export default function LandingPage(): JSX.Element {
         <footer className="v2-footer">
           <span className="wordmark">sayre_</span>
           <span className="v2-footer__links">
-            <Link to="/demo">demo</Link>
             <Link to="/privacy">privacy</Link>
             <a href={`mailto:${CONTACT_EMAIL}`}>contact</a>
           </span>
-          <span className="v2-footer__copyright">© 2026 sayre</span>
+          <span className="v2-footer__legal">
+            <span>We do not sell or share personal information.</span>
+            <span>© 2026 sayre</span>
+          </span>
         </footer>
       </section>
     </div>

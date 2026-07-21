@@ -6,7 +6,6 @@ import { PLAUSIBLE_DOMAIN } from "./config";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/landing.css";
-import "./styles/demo.css";
 import "./styles/privacy.css";
 
 if (import.meta.env.DEV) {
