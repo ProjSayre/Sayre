@@ -60,7 +60,7 @@ function resolveEndpointUrl(): string | undefined {
 export async function getSqsClient(
   factory?: (cfg: SQSClientConfig) => SQSClient,
 ): Promise<SQSClient> {
-  if (factory && process.env.NODE_ENV !== 'test') {
+  if (factory && getConfig('NODE_ENV') !== 'test') {
     throw new Error('SQS client factory injection is unavailable outside tests.');
   }
   if (client) return client;
