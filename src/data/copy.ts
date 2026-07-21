@@ -10,8 +10,10 @@ export const HERO = {
 };
 
 export const PROBLEM = {
-  h2: "A codebase is a kitchen without labels.",
-  body: 'Everything is somewhere. Nobody can say where. Every onboarding, every handoff, every "which file is checkout actually in?" pays the tax.',
+  h2: "The code is only half the story.",
+  emphasis: "story",
+  body:
+    "Sayre connects code, docs, tickets, meetings, and decisions in a source-backed memory graph—so developers and AI agents can trace what changed, why it changed, and what it affects—and change unfamiliar code with confidence.",
 };
 
 export const LENSES = {

@@ -13,9 +13,9 @@ import { GraphDivider, Reveal } from "./Reveal";
 
 const GLOW = 0.65;
 
-// s2 set dressing: unlabeled nodes in the margins that label themselves as the
-// paragraph illuminates — the section acts out "a kitchen getting labels".
-// th = scrub fraction at which the label attaches (matches word lighting).
+// s2 set dressing: scattered engineering sources in the margins connect and
+// identify themselves as the memory-graph statement illuminates.
+// th = scrub fraction at which each source attaches (matches word lighting).
 const PROBLEM_DECOS: {
   x: number;
   y: number;
@@ -25,14 +25,14 @@ const PROBLEM_DECOS: {
   side: "left" | "right";
   accent?: boolean;
 }[] = [
-  { x: 9, y: 16, kind: "folder", label: "apps/", th: 0.1, side: "right" },
-  { x: 15, y: 42, kind: "file", label: "currency.ts", th: 0.28, side: "right" },
-  { x: 7, y: 66, kind: "file", label: "retry.ts", th: 0.46, side: "right" },
-  { x: 13, y: 86, kind: "folder", label: "search/", th: 0.64, side: "right" },
-  { x: 91, y: 14, kind: "file", label: "session.ts", th: 0.19, side: "left" },
-  { x: 85, y: 38, kind: "folder", label: "packages/", th: 0.37, side: "left" },
+  { x: 9, y: 16, kind: "folder", label: "checkout/", th: 0.1, side: "right" },
+  { x: 15, y: 42, kind: "file", label: "PR #482", th: 0.28, side: "right" },
+  { x: 7, y: 66, kind: "file", label: "LIN-482", th: 0.46, side: "right" },
+  { x: 13, y: 86, kind: "folder", label: "migration.md", th: 0.64, side: "right" },
+  { x: 91, y: 14, kind: "file", label: "decision · 031", th: 0.19, side: "left" },
+  { x: 85, y: 38, kind: "folder", label: "sync · jul 18", th: 0.37, side: "left" },
   { x: 92, y: 62, kind: "file", label: "PaymentForm.tsx", th: 0.55, side: "left" },
-  { x: 87, y: 84, kind: "folder", label: "checkout/", th: 0.92, side: "left", accent: true },
+  { x: 87, y: 84, kind: "folder", label: "owner · payments", th: 0.92, side: "left", accent: true },
 ];
 
 function fittedViewBox(g: LensGraph, padding = 55): string {
@@ -119,11 +119,8 @@ export default function LandingPage(): JSX.Element {
   }, []);
 
   const problemWords = PROBLEM.body.split(" ");
-  // the quoted question renders in mono, like a real query
-  const quoteStart = problemWords.findIndex((w) => w.startsWith('"'));
-  const quoteEnd = problemWords.findIndex((w) => w.endsWith('?"'));
-  // the headline's last word renders hollow — unfilled, i.e. unlabeled
-  const [h2Pre, h2Post] = PROBLEM.h2.split("labels");
+  // The emphasized noun stays hollow until the surrounding sources resolve.
+  const [h2Pre, h2Post] = PROBLEM.h2.split(PROBLEM.emphasis);
   const graphs = lensGraphs();
   const filetreeViewBox = fittedViewBox(graphs.g2);
   const filetreeLens = V2_LENSES.items[1];
@@ -283,7 +280,7 @@ export default function LandingPage(): JSX.Element {
         )}
       </header>
 
-      {/* ═══ s2 · problem — the kitchen labels itself as you read ═══ */}
+      {/* ═══ s2 · problem — scattered context resolves into a memory graph ═══ */}
       <section className="v2-problem" ref={problemRef}>
         <div className="v2-problem__decos" aria-hidden="true">
           {PROBLEM_DECOS.map((d, i) => (
@@ -315,28 +312,25 @@ export default function LandingPage(): JSX.Element {
           <GraphDivider center />
           <h2 className="v2-problem__title">
             {h2Pre}
-            <span className="v2-problem__hollow">labels</span>
+            <span className="v2-problem__hollow">{PROBLEM.emphasis}</span>
             {h2Post}
           </h2>
           <p className="v2-problem__body">
-            {problemWords.map((w, i) => {
-              const inQuote = quoteStart !== -1 && quoteEnd !== -1 && i >= quoteStart && i <= quoteEnd;
-              return (
-                // the space lives OUTSIDE the span — inline-block would swallow it
-                <span key={i}>
-                  <span ref={collectWord} className={inQuote ? "v2-problem__word v2-problem__word--code" : "v2-problem__word"}>
-                    {w}
-                  </span>{" "}
-                </span>
-              );
-            })}
+            {problemWords.map((w, i) => (
+              // the space lives OUTSIDE the span — inline-block would swallow it
+              <span key={i}>
+                <span ref={collectWord} className="v2-problem__word">
+                  {w}
+                </span>{" "}
+              </span>
+            ))}
           </p>
           <div className="v2-problem__answer" ref={answerRef} aria-hidden="true">
             <svg width="30" height="10" viewBox="0 0 30 10">
               <line x1="0" y1="5" x2="20" y2="5" stroke="#4F7F5D" strokeWidth="1.5" />
               <circle cx="25" cy="5" r="3.5" fill="#4F7F5D" />
             </svg>
-            apps/web/src/checkout/ · 9 files · 3 workspaces
+            PaymentForm.tsx · PR #482 · LIN-482 · decision linked
           </div>
         </div>
       </section>
