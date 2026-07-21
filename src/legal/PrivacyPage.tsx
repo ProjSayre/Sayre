@@ -22,7 +22,7 @@ export default function PrivacyPage(): JSX.Element {
           <p className="privacy-lead">
             Sayre collects what you choose to send through the waitlist, plus limited technical information needed to serve this site. The public demo uses fictional sample data—it does not connect to or upload your repository.
           </p>
-          <p className="privacy-date">Effective and last updated July 17, 2026</p>
+          <p className="privacy-date">Effective and last updated July 20, 2026</p>
         </header>
 
         <div className="privacy-sections">
@@ -51,7 +51,7 @@ export default function PrivacyPage(): JSX.Element {
             <div>
               <h2>The demo and browser storage</h2>
               <p>
-                The live demo runs in your browser using a hand-authored, fictional repository called <code>acme/monorepo</code>. It has no account connection, live AI, backend, or repository upload. The demo stores one local browser value only to remember whether you have already seen its guided-tour prompt. You can remove it through your browser&apos;s site-data controls.
+                The live demo runs in your browser using a hand-authored, fictional repository called <code>acme/monorepo</code>. It has no account connection, live AI, backend, or repository upload. The demo stores one first-party browser preference only to remember whether you dismissed or completed its guided tour. We do not use that preference for analytics, advertising, profiling, or cross-site tracking. You can remove it through your browser&apos;s site-data controls.
               </p>
             </div>
           </section>
@@ -72,9 +72,9 @@ export default function PrivacyPage(): JSX.Element {
           <section>
             <span className="privacy-section__num">05</span>
             <div>
-              <h2>Analytics and cookies</h2>
+              <h2>Cookies and similar storage</h2>
               <p>
-                Sayre does not currently run third-party analytics, advertising pixels, or marketing cookies on this site. If that changes, we will update this policy to describe the new practice before relying on it.
+                The public Sayre site does not currently set cookies or use non-essential tracking technologies. We do not currently run third-party analytics, advertising pixels, session replay, or marketing trackers. If that changes, we will update this policy and, where required, ask for your choice before using them.
               </p>
             </div>
           </section>

@@ -1,6 +1,6 @@
 // hero-anime-scene.jsx — the "Roots" hero animation re-drawn as deliberate 2D anime:
-//  • cels step at a coarse frame rate (default 8 fps, "on threes"); the CAMERA stays
-//    smooth — classic anime: painted background glides, characters are choppy
+//  • the active animation runs at 30 fps; lower cel rates remain available as
+//    optional art-direction controls
 //  • line boil: three pre-drawn variants of every organic stroke cycle every frame
 //  • flat cel shading: no gaussian glows — hard-edged halos, 4-point sparkles,
 //    spike bursts, an impact frame + screen shake when the star lands
@@ -790,12 +790,12 @@ function AnimeFrame({ t, tS, fi, boil }) {
 // scene on the timeline stretches just that band (t is continuous across cuts).
 const BANDS = { 'Star Falls': [0, 1.45], 'Roots Grow': [1.45, 5.55], 'Blueprint': [5.55, DUR] };
 const BAND_LIST = [[0, 1.45], [1.45, 5.55], [5.55, DUR]];
-const TweakCtx = React.createContext({ fps: 8, boil: true });
+const TweakCtx = React.createContext({ fps: 30, boil: true });
 
 function BandScene() {
   const { scene, localTime, dur, index } = useScene();
   const tw = React.useContext(TweakCtx);
-  const fps = Number(tw.fps) || 8;
+  const fps = Number(tw.fps) || 30;
   const band = BANDS[scene.name] || BAND_LIST[Math.min(index, BAND_LIST.length - 1)];
   const lt = clamp(localTime, 0, dur);
   const q = Math.min(Math.floor(lt * fps) / fps, dur);
@@ -806,7 +806,7 @@ function BandScene() {
 }
 
 function HeroAnimeAnimation() {
-  const [tw, setTweak] = window.useTweaks(window.TWEAK_DEFAULTS || { motionEditor: true, fps: 8, boil: true });
+  const [tw, setTweak] = window.useTweaks(window.TWEAK_DEFAULTS || { motionEditor: true, fps: 30, boil: true });
   const { TweaksPanel, TweakSection, TweakRadio, TweakToggle } = window;
   return (
     <TweakCtx.Provider value={tw}>
@@ -816,7 +816,7 @@ function HeroAnimeAnimation() {
         </SceneStage>
         <TweaksPanel>
           <TweakSection label="Anime feel" />
-          <TweakRadio label="Frame rate" value={String(tw.fps)} options={['6', '8', '12']}
+          <TweakRadio label="Frame rate" value={String(tw.fps)} options={['6', '8', '12', '30']}
             onChange={(v) => setTweak('fps', Number(v))} />
           <TweakToggle label="Line boil" value={tw.boil !== false} onChange={(v) => setTweak('boil', v)} />
           <TweakSection label="Editor" />

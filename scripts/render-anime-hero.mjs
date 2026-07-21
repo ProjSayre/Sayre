@@ -50,6 +50,8 @@ function framePath(index) {
   return path.join(FRAME_DIR, `frame-${String(index).padStart(4, "0")}.png`);
 }
 
+const finalFramePath = path.join(FRAME_DIR, "final-frame.png");
+
 async function fileSize(file) {
   return (await stat(file)).size;
 }
@@ -116,7 +118,7 @@ try {
   if (!stage) throw new Error("The render stage disappeared before capture.");
 
   for (let index = 0; index < FRAME_COUNT; index += 1) {
-    const time = index === FRAME_COUNT - 1 ? DURATION : (index / (FRAME_COUNT - 1)) * DURATION;
+    const time = index / FPS;
     await page.evaluate((seekTime) => {
       const el = document.querySelector("[data-om-exportable-video-with-duration-secs]");
       el.dispatchEvent(new CustomEvent("data-om-seek-to-time-frame", {
@@ -129,6 +131,15 @@ try {
       process.stdout.write(`captured ${index + 1}/${FRAME_COUNT} frames\n`);
     }
   }
+
+  await page.evaluate((seekTime) => {
+    const el = document.querySelector("[data-om-exportable-video-with-duration-secs]");
+    el.dispatchEvent(new CustomEvent("data-om-seek-to-time-frame", {
+      detail: { time: seekTime, sync: true },
+    }));
+  }, DURATION);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
+  await stage.screenshot({ path: finalFramePath, type: "png" });
 
   const desktopVideo = path.join(OUTPUT_DIR, "hero-anime.mp4");
   const mobileVideo = path.join(OUTPUT_DIR, "hero-anime-mobile.mp4");
@@ -175,9 +186,9 @@ try {
     "-c:v", "libwebp", "-quality", "90", "-compression_level", "6", output,
   ];
   await run("ffmpeg", stillArgs(framePath(0), startStill));
-  await run("ffmpeg", stillArgs(framePath(FRAME_COUNT - 1), finalStill));
+  await run("ffmpeg", stillArgs(finalFramePath, finalStill));
   await run("ffmpeg", stillArgs(framePath(0), mobileStartStill, "crop=608:1080:656:0,scale=720:1280:flags=lanczos"));
-  await run("ffmpeg", stillArgs(framePath(FRAME_COUNT - 1), mobileFinalStill, "crop=608:1080:656:0,scale=720:1280:flags=lanczos"));
+  await run("ffmpeg", stillArgs(finalFramePath, mobileFinalStill, "crop=608:1080:656:0,scale=720:1280:flags=lanczos"));
 
   const outputs = [desktopVideo, mobileVideo, desktopWebm, mobileWebm, startStill, finalStill, mobileStartStill, mobileFinalStill];
   for (const file of outputs) {

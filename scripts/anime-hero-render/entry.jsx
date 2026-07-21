@@ -6,7 +6,7 @@ window.React = React;
 window.ReactDOM = { ...ReactDOMExports, createRoot };
 window.TWEAK_DEFAULTS = {
   motionEditor: false,
-  fps: 12,
+  fps: 30,
   boil: false,
 };
 window.OM_SCENES = '[{"name":"Star Falls","dur":1.45},{"name":"Roots Grow","dur":4.1},{"name":"Blueprint","dur":4.65}]';
