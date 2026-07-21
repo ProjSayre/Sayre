@@ -1,17 +1,28 @@
-// Drizzle table definitions for the seven relational system-of-record tables.
+// Drizzle table definitions for the relational system-of-record tables.
 //
-// Column list here is authoritative for this ticket (W0-05); downstream tickets
-// may add columns via new migrations. RLS (org_id tenant isolation) is enforced
-// by hand-authored raw SQL in drizzle/0001_*_rls_and_role.sql, NOT expressed here
+// The first seven tables are authoritative from W0-05. `mcpClientKeys` and
+// `modelProviderConfigs` (originally `modelProvider`) were added as a W0-05
+// follow-up, then REDESIGNED by the W0-05 v2 spec (six-table Wave-0
+// foundation contract, docs/wave0-foundation-contracts.md "Persistence and
+// tenant enforcement") along with four new tables: `githubAppInstallations`,
+// `repositoryRefs`, `codeChunks`, `codeEmbeddings`. Downstream tickets may
+// add further columns via new migrations. RLS (org_id tenant isolation) is
+// enforced by hand-authored raw SQL in drizzle/0001_*_rls_and_role.sql,
+// drizzle/0004_rls_and_triggers_mcp_model_provider.sql, and
+// drizzle/0007_rls_triggers_indexes_w0_05_v2.sql, NOT expressed here
 // (Drizzle's pgTable schema has no first-class RLS-policy builder for this).
 //
 // Node-level (org/repo/branch/path) RBAC evaluation is explicitly OUT of scope
 // here — see .claude/rules/security-multitenancy.md and spec.md "Out" section.
 // This file only creates and org-isolates the `permissions` system-of-record
 // table; prefix-match authorization logic lives in the Graph Query Service.
+// The same applies to the four new tables' `graph_node_id`/`ref` columns:
+// cross-store references, never authorization inputs (spec.md "Out").
 
 import { sql } from "drizzle-orm";
 import {
+  bigint,
+  customType,
   index,
   integer,
   jsonb,
@@ -21,6 +32,20 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+
+// drizzle-orm 0.38.x has no built-in pgvector type, so declare a `customType`
+// that emits `vector(1024)` DDL and (de)serializes the pgvector wire format
+// (`'[v1,v2,...]'` text literal). The dimension itself is enforced by
+// Postgres/pgvector at write time (a mismatched-length insert is rejected) —
+// no separate CHECK constraint needed (see spec.md "code_embeddings").
+const vector1024 = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return "vector(1024)";
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+});
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -205,6 +230,283 @@ export const onboardingSteps = pgTable(
   (table) => [index("onboarding_steps_org_id_idx").on(table.orgId)],
 );
 
+/**
+ * GitHub App installation metadata, resolved by the webhook receiver
+ * (`installation_id` -> `org_id`, never trusting the payload's org claim) and
+ * the App-install/onboarding flow (W1-06). See the RLS chicken-and-egg note
+ * in spec.md: the pre-`app.org_id`-context lookup uses a privileged/service
+ * path, the same shape as agent-key resolution.
+ */
+export const githubAppInstallations = pgTable(
+  "github_app_installations",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    // GitHub's numeric installation id. Globally unique — one installation
+    // maps to exactly one Sayre org.
+    installationId: bigint("installation_id", { mode: "number" }).notNull(),
+    accountLogin: text("account_login"),
+    accountType: text("account_type"), // 'Organization' | 'User'
+    repositorySelection: text("repository_selection"), // 'all' | 'selected'
+    // Set when GitHub SUSPENDS the installation. Reversible — GitHub can
+    // unsuspend, which clears this back to NULL.
+    suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    // Set when the UNINSTALL webhook fires (W1-06). Distinct, non-reversible
+    // GitHub App lifecycle event from suspend — only a fresh install (a new
+    // `installation_id` row) supersedes a revoked installation. NULL = active.
+    // The sync-halt check is `suspended_at IS NULL AND revoked_at IS NULL`.
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    unique("github_app_installations_installation_id_unique").on(
+      table.installationId,
+    ),
+    index("github_app_installations_org_id_idx").on(table.orgId),
+  ],
+);
+
+/**
+ * Org-scoped agent API keys (W4-06 issues/resolves; consumed there).
+ * Security-sensitive: only a keyed HMAC-SHA-256 digest of the key is ever
+ * stored, never the raw secret (see spec.md "Audit-integrity design").
+ *
+ * Scope convention (no `roles` column): a key's scope is expressed as
+ * `permissions` rows with `subject_type = 'agent_key'` and
+ * `subject_id = <key_prefix>` — no schema change to `permissions` needed.
+ * Issuing/writing those rows, HMAC computation, and pepper management are all
+ * the issuance service's job (out of scope here; see spec.md "Out"/O-3).
+ *
+ * Defect-A fix (cross-org actor): `created_by`/`revoked_by` are guarded by
+ * the `mcp_client_keys_same_org_actor()` BEFORE INSERT/UPDATE trigger
+ * (drizzle/0007_*), not by a composite FK (which cannot coexist with
+ * `ON DELETE SET NULL` on the NOT NULL `org_id` column).
+ */
+export const mcpClientKeys = pgTable(
+  "mcp_client_keys",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Admin-facing label for the settings UI (W4-06).
+    name: text("name").notNull(),
+    // Public, non-secret lookup identifier (e.g. "mcp_live_ab12cd34"). Globally
+    // unique so a presented key resolves to exactly one row before digest compare.
+    keyPrefix: text("key_prefix").notNull(),
+    // Hex HMAC-SHA-256 digest of the raw 256-bit secret, keyed with a
+    // server-held pepper (pepper lives in env/secrets, never in the DB). The
+    // raw secret is NEVER stored/logged; returned only once at issuance.
+    keyHmac: text("key_hmac").notNull(),
+    // Which pepper version produced `key_hmac` — enables pepper rotation
+    // without invalidating older rows.
+    pepperVersion: integer("pepper_version").notNull(),
+    // Issuance sets an expiry; NULL = non-expiring. Enforcement is the auth path.
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    // Audit: who issued the key. Best-effort LIVE pointer — SET NULL (not
+    // cascade) so deleting the admin never deletes a still-valid org key.
+    createdBy: uuid("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // Immutable snapshot (e.g. issuing admin's email) captured at issuance;
+    // survives user deletion so attribution is never silently erased.
+    // Nullable at the DB layer only because issuance is a later ticket — the
+    // issuance service MUST populate it (Defect-B fix; see spec.md).
+    createdByLabel: text("created_by_label"),
+    // Revocation: NULL = active. Soft revoke (row is kept for audit).
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // Immutable snapshot of the revoking actor (Defect-B fix; see createdByLabel).
+    revokedByLabel: text("revoked_by_label"),
+    // Audit/metering hook (last successful use). Nullable; enforcement is W4-06.
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    unique("mcp_client_keys_key_prefix_unique").on(table.keyPrefix),
+    index("mcp_client_keys_org_id_idx").on(table.orgId),
+  ],
+);
+
+/**
+ * Purpose-keyed AI provider/endpoint/credential-reference config: one row per
+ * (org, purpose) — 'generation' | 'embedding' — replacing the prior one-row-
+ * per-org shape. Consumed by the provider adapters (W3-07/W3-09, purpose =
+ * 'generation') and the embedding worker (W1-05, purpose = 'embedding').
+ */
+export const modelProviderConfigs = pgTable(
+  "model_provider_configs",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    // 'generation' | 'embedding'. Enforced by a CHECK (drizzle/0007_*).
+    purpose: text("purpose").notNull(),
+    // Adapter selector, e.g. 'anthropic' | 'openai' | 'openai_compatible' | 'voyage'.
+    provider: text("provider").notNull(),
+    // Endpoint URL for self-hosted / OpenAI-compatible servers.
+    // NULL = use the adapter's native SDK default.
+    endpointUrl: text("endpoint_url"),
+    // REFERENCE to where the real secret lives (env var name / secrets-manager
+    // key path), resolved by the W0-07 loader. NEVER a raw credential.
+    credentialRef: text("credential_ref"),
+    // The selected model id, e.g. 'claude-opus-4', 'Qwen3-Embedding-0.6B'.
+    model: text("model").notNull(),
+    // For purpose='embedding' rows, the model's output dimension (must be
+    // 1024 to match code_embeddings; app-validated, not DB-constrained).
+    dimension: integer("dimension"),
+    // Adapter-specific options (api version, temperature defaults, etc.).
+    config: jsonb("config"),
+    ...timestamps,
+  },
+  (table) => [
+    unique("model_provider_configs_org_purpose_unique").on(
+      table.orgId,
+      table.purpose,
+    ),
+    // NOTE: do NOT add a separate org_id index — the unique constraint above
+    // (leading org_id) already creates the btree index RLS needs.
+  ],
+);
+
+/**
+ * Records each mutable ref's currently accepted revision + graph version, so
+ * "a ref maps to exactly one accepted revision, and stale/replayed work
+ * cannot move it backward" is enforceable. Columns only — the anti-rollback /
+ * ancestor-verification compare-and-set is the ingestion worker's job later.
+ */
+export const repositoryRefs = pgTable(
+  "repository_refs",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id")
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
+    // e.g. 'refs/heads/main' (or 'main').
+    refName: text("ref_name").notNull(),
+    // The currently accepted HEAD commit SHA. Text (SHA-1 40-hex today,
+    // SHA-256 later) — no fixed length.
+    revisionSha: text("revision_sha").notNull(),
+    // Monotonic counter for optimistic concurrency / anti-rollback; the app
+    // compares-and-sets. CHECK graph_version >= 0 (drizzle/0007_*).
+    graphVersion: bigint("graph_version", { mode: "number" })
+      .notNull()
+      .default(0),
+    ...timestamps,
+  },
+  (table) => [
+    unique("repository_refs_org_repo_ref_unique").on(
+      table.orgId,
+      table.repositoryId,
+      table.refName,
+    ),
+    // NOTE: leading org_id in the unique above covers RLS — no separate index.
+  ],
+);
+
+/**
+ * Bounded, tenant-scoped semantic-chunk storage for RAG (docs/wave0-
+ * foundation-contracts.md "Persistence and tenant enforcement"). Holds
+ * *chunk* text keyed to a graph node/revision, NOT whole source trees — raw
+ * source trees are never persisted; the ingestion scratch clone is destroyed
+ * after parse (.claude/rules/security-multitenancy.md). See spec.md O-4.
+ */
+export const codeChunks = pgTable(
+  "code_chunks",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id")
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
+    // Ties the chunk to a (repo, ref) and thus a revision.
+    refId: uuid("ref_id")
+      .notNull()
+      .references(() => repositoryRefs.id, { onDelete: "cascade" }),
+    // Denormalized for provenance/immutability if the ref later advances.
+    revisionSha: text("revision_sha").notNull(),
+    // Cross-store reference to the File/Function graph node (string key, NOT
+    // an FK — the graph is the source of truth), mirroring `ticket_cache.graph_node_id`.
+    graphNodeId: text("graph_node_id"),
+    // Ordering within the node/file.
+    chunkIndex: integer("chunk_index").notNull(),
+    // The bounded chunk text.
+    content: text("content").notNull(),
+    // Hash of `content` for dedup / change detection.
+    contentHash: text("content_hash").notNull(),
+    startLine: integer("start_line"),
+    endLine: integer("end_line"),
+    tokenCount: integer("token_count"),
+    ...timestamps,
+  },
+  (table) => [
+    // Idempotent re-ingest; leading org_id covers RLS.
+    unique("code_chunks_org_ref_hash_unique").on(
+      table.orgId,
+      table.refId,
+      table.contentHash,
+    ),
+    // RAG lookups by node (org_id btree already provided by the unique above).
+    index("code_chunks_graph_node_id_idx").on(table.graphNodeId),
+  ],
+);
+
+/**
+ * 1024-dim pgvector cosine embeddings, with provider/model/dimension
+ * provenance so incompatible vectors are never compared (docs/wave0-
+ * foundation-contracts.md). The `vector(1024)` column type is the hard
+ * dimension guard — a mismatched-length insert is rejected by pgvector.
+ */
+export const codeEmbeddings = pgTable(
+  "code_embeddings",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id")
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
+    refId: uuid("ref_id")
+      .notNull()
+      .references(() => repositoryRefs.id, { onDelete: "cascade" }),
+    revisionSha: text("revision_sha").notNull(),
+    chunkId: uuid("chunk_id")
+      .notNull()
+      .references(() => codeChunks.id, { onDelete: "cascade" }),
+    // Cross-store node reference (string, not FK).
+    graphNodeId: text("graph_node_id"),
+    embedding: vector1024("embedding").notNull(),
+    // Which provider/model produced the vector.
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    // Provenance metadata (the vector column is the hard constraint).
+    dimension: integer("dimension").notNull().default(1024),
+    ...timestamps,
+  },
+  (table) => [
+    // One embedding per chunk per provider/model.
+    unique("code_embeddings_chunk_provider_model_unique").on(
+      table.chunkId,
+      table.provider,
+      table.model,
+    ),
+    index("code_embeddings_org_id_idx").on(table.orgId),
+    // hnsw cosine index is authored as raw SQL in drizzle/0007_* (Drizzle has
+    // no first-class opclass/access-method builder for this).
+  ],
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -219,3 +521,15 @@ export type StyleRule = typeof styleRules.$inferSelect;
 export type NewStyleRule = typeof styleRules.$inferInsert;
 export type OnboardingStep = typeof onboardingSteps.$inferSelect;
 export type NewOnboardingStep = typeof onboardingSteps.$inferInsert;
+export type GithubAppInstallation = typeof githubAppInstallations.$inferSelect;
+export type NewGithubAppInstallation = typeof githubAppInstallations.$inferInsert;
+export type McpClientKey = typeof mcpClientKeys.$inferSelect;
+export type NewMcpClientKey = typeof mcpClientKeys.$inferInsert;
+export type ModelProviderConfig = typeof modelProviderConfigs.$inferSelect;
+export type NewModelProviderConfig = typeof modelProviderConfigs.$inferInsert;
+export type RepositoryRef = typeof repositoryRefs.$inferSelect;
+export type NewRepositoryRef = typeof repositoryRefs.$inferInsert;
+export type CodeChunk = typeof codeChunks.$inferSelect;
+export type NewCodeChunk = typeof codeChunks.$inferInsert;
+export type CodeEmbedding = typeof codeEmbeddings.$inferSelect;
+export type NewCodeEmbedding = typeof codeEmbeddings.$inferInsert;

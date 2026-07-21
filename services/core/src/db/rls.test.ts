@@ -3,7 +3,15 @@
 // Uses a raw `pg` Pool on the admin `DATABASE_URL` (superuser) for
 // setup/seed (superuser bypasses RLS), and simulates a tenant session on
 // the same connection via `SET LOCAL ROLE sayre_app` inside a transaction
-// (non-superuser -> RLS applies).
+// (non-superuser -> RLS applies). It also exercises the REAL app path,
+// `withOrgContext` (src/db/client.ts), directly on the admin pool -- see the
+// AC-10 tests below, which prove the RLS-bypass fix (SET LOCAL ROLE
+// sayre_app now runs inside withOrgContext's transaction).
+//
+// W0-05 v2: extended from 9 to 13 tables (github_app_installations,
+// mcp_client_keys redesign, model_provider -> model_provider_configs
+// rename/reshape, repository_refs, code_chunks, code_embeddings) per
+// docs/wave0-foundation-contracts.md "Persistence and tenant enforcement".
 //
 // Coordination note (this ticket runs alongside parallel tickets sharing the
 // same sayre-postgres container / sayre_dev database): this test does NOT
@@ -16,8 +24,9 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { Client, Pool, type PoolClient } from "pg";
+import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { createDb, createPool } from "./client";
+import { createDb, createPool, withOrgContext, type Db } from "./client";
 
 const TEST_DB_NAME = process.env.RLS_TEST_DB_NAME ?? "w005_rls_test";
 
@@ -29,6 +38,12 @@ const TABLE_NAMES = [
   "ticket_cache",
   "style_rules",
   "onboarding_steps",
+  "github_app_installations",
+  "mcp_client_keys",
+  "model_provider_configs",
+  "repository_refs",
+  "code_chunks",
+  "code_embeddings",
 ] as const;
 type TableName = (typeof TABLE_NAMES)[number];
 
@@ -71,6 +86,16 @@ async function ensureTestDatabaseExists(adminUrl: string, dbName: string): Promi
   }
 }
 
+/** 1024-dim zero vector literal for pgvector round-trip seeding (spec.md step 6). */
+function zeroVector1024(): string {
+  return `[${Array(1024).fill(0).join(",")}]`;
+}
+
+/** Monotonic-ish unique bigint for `github_app_installations.installation_id` (globally unique). */
+function uniqueInstallationId(): number {
+  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+}
+
 interface SeededOrg {
   orgId: string;
   userId: string;
@@ -79,6 +104,12 @@ interface SeededOrg {
   ticketId: string;
   styleRuleId: string;
   onboardingStepId: string;
+  githubAppInstallationId: string;
+  mcpClientKeyId: string;
+  modelProviderConfigId: string;
+  repositoryRefId: string;
+  codeChunkId: string;
+  codeEmbeddingId: string;
 }
 
 function idsByTable(seed: SeededOrg): Record<TableName, string> {
@@ -90,10 +121,16 @@ function idsByTable(seed: SeededOrg): Record<TableName, string> {
     ticket_cache: seed.ticketId,
     style_rules: seed.styleRuleId,
     onboarding_steps: seed.onboardingStepId,
+    github_app_installations: seed.githubAppInstallationId,
+    mcp_client_keys: seed.mcpClientKeyId,
+    model_provider_configs: seed.modelProviderConfigId,
+    repository_refs: seed.repositoryRefId,
+    code_chunks: seed.codeChunkId,
+    code_embeddings: seed.codeEmbeddingId,
   };
 }
 
-/** Seeds one row in every one of the seven tables for a throwaway org, as the admin (bypasses RLS). */
+/** Seeds one row in every one of the thirteen tables for a throwaway org, as the admin (bypasses RLS). */
 async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
   const orgId = randomUUID();
   const userId = randomUUID();
@@ -102,6 +139,12 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
   const ticketId = randomUUID();
   const styleRuleId = randomUUID();
   const onboardingStepId = randomUUID();
+  const githubAppInstallationId = randomUUID();
+  const mcpClientKeyId = randomUUID();
+  const modelProviderConfigId = randomUUID();
+  const repositoryRefId = randomUUID();
+  const codeChunkId = randomUUID();
+  const codeEmbeddingId = randomUUID();
 
   await pool.query("INSERT INTO organizations (id, name, slug) VALUES ($1, $2, $3)", [
     orgId,
@@ -134,8 +177,78 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
     "INSERT INTO onboarding_steps (id, org_id, repo_id, sequence, title) VALUES ($1, $2, $3, $4, $5)",
     [onboardingStepId, orgId, repoId, 1, `Step 1 for ${label}`],
   );
+  // installation_id is globally unique -- derive from a time+random source.
+  await pool.query(
+    "INSERT INTO github_app_installations (id, org_id, installation_id, account_login, account_type) VALUES ($1, $2, $3, $4, $5)",
+    [githubAppInstallationId, orgId, uniqueInstallationId(), `${label}-account`, "Organization"],
+  );
+  // key_prefix is globally unique (mcp_client_keys_key_prefix_unique) -- derive
+  // from the org label + an id slice so it's unique per org across the suite.
+  // pepper_version is NOT NULL (redesigned column -- no default `roles` array anymore).
+  await pool.query(
+    "INSERT INTO mcp_client_keys (id, org_id, name, key_prefix, key_hmac, pepper_version) VALUES ($1, $2, $3, $4, $5, $6)",
+    [
+      mcpClientKeyId,
+      orgId,
+      `MCP key for ${label}`,
+      `mcp_live_${label.toLowerCase()}_${mcpClientKeyId.slice(0, 8)}`,
+      `hmac-sha256:${mcpClientKeyId}`,
+      1,
+    ],
+  );
+  // model_provider_configs is purpose-keyed: unique(org_id, purpose), not unique(org_id).
+  await pool.query(
+    "INSERT INTO model_provider_configs (id, org_id, purpose, provider, model) VALUES ($1, $2, $3, $4, $5)",
+    [modelProviderConfigId, orgId, "generation", "anthropic", "claude-opus-4"],
+  );
+  await pool.query(
+    "INSERT INTO repository_refs (id, org_id, repository_id, ref_name, revision_sha) VALUES ($1, $2, $3, $4, $5)",
+    [repositoryRefId, orgId, repoId, "refs/heads/main", `${label.toLowerCase()}${"0".repeat(39)}`.slice(0, 40)],
+  );
+  await pool.query(
+    "INSERT INTO code_chunks (id, org_id, repository_id, ref_id, revision_sha, chunk_index, content, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    [
+      codeChunkId,
+      orgId,
+      repoId,
+      repositoryRefId,
+      `${label.toLowerCase()}${"0".repeat(39)}`.slice(0, 40),
+      0,
+      `content for ${label}`,
+      `hash-${codeChunkId}`,
+    ],
+  );
+  // 1024-dim vector round-trip (spec.md step 6).
+  await pool.query(
+    "INSERT INTO code_embeddings (id, org_id, repository_id, ref_id, revision_sha, chunk_id, embedding, provider, model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+    [
+      codeEmbeddingId,
+      orgId,
+      repoId,
+      repositoryRefId,
+      `${label.toLowerCase()}${"0".repeat(39)}`.slice(0, 40),
+      codeChunkId,
+      zeroVector1024(),
+      "voyage",
+      "voyage-3",
+    ],
+  );
 
-  return { orgId, userId, repoId, permissionId, ticketId, styleRuleId, onboardingStepId };
+  return {
+    orgId,
+    userId,
+    repoId,
+    permissionId,
+    ticketId,
+    styleRuleId,
+    onboardingStepId,
+    githubAppInstallationId,
+    mcpClientKeyId,
+    modelProviderConfigId,
+    repositoryRefId,
+    codeChunkId,
+    codeEmbeddingId,
+  };
 }
 
 /**
@@ -166,6 +279,7 @@ async function withTenantSession<T>(
 }
 
 let pool: Pool;
+let db: Db;
 let orgA: SeededOrg;
 let orgB: SeededOrg;
 let idsA: Record<TableName, string>;
@@ -184,6 +298,7 @@ before(async () => {
   }
 
   pool = createPool(testDbUrl);
+  db = createDb(pool);
   orgA = await seedOrg(pool, "A");
   orgB = await seedOrg(pool, "B");
   idsA = idsByTable(orgA);
@@ -195,7 +310,7 @@ after(async () => {
   await pool.end();
 });
 
-test("org A tenant session sees only its own row (and zero org B rows) across all 7 tables", async () => {
+test("org A tenant session sees only its own row (and zero org B rows) across all 13 tables", async () => {
   await withTenantSession(pool, orgA.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
@@ -208,7 +323,7 @@ test("org A tenant session sees only its own row (and zero org B rows) across al
   });
 });
 
-test("org B tenant session sees only its own row (and zero org A rows) across all 7 tables", async () => {
+test("org B tenant session sees only its own row (and zero org A rows) across all 13 tables", async () => {
   await withTenantSession(pool, orgB.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
@@ -311,4 +426,95 @@ test("ticket_cache.payload accepts and returns a JSON object under a tenant sess
     assert.equal(res.rowCount, 1);
     assert.deepEqual(res.rows[0].payload, { hello: "A" });
   });
+});
+
+test("code_embeddings.embedding round-trips a 1024-dim vector under a tenant session", async () => {
+  await withTenantSession(pool, orgA.orgId, async (c) => {
+    const res = await c.query("SELECT embedding FROM code_embeddings WHERE id = $1", [
+      orgA.codeEmbeddingId,
+    ]);
+    assert.equal(res.rowCount, 1);
+    // pg returns the pgvector text representation, e.g. "[0,0,...,0]".
+    const raw = res.rows[0].embedding as string;
+    const values = raw.slice(1, -1).split(",");
+    assert.equal(values.length, 1024, "embedding must round-trip as exactly 1024 dimensions");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-10: the RLS-bypass fix, proven through the REAL app path (withOrgContext)
+// ---------------------------------------------------------------------------
+
+test(
+  "[AC-10] withOrgContext (invoked on the admin/superuser pool, as this suite does) now enforces RLS: " +
+    "cross-org rows are invisible through the app path itself -- this would have leaked before the fix",
+  async () => {
+    for (const table of TABLE_NAMES) {
+      const ownRows = await withOrgContext(db, orgA.orgId, async (tx) => {
+        const r = await tx.execute(sql.raw(`select id from ${table}`));
+        return (r as unknown as { rows: Array<{ id: string }> }).rows;
+      });
+      assert.equal(ownRows.length, 1, `${table}: withOrgContext(orgA) should return exactly 1 row`);
+      assert.equal(ownRows[0].id, idsA[table]);
+
+      const crossRows = await withOrgContext(db, orgA.orgId, async (tx) => {
+        const r = await tx.execute(
+          sql.raw(`select id from ${table} where id = '${idsB[table]}'`),
+        );
+        return (r as unknown as { rows: Array<{ id: string }> }).rows;
+      });
+      assert.equal(
+        crossRows.length,
+        0,
+        `${table}: withOrgContext(orgA) must return ZERO org B rows -- proves the sayre_app role drop is in effect`,
+      );
+    }
+  },
+);
+
+test("[AC-10] withOrgContext rejects a non-UUID orgId before issuing any SQL", async () => {
+  await assert.rejects(
+    withOrgContext(db, "not-a-uuid", async () => {
+      throw new Error("fn must NOT run for an invalid orgId");
+    }),
+    /orgId must be a UUID/,
+  );
+});
+
+test("[AC-10] withOrgContext sets app.org_id transaction-locally and resets it after commit", async () => {
+  const inside = await withOrgContext(db, orgA.orgId, async (tx) => {
+    const r = await tx.execute(sql`select current_setting('app.org_id', true) as v`);
+    return (r as unknown as { rows: Array<{ v: string }> }).rows[0].v;
+  });
+  assert.equal(inside, orgA.orgId, "app.org_id must equal the injected orgId inside the transaction");
+
+  const afterRes = await db.execute(sql`select nullif(current_setting('app.org_id', true), '') as v`);
+  const after = (afterRes as unknown as { rows: Array<{ v: string | null }> }).rows[0].v;
+  assert.equal(after, null, "app.org_id must not leak past the transaction (transaction-local)");
+});
+
+test("[AC-10] back-to-back withOrgContext calls for different orgs do not bleed context", async () => {
+  const a = await withOrgContext(db, orgA.orgId, async (tx) => {
+    const r = await tx.execute(sql`select id from organizations`);
+    return (r as unknown as { rows: Array<{ id: string }> }).rows;
+  });
+  const b = await withOrgContext(db, orgB.orgId, async (tx) => {
+    const r = await tx.execute(sql`select id from organizations`);
+    return (r as unknown as { rows: Array<{ id: string }> }).rows;
+  });
+  assert.equal(a.length, 1);
+  assert.equal(a[0].id, orgA.orgId);
+  assert.equal(b.length, 1);
+  assert.equal(b[0].id, orgB.orgId);
+});
+
+test("[AC-10] cross-org write inside withOrgContext is rejected by WITH CHECK", async () => {
+  await assert.rejects(
+    withOrgContext(db, orgA.orgId, async (tx) => {
+      await tx.execute(
+        sql`insert into users (org_id, email) values (${orgB.orgId}, 'cross-org-via-with-org-context@example.com')`,
+      );
+    }),
+    /row-level security/i,
+  );
 });

@@ -13,7 +13,10 @@
     "db:migrate": "node --env-file=../../infra/.env --import tsx src/db/migrate.ts",
     "test": "vitest run",
     "test:integration": "vitest run",
-    "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts"
+    "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts",
+    "test:rls:acceptance": "node --env-file=../../infra/.env --import tsx --test src/db/rls_acceptance.tester.test.ts",
+    "test:rls:ci": "node --import tsx --test src/db/rls.test.ts",
+    "test:rls:acceptance:ci": "node --import tsx --test src/db/rls_acceptance.tester.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sns": "3.1088.x",
