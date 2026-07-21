@@ -10,8 +10,10 @@ export const HERO = {
 };
 
 export const PROBLEM = {
-  h2: "A codebase is a kitchen without labels.",
-  body: 'Everything is somewhere. Nobody can say where. Every onboarding, every handoff, every "which file is checkout actually in?" pays the tax.',
+  h2: "The code is only half the story.",
+  emphasis: "story",
+  body:
+    "Sayre connects code, docs, tickets, meetings, and decisions in a source-backed memory graph—so developers and AI agents can trace what changed, why it changed, and what it affects—and change unfamiliar code with confidence.",
 };
 
 export const LENSES = {
@@ -46,8 +48,8 @@ export const HOW_IT_WORKS = {
     },
     {
       num: "03",
-      h3: "everyone reads it their way",
-      body: "Three views over one graph, live within seconds of every push.",
+      h3: "the graph becomes shared context",
+      body: "People and agents use the same authorized map through workflows built around the work.",
     },
   ],
 };
@@ -73,7 +75,7 @@ export const DEEP_DIVES = [
 export const WAITLIST_BAND = {
   h2: "Want this on your codebase?",
   body: "We're onboarding design partners now. Early teams get white-glove setup and a real say in what ships.",
-  fine: "no spam · one email when your invite is ready",
+  fine: "no spam · early-access follow-up only",
 };
 
 export const REPO_OVERVIEW =

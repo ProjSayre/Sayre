@@ -1,6 +1,6 @@
 // Periodic waitlist check (`npm run test:waitlist`). The browser can't read
 // Google's response (no CORS), but Node can — this submits a real test row
-// (all required fields, exactly as the site does) and inspects the reply,
+// (required fields plus representative optional/Other answers) and inspects the reply,
 // catching the silent-failure mode the site itself cannot: deleted form,
 // closed responses, changed entry ids, changed option strings, or a question
 // flipped to required that the site doesn't send.
@@ -29,7 +29,10 @@ try {
     body.append(en.website, "https://sayre.dev");
     body.append(en.teamSize, opt.teamSize[0]);
     body.append(en.tools, opt.tools[0]);
+    body.append(en.tools, "__other_option__");
+    body.append(`${en.tools}.other_option_response`, "periodic-test-tool");
     body.append(en.interest, opt.interest[opt.interest.length - 1]);
+    body.append(en.heardVia, opt.heardVia[0]);
     body.append(en.heardVia, "__other_option__");
     body.append(`${en.heardVia}.other_option_response`, `site: manual-test ${stamp}`);
     body.append(en.notes, `manual-test ${stamp} — safe to delete`);

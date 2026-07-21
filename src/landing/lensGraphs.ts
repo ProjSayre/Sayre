@@ -1,4 +1,4 @@
-// Static graph states for the pinned three-lens section — built from the real
+// Static graph states for the landing feature views — built from the real
 // dataset + layout code at module init (ported from the design's dc script).
 
 import { childrenOf } from "../data";
@@ -9,6 +9,7 @@ const VOID = "#0D0E0C";
 
 export interface LensGraph {
   vb: string;
+  anchors: Record<string, { x: number; y: number }>;
   edges: { x1: number; y1: number; x2: number; y2: number; stroke: string; w: number; op: number; dash: string }[];
   rings: { x: number; y: number; r: number; stroke: string; sw: number; dash: string; fill: string }[];
   dots: { x: number; y: number; r: number; fill: string }[];
@@ -22,10 +23,11 @@ function buildTree(selectedId: string | null, mode: "lit" | "feature"): LensGrap
   const layout = layoutItems(items);
   const lit = litSets(selectedId);
   const pos = layout.positions;
-  const out: LensGraph = { vb: "", edges: [], rings: [], dots: [], labels: [] };
+  const out: LensGraph = { vb: "", anchors: {}, edges: [], rings: [], dots: [], labels: [] };
   for (const it of items) {
     const p = pos.get(it.id);
     if (!p) continue;
+    out.anchors[it.id] = { x: p.x, y: p.y };
     if (it.parentId !== null) {
       const pp = pos.get(it.parentId);
       if (pp) {
@@ -85,7 +87,7 @@ function buildRelations(): LensGraph {
     const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
     pos.set(k.id, { x: Math.cos(ang) * R, y: Math.sin(ang) * R * 0.8 });
   });
-  const out: LensGraph = { vb: "-260 -220 520 440", edges: [], rings: [], dots: [], labels: [] };
+  const out: LensGraph = { vb: "-260 -220 520 440", anchors: {}, edges: [], rings: [], dots: [], labels: [] };
   const sel = "apps/api";
   for (const a of aggs) {
     const p1 = pos.get(a.fromId);
@@ -98,6 +100,7 @@ function buildRelations(): LensGraph {
   }
   for (const k of kids) {
     const p = pos.get(k.id)!;
+    out.anchors[k.id] = { x: p.x, y: p.y };
     const isSel = k.id === sel;
     out.rings.push({ x: p.x, y: p.y, r: isSel ? 9 : 8, stroke: isSel ? "#4F7F5D" : "#55554E", sw: isSel ? 2 : 1.5, dash: "none", fill: VOID });
     out.labels.push({ x: p.x + 14, y: p.y + 4, anchor: "start", fs: 12, fill: isSel ? "#74A583" : "#A9A9A0", fw: isSel ? 600 : 400, label: k.name + "/" });
