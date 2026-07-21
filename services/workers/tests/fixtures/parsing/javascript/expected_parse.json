@@ -51,6 +51,7 @@
       "start_line": 12
     }
   ],
+  "covers": [],
   "deleted_file_paths": [],
   "functions": [
     {
@@ -216,5 +217,6 @@
     "shapes.js",
     "widget.jsx"
   ],
-  "skipped_files": []
+  "skipped_files": [],
+  "tests": []
 }

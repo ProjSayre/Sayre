@@ -16,9 +16,10 @@ JSON for snapshotting and a module-boundary validation contract for free.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 Language = Literal["python", "javascript", "typescript", "go"]
 
@@ -112,6 +113,32 @@ class ParsedInheritance(BaseModel):
     base_name: str
 
 
+class ParsedTest(BaseModel):
+    """One source file classified as a test.
+
+    The graph writer turns this tenant-free record into a ``Test`` node and
+    stamps its scope/UID at write time. Static inference has no run result, so
+    newly discovered tests always begin with ``coverage_status='unknown'``.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    path: str
+    name: str
+    coverage_status: Literal["pass", "fail", "unknown"] = "unknown"
+
+
+class ParsedCoverage(BaseModel):
+    """One inferred ``Test -> File`` COVERS relationship candidate."""
+
+    model_config = _MODEL_CONFIG
+
+    test_path: str
+    file_path: str
+    status: Literal["inferred", "measured"] = "inferred"
+    last_run: datetime | None = None
+
+
 class SkippedFile(BaseModel):
     """A file `parse_full`/`parse_diff` did not produce records for."""
 
@@ -136,6 +163,8 @@ class ParseResult(BaseModel):
     imports: list[ParsedImport]
     calls: list[ParsedCall]
     inherits: list[ParsedInheritance]
+    tests: list[ParsedTest] = Field(default_factory=list)
+    covers: list[ParsedCoverage] = Field(default_factory=list)
     parsed_files: list[str]
     skipped_files: list[SkippedFile]
     deleted_file_paths: list[str]

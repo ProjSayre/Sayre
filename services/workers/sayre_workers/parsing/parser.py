@@ -20,6 +20,7 @@ from collections.abc import Iterable
 
 from tree_sitter_language_pack import get_parser
 
+from sayre_workers.parsing.coverage import infer_test_coverage
 from sayre_workers.parsing.models import (
     ParsedCall,
     ParsedClass,
@@ -37,27 +38,50 @@ def parse_full(files: Iterable[SourceFile]) -> ParseResult:
     """Cold-start parse: caller supplies EVERY file. Unsupported extensions
     -> `skipped_files`. `deleted_file_paths` is always `[]`. Output lists are
     canonically sorted (deterministic) regardless of `files`' input order."""
-    return _parse(files, deleted_file_paths=[])
+    materialized = list(files)
+    return _parse(
+        materialized,
+        deleted_file_paths=[],
+        repository_paths=[source_file.path for source_file in materialized],
+    )
 
 
 def parse_diff(
     changed_files: Iterable[SourceFile],
     deleted_paths: Iterable[str] = (),
+    *,
+    repository_paths: Iterable[str] | None = None,
 ) -> ParseResult:
     """Delta parse: caller supplies ONLY changed/added files (re-parsed in
     full, per file — see module docstring) plus the paths of removed files.
     Same `ParseResult` shape as `parse_full`; `deleted_file_paths` carries the
     removed paths through (deduplicated + sorted) so W1-05 can drop their
-    subgraph. A path present in BOTH `changed_files` and `deleted_paths` is
-    dropped from parsing — deleted wins. Performs no graph or filesystem
-    access; W1-01 holds NO state between calls."""
+    subgraph. Optional `repository_paths` supplies path-only context so test
+    imports can resolve unchanged covered files without reading a checkout.
+    A path present in BOTH `changed_files` and `deleted_paths` is dropped from
+    parsing — deleted wins. Performs no graph or filesystem access; the parser
+    holds NO state between calls."""
     deleted = sorted({path for path in deleted_paths})
     deleted_set = set(deleted)
     changed = [source_file for source_file in changed_files if source_file.path not in deleted_set]
-    return _parse(changed, deleted_file_paths=deleted)
+    available_paths = (
+        [path for path in repository_paths if path not in deleted_set]
+        if repository_paths is not None
+        else [source_file.path for source_file in changed]
+    )
+    return _parse(
+        changed,
+        deleted_file_paths=deleted,
+        repository_paths=available_paths,
+    )
 
 
-def _parse(files: Iterable[SourceFile], *, deleted_file_paths: list[str]) -> ParseResult:
+def _parse(
+    files: Iterable[SourceFile],
+    *,
+    deleted_file_paths: list[str],
+    repository_paths: Iterable[str],
+) -> ParseResult:
     functions: list[ParsedFunction] = []
     classes: list[ParsedClass] = []
     imports: list[ParsedImport] = []
@@ -69,9 +93,7 @@ def _parse(files: Iterable[SourceFile], *, deleted_file_paths: list[str]) -> Par
     for source_file in files:
         adapter = adapter_for_path(source_file.path)
         if adapter is None:
-            skipped_files.append(
-                SkippedFile(path=source_file.path, reason="unsupported_extension")
-            )
+            skipped_files.append(SkippedFile(path=source_file.path, reason="unsupported_extension"))
             continue
 
         try:
@@ -124,6 +146,7 @@ def _parse(files: Iterable[SourceFile], *, deleted_file_paths: list[str]) -> Par
     inherits.sort(key=lambda i: (i.file_path, i.subclass_qualified_name, i.base_name))
     parsed_files.sort()
     skipped_files.sort(key=lambda s: s.path)
+    tests, covers = infer_test_coverage(parsed_files, imports, repository_paths)
 
     return ParseResult(
         functions=functions,
@@ -131,6 +154,8 @@ def _parse(files: Iterable[SourceFile], *, deleted_file_paths: list[str]) -> Par
         imports=imports,
         calls=calls,
         inherits=inherits,
+        tests=tests,
+        covers=covers,
         parsed_files=parsed_files,
         skipped_files=skipped_files,
         deleted_file_paths=deleted_file_paths,

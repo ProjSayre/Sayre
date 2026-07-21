@@ -97,9 +97,9 @@ items.map((x) => x * 2);
 """
     result = parse_full([SourceFile(path="a.js", content=source)])
     names = {f.name for f in result.functions}
-    assert names == {"namedTopLevel"}, (
-        f"anonymous/IIFE callbacks leaked into functions: {names - {'namedTopLevel'}}"
-    )
+    assert names == {
+        "namedTopLevel"
+    }, f"anonymous/IIFE callbacks leaked into functions: {names - {'namedTopLevel'}}"
 
 
 def test_ts_class_implements_only_no_extends_produces_no_inherits_row():
@@ -191,7 +191,12 @@ def test_parse_diff_signature_takes_source_files_not_a_prior_tree():
     carried between calls."""
     signature = inspect.signature(parse_diff)
     params = list(signature.parameters.values())
-    assert [p.name for p in params] == ["changed_files", "deleted_paths"]
+    assert [p.name for p in params] == [
+        "changed_files",
+        "deleted_paths",
+        "repository_paths",
+    ]
+    assert params[-1].kind is inspect.Parameter.KEYWORD_ONLY
     changed_files_annotation = str(params[0].annotation)
     deleted_paths_annotation = str(params[1].annotation)
     assert "SourceFile" in changed_files_annotation

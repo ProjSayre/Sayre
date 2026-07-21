@@ -38,6 +38,7 @@
     }
   ],
   "classes": [],
+  "covers": [],
   "deleted_file_paths": [],
   "functions": [
     {
@@ -119,5 +120,6 @@
     "main.go",
     "shapes.go"
   ],
-  "skipped_files": []
+  "skipped_files": [],
+  "tests": []
 }

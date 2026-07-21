@@ -146,12 +146,13 @@ def _read(filename: str) -> str:
     return (MIGRATIONS_DIR / filename).read_text()
 
 
-def test_migrations_dir_contains_exactly_the_three_named_files():
+def test_migrations_dir_contains_exactly_the_four_named_files():
     names = {p.name for p in MIGRATIONS_DIR.glob("*.cypher")}
     assert names == {
         "001_init_node_labels.cypher",
         "002_init_edge_types.cypher",
         "003_constraints_and_indexes.cypher",
+        "004_test_covers_contract.cypher",
     }
 
 
@@ -163,6 +164,7 @@ def test_each_migration_file_has_a_header_comment_stating_purpose_and_neptune_st
         "001_init_node_labels.cypher": "YES",
         "002_init_edge_types.cypher": "YES",
         "003_constraints_and_indexes.cypher": "NO",
+        "004_test_covers_contract.cypher": "YES",
     }
     for filename, expected_replayability in expectations.items():
         text = _read(filename)
@@ -183,6 +185,7 @@ def test_no_apoc_or_db_procedure_calls_in_any_migration_file():
         "001_init_node_labels.cypher",
         "002_init_edge_types.cypher",
         "003_constraints_and_indexes.cypher",
+        "004_test_covers_contract.cypher",
     ):
         text = _read(filename)
         assert "apoc." not in text, f"{filename} must not use APOC (openCypher only)"
@@ -193,7 +196,18 @@ def test_only_003_contains_constraint_or_index_ddl():
     ddl_pattern = re.compile(r"\b(CREATE CONSTRAINT|CREATE INDEX)\b")
     assert not ddl_pattern.search(_read("001_init_node_labels.cypher"))
     assert not ddl_pattern.search(_read("002_init_edge_types.cypher"))
+    assert not ddl_pattern.search(_read("004_test_covers_contract.cypher"))
     assert ddl_pattern.search(_read("003_constraints_and_indexes.cypher"))
+
+
+def test_004_migrates_coverage_contract_without_dropping_last_run():
+    text = _read("004_test_covers_contract.cypher")
+    assert "r.status" in text
+    assert "'inferred'" in text
+    assert "'measured'" in text
+    assert "t.coverage_status" in text
+    assert "REMOVE r.source" in text
+    assert "REMOVE r.last_run" not in text
 
 
 def test_001_and_002_are_pure_merge_match_no_ddl():
@@ -297,15 +311,15 @@ def fake_pg(monkeypatch) -> _FakePgConn:
     return conn
 
 
-def test_first_run_applies_all_three_real_migration_files(fake_pg):
+def test_first_run_applies_all_four_real_migration_files(fake_pg):
     driver = _FakeDriver()
 
     results = run_migrations(driver, fake_pg)
 
-    assert [r.version for r in results] == [1, 2, 3]
+    assert [r.version for r in results] == [1, 2, 3, 4]
     assert all(not r.skipped for r in results)
     assert all(r.statements_run > 0 for r in results)
-    assert len(fake_pg.rows) == 3
+    assert len(fake_pg.rows) == 4
     assert len(driver.calls) == sum(r.statements_run for r in results)
 
 
@@ -337,7 +351,7 @@ def test_triple_apply_stays_a_noop(fake_pg):
     run_migrations(driver, fake_pg)
 
     assert len(driver.calls) == calls_after_first
-    assert len(fake_pg.rows) == 3
+    assert len(fake_pg.rows) == 4
 
 
 def test_mutated_after_apply_file_raises_checksum_mismatch(fake_pg, tmp_path: Path, monkeypatch):
@@ -404,7 +418,8 @@ def test_target_neptune_skips_version_3_and_does_not_record_it(fake_pg):
     assert by_version[1].skipped is False
     assert by_version[2].skipped is False
     assert by_version[3].skipped is True
-    assert set(fake_pg.rows.keys()) == {1, 2}
+    assert by_version[4].skipped is False
+    assert set(fake_pg.rows.keys()) == {1, 2, 4}
 
 
 def test_invalid_target_raises_value_error(fake_pg):
@@ -993,9 +1008,8 @@ def test_real_dry_run_mutates_neither_store(real_infra):
 
 
 @pytestmark_integration
-def test_real_target_neptune_skips_003_and_records_only_1_and_2(real_infra):
-    """Edge case: '--target neptune' -- file 003 is skipped; 001/002 apply;
-    graph_migrations records only versions 1 and 2 (no constraints/indexes created)."""
+def test_real_target_neptune_skips_003_and_records_portable_migrations(real_infra):
+    """Edge case: '--target neptune' skips DDL 003 but applies portable 001/002/004."""
     driver, pg_conn = real_infra
 
     results = run_migrations(driver, pg_conn, target="neptune")
@@ -1004,11 +1018,12 @@ def test_real_target_neptune_skips_003_and_records_only_1_and_2(real_infra):
     assert by_version[1].skipped is False
     assert by_version[2].skipped is False
     assert by_version[3].skipped is True
+    assert by_version[4].skipped is False
 
     with pg_conn.cursor() as cur:
         cur.execute("SELECT version FROM graph_migrations ORDER BY version")
         versions = [row[0] for row in cur.fetchall()]
-    assert versions == [1, 2]
+    assert versions == [1, 2, 4]
 
     with driver.session() as session:
         anchor_count = session.run(

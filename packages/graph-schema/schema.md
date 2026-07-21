@@ -8,7 +8,8 @@ per that rule.
 
 This file is the reference; the openCypher migrations that implement it live at
 `services/workers/graph-migrations/` (`001_init_node_labels.cypher`,
-`002_init_edge_types.cypher`, `003_constraints_and_indexes.cypher`), applied/tracked by
+`002_init_edge_types.cypher`, `003_constraints_and_indexes.cypher`, and
+`004_test_covers_contract.cypher`), applied/tracked by
 `services/workers/sayre_workers/graph_migrations/runner.py`. No query-builder code
 lives here yet — that is a later ticket (W2-02, Graph Query Service).
 
@@ -58,7 +59,7 @@ inference (PM-01).
 | `Feature` | `description`, `team`, `name` | Cached fields for the Product tree view. |
 | `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `status` | Mirror pointer to the Jira/Linear system of record. |
 | `EnvStep` | `sequence` (int), `command` | Onboarding steps, ordered by `sequence`. |
-| `Test` | `path`, `name`, `last_run_status` (`'pass'` \| `'fail'` \| `'unknown'`), `last_run_at` (datetime, nullable) | Backs the pass/fail badge (W4-03). Coverage **freshness** (covered/uncovered/stale) is computed from the `COVERS` edge properties, not a `Test` node property. |
+| `Test` | `path`, `name`, `coverage_status` (`'pass'` \| `'fail'` \| `'unknown'`) | Statically discovered tests begin as `unknown`; W4-03 updates measured results. |
 
 ## Relationship types (13)
 
@@ -78,7 +79,7 @@ Every relationship carries `org_id`. Direction below is canonical (source -> tar
 | `PART_OF` | `File->Feature` | — | Backs a Feature's "Files Included" list. |
 | `REQUIRES` | `EnvStep->EnvStep` | — | Onboarding prerequisite ordering. |
 | `DEPENDS_ON` | `Module->Module` | — | |
-| `COVERS` | `Test->File` | `source` (`'static'` \| `'dynamic'`), `last_run` (datetime, nullable for `source='static'`) | `source`/`last_run` are what W4-03 reads to mark coverage `stale` when `source='dynamic' AND last_run < now() - 7 days`, or when only a static edge exists. |
+| `COVERS` | `Test->File` | `status` (`'inferred'` \| `'measured'`), `last_run` (datetime, nullable) | Static import inference writes `status='inferred'` with `last_run` unset; W4-03 may replace it with measured freshness. Endpoints must share authorized org/repository/ref/revision scope. |
 
 **Direction note (non-blocking, flagged for awareness):** `AUTHORED`/`MODIFIED`/`OWNS`
 directions above (`Person->Commit`, `Commit->File`, `Person->File`) are this schema's
@@ -124,9 +125,9 @@ a database constraint.
 
 **Neptune caveat:** Amazon Neptune does not implement openCypher `CREATE CONSTRAINT` /
 `CREATE INDEX` DDL (Neptune auto-indexes and has no user schema DDL). `003` is the
-**only** file in this migration set that is Neo4j-specific; 001/002 (pure `MERGE`)
-replay unmodified against Neptune. The migration runner's `--target neptune` flag
-skips 003 rather than sending this DDL to Neptune.
+**only** file in this migration set that is Neo4j-specific; 001/002 and 004
+(portable data statements) replay unmodified against Neptune. The migration runner's
+`--target neptune` flag skips 003 rather than sending this DDL to Neptune.
 
 ## Version tracking
 

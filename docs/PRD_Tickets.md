@@ -53,7 +53,7 @@ Define the logical graph schema per PRD §4.3: node labels Project, Repo, Folder
 
 #### **What it should look like:** 
 
-services/workers/graph-migrations/ 001_init_node_labels.cypher 002_init_edge_types.cypher 003_constraints_and_indexes.cypher 
+services/workers/graph-migrations/ 001_init_node_labels.cypher 002_init_edge_types.cypher 003_constraints_and_indexes.cypher 004_test_covers_contract.cypher
 
 Logical data migrations are idempotent (`MERGE`, not `CREATE`) with org_id on every node label. Target-specific physical migrations are independently idempotent for that target.
 
