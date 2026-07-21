@@ -13,6 +13,7 @@ export const CONFIG_NAMES = [
   'AWS_REGION',
   'SQS_ENDPOINT_URL',
   'SQS_INGESTION_QUEUE',
+  'PUPPETEER_EXECUTABLE_PATH',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];

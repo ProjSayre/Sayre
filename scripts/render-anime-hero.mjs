@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
 import { createServer as createViteServer } from "vite";
+import { ConfigError, getConfig } from "@sayre/config";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_DIR = path.join(ROOT, "public", "media");
@@ -21,8 +22,18 @@ const HEADLESS_SHELL_PATHS = existsSync(HEADLESS_SHELL_ROOT)
       .reverse()
       .map((version) => path.join(HEADLESS_SHELL_ROOT, version, "chrome-headless-shell-win64", "chrome-headless-shell.exe"))
   : [];
+
+function optionalConfig(name) {
+  try {
+    return getConfig(name);
+  } catch (error) {
+    if (error instanceof ConfigError) return undefined;
+    throw error;
+  }
+}
+
 const CHROMIUM_PATHS = [
-  process.env.PUPPETEER_EXECUTABLE_PATH,
+  optionalConfig("PUPPETEER_EXECUTABLE_PATH"),
   ...HEADLESS_SHELL_PATHS,
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
