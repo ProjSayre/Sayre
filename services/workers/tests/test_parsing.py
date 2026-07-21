@@ -17,11 +17,11 @@ this module deliberately does not write.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
+from sayre_workers.config import MissingConfigError, get_config
 from sayre_workers.parsing import (
     ParsedClass,
     ParsedFunction,
@@ -65,7 +65,11 @@ def _load_fixture_repo(root: Path) -> list[SourceFile]:
 
 def _assert_matches_golden(result: ParseResult, golden_path: Path) -> None:
     actual = to_canonical_json(result)
-    if os.environ.get("UPDATE_PARSE_SNAPSHOTS") == "1":
+    try:
+        update_snapshots = get_config("UPDATE_PARSE_SNAPSHOTS") == "1"
+    except MissingConfigError:
+        update_snapshots = False
+    if update_snapshots:
         golden_path.write_text(actual, encoding="utf-8")
         return
     expected = golden_path.read_text(encoding="utf-8")
