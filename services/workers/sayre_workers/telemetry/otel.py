@@ -17,6 +17,11 @@ sub-millisecond-to-multi-second RPC latency and are too coarse in the
 0-100ms band that matters for the pgvector -> OpenSearch migration trigger's
 p95/p99 requirement (see `docs/migration-triggers.md` and
 `.pipeline/W0-06/spec.md` Acceptance #8).
+
+`GRAPH_QUERY_DURATION_BUCKETS_MS` / `GRAPH_QUERY_RESULT_NODE_COUNT_BUCKETS`
+(W0-08) add the same explicit-bucket treatment for the two Neo4j graph-store
+histograms, registered as additional `View`s on this SAME shared provider —
+see `_views()` below. No second `MeterProvider`, no second `/metrics` server.
 """
 
 from __future__ import annotations
@@ -45,7 +50,49 @@ VECTOR_QUERY_DURATION_BUCKETS_MS: list[float] = [
 ]  # ms — chosen so histogram_quantile(0.95/0.99, ...) is meaningful for vector queries.
    # Default OTel buckets are too coarse for the trigger's p95/p99 requirement.
 
+# Cypher latency spans a wider useful band than pgvector similarity search: point
+# reads/writes are single-digit ms, but multi-hop traversals under concurrent load can
+# reach seconds. Boundaries are dense around the 300 ms Neo4j->Neptune p95 trigger and
+# extend to 10 s so heavy traversals still land in a finite bucket (not just +Inf).
+GRAPH_QUERY_DURATION_BUCKETS_MS: list[float] = [
+    1,
+    5,
+    10,
+    25,
+    50,
+    100,
+    150,
+    200,
+    250,
+    300,
+    400,
+    500,
+    750,
+    1000,
+    2500,
+    5000,
+    10000,
+]
+
+# Result-set node counts: viewport reads are canvas-bounded (Folder/File only), writes
+# are small, traversals can fan out. Distribution buckets, not latency.
+GRAPH_QUERY_RESULT_NODE_COUNT_BUCKETS: list[float] = [
+    0,
+    1,
+    5,
+    10,
+    25,
+    50,
+    100,
+    250,
+    500,
+    1000,
+    5000,
+]
+
 _DURATION_INSTRUMENT_NAME = "vector_query_duration_ms"
+_GRAPH_DURATION_INSTRUMENT_NAME = "graph_query_duration_ms"
+_GRAPH_RESULT_NODE_COUNT_INSTRUMENT_NAME = "graph_query_result_node_count"
 _SERVICE_NAME = "sayre-workers"
 
 # Supported exporters. 'otlp' is intentionally reserved (not implemented) as
@@ -58,12 +105,37 @@ _provider: MeterProvider | None = None
 
 
 def _duration_view() -> View:
-    """The single View: forces VECTOR_QUERY_DURATION_BUCKETS_MS onto the
-    vector_query_duration_ms histogram regardless of exporter."""
+    """Forces VECTOR_QUERY_DURATION_BUCKETS_MS onto the vector_query_duration_ms
+    histogram regardless of exporter."""
     return View(
         instrument_name=_DURATION_INSTRUMENT_NAME,
         aggregation=ExplicitBucketHistogramAggregation(VECTOR_QUERY_DURATION_BUCKETS_MS),
     )
+
+
+def _graph_duration_view() -> View:
+    """Forces GRAPH_QUERY_DURATION_BUCKETS_MS onto the graph_query_duration_ms
+    histogram regardless of exporter (W0-08)."""
+    return View(
+        instrument_name=_GRAPH_DURATION_INSTRUMENT_NAME,
+        aggregation=ExplicitBucketHistogramAggregation(GRAPH_QUERY_DURATION_BUCKETS_MS),
+    )
+
+
+def _graph_result_node_count_view() -> View:
+    """Forces GRAPH_QUERY_RESULT_NODE_COUNT_BUCKETS onto the
+    graph_query_result_node_count histogram regardless of exporter (W0-08)."""
+    return View(
+        instrument_name=_GRAPH_RESULT_NODE_COUNT_INSTRUMENT_NAME,
+        aggregation=ExplicitBucketHistogramAggregation(GRAPH_QUERY_RESULT_NODE_COUNT_BUCKETS),
+    )
+
+
+def _views() -> list[View]:
+    """All explicit-bucket histogram Views registered on the single shared
+    provider built in init_metrics(). Adding a new bucketed histogram means
+    adding one View here -- never a second MeterProvider."""
+    return [_duration_view(), _graph_duration_view(), _graph_result_node_count_view()]
 
 
 def init_metrics(
@@ -139,7 +211,7 @@ def init_metrics(
         provider = MeterProvider(
             resource=resource,
             metric_readers=readers,
-            views=[_duration_view()],
+            views=_views(),
         )
         metrics.set_meter_provider(provider)
 

@@ -21,6 +21,11 @@ constraints, indexes, and other DDL are target-specific and versioned per graph 
 cutover reuses the logical contract while applying Neptune-specific physical provisioning; Neo4j DDL
 is not claimed to replay unmodified.
 
+W0-08 instruments every sanctioned Neo4j driver call with `graph_query_duration_ms`,
+`graph_query_concurrent_count`, and `graph_query_result_node_count`, tagged by `org_id` and
+`query_shape` (`viewport_read` | `write` | `traversal`), using the same server-resolved bounded
+metric attributes and OpenTelemetry → Prometheus setup as W0-06.
+
 ## Vector Store: pgvector → Amazon OpenSearch
 
 The trigger is instrumented concurrent query load and latency, not candidate-set size, corpus size,
