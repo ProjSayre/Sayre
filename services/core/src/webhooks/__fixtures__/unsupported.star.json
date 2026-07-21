@@ -1,0 +1,18 @@
+{
+  "headers": {
+    "x-github-event": "star",
+    "x-github-delivery": "99999999-9999-4999-8999-999999999999"
+  },
+  "body": {
+    "action": "created",
+    "starred_at": "2026-07-21T00:00:00Z",
+    "repository": {
+      "id": 583231,
+      "full_name": "acme-corp/widgets",
+      "private": false
+    },
+    "installation": {
+      "id": 555
+    }
+  }
+}

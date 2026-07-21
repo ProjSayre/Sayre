@@ -1,0 +1,26 @@
+{
+  "headers": {
+    "x-github-event": "push",
+    "x-github-delivery": "22222222-2222-4222-8222-222222222222"
+  },
+  "body": {
+    "ref": "refs/heads/feature-x",
+    "before": "cccccccccccccccccccccccccccccccccccccccc",
+    "after": "0000000000000000000000000000000000000000",
+    "forced": false,
+    "deleted": true,
+    "repository": {
+      "id": 583231,
+      "full_name": "acme-corp/widgets",
+      "private": false
+    },
+    "pusher": {
+      "name": "octocat",
+      "email": "octocat@example.com"
+    },
+    "installation": {
+      "id": 555
+    },
+    "commits": []
+  }
+}

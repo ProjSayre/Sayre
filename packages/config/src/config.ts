@@ -10,6 +10,9 @@ export const CONFIG_NAMES = [
   'SMOKE_SHOTS',
   'RLS_TEST_DB_NAME',
   'RLS_TESTER_DB_NAME',
+  'AWS_REGION',
+  'SQS_ENDPOINT_URL',
+  'SQS_INGESTION_QUEUE',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -25,6 +28,11 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   SMOKE_SHOTS: 'scripts/.shots',
   RLS_TEST_DB_NAME: 'w005_rls_test',
   RLS_TESTER_DB_NAME: 'w005_rls_tester',
+  AWS_REGION: 'us-east-1',
+  SQS_INGESTION_QUEUE: 'ingestion.fifo',
+  // SQS_ENDPOINT_URL intentionally has NO default: unset means "use real AWS".
+  // The SQS module treats a ConfigError here as "no override endpoint", mirroring
+  // the Python client (services/workers/messaging/sqs_client.py).
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);
