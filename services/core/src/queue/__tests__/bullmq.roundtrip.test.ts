@@ -130,14 +130,16 @@ describe('bullmq surface', () => {
     // cursor-origin joins the EXISTING github-sync queue as a provider-keyed job type.
     const env = makeEnvelope<GithubSyncPayload>({
       org_id: 'org_1',
-      type: 'github.push',
+      type: 'repo.push',
       source: 'cursor-origin-webhook',
       payload: {
         provider: 'cursor-origin',
-        event: 'push',
+        type: 'push',
+        repo: { provider_repo_id: 'r1', full_name: 'a/b', repo_id: null },
+        ref: 'refs/heads/main',
         installation_id: 'i',
-        repo_full_name: 'a/b',
         delivery_id: 'd',
+        payload: {},
       },
     });
     expect(env.payload.provider).toBe('cursor-origin');
@@ -270,14 +272,16 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
 
     const github = makeEnvelope<GithubSyncPayload>({
       org_id: 'org_gh_1',
-      type: 'github.push',
+      type: 'repo.push',
       source: 'github-webhook',
       payload: {
         provider: 'github',
-        event: 'push',
+        type: 'push',
+        repo: { provider_repo_id: '42', full_name: 'acme/widgets', repo_id: null },
+        ref: 'refs/heads/main',
         installation_id: 'inst-42',
-        repo_full_name: 'acme/widgets',
         delivery_id: 'dlv-1',
+        payload: {},
       },
     });
     const jira = makeEnvelope<JiraSyncPayload>({
@@ -304,7 +308,7 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
     await Promise.all([
       assertRoundTrip('github-sync', github, (payload) => {
         expect(payload.provider).toBe('github');
-        expect(payload.repo_full_name).toBe('acme/widgets');
+        expect(payload.repo.full_name).toBe('acme/widgets');
         expect(payload.delivery_id).toBe('dlv-1');
       }),
       assertRoundTrip('jira-sync', jira, (payload) => {
@@ -353,17 +357,19 @@ describe.skipIf(!brokerUp)('BullMQ round-trip (needs Redis)', () => {
     const bad = {
       message_id: randomUUID(),
       org_id: '', // empty tenant context -> must be rejected before add
-      type: 'github.push',
+      type: 'repo.push',
       schema_version: 1,
       occurred_at: new Date().toISOString(),
       source: 'github-webhook',
       trace_id: null,
       payload: {
         provider: 'github',
-        event: 'push',
+        type: 'push',
+        repo: { provider_repo_id: '1', full_name: 'a/b', repo_id: null },
+        ref: null,
         installation_id: 'i',
-        repo_full_name: 'a/b',
         delivery_id: 'd',
+        payload: {},
       },
     } as MessageEnvelope<GithubSyncPayload>;
 

@@ -1,0 +1,40 @@
+{
+  "headers": {
+    "x-github-event": "pull_request",
+    "x-github-delivery": "33333333-3333-4333-8333-333333333333"
+  },
+  "body": {
+    "action": "opened",
+    "number": 42,
+    "pull_request": {
+      "id": 909090,
+      "state": "open",
+      "merged": false,
+      "title": "Add widget factory",
+      "head": {
+        "ref": "feature-x",
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "base": {
+        "ref": "main",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "user": {
+        "login": "octocat",
+        "id": 1
+      }
+    },
+    "repository": {
+      "id": 583231,
+      "full_name": "acme-corp/widgets",
+      "private": false
+    },
+    "installation": {
+      "id": 555
+    },
+    "organization": {
+      "id": 999999,
+      "login": "forged-org-should-be-ignored"
+    }
+  }
+}

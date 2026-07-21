@@ -4,6 +4,8 @@
 
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { ViewportParseError } from './viewport';
+import { WebhookSignatureError } from '../webhooks/githubSignature';
+import { WebhookBadRequestError } from '../services/githubWebhookService';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -30,6 +32,26 @@ export function errorHandler(
 
   if (err instanceof NotImplementedError) {
     res.status(501).json({ error: 'Not implemented' });
+    return;
+  }
+
+  // Signature/shape errors never leak the message (which could echo header content) —
+  // fixed, generic bodies only.
+  if (err instanceof WebhookSignatureError) {
+    res.status(401).json({ error: 'invalid signature' });
+    return;
+  }
+
+  if (err instanceof WebhookBadRequestError) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
+  // express.raw()'s body-size limit (see app.ts, /webhooks/github mounted with a 5mb
+  // cap) rejects an oversized request via `raw-body`'s `entity.too.large` error before
+  // any handler runs. Surface its real 413, not the generic 500 fallback below.
+  if (typeof err === 'object' && err !== null && (err as { type?: string }).type === 'entity.too.large') {
+    res.status(413).json({ error: 'payload too large' });
     return;
   }
 

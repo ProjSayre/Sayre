@@ -1,0 +1,33 @@
+{
+  "headers": {
+    "x-github-event": "pull_request",
+    "x-github-delivery": "44444444-4444-4444-8444-444444444444"
+  },
+  "body": {
+    "action": "opened",
+    "number": 43,
+    "pull_request": {
+      "id": 909091,
+      "state": "closed",
+      "merged": true,
+      "title": "PR from a deleted fork",
+      "head": {},
+      "base": {
+        "ref": "main",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "user": {
+        "login": "octocat",
+        "id": 1
+      }
+    },
+    "repository": {
+      "id": 583231,
+      "full_name": "acme-corp/widgets",
+      "private": false
+    },
+    "installation": {
+      "id": 555
+    }
+  }
+}

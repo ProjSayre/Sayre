@@ -1,0 +1,18 @@
+{
+  "headers": {
+    "x-github-event": "delete",
+    "x-github-delivery": "66666666-6666-4666-8666-666666666666"
+  },
+  "body": {
+    "ref": "feature-y",
+    "ref_type": "branch",
+    "repository": {
+      "id": 583231,
+      "full_name": "acme-corp/widgets",
+      "private": false
+    },
+    "installation": {
+      "id": 555
+    }
+  }
+}

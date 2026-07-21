@@ -1,0 +1,26 @@
+{
+  "headers": {
+    "x-github-event": "push",
+    "x-github-delivery": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+  },
+  "body": {
+    "ref": "refs/heads/main",
+    "before": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "after": "cccccccccccccccccccccccccccccccccccccccc",
+    "forced": false,
+    "deleted": false,
+    "repository": {
+      "id": 700111,
+      "full_name": "acme-corp/other-repo",
+      "private": true
+    },
+    "pusher": {
+      "name": "hubot",
+      "email": "hubot@example.com"
+    },
+    "installation": {
+      "id": 777
+    },
+    "commits": []
+  }
+}

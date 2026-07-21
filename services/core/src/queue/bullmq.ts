@@ -17,6 +17,7 @@
 import { Queue, Worker, Job, JobsOptions, WorkerOptions } from 'bullmq';
 import IORedis, { type RedisOptions } from 'ioredis';
 import { getConfig, getSecret, SecretNotFoundError } from '@sayre/config';
+import type { NormalizedRepoEvent } from '@sayre/shared-types';
 import { MessageEnvelope, assertValidEnvelope } from './envelope';
 
 // One queue per integration (locked by ticket). This set is closed at the QUEUE level; a NEW
@@ -25,14 +26,14 @@ import { MessageEnvelope, assertValidEnvelope } from './envelope';
 export const QUEUE_NAMES = ['github-sync', 'jira-sync', 'linear-sync'] as const;
 export type QueueName = (typeof QUEUE_NAMES)[number];
 
+// W1-02: `github-sync` now carries the single provider-generic `NormalizedRepoEvent`
+// schema shared with the SQS ingestion queue (see services/core/src/queue/sqs.ts and
+// packages/shared-types) rather than a BullMQ-only shape — W1-02 spec.md O-2. The
+// `GithubSyncPayload` name is kept as a back-compat alias so existing type imports
+// don't break.
+export type GithubSyncPayload = NormalizedRepoEvent;
+
 // Typed job payloads (skeletons — integration tickets extend these).
-export interface GithubSyncPayload {
-  provider: 'github' | 'cursor-origin'; // provider-keyed; cursor-origin joins here later
-  event: string; // e.g. 'push' | 'pull_request' | 'branch_created'
-  installation_id: string;
-  repo_full_name: string;
-  delivery_id: string; // webhook delivery id (idempotency)
-}
 export interface JiraSyncPayload {
   site_id: string;
   event: string;
