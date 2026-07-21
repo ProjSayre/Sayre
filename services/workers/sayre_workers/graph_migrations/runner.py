@@ -39,11 +39,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from sayre_workers.config import get_config, get_secret
 
 if TYPE_CHECKING:  # pragma: no cover - type-checking only
     from neo4j import Driver
@@ -177,6 +178,29 @@ class MigrationChecksumMismatchError(RuntimeError):
     Never silently re-applied; add a new migration file instead."""
 
 
+POSTGRES_STARTUP_ERROR = (
+    "Postgres graph-migration startup failed; verify DATABASE_ADMIN_URL configuration."
+)
+NEO4J_STARTUP_ERROR = (
+    "Neo4j graph-migration startup failed; verify NEO4J_URI, NEO4J_USER, and "
+    "NEO4J_PASSWORD configuration."
+)
+
+
+class GraphMigrationStartupError(RuntimeError):
+    """Fixed-text startup failure that never exposes a resolved credential."""
+
+
+class PostgresMigrationStartupError(GraphMigrationStartupError):
+    def __init__(self) -> None:
+        super().__init__(POSTGRES_STARTUP_ERROR)
+
+
+class Neo4jMigrationStartupError(GraphMigrationStartupError):
+    def __init__(self) -> None:
+        super().__init__(NEO4J_STARTUP_ERROR)
+
+
 def run_migrations(
     neo4j_driver: "Driver",
     pg_conn: "Connection",
@@ -286,35 +310,37 @@ def run_migrations(
     return results
 
 
-def neo4j_driver_from_env() -> "Driver":
+async def neo4j_driver_from_env() -> "Driver":
     """Build a Neo4j `Driver` from `NEO4J_URI`/`NEO4J_USER`/`NEO4J_PASSWORD` (mirrors
-    the `os.environ` pattern in `messaging/sqs_client.py`). Fails fast with a clear
+    the central-loader pattern in `messaging/sqs_client.py`). Fails fast with a clear
     error when `NEO4J_PASSWORD` is missing, rather than letting the driver attempt a
     connection with an empty/`None` credential and hang or fail opaquely later
     (mirrors `createPool`'s fail-fast in `services/core/src/db/client.ts`)."""
     import neo4j
 
-    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD")
-    if not password:
-        raise RuntimeError(
-            "neo4j_driver_from_env: NEO4J_PASSWORD is not set. Provide it via "
-            "infra/.env (see infra/.env.example) or the environment."
-        )
-    return neo4j.GraphDatabase.driver(uri, auth=(user, password))
+    try:
+        uri = get_config("NEO4J_URI")
+        user = get_config("NEO4J_USER")
+        password = await get_secret("env://NEO4J_PASSWORD")
+    except Exception:
+        raise Neo4jMigrationStartupError from None
+    try:
+        return neo4j.GraphDatabase.driver(uri, auth=(user, password))
+    except Exception:
+        raise Neo4jMigrationStartupError from None
 
 
-def pg_connection_from_env() -> "Connection":
-    """Build a `psycopg` connection from `DATABASE_URL` (used repo-wide). Fails fast
-    with a clear error when `DATABASE_URL` is missing, mirroring `createPool`'s
+async def pg_connection_from_env() -> "Connection":
+    """Build a `psycopg` connection from the admin migration DSN. Fails fast
+    with a clear error when `DATABASE_ADMIN_URL` is missing, mirroring `createPool`'s
     fail-fast in `services/core/src/db/client.ts`."""
     import psycopg
 
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        raise RuntimeError(
-            "pg_connection_from_env: DATABASE_URL is not set. Provide it via "
-            "infra/.env (see infra/.env.example) or the environment."
-        )
-    return psycopg.connect(url)
+    try:
+        url = await get_secret("env://DATABASE_ADMIN_URL")
+    except Exception:
+        raise PostgresMigrationStartupError from None
+    try:
+        return psycopg.connect(url)
+    except Exception:
+        raise PostgresMigrationStartupError from None

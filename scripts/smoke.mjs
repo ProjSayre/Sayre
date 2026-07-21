@@ -7,9 +7,10 @@
 import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import puppeteer from "puppeteer-core";
+import { getConfig } from "@sayre/config";
 
-const BASE = process.env.SMOKE_BASE ?? "http://localhost:5173";
-const SHOT_DIR = process.env.SMOKE_SHOTS ?? "scripts/.shots";
+const BASE = getConfig("SMOKE_BASE");
+const SHOT_DIR = getConfig("SMOKE_SHOTS");
 
 const CANDIDATES = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",

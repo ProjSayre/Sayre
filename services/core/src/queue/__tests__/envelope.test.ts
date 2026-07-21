@@ -15,6 +15,7 @@ import {
 function validEnvelope(overrides: Partial<MessageEnvelope> = {}): MessageEnvelope {
   return {
     message_id: 'm-1',
+    idempotency_key: 'idem-1',
     org_id: 'org_ABC123',
     type: 'repo.ingest',
     schema_version: 1,
@@ -36,6 +37,7 @@ describe('makeEnvelope', () => {
     });
     expect(typeof env.message_id).toBe('string');
     expect(env.message_id.length).toBeGreaterThanOrEqual(32); // uuid v4
+    expect(env.idempotency_key).toBe(env.message_id);
     expect(env.schema_version).toBe(1);
     expect(env.trace_id).toBeNull();
     expect(() => new Date(env.occurred_at).toISOString()).not.toThrow();
@@ -49,14 +51,20 @@ describe('makeEnvelope', () => {
       source: 's',
       payload: { a: 1 },
       message_id: 'fixed',
+      idempotency_key: 'dedup-fixed',
       occurred_at: '2020-01-01T00:00:00Z',
       schema_version: 2,
       trace_id: 'corr-7',
+      graph_scope_key: 'org_1/repo_1/main',
+      graph_version: 7,
     });
     expect(env.message_id).toBe('fixed');
+    expect(env.idempotency_key).toBe('dedup-fixed');
     expect(env.occurred_at).toBe('2020-01-01T00:00:00Z');
     expect(env.schema_version).toBe(2);
     expect(env.trace_id).toBe('corr-7');
+    expect(env.graph_scope_key).toBe('org_1/repo_1/main');
+    expect(env.graph_version).toBe(7);
   });
 
   it('refuses to build an envelope with an empty org_id (AC4)', () => {
@@ -80,6 +88,7 @@ describe('makeEnvelope', () => {
     expect(Object.keys(JSON.parse(wire)).sort()).toEqual(
       [
         'message_id',
+        'idempotency_key',
         'occurred_at',
         'org_id',
         'payload',
@@ -89,6 +98,28 @@ describe('makeEnvelope', () => {
         'type',
       ].sort(),
     );
+  });
+
+  it('refuses blank idempotency keys and partial graph version metadata', () => {
+    expect(() =>
+      makeEnvelope({
+        org_id: 'o',
+        type: 'repo.ingest',
+        source: 's',
+        payload: {},
+        idempotency_key: '   ',
+      }),
+    ).toThrow(EnvelopeValidationError);
+
+    expect(() =>
+      makeEnvelope({
+        org_id: 'o',
+        type: 'repo.ingest',
+        source: 's',
+        payload: {},
+        graph_scope_key: 'scope',
+      }),
+    ).toThrow(EnvelopeValidationError);
   });
 });
 
@@ -112,10 +143,30 @@ describe('assertValidEnvelope', () => {
     },
   );
 
+  it.each(['', '   '])('throws when idempotency_key is blank (%j)', (idempotencyKey) => {
+    expect(() =>
+      assertValidEnvelope(validEnvelope({ idempotency_key: idempotencyKey })),
+    ).toThrow(EnvelopeValidationError);
+  });
+
+  it('throws when idempotency_key is missing', () => {
+    const env = validEnvelope();
+    delete (env as Record<string, unknown>).idempotency_key;
+    expect(() => assertValidEnvelope(env)).toThrow(EnvelopeValidationError);
+  });
+
   it.each(['message_id', 'org_id', 'type', 'source'] as const)(
     'throws when required string field %s is empty (AC4)',
     (field) => {
       const env = validEnvelope({ [field]: '' } as Partial<MessageEnvelope>);
+      expect(() => assertValidEnvelope(env)).toThrow(EnvelopeValidationError);
+    },
+  );
+
+  it.each(['message_id', 'org_id', 'type', 'source'] as const)(
+    'matches Python by rejecting whitespace-only identity field %s',
+    (field) => {
+      const env = validEnvelope({ [field]: '   ' } as Partial<MessageEnvelope>);
       expect(() => assertValidEnvelope(env)).toThrow(EnvelopeValidationError);
     },
   );
@@ -137,5 +188,49 @@ describe('assertValidEnvelope', () => {
     expect(() =>
       assertValidEnvelope(validEnvelope({ trace_id: 123 as unknown as string })),
     ).toThrow(EnvelopeValidationError);
+  });
+
+  it('allows graph version metadata only as a valid pair', () => {
+    expect(() =>
+      assertValidEnvelope(
+        validEnvelope({ graph_scope_key: 'org/repo/ref', graph_version: 0 }),
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      assertValidEnvelope(validEnvelope({ graph_scope_key: 'org/repo/ref' })),
+    ).toThrow(EnvelopeValidationError);
+    expect(() => assertValidEnvelope(validEnvelope({ graph_version: 1 }))).toThrow(
+      EnvelopeValidationError,
+    );
+  });
+
+  it.each([
+    { graph_scope_key: '   ', graph_version: 1 },
+    { graph_scope_key: 'scope', graph_version: -1 },
+    { graph_scope_key: 'scope', graph_version: 1.5 },
+    { graph_scope_key: 'scope', graph_version: Number.NaN },
+  ] as Partial<MessageEnvelope>[])(
+    'rejects invalid graph version metadata %#',
+    (overrides) => {
+      expect(() => assertValidEnvelope(validEnvelope(overrides))).toThrow(
+        EnvelopeValidationError,
+      );
+    },
+  );
+
+  it('requires graph scope and version for graph.updated events', () => {
+    expect(() =>
+      assertValidEnvelope(validEnvelope({ type: 'graph.updated' })),
+    ).toThrow(EnvelopeValidationError);
+    expect(() =>
+      assertValidEnvelope(
+        validEnvelope({
+          type: 'graph.updated',
+          graph_scope_key: 'org/repo/ref',
+          graph_version: 3,
+        }),
+      ),
+    ).not.toThrow();
   });
 });

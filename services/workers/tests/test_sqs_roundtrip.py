@@ -6,9 +6,8 @@ deleted) while the loop survives and later valid messages still process; empty-q
 consume; idempotent ensure_queue / get_queue_url-on-missing-queue.
 
 These are INTEGRATION tests: they require LocalStack SQS to be reachable at
-SQS_ENDPOINT_URL. When the broker is unreachable the whole module SKIPS (never
-fails) so `poetry run pytest` still passes without infra (spec edge case
-"LocalStack or Redis not running -> tests skip").
+SQS_ENDPOINT_URL. When the broker is unreachable the module skips during ordinary
+local development; centrally configured required mode turns that into a hard failure.
 
 Imports use the qualified `workers.messaging.*` form (see Dev Deviation #1). The
 package was renamed from `queue/` to `messaging/` at the W0-04/W0-06 merge, so it no
@@ -18,22 +17,20 @@ longer required.
 
 import functools
 import json
-import os
 import threading
 from uuid import uuid4
 
 import pytest
 
-# Point the SQS client at LocalStack before anything constructs the cached boto3
-# client. setdefault so an orchestrator/CI that already exported these wins.
-os.environ.setdefault("SQS_ENDPOINT_URL", "http://localhost:4566")
-os.environ.setdefault("AWS_REGION", "us-east-1")
-os.environ.setdefault("AWS_ACCESS_KEY_ID", "test")
-os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
-
 import boto3  # noqa: E402
 from botocore.config import Config  # noqa: E402
 
+from sayre_workers.config import (  # noqa: E402
+    MissingConfigError,
+    get_bool_config,
+    get_config,
+    reset_secrets_for_tests,
+)
 from workers.messaging import sqs_client  # noqa: E402
 from workers.messaging.envelope import MessageEnvelope  # noqa: E402
 from workers.messaging.sqs_client import (  # noqa: E402
@@ -51,11 +48,17 @@ from workers.messaging.sqs_client import (  # noqa: E402
 @functools.lru_cache(maxsize=1)
 def _broker_reachable() -> bool:
     """Short-timeout probe so a down broker skips quickly instead of hanging."""
+    try:
+        endpoint_url = get_config("SQS_ENDPOINT_URL")
+    except MissingConfigError:
+        endpoint_url = "http://localhost:4566"
     cfg = Config(connect_timeout=2, read_timeout=3, retries={"max_attempts": 0})
     client = boto3.client(
         "sqs",
-        endpoint_url=os.environ.get("SQS_ENDPOINT_URL") or None,
-        region_name=os.environ.get("AWS_REGION", "us-east-1"),
+        endpoint_url=endpoint_url,
+        region_name=get_config("AWS_REGION"),
+        aws_access_key_id="localstack-test",
+        aws_secret_access_key="localstack-test",
         config=cfg,
     )
     try:
@@ -65,13 +68,33 @@ def _broker_reachable() -> bool:
         return False
 
 
+_BROKER_REACHABLE = _broker_reachable()
+if not _BROKER_REACHABLE and get_bool_config("MESSAGING_INTEGRATION_REQUIRED"):
+    raise RuntimeError("LocalStack SQS is required but unavailable.")
+
 pytestmark = pytest.mark.skipif(
-    not _broker_reachable(),
+    not _BROKER_REACHABLE,
     reason=(
         "LocalStack SQS unreachable at "
-        f"{os.environ.get('SQS_ENDPOINT_URL')} — skipping SQS integration round-trip"
+        "http://localhost:4566 — skipping SQS integration round-trip"
     ),
 )
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _localstack_loader_config():
+    """Configure the real loader through pytest's environment abstraction."""
+    patch = pytest.MonkeyPatch()
+    patch.setenv("SAYRE_ENV", "test")
+    patch.setenv("SQS_ENDPOINT_URL", "http://localhost:4566")
+    patch.setenv("AWS_REGION", "us-east-1")
+    patch.setenv("AWS_ACCESS_KEY_ID", "localstack-test")
+    patch.setenv("AWS_SECRET_ACCESS_KEY", "localstack-test")
+    reset_secrets_for_tests()
+    yield
+    sqs_client.close_client()
+    reset_secrets_for_tests()
+    patch.undo()
 
 
 def _make_env(**overrides) -> MessageEnvelope:
@@ -102,6 +125,7 @@ def _consume_until(queue_name, predicate, *, timeout=15, visibility_timeout=30):
         target=consume,
         args=(queue_name, handler),
         kwargs={
+            "consumer_id": "sqs-roundtrip-test",
             "wait_seconds": 1,
             "max_messages": 10,
             "visibility_timeout": visibility_timeout,
@@ -205,8 +229,8 @@ def test_malformed_and_invalid_messages_skipped_valid_still_processes(ephemeral_
 
 def test_invalid_message_is_not_deleted(ephemeral_queue):
     """A message that fails envelope validation is left on the queue (redelivers
-    after the visibility timeout) — the wrapper must NOT delete it. There is no DLQ
-    in W0-04, so such a poison message would redeliver indefinitely (noted risk)."""
+    after the visibility timeout) — the wrapper must NOT delete it. This deliberately
+    ephemeral test queue has no DLQ; every provisioned production queue does."""
     name, url = ephemeral_queue
     client = get_client()
     client.send_message(
@@ -256,7 +280,12 @@ def test_handler_exception_leaves_message_for_redelivery(ephemeral_queue):
     t = threading.Thread(
         target=consume,
         args=(name, raising_handler),
-        kwargs={"wait_seconds": 1, "visibility_timeout": 1, "stop": stop},
+        kwargs={
+            "consumer_id": "sqs-roundtrip-test",
+            "wait_seconds": 1,
+            "visibility_timeout": 1,
+            "stop": stop,
+        },
         daemon=True,
     )
     t.start()
@@ -290,15 +319,15 @@ def test_consume_empty_queue_calls_no_handler_and_stops(ephemeral_queue):
     assert received == []
 
 
-# --- Structural: ingestion / enrichment are separate queues (AC7) ------------
+# --- Structural: ingestion / enrichment are separate physical queues ---------
 
 
 def test_ingestion_and_enrichment_are_distinct_queues():
-    """AC7: `ingestion` and `enrichment` are distinct provisioned SQS queues so
+    """FIFO ingestion and default enrichment are distinct provisioned SQS queues so
     structural sync never blocks on LLM enrichment. Names are per-work-type, not
     per-tenant (AC12) — no org_id anywhere in the queue name."""
-    assert INGESTION_QUEUE == "ingestion"
-    assert ENRICHMENT_QUEUE == "enrichment"
+    assert INGESTION_QUEUE == "ingestion.fifo"
+    assert ENRICHMENT_QUEUE == "enrichment-default"
     assert INGESTION_QUEUE != ENRICHMENT_QUEUE
     ingestion_url = get_queue_url(INGESTION_QUEUE)
     enrichment_url = get_queue_url(ENRICHMENT_QUEUE)
