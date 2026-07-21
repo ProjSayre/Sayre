@@ -672,8 +672,8 @@ test("[AC-1/AC-2] composite/global UNIQUE constraints exist on all 13 tables", a
     "repository_refs(org_id,repository_id,ref_name) UNIQUE missing",
   );
   assert.ok(
-    uniques.has("code_chunks:org_id,ref_id,content_hash"),
-    "code_chunks(org_id,ref_id,content_hash) UNIQUE missing",
+    uniques.has("code_chunks:org_id,ref_id,graph_node_id,chunk_index,content_hash"),
+    "code_chunks(org_id,ref_id,graph_node_id,chunk_index,content_hash) UNIQUE missing",
   );
   assert.ok(
     uniques.has("code_embeddings:chunk_id,provider,model"),
@@ -1339,15 +1339,31 @@ test("[AC-9] repository_refs.graph_version >= 0 CHECK rejects negative values", 
 // AC-9: code_chunks / code_embeddings cascades + uniques + indexes
 // ---------------------------------------------------------------------------
 
-test("[AC-9] code_chunks: unique(org_id, ref_id, content_hash) enforced", async () => {
-  await assert.rejects(
-    pool.query(
-      "INSERT INTO code_chunks (id, org_id, repository_id, ref_id, revision_sha, chunk_index, content, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [randomUUID(), orgA.orgId, orgA.repoId, orgA.repositoryRefId, shaLike("dup"), 1, "dup content", `hash-${orgA.codeChunkId}`],
-    ),
-    /code_chunks_org_ref_hash_unique/,
-    "a duplicate (org_id, ref_id, content_hash) must violate the unique constraint",
+test("[AC-9] code_chunks: node-scoped chunk identity is unique without collapsing identical snippets", async () => {
+  const firstId = randomUUID();
+  const secondId = randomUUID();
+  const graphNodeId = `file-${randomUUID()}`;
+  const contentHash = `hash-${randomUUID()}`;
+  await pool.query(
+    "INSERT INTO code_chunks (id, org_id, repository_id, ref_id, revision_sha, graph_node_id, chunk_index, content, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+    [firstId, orgA.orgId, orgA.repoId, orgA.repositoryRefId, shaLike("dup"), graphNodeId, 1, "dup content", contentHash],
   );
+  try {
+    await assert.rejects(
+      pool.query(
+        "INSERT INTO code_chunks (id, org_id, repository_id, ref_id, revision_sha, graph_node_id, chunk_index, content, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [randomUUID(), orgA.orgId, orgA.repoId, orgA.repositoryRefId, shaLike("dup"), graphNodeId, 1, "dup content", contentHash],
+      ),
+      /code_chunks_org_ref_node_index_hash_unique/,
+      "the same node/index/content identity must violate the unique constraint",
+    );
+    await pool.query(
+      "INSERT INTO code_chunks (id, org_id, repository_id, ref_id, revision_sha, graph_node_id, chunk_index, content, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+      [secondId, orgA.orgId, orgA.repoId, orgA.repositoryRefId, shaLike("dup"), `other-${graphNodeId}`, 1, "dup content", contentHash],
+    );
+  } finally {
+    await pool.query("DELETE FROM code_chunks WHERE id = ANY($1::uuid[])", [[firstId, secondId]]);
+  }
 });
 
 test("[AC-9] code_chunks.graph_node_id index exists", async () => {

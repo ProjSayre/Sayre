@@ -138,6 +138,7 @@ jobs:
           sayre_workers/graph_migrations/runner.py
           scripts/run_graph_migrations.py
           sayre_workers/telemetry/otel.py
+          sayre_workers/ingestion
 
       - name: Test (pytest)
         run: poetry run pytest

@@ -57,6 +57,13 @@
       "when": 1784481000404,
       "tag": "0007_rls_triggers_indexes_w0_05_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784647200000,
+      "tag": "0008_w1_05_chunk_identity",
+      "breakpoints": true
     }
   ]
 }
