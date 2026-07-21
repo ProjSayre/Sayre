@@ -16,6 +16,7 @@ ConfigName: TypeAlias = Literal[
     "OTEL_METRICS_EXPORTER",
     "METRICS_PORT",
     "METRICS_ADDR",
+    "UPDATE_PARSE_SNAPSHOTS",
 ]
 
 _SUPPORTED_NAMES = frozenset(
@@ -30,6 +31,7 @@ _SUPPORTED_NAMES = frozenset(
         "OTEL_METRICS_EXPORTER",
         "METRICS_PORT",
         "METRICS_ADDR",
+        "UPDATE_PARSE_SNAPSHOTS",
     }
 )
 _DEFAULTS: dict[str, str] = {
