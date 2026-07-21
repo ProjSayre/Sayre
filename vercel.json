@@ -1,3 +1,4 @@
 {
+  "redirects": [{ "source": "/demo/:path*", "destination": "/", "permanent": false }],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

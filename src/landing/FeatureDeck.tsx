@@ -204,7 +204,7 @@ function OnboardingArtifact({ graph }: { graph: LensGraph }): JSX.Element {
 
 function ProductMapArtifact({ graph }: { graph: LensGraph }): JSX.Element {
   return (
-    <ArtifactFrame feature="product-map" meta="product view · main" status="demo-backed">
+    <ArtifactFrame feature="product-map" meta="product view · main" status="source-backed">
       <div className="v2-artifact__split v2-artifact__split--product">
         <div className="v2-artifact__graphwell">
           <FeatureGraph graph={graph} variant="product" />

@@ -4,9 +4,9 @@ export const HERO = {
   eyebrow: "early access · 2026",
   h1: "Your codebase, mapped.",
   sub: "Sayre parses a repository into a living graph every role can actually read — engineers trace dependencies, product managers see features, new hires find their footing.",
-  ctaPrimary: "explore the live demo",
+  ctaPrimary: "join the waitlist",
   ctaSecondary: "join the waitlist",
-  teaserChip: "click to drive →",
+  teaserChip: "scroll to explore →",
 };
 
 export const PROBLEM = {
@@ -82,15 +82,13 @@ export const REPO_OVERVIEW =
   "storefront, api, admin tool, and shared packages for acme's e-commerce stack. a checkout revamp is mid-flight; the search indexer is on a flaky streak.";
 
 // ---------------------------------------------------------------------------
-// Landing v2 "Cinematic" copy — from the approved claude.ai/design project
-// ("Demo and landing page redesign" · Landing v2 Cinematic).
+// Landing v2 "Cinematic" copy — from the approved claude.ai/design project.
 // ---------------------------------------------------------------------------
 
 export const V2_HERO = {
   eyebrow: "early access · 2026",
   h1: "Your codebase, mapped.",
-  cta: "explore the live demo",
-  scrollHint: "scroll — the graph is live",
+  scrollHint: "scroll — follow the graph",
 };
 
 export const V2_LENSES = {
@@ -113,13 +111,6 @@ export const V2_LENSES = {
       body: "Tickets and shipping progress pinned to them, no engineer required to translate.",
     },
   ],
-};
-
-export const V2_FRAME = {
-  eyebrow: "the demo is the pitch",
-  h2: "This one's live.",
-  body: "acme/monorepo, 1,204 files, hand-authored sample data — the same shell you'd get on your repo.",
-  chip: "click to drive →",
 };
 
 export const V2_HOW = {

@@ -28,6 +28,6 @@ export const GOOGLE_FORM = {
     heardVia: ["Cold email", "LinkedIn", "Referral", "University network", "Startup community", "Website / Google search", "Social Media"],
   },
 };
-export const CONTACT_EMAIL = "hello@sayre.dev"; // TODO: confirm domain
-export const SITE_URL = "https://sayre.dev"; // TODO: confirm — used for OG tags
+export const CONTACT_EMAIL = "admin@trysayre.com";
+export const SITE_URL = "https://trysayre.com";
 export const PLAUSIBLE_DOMAIN = ""; // optional analytics; empty = no script injected

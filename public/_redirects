@@ -1,1 +1,3 @@
+/demo / 302
+/demo/* / 302
 /* /index.html 200

@@ -20,9 +20,9 @@ export default function PrivacyPage(): JSX.Element {
           <span className="privacy-kicker">legal · privacy</span>
           <h1>Privacy, without the fog.</h1>
           <p className="privacy-lead">
-            Sayre collects what you choose to send through the waitlist, plus limited technical information needed to serve this site. The public demo uses fictional sample data—it does not connect to or upload your repository.
+            Sayre collects what you choose to send through the waitlist, plus limited technical information needed to serve this site. We do not sell or share personal information.
           </p>
-          <p className="privacy-date">Effective and last updated July 20, 2026</p>
+          <p className="privacy-date">Effective and last updated July 21, 2026</p>
         </header>
 
         <div className="privacy-sections">
@@ -43,21 +43,12 @@ export default function PrivacyPage(): JSX.Element {
               <p>
                 We use waitlist information to manage early access, respond to you about Sayre, arrange an intro or product demo when you ask for one, tailor that follow-up using optional answers, and understand how people discover the product. We do not currently use the site for behavioral advertising.
               </p>
+              <p>We do not sell personal information or share it for cross-context behavioral advertising.</p>
             </div>
           </section>
 
           <section>
             <span className="privacy-section__num">03</span>
-            <div>
-              <h2>The demo and browser storage</h2>
-              <p>
-                The live demo runs in your browser using a hand-authored, fictional repository called <code>acme/monorepo</code>. It has no account connection, live AI, backend, or repository upload. The demo stores one first-party browser preference only to remember whether you dismissed or completed its guided tour. We do not use that preference for analytics, advertising, profiling, or cross-site tracking. You can remove it through your browser&apos;s site-data controls.
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <span className="privacy-section__num">04</span>
             <div>
               <h2>Services that receive data</h2>
               <p>
@@ -70,17 +61,17 @@ export default function PrivacyPage(): JSX.Element {
           </section>
 
           <section>
-            <span className="privacy-section__num">05</span>
+            <span className="privacy-section__num">04</span>
             <div>
               <h2>Cookies and similar storage</h2>
               <p>
-                The public Sayre site does not currently set cookies or use non-essential tracking technologies. We do not currently run third-party analytics, advertising pixels, session replay, or marketing trackers. If that changes, we will update this policy and, where required, ask for your choice before using them.
+                The public Sayre site does not currently set cookies or use browser storage. Our host provides cookieless page-performance analytics that do not use personal data. We do not run advertising pixels, session replay, or marketing trackers. If that changes, we will update this policy and, where required, ask for your choice before using them.
               </p>
             </div>
           </section>
 
           <section>
-            <span className="privacy-section__num">06</span>
+            <span className="privacy-section__num">05</span>
             <div>
               <h2>Retention and security</h2>
               <p>
@@ -90,7 +81,7 @@ export default function PrivacyPage(): JSX.Element {
           </section>
 
           <section>
-            <span className="privacy-section__num">07</span>
+            <span className="privacy-section__num">06</span>
             <div>
               <h2>Your choices</h2>
               <p>
@@ -100,7 +91,7 @@ export default function PrivacyPage(): JSX.Element {
           </section>
 
           <section>
-            <span className="privacy-section__num">08</span>
+            <span className="privacy-section__num">07</span>
             <div>
               <h2>Children</h2>
               <p>
@@ -110,7 +101,7 @@ export default function PrivacyPage(): JSX.Element {
           </section>
 
           <section>
-            <span className="privacy-section__num">09</span>
+            <span className="privacy-section__num">08</span>
             <div>
               <h2>Changes and contact</h2>
               <p>
@@ -123,7 +114,7 @@ export default function PrivacyPage(): JSX.Element {
 
       <footer className="privacy-footer">
         <span>© 2026 sayre</span>
-        <Link to="/demo">live demo</Link>
+        <span>We do not sell or share personal information.</span>
       </footer>
     </main>
   );
