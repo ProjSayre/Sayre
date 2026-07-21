@@ -64,9 +64,8 @@ jobs:
       - name: web — test
         run: npx turbo run test --filter=@sayre/web
 
-      # turbo's dependency graph (`build`'s `dependsOn: ["^build"]`) builds
-      # @sayre/shared-types before @sayre/core automatically — no manual
-      # pre-build step needed.
+      # turbo's dependency graph (`typecheck`/`test` depend on `^build`) builds
+      # @sayre/shared-types before @sayre/core on a clean runner.
       - name: core — lint
         run: npx turbo run lint --filter=@sayre/core
 
