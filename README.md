@@ -16,11 +16,18 @@ capped at `react`, `react-dom`, `react-router-dom`, `d3-hierarchy`.
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173  (routes: /  and  /demo)
+npm run dev        # http://localhost:5173  (routes: /, /demo, and /privacy)
 npm run build      # tsc --noEmit + vite build → dist/
 npm run preview    # serve the production build
 npm run og         # regenerate public/og.png (dev-only script; commit the output)
+npm run hero:render # regenerate the prerecorded Anime hero media (requires Chromium + FFmpeg)
 ```
+
+The Anime handoff is archived under `design/handoffs/anime-hero-animation/`.
+The renderer captures it deterministically into one-shot MP4/WebM files and
+responsive WebP stills; its prototype React/Babel runtime is never shipped.
+If no compatible browser is installed, install Puppeteer's headless shell with
+`npm exec puppeteer -- browsers install chrome-headless-shell@stable`.
 
 ## Configuration (`src/config.ts`)
 
@@ -34,12 +41,13 @@ npm run og         # regenerate public/og.png (dev-only script; commit the outpu
 
 ### Waitlist: Google Form mode (accepted tradeoff)
 
-The site's waitlist form mirrors the team's Google Form **field-for-field**
-(name, email, company, website, team size, tools, interest, notes — the
-qualification questions are load-bearing) and posts into it. The site's
-`source` tag (`landing` / `demo-topbar` / `demo-tour`) is auto-reported
-through the form's "How did you hear about us?" *Other* slot as
-`site: <source>` — visitors are never asked.
+The site's two-step waitlist form mirrors the team's Google Form and posts
+into it. Name and email are required on step one; company, website, team size,
+tools, interest, referral source, and notes are optional on step two. Both
+Google Form questions that support *Other* expose a matching free-text field.
+The site's internal `source` tag (`landing` / `demo-topbar` / `demo-tour`) is
+also reported through the form's "How did you hear about us?" *Other* slot as
+`site: <source>`; a visitor-supplied Other answer is combined with that tag.
 
 Google Forms sends no CORS headers, so the **browser cannot read Google's
 response** — the site shows success whenever the request completes, even if
@@ -57,7 +65,7 @@ If the form's questions change, update `GOOGLE_FORM` in `src/config.ts`
 
 ## Deploy
 
-Any static host. The SPA needs a fallback rewrite so `/demo` deep links resolve:
+Any static host. The SPA needs a fallback rewrite so deep links such as `/demo` and `/privacy` resolve:
 
 - **Vercel** — `vercel.json` is committed: `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`
 - **Netlify** — add a `_redirects` file: `/* /index.html 200`

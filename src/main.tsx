@@ -7,6 +7,7 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/landing.css";
 import "./styles/demo.css";
+import "./styles/privacy.css";
 
 if (import.meta.env.DEV) {
   void import("./data/validate").then((m) => m.validateDataset());

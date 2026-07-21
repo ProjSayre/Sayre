@@ -131,7 +131,7 @@
 
 .wordmark {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-bright);
   white-space: nowrap;
 }
