@@ -34,7 +34,12 @@ interface EslintResult {
 
 function runEslint(relativeFixturePath: string): EslintResult {
   try {
-    const output = execFileSync('npx', ['--no-install', 'eslint', relativeFixturePath], {
+    const eslintExecutable = path.join(
+      path.dirname(require.resolve('eslint/package.json')),
+      'bin',
+      'eslint.js',
+    );
+    const output = execFileSync(process.execPath, [eslintExecutable, relativeFixturePath], {
       cwd: CORE_ROOT,
       encoding: 'utf-8',
     });
