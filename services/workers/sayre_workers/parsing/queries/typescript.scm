@@ -20,6 +20,8 @@
 
 (class_declaration) @class.def
 
+(abstract_class_declaration) @class.def
+
 (import_statement) @import.stmt
 
 (call_expression) @call.expr

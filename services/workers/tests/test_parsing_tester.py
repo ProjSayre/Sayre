@@ -128,6 +128,36 @@ class Greeter implements Greetable {
     assert result.inherits == []
 
 
+def test_ts_abstract_class_and_methods_are_captured():
+    source = b"""
+abstract class Base {
+  abstract run(): void;
+
+  helper(): void {
+    this.run();
+  }
+}
+
+class Child extends Base {
+  run(): void {}
+}
+"""
+    result = parse_full([SourceFile(path="a.ts", content=source)])
+
+    classes = {parsed.name: parsed for parsed in result.classes}
+    assert set(classes) == {"Base", "Child"}
+    assert classes["Child"].base_names == ["Base"]
+    assert {(edge.subclass_qualified_name, edge.base_name) for edge in result.inherits} == {
+        ("Child", "Base")
+    }
+
+    functions = {parsed.qualified_name: parsed for parsed in result.functions}
+    assert "Base.helper" in functions
+    assert "Child.run" in functions
+    helper_call = next(call for call in result.calls if call.callee_name == "this.run")
+    assert helper_call.caller_qualified_name == "Base.helper"
+
+
 # ---------------------------------------------------------------------------
 # Full-parse vs. diff-parse equivalence (implicit correctness property: two
 # entry points that both claim "same ParseResult shape" must actually agree

@@ -69,7 +69,7 @@ def _classify_scope(node: tree_sitter.Node) -> ScopeFrame | None:
         if name is None:
             return None
         return ScopeFrame("function", name)
-    if node.type == "class_declaration":
+    if node.type in ("class_declaration", "abstract_class_declaration"):
         name_node = node.child_by_field_name("name")
         if name_node is None:
             return None
