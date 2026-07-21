@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import os
 
 import opentelemetry.metrics._internal as _otel_metrics_internal
 import pytest
@@ -46,6 +45,7 @@ from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 from opentelemetry.util._once import Once
 
+from sayre_workers.config import EmptySecretError, SecretNotFoundError, get_config, get_secret
 from sayre_workers.telemetry import graph_metrics
 from sayre_workers.telemetry import otel as otel_module
 from sayre_workers.telemetry.otel import (
@@ -558,15 +558,23 @@ async def test_simulate_run_load_produces_all_three_shapes_without_a_driver(monk
 
 
 @functools.lru_cache(maxsize=1)
+def _neo4j_credentials() -> tuple[str, str, str] | None:
+    try:
+        password = asyncio.run(get_secret("env://NEO4J_PASSWORD"))
+    except (SecretNotFoundError, EmptySecretError):
+        return None
+    return get_config("NEO4J_URI"), get_config("NEO4J_USER"), password
+
+
+@functools.lru_cache(maxsize=1)
 def _neo4j_reachable() -> bool:
     try:
         import neo4j
 
-        uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-        user = os.environ.get("NEO4J_USER", "neo4j")
-        password = os.environ.get("NEO4J_PASSWORD")
-        if not password:
+        credentials = _neo4j_credentials()
+        if credentials is None:
             return False
+        uri, user, password = credentials
         driver = neo4j.GraphDatabase.driver(uri, auth=(user, password), connection_timeout=2)
         try:
             driver.verify_connectivity()
@@ -611,9 +619,9 @@ def test_synthetic_load_seed_cycle_never_touches_sentinel_anchors_and_cleans_up(
         seed_org_data,
     )
 
-    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    credentials = _neo4j_credentials()
+    assert credentials is not None
+    uri, user, password = credentials
     driver = neo4j.GraphDatabase.driver(uri, auth=(user, password))
 
     org_id = DEFAULT_SYNTHETIC_ORGS[0]
@@ -716,9 +724,9 @@ def test_viewport_read_and_traversal_over_unseeded_org_return_zero_without_error
 
     from scripts.synthetic_graph_load import _traversal, _viewport_read, cleanup_org_data
 
-    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    credentials = _neo4j_credentials()
+    assert credentials is not None
+    uri, user, password = credentials
     driver = neo4j.GraphDatabase.driver(uri, auth=(user, password))
 
     # A synthetic-namespaced org_id that was never seeded in this test run.
