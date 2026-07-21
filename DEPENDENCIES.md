@@ -123,8 +123,14 @@ OpenAI-compatible endpoint consumed by W1-05's `EmbeddingProvider`; Sayre does n
 runtime in this dependency baseline. CI uses a deterministic network-free fake that emits stable
 1024-dimensional vectors.
 
-**O-10 (LocalStack/SQS emulator for local dev) — resolved by W0-04.** See
-`infra/docker-compose.yml` (`localstack` service) and the pinned image row below.
+**O-10 (LocalStack SQS/SNS emulator for local dev) — resolved by W0-04.** The checked-in
+ready hook provisions FIFO `ingestion.fifo`, the `graph-updated` SNS topic with raw-message
+subscriptions to `graph-updated-realtime` and `enrichment-default`, the separate
+`enrichment-onboarding-priority` lane, and `embedding-upserts`. Every production queue has a
+same-type DLQ with five-receive redrive and 14-day retention. Python consumers use visibility
+heartbeats plus an injected durable delivery store; `SqliteDeliveryStore` is the local/shared-
+volume reference only, not a multi-host exactly-once database. See `infra/docker-compose.yml`
+(`localstack` service) and the pinned image row below.
 
 ## Root workspace — monorepo orchestration (W0-01)
 

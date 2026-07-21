@@ -60,15 +60,15 @@ services:
       timeout: 5s
       retries: 5
 
-  # SQS emulator for the Python worker fleet (local-dev only — real AWS SQS in prod).
-  # See W0-04 spec / .claude/rules/async-messaging.md. Init script provisions the
-  # baseline queues (ingestion/enrichment/graph-events/w0-04-selftest) on startup.
+  # SQS/SNS emulator for the Python worker/event fleet (local-dev only).
+  # The ready hook provisions FIFO ingestion, independent fanout subscriptions,
+  # enrichment priority/default lanes, embedding work, and matching DLQs.
   localstack:
     image: localstack/localstack:3.8
     container_name: sayre-localstack
     restart: unless-stopped
     environment:
-      SERVICES: sqs
+      SERVICES: sqs,sns
       DEBUG: "0"
       AWS_DEFAULT_REGION: ${AWS_REGION}
     ports:
@@ -76,7 +76,7 @@ services:
     volumes:
       - ./localstack/init/ready.d:/etc/localstack/init/ready.d
     healthcheck:
-      test: ["CMD-SHELL", "awslocal sqs list-queues >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "test -f /tmp/sayre-messaging-ready && awslocal sqs list-queues >/dev/null 2>&1 && awslocal sns list-topics >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

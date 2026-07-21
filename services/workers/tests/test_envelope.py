@@ -35,6 +35,9 @@ def test_valid_envelope_fills_defaults():
     assert isinstance(env.occurred_at, datetime)
     assert env.trace_id is None
     assert env.payload == {}
+    assert env.idempotency_key == env.message_id
+    assert env.graph_scope_key is None
+    assert env.graph_version is None
 
 
 def test_missing_org_id_rejected():
@@ -68,6 +71,12 @@ def test_empty_source_rejected():
         MessageEnvelope(**_valid_kwargs(source=""))
 
 
+@pytest.mark.parametrize("field", ["message_id", "org_id", "type", "source"])
+def test_whitespace_only_identity_fields_rejected(field):
+    with pytest.raises(ValidationError):
+        MessageEnvelope(**_valid_kwargs(**{field: "   "}))
+
+
 def test_empty_payload_is_valid():
     # Edge case: empty payload {} is valid and round-trips.
     env = MessageEnvelope(**_valid_kwargs(payload={}))
@@ -92,6 +101,7 @@ def test_wire_keys_are_snake_case():
         "source",
         "trace_id",
         "payload",
+        "idempotency_key",
     }
     # No camelCase drift on the wire.
     assert "orgId" not in wire
@@ -126,6 +136,63 @@ def test_from_body_rejects_missing_org_id():
 
 
 def test_from_body_rejects_empty_org_id():
-    body = json.dumps({"org_id": "", "type": "t", "source": "s", "payload": {}})
+    body = json.dumps(
+        {
+            "message_id": "m",
+            "idempotency_key": "m",
+            "org_id": "",
+            "type": "t",
+            "source": "s",
+            "payload": {},
+        }
+    )
     with pytest.raises(ValidationError):
         MessageEnvelope.from_body(body)
+
+
+@pytest.mark.parametrize("value", ["", "   "])
+def test_blank_idempotency_key_rejected(value):
+    with pytest.raises(ValidationError):
+        MessageEnvelope(**_valid_kwargs(idempotency_key=value))
+
+
+def test_wire_requires_serialized_idempotency_key():
+    env = MessageEnvelope(**_valid_kwargs())
+    body = json.loads(env.to_body())
+    del body["idempotency_key"]
+    with pytest.raises(ValidationError):
+        MessageEnvelope.from_body(json.dumps(body))
+
+
+@pytest.mark.parametrize(
+    ("scope", "version"),
+    [("repo:1", None), (None, 1), ("", 1), ("repo:1", -1), ("repo:1", 1.5)],
+)
+def test_invalid_graph_version_pairs_rejected(scope, version):
+    with pytest.raises(ValidationError):
+        MessageEnvelope(
+            **_valid_kwargs(graph_scope_key=scope, graph_version=version)
+        )
+
+
+def test_graph_updated_requires_scope_and_version():
+    with pytest.raises(ValidationError):
+        MessageEnvelope(**_valid_kwargs(type="graph.updated"))
+    env = MessageEnvelope(
+        **_valid_kwargs(
+            type="graph.updated", graph_scope_key="org/repo/ref", graph_version=0
+        )
+    )
+    assert env.graph_scope_key == "org/repo/ref"
+    assert env.graph_version == 0
+    wire = json.loads(env.to_body())
+    assert wire["graph_scope_key"] == "org/repo/ref"
+    assert wire["graph_version"] == 0
+
+
+def test_wire_rejects_null_graph_metadata():
+    env = MessageEnvelope(**_valid_kwargs())
+    body = json.loads(env.to_body())
+    body.update({"graph_scope_key": None, "graph_version": None})
+    with pytest.raises(ValidationError):
+        MessageEnvelope.from_body(json.dumps(body))

@@ -1,6 +1,6 @@
 // Automated RLS isolation test (the acceptance gate for W0-05).
 //
-// Uses a raw `pg` Pool on the admin `DATABASE_URL` (superuser) for
+// Uses a raw `pg` Pool on the admin `DATABASE_ADMIN_URL` (superuser) for
 // setup/seed (superuser bypasses RLS), and simulates a tenant session on
 // the same connection via `SET LOCAL ROLE sayre_app` inside a transaction
 // (non-superuser -> RLS applies). It also exercises the REAL app path,
@@ -17,7 +17,7 @@
 // same sayre-postgres container / sayre_dev database): this test does NOT
 // run against sayre_dev directly. It creates and migrates its own throwaway
 // database (default name `w005_rls_test`, override via RLS_TEST_DB_NAME) off
-// of the admin DATABASE_URL's host/credentials, so it never assumes
+// of the admin DATABASE_ADMIN_URL's host/credentials, so it never assumes
 // exclusive ownership of sayre_dev.
 
 import { test, before, after } from "node:test";
@@ -27,8 +27,9 @@ import { Client, Pool, type PoolClient } from "pg";
 import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { createDb, createPool, withOrgContext, type Db } from "./client";
+import { getConfig, getSecret } from "@sayre/config";
 
-const TEST_DB_NAME = process.env.RLS_TEST_DB_NAME ?? "w005_rls_test";
+const TEST_DB_NAME = getConfig("RLS_TEST_DB_NAME");
 
 const TABLE_NAMES = [
   "organizations",
@@ -47,15 +48,15 @@ const TABLE_NAMES = [
 ] as const;
 type TableName = (typeof TABLE_NAMES)[number];
 
-function requireAdminUrl(): string {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
+async function requireAdminUrl(): Promise<string> {
+  try {
+    return await getSecret("env://DATABASE_ADMIN_URL");
+  } catch {
     throw new Error(
-      "rls.test.ts requires DATABASE_URL (admin/superuser DSN) -- see infra/.env.example. " +
-        "Run via `npm run test:rls` (loads infra/.env) or export DATABASE_URL yourself.",
+      "rls.test.ts requires DATABASE_ADMIN_URL (admin/superuser DSN) -- see infra/.env.example. " +
+        "Run via `npm run test:rls` (loads infra/.env) or export DATABASE_ADMIN_URL yourself.",
     );
   }
-  return url;
 }
 
 /** Swaps the database name in a Postgres connection string, keeping host/credentials. */
@@ -286,7 +287,7 @@ let idsA: Record<TableName, string>;
 let idsB: Record<TableName, string>;
 
 before(async () => {
-  const adminUrl = requireAdminUrl();
+  const adminUrl = await requireAdminUrl();
   await ensureTestDatabaseExists(adminUrl, TEST_DB_NAME);
   const testDbUrl = withDatabaseName(adminUrl, TEST_DB_NAME);
 

@@ -20,13 +20,16 @@ Two tiers:
 
 from __future__ import annotations
 
+import asyncio
 import functools
-import os
 import re
+import sys
+import traceback
 from pathlib import Path
 
 import pytest
 
+from sayre_workers.config import get_config, get_secret, reset_secrets_for_tests
 from sayre_workers.graph_migrations import runner
 from sayre_workers.graph_migrations.runner import (
     MigrationChecksumMismatchError,
@@ -413,19 +416,338 @@ def test_invalid_target_raises_value_error(fake_pg):
 # --- env-config fail-fast (neo4j_driver_from_env / pg_connection_from_env) ---------
 
 
-def test_neo4j_driver_from_env_fails_fast_without_password(monkeypatch):
+async def test_neo4j_driver_from_env_fails_fast_without_password(monkeypatch):
+    monkeypatch.setenv("SAYRE_ENV", "test")
     monkeypatch.delenv("NEO4J_PASSWORD", raising=False)
+    reset_secrets_for_tests()
     with pytest.raises(RuntimeError, match="NEO4J_PASSWORD"):
-        runner.neo4j_driver_from_env()
+        await runner.neo4j_driver_from_env()
 
 
-def test_pg_connection_from_env_fails_fast_without_database_url(monkeypatch):
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    with pytest.raises(RuntimeError, match="DATABASE_URL"):
-        runner.pg_connection_from_env()
+async def test_pg_connection_from_env_fails_fast_without_database_url(monkeypatch):
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    monkeypatch.delenv("DATABASE_ADMIN_URL", raising=False)
+    reset_secrets_for_tests()
+    with pytest.raises(RuntimeError, match="DATABASE_ADMIN_URL"):
+        await runner.pg_connection_from_env()
+
+
+async def test_pg_constructor_failure_redacts_resolved_database_admin_url(monkeypatch):
+    import psycopg
+
+    sentinel = "postgresql://admin:W0_07_DSN_SENTINEL@db.invalid/sayre"
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    monkeypatch.setenv("DATABASE_ADMIN_URL", sentinel)
+    reset_secrets_for_tests()
+
+    def fail_with_resolved_url(url: str):
+        assert url == sentinel
+        raise RuntimeError(f"psycopg rejected resolved DSN: {url}")
+
+    monkeypatch.setattr(psycopg, "connect", fail_with_resolved_url)
+    try:
+        with pytest.raises(runner.PostgresMigrationStartupError) as exc_info:
+            await runner.pg_connection_from_env()
+    finally:
+        reset_secrets_for_tests()
+
+    error = exc_info.value
+    visible_error = "".join(
+        traceback.format_exception(type(error), error, error.__traceback__)
+    )
+    assert str(error) == runner.POSTGRES_STARTUP_ERROR
+    assert error.__suppress_context__ is True
+    assert sentinel not in str(error)
+    assert sentinel not in repr(error)
+    assert sentinel not in visible_error
+
+
+@pytest.mark.parametrize("args", [[], ["--dry-run"], ["--status"]])
+async def test_cli_all_postgres_startup_paths_redact_resolved_admin_url(
+    monkeypatch,
+    capsys,
+    args,
+):
+    import psycopg
+    from scripts import run_graph_migrations as migration_cli
+
+    sentinel = "postgresql://admin:W0_07_CLI_DSN_SENTINEL@db.invalid/sayre"
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    monkeypatch.setenv("DATABASE_ADMIN_URL", sentinel)
+    monkeypatch.setattr(sys, "argv", ["run_graph_migrations.py", *args])
+    reset_secrets_for_tests()
+
+    def fail_with_resolved_url(url: str):
+        assert url == sentinel
+        raise RuntimeError(f"startup leaked resolved DSN: {url}")
+
+    monkeypatch.setattr(psycopg, "connect", fail_with_resolved_url)
+    try:
+        result = await migration_cli.main()
+    finally:
+        reset_secrets_for_tests()
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert captured.out == ""
+    assert captured.err.strip() == (
+        f"Graph migration startup FAILED: {runner.POSTGRES_STARTUP_ERROR}"
+    )
+    assert sentinel not in captured.out
+    assert sentinel not in captured.err
+
+
+async def test_cli_neo4j_startup_error_is_fixed_and_closes_postgres(
+    monkeypatch,
+    capsys,
+):
+    import neo4j
+    import psycopg
+    from scripts import run_graph_migrations as migration_cli
+
+    password_sentinel = "W0_07_NEO4J_PASSWORD_SENTINEL"
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    monkeypatch.setenv("DATABASE_ADMIN_URL", "postgresql://admin@db.invalid/sayre")
+    monkeypatch.setenv("NEO4J_URI", "bolt://graph.invalid:7687")
+    monkeypatch.setenv("NEO4J_USER", "neo4j")
+    monkeypatch.setenv("NEO4J_PASSWORD", password_sentinel)
+    monkeypatch.setattr(sys, "argv", ["run_graph_migrations.py"])
+    reset_secrets_for_tests()
+
+    class FakeConnection:
+        def __init__(self) -> None:
+            self.close_calls = 0
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    connection = FakeConnection()
+
+    def graph_factory(_uri: str, *, auth):
+        assert auth == ("neo4j", password_sentinel)
+        raise RuntimeError(f"driver rejected password {password_sentinel}")
+
+    monkeypatch.setattr(psycopg, "connect", lambda _url: connection)
+    monkeypatch.setattr(neo4j.GraphDatabase, "driver", graph_factory)
+    try:
+        result = await migration_cli.main()
+    finally:
+        reset_secrets_for_tests()
+
+    captured = capsys.readouterr()
+    assert result == 1
+    assert connection.close_calls == 1
+    assert captured.out == ""
+    assert captured.err.strip() == (
+        f"Graph migration startup FAILED: {runner.NEO4J_STARTUP_ERROR}"
+    )
+    assert password_sentinel not in captured.err
+
+
+def test_cli_teardown_error_text_redacts_both_close_failures():
+    from scripts import run_graph_migrations as migration_cli
+
+    neo4j_sentinel = "W0_07_NEO4J_CLOSE_SENTINEL"
+    postgres_sentinel = "W0_07_POSTGRES_CLOSE_SENTINEL"
+    close_order: list[str] = []
+
+    class FailingResource:
+        def __init__(self, name: str, sentinel: str) -> None:
+            self.name = name
+            self.sentinel = sentinel
+
+        def close(self) -> None:
+            close_order.append(self.name)
+            raise RuntimeError(f"{self.name} close leaked {self.sentinel}")
+
+    neo4j_driver = FailingResource("neo4j", neo4j_sentinel)
+    pg_conn = FailingResource("postgres", postgres_sentinel)
+
+    with pytest.raises(migration_cli.GraphMigrationTeardownError) as exc_info:
+        migration_cli._close_resources(neo4j_driver, pg_conn)
+
+    error = exc_info.value
+    visible_error = "".join(
+        traceback.format_exception(type(error), error, error.__traceback__)
+    )
+    assert close_order == ["neo4j", "postgres"]
+    assert str(error) == migration_cli.TEARDOWN_ERROR
+    assert error.__suppress_context__ is True
+    for sentinel in (neo4j_sentinel, postgres_sentinel):
+        assert sentinel not in str(error)
+        assert sentinel not in repr(error)
+        assert sentinel not in visible_error
+
+
+@pytest.mark.parametrize("args", [[], ["--dry-run"]])
+async def test_cli_default_and_dry_run_teardown_are_independent_and_redacted(
+    monkeypatch,
+    capsys,
+    args,
+):
+    from scripts import run_graph_migrations as migration_cli
+
+    neo4j_sentinel = "W0_07_CLI_NEO4J_CLOSE_SENTINEL"
+    postgres_sentinel = "W0_07_CLI_POSTGRES_CLOSE_SENTINEL"
+    close_order: list[str] = []
+
+    class FailingResource:
+        def __init__(self, name: str, sentinel: str) -> None:
+            self.name = name
+            self.sentinel = sentinel
+
+        def close(self) -> None:
+            close_order.append(self.name)
+            raise RuntimeError(f"{self.name} close leaked {self.sentinel}")
+
+    neo4j_driver = FailingResource("neo4j", neo4j_sentinel)
+    pg_conn = FailingResource("postgres", postgres_sentinel)
+
+    async def open_postgres():
+        return pg_conn
+
+    async def open_neo4j():
+        return neo4j_driver
+
+    monkeypatch.setattr(sys, "argv", ["run_graph_migrations.py", *args])
+    monkeypatch.setattr(migration_cli, "pg_connection_from_env", open_postgres)
+    monkeypatch.setattr(migration_cli, "neo4j_driver_from_env", open_neo4j)
+    monkeypatch.setattr(migration_cli, "run_migrations", lambda *_args, **_kwargs: [])
+
+    result = await migration_cli.main()
+    captured = capsys.readouterr()
+
+    assert result == 1
+    assert close_order == ["neo4j", "postgres"]
+    assert "Graph migration run (target=neo4j):" in captured.out
+    assert captured.err.strip() == (
+        f"Graph migration teardown FAILED: {migration_cli.TEARDOWN_ERROR}"
+    )
+    for sentinel in (neo4j_sentinel, postgres_sentinel):
+        assert sentinel not in captured.out
+        assert sentinel not in captured.err
+
+
+@pytest.mark.parametrize("args", [[], ["--dry-run"], ["--status"]])
+async def test_cli_operational_failures_are_fixed_redacted_and_close_resources(
+    monkeypatch,
+    capsys,
+    args,
+):
+    from scripts import run_graph_migrations as migration_cli
+
+    sentinel = "SENTINEL_GRAPH_OPERATION_SECRET"
+
+    class Resource:
+        def __init__(self) -> None:
+            self.close_calls = 0
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    neo4j_driver = Resource()
+    pg_conn = Resource()
+
+    async def open_postgres():
+        return pg_conn
+
+    async def open_neo4j():
+        return neo4j_driver
+
+    def fail_operation(*_args, **_kwargs):
+        raise RuntimeError(f"operation leaked {sentinel}")
+
+    monkeypatch.setattr(sys, "argv", ["run_graph_migrations.py", *args])
+    monkeypatch.setattr(migration_cli, "pg_connection_from_env", open_postgres)
+    monkeypatch.setattr(migration_cli, "neo4j_driver_from_env", open_neo4j)
+    if args == ["--status"]:
+        monkeypatch.setattr(migration_cli, "ensure_tracking_table", fail_operation)
+    else:
+        monkeypatch.setattr(migration_cli, "run_migrations", fail_operation)
+
+    escaped_error = None
+    try:
+        result = await migration_cli.main()
+    except BaseException as error:  # regression guard: operations must never escape main
+        escaped_error = error
+        result = None
+    captured = capsys.readouterr()
+
+    assert escaped_error is None
+    assert result == 1
+    assert pg_conn.close_calls == 1
+    assert neo4j_driver.close_calls == (0 if args == ["--status"] else 1)
+    assert captured.err.strip() == (
+        f"Graph migration operation FAILED: {migration_cli.OPERATION_ERROR}"
+    )
+    escaped_outputs = []
+    if escaped_error is not None:
+        escaped_outputs.extend(
+            [
+                str(escaped_error),
+                repr(escaped_error),
+                "".join(
+                    traceback.format_exception(
+                        type(escaped_error),
+                        escaped_error,
+                        escaped_error.__traceback__,
+                    )
+                ),
+            ]
+        )
+    for output in [captured.out, captured.err, *escaped_outputs]:
+        assert sentinel not in output
+
+
+async def test_client_factories_receive_resolved_values_before_construction(monkeypatch):
+    import neo4j
+    import psycopg
+
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    monkeypatch.setenv("NEO4J_URI", "bolt://graph.invalid:7687")
+    monkeypatch.setenv("NEO4J_USER", "resolved-user")
+    monkeypatch.setenv("NEO4J_PASSWORD", "resolved-password")
+    monkeypatch.setenv("DATABASE_ADMIN_URL", "postgresql://resolved.invalid/db")
+    reset_secrets_for_tests()
+    graph_calls = []
+    postgres_calls = []
+    fake_driver = object()
+    fake_connection = object()
+
+    def graph_factory(uri, *, auth):
+        graph_calls.append((uri, auth))
+        return fake_driver
+
+    def postgres_factory(url):
+        postgres_calls.append(url)
+        return fake_connection
+
+    monkeypatch.setattr(neo4j.GraphDatabase, "driver", graph_factory)
+    monkeypatch.setattr(psycopg, "connect", postgres_factory)
+    try:
+        assert await runner.neo4j_driver_from_env() is fake_driver
+        assert await runner.pg_connection_from_env() is fake_connection
+        assert graph_calls == [
+            ("bolt://graph.invalid:7687", ("resolved-user", "resolved-password"))
+        ]
+        assert postgres_calls == ["postgresql://resolved.invalid/db"]
+    finally:
+        reset_secrets_for_tests()
 
 
 # --- Real-infra integration smoke test (skips cleanly if Neo4j/Postgres unreachable) -
+
+
+@functools.lru_cache(maxsize=1)
+def _infra_config() -> tuple[str, str, str, str]:
+    async def resolve() -> tuple[str, str, str, str]:
+        password, database_url = await asyncio.gather(
+            get_secret("env://NEO4J_PASSWORD"),
+            get_secret("env://DATABASE_ADMIN_URL"),
+        )
+        return get_config("NEO4J_URI"), get_config("NEO4J_USER"), password, database_url
+
+    return asyncio.run(resolve())
 
 
 @functools.lru_cache(maxsize=1)
@@ -433,11 +755,7 @@ def _neo4j_reachable() -> bool:
     try:
         import neo4j
 
-        uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-        user = os.environ.get("NEO4J_USER", "neo4j")
-        password = os.environ.get("NEO4J_PASSWORD")
-        if not password:
-            return False
+        uri, user, password, _ = _infra_config()
         driver = neo4j.GraphDatabase.driver(
             uri, auth=(user, password), connection_timeout=2
         )
@@ -455,9 +773,7 @@ def _postgres_reachable() -> bool:
     try:
         import psycopg
 
-        url = os.environ.get("DATABASE_URL")
-        if not url:
-            return False
+        _, _, _, url = _infra_config()
         conn = psycopg.connect(url, connect_timeout=2)
         conn.close()
         return True
@@ -479,11 +795,9 @@ def test_real_double_apply_produces_no_duplicate_anchors_constraints_or_indexes(
     import neo4j
     import psycopg
 
-    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    uri, user, password, database_url = _infra_config()
     driver = neo4j.GraphDatabase.driver(uri, auth=(user, password))
-    pg_conn = psycopg.connect(os.environ["DATABASE_URL"])
+    pg_conn = psycopg.connect(database_url)
 
     try:
         with pg_conn.cursor() as cur:
@@ -568,11 +882,9 @@ def real_infra():
     import neo4j
     import psycopg
 
-    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    uri, user, password, database_url = _infra_config()
     driver = neo4j.GraphDatabase.driver(uri, auth=(user, password))
-    pg_conn = psycopg.connect(os.environ["DATABASE_URL"])
+    pg_conn = psycopg.connect(database_url)
 
     with pg_conn.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS graph_migrations")
@@ -798,7 +1110,6 @@ def test_real_cli_status_and_dry_run_do_not_mutate(real_infra):
     status_result = subprocess.run(
         [sys.executable, "scripts/run_graph_migrations.py", "--status"],
         cwd=workers_dir,
-        env=os.environ.copy(),
         capture_output=True,
         text=True,
         timeout=30,
@@ -815,7 +1126,6 @@ def test_real_cli_status_and_dry_run_do_not_mutate(real_infra):
     dry_run_result = subprocess.run(
         [sys.executable, "scripts/run_graph_migrations.py", "--dry-run"],
         cwd=workers_dir,
-        env=os.environ.copy(),
         capture_output=True,
         text=True,
         timeout=30,

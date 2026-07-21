@@ -26,13 +26,14 @@ see `_views()` below. No second `MeterProvider`, no second `/metrics` server.
 
 from __future__ import annotations
 
-import os
 import threading
 
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import MetricReader
 from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 from opentelemetry.sdk.resources import Resource
+from sayre_workers.config import get_config
 
 VECTOR_QUERY_DURATION_BUCKETS_MS: list[float] = [
     1,
@@ -166,13 +167,13 @@ def init_metrics(
         if _provider is not None:
             return _provider
 
-        resolved_exporter = exporter or os.environ.get("OTEL_METRICS_EXPORTER") or "prometheus"
+        resolved_exporter = exporter or get_config("OTEL_METRICS_EXPORTER")
         resolved_port = (
             metrics_port
             if metrics_port is not None
-            else int(os.environ.get("METRICS_PORT", "9464"))
+            else int(get_config("METRICS_PORT"))
         )
-        resolved_addr = metrics_addr or os.environ.get("METRICS_ADDR") or "0.0.0.0"
+        resolved_addr = metrics_addr or get_config("METRICS_ADDR")
 
         if resolved_exporter not in _VALID_EXPORTERS:
             raise ValueError(
@@ -181,7 +182,7 @@ def init_metrics(
                 "prod/vendor extension point -- see sayre_workers/telemetry/otel.py)."
             )
 
-        readers = []
+        readers: list[MetricReader] = []
         if resolved_exporter == "prometheus":
             # The only place PrometheusMetricReader / prometheus_client is imported.
             from opentelemetry.exporter.prometheus import PrometheusMetricReader

@@ -12,6 +12,8 @@
     "og": "node scripts/og.mjs",
     "hero:render": "node scripts/render-anime-hero.mjs",
     "test:waitlist": "node scripts/test-waitlist.mjs",
+    "check:secret-access": "node scripts/check-secret-access.mjs",
+    "test:secret-access": "node --test scripts/check-secret-access.test.mjs",
     "dev:workspaces": "turbo run dev --parallel",
     "build:workspaces": "turbo run build",
     "lint:workspaces": "turbo run lint",
