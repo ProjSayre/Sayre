@@ -50,7 +50,8 @@ records the shared decisions that foundation and downstream tickets must preserv
   availability therefore does not wait for embedding inference, vector writes, or LLM enrichment.
 - Enrichment has separate physical `enrichment-onboarding-priority` and `enrichment-default`
   queues. Priority-only capacity plus bounded weighted polling preserves priority without starving
-  default work. W2-08 activates the onboarding workload on the already-provisioned lane.
+  default work. W2-08 activates the onboarding workload on the already-provisioned lane after the
+  accepted structural event and records cold-start-to-ready latency by server-derived org/repo.
 - Every work queue has a DLQ with a five-receive redrive policy and 14-day retention. Long-running
   consumers extend visibility with a heartbeat and stop extending it during graceful shutdown.
 - Delivery is at least once. Handlers use durable idempotency keys and repository/ref graph-version
