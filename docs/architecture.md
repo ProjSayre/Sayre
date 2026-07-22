@@ -61,9 +61,11 @@ projection so structural nodes from abandoned history cannot survive.
 
 - **Cold start:** GitHub App authorization enqueues an initial job on the ingestion FIFO queue. A
   scratch clone is fully parsed with Tree-sitter, then the graph transaction commits. The accepted
-  `graph.updated` event is published through SNS, making the Technical Tree available. Bounded
-  tenant chunks enter `embedding-upserts`, and semantic/onboarding enrichment begins asynchronously
-  afterward; the priority lane lets onboarding finish ahead of general enrichment. The separate
+  `graph.updated` event is published through SNS, making the Technical Tree available. Ingestion
+  then publishes `onboarding.generate` to `enrichment-onboarding-priority` before bounded tenant
+  chunks enter `embedding-upserts`. Successful onboarding completion records
+  `ttfc_cold_start_to_onboarding_ready_ms` by `org_id`/`repo_id`; the priority lane lets onboarding
+  finish ahead of general enrichment. The separate
   `EmbeddingProvider` writes 1024-dimensional cosine vectors with provider/model/dimension metadata.
   The scratch checkout is destroyed and never persisted.
 - **Steady-state push (15-second structural target):** the webhook is validated, changed files are
