@@ -292,8 +292,71 @@ a {
 }
 
 .graph-canvas {
+  position: relative;
   width: 100%;
   height: calc(100vh - 64px);
+}
+
+.sigma-canvas {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 25% 20%, rgba(119, 167, 255, 0.08), transparent 32%),
+    radial-gradient(circle at 75% 70%, rgba(247, 198, 108, 0.06), transparent 34%),
+    #080c11;
+}
+
+.renderer-switcher {
+  position: absolute;
+  z-index: 12;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(13, 17, 23, 0.92);
+  padding: 6px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+}
+
+.renderer-switcher-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.renderer-switcher button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 7px 9px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.renderer-switcher button:hover,
+.renderer-switcher button.active {
+  background: #202833;
+  color: var(--text);
+}
+
+.renderer-switcher > span {
+  padding-right: 6px;
+  color: #8995a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+
+.canvas-node-inspector {
+  position: absolute;
+  z-index: 12;
+  top: 16px;
+  right: 16px;
 }
 
 .react-flow__pane {
