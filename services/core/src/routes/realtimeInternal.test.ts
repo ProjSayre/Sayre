@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getConfig } from '@sayre/config';
 import type { AffectedNodes, GraphNode } from '../graph-query/types';
 
-// Spy on the graph-query singleton so we can assert exactly what orgId reaches
+// Spy on the graph-query singleton so we can assert exactly what auth context reaches
 // it through the full HTTP -> route -> service -> graph-query path (mirrors
 // ../routes/technicalTree.test.ts's approach — no supertest dependency).
 const getAffectedNodes = vi.fn(
@@ -116,7 +116,7 @@ describe('POST /internal/realtime/graph-delta (HTTP)', () => {
     expect(JSON.stringify(body)).not.toMatch(/at .*\(.*:\d+:\d+\)/);
   });
 
-  it('AC5 isolation regression: a client-supplied org_id in the body has no effect — the server-resolved orgId reaches the graph-query layer', async () => {
+  it('AC5 isolation regression: client-supplied org ids have no effect on the server-derived auth context', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
     const expectedOrgId = getConfig('DEV_ORG_ID');
@@ -135,7 +135,12 @@ describe('POST /internal/realtime/graph-delta (HTTP)', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(getAffectedNodes).toHaveBeenCalledWith('repo-1', expectedOrgId, ['/root']);
-    expect(getAffectedNodes).not.toHaveBeenCalledWith('repo-1', 'attacker-org', ['/root']);
+    expect(getAffectedNodes).toHaveBeenCalledWith(
+      'repo-1',
+      ['/root'],
+      expect.objectContaining({ orgId: expectedOrgId, subjectType: 'user' }),
+    );
+    const context = getAffectedNodes.mock.calls[0]?.[2] as { orgId: string };
+    expect(context.orgId).not.toBe('attacker-org');
   });
 });

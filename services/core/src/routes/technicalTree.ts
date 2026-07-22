@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getTechnicalTree } from '../services/technicalTreeService';
 import { parseViewport } from '../http/viewport';
-import { requireOrgId } from '../auth/context';
+import { requireAuthContext } from '../auth/context';
 import { authenticate } from '../http/authenticate';
 import { authorize } from '../http/authorize';
 import { asyncHandler } from '../http/express';
@@ -17,7 +17,7 @@ technicalTreeRouter.get(
   authorize('member'),
   asyncHandler(async (req, res) => {
     const viewport = parseViewport(req.query);
-    const tree = await getTechnicalTree(req.params.repoId, requireOrgId(req), viewport);
+    const tree = await getTechnicalTree(req.params.repoId, viewport, requireAuthContext(req));
     res.json(tree);
   }),
 );

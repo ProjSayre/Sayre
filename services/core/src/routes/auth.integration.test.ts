@@ -168,7 +168,11 @@ describe('AC2: valid session flows the server-resolved org through', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(getNodesInViewport).toHaveBeenCalledWith('repo-1', ORG_A, expect.any(Object));
+    expect(getNodesInViewport).toHaveBeenCalledWith(
+      'repo-1',
+      expect.any(Object),
+      expect.objectContaining({ orgId: ORG_A, userId: 'user-1' }),
+    );
   });
 });
 
@@ -185,8 +189,13 @@ describe('AC3: org A cannot reach org B data via client input', () => {
     );
 
     expect(res.status).toBe(200);
-    expect(getNodesInViewport).toHaveBeenCalledWith('repo-1', ORG_A, expect.any(Object));
-    expect(getNodesInViewport).not.toHaveBeenCalledWith('repo-1', ORG_B, expect.any(Object));
+    expect(getNodesInViewport).toHaveBeenCalledWith(
+      'repo-1',
+      expect.any(Object),
+      expect.objectContaining({ orgId: ORG_A, userId: 'user-1', roles: ['member'] }),
+    );
+    const context = getNodesInViewport.mock.calls[0]?.[2] as { orgId: string };
+    expect(context.orgId).not.toBe(ORG_B);
   });
 
   it('two back-to-back requests for org A and org B each reach the service with their own org, no bleed', async () => {
@@ -203,8 +212,18 @@ describe('AC3: org A cannot reach org B data via client input', () => {
       headers: { authorization: `Bearer ${tokenB}` },
     });
 
-    expect(getNodesInViewport).toHaveBeenNthCalledWith(1, 'repo-1', ORG_A, expect.any(Object));
-    expect(getNodesInViewport).toHaveBeenNthCalledWith(2, 'repo-1', ORG_B, expect.any(Object));
+    expect(getNodesInViewport).toHaveBeenNthCalledWith(
+      1,
+      'repo-1',
+      expect.any(Object),
+      expect.objectContaining({ orgId: ORG_A }),
+    );
+    expect(getNodesInViewport).toHaveBeenNthCalledWith(
+      2,
+      'repo-1',
+      expect.any(Object),
+      expect.objectContaining({ orgId: ORG_B }),
+    );
   });
 });
 

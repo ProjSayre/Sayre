@@ -1,6 +1,8 @@
 // Shared types for the Graph Query Service contract (Route -> Service -> Graph Query Service).
 // See .claude/rules/service-layer.md and .claude/rules/graph-schema.md.
 
+import type { AuthContext } from '../auth/context';
+
 export interface Viewport {
   x: number;
   y: number;
@@ -21,9 +23,10 @@ export interface GraphNode {
   parentId: string | null;
 }
 
-// W0-03 stub only emits CONTAINS. IMPORTS/CALLS/INHERITS arrive with the real
-// client in W2-02. Keep the union closed (graph-schema rule: closed edge list).
-export type StructuralEdgeType = 'CONTAINS';
+// Folder/File are the only canvas nodes, so only relationships whose endpoints
+// are both canvas-renderable can leave this service. CALLS/INHERITS remain
+// graph-internal because their endpoints are Function/Class nodes.
+export type StructuralEdgeType = 'CONTAINS' | 'IMPORTS';
 
 export interface GraphEdge {
   id: string;
@@ -32,28 +35,27 @@ export interface GraphEdge {
   target: string; // GraphNode.id
 }
 
-// W2-03: affected-nodes result for a realtime `graph.updated` fan-out. `removed`
-// is documented as "stable node UIDs the caller was authorized to see, now
-// absent" -- true once W2-02 lands pre-deletion ACL tracking. The current
-// fixture stub cannot yet compute that (no deletion history), so it returns the
-// unmatched *paths* instead as a deterministic placeholder (see index.ts). The
-// gateway does not rely on the precise contents of `removed` today: per W2-03
-// O-3 it never relays itemized removals to a client, emitting a generic
-// `graph.resync` instead to avoid leaking the existence of a hidden node.
+// W2-03: affected-nodes result for a realtime `graph.updated` fan-out. Itemized
+// removals require an authorization-aware deletion ledger; until one exists the
+// implementation returns no removal IDs and the gateway emits graph.resync.
 export interface AffectedNodes {
   visible: GraphNode[]; // authorized Folder/File nodes currently present among the given paths
   removed: string[]; // stable node UIDs the caller was authorized to see, now absent
 }
 
-// orgId is a required, server-resolved parameter on every method below. This is
-// deliberate: the Graph Query Service is the layer that injects org_id server-side
-// and performs RBAC node-stripping (.claude/rules/security-multitenancy.md).
-// Modeling it here now means W2-02 does not have to change any caller signature
-// when it wires real enforcement in.
+// Every method receives the complete, server-resolved AuthContext. This keeps
+// REST, realtime, and future MCP callers on one authorization path and prevents
+// a caller from supplying its own tenant or subject identity.
 export interface GraphQueryService {
-  getNodesInViewport(repoId: string, orgId: string, viewport: Viewport): Promise<GraphNode[]>;
-  getStructuralEdges(repoId: string, orgId: string, nodes: GraphNode[]): Promise<GraphEdge[]>;
-  // NEW (W2-03). orgId is server-resolved and injected here; RBAC node-stripping is
-  // this layer's responsibility (stubbed today, real in W2-02). Only Folder/File ever returned.
-  getAffectedNodes(repoId: string, orgId: string, paths: string[]): Promise<AffectedNodes>;
+  getNodesInViewport(
+    repoId: string,
+    viewport: Viewport,
+    ctx: AuthContext,
+  ): Promise<GraphNode[]>;
+  getStructuralEdges(nodeIds: readonly string[], ctx: AuthContext): Promise<GraphEdge[]>;
+  getAffectedNodes(
+    repoId: string,
+    paths: readonly string[],
+    ctx: AuthContext,
+  ): Promise<AffectedNodes>;
 }

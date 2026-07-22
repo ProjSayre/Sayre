@@ -27,22 +27,25 @@ function instruments(): Instruments {
   return cachedInstruments;
 }
 
-export interface GraphWriteMeasurement {
+export type GraphQueryShape = 'viewport_read' | 'traversal' | 'write';
+
+export interface GraphQueryMeasurement {
   setResultNodeCount(count: number): void;
 }
 
-export async function instrumentGraphWrite<T>(
+export async function instrumentGraphQuery<T>(
   orgId: string,
-  operation: (measurement: GraphWriteMeasurement) => Promise<T>,
+  queryShape: GraphQueryShape,
+  operation: (measurement: GraphQueryMeasurement) => Promise<T>,
 ): Promise<T> {
   if (orgId.trim().length === 0) {
-    throw new Error('Graph writes require a non-blank server-derived org id.');
+    throw new Error('Graph queries require a non-blank server-derived org id.');
   }
 
   const meter = instruments();
-  const attributes = { org_id: orgId, query_shape: 'write' };
+  const attributes = { org_id: orgId, query_shape: queryShape };
   let resultNodeCount: number | null = null;
-  const measurement: GraphWriteMeasurement = {
+  const measurement: GraphQueryMeasurement = {
     setResultNodeCount(count) {
       if (!Number.isSafeInteger(count) || count < 0) {
         throw new RangeError('Graph result node count must be a non-negative safe integer.');
@@ -60,6 +63,13 @@ export async function instrumentGraphWrite<T>(
     if (resultNodeCount !== null) meter.resultNodeCount.record(resultNodeCount, attributes);
     meter.concurrent.add(-1, attributes);
   }
+}
+
+export function instrumentGraphWrite<T>(
+  orgId: string,
+  operation: (measurement: GraphQueryMeasurement) => Promise<T>,
+): Promise<T> {
+  return instrumentGraphQuery(orgId, 'write', operation);
 }
 
 export function resetGraphMetricsForTests(): void {
