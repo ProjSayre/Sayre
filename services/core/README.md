@@ -27,8 +27,10 @@ Route (src/routes/)  ->  Service (src/services/)  ->  Graph Query Service (src/g
   inject it server-side and perform RBAC node-stripping
   (`.claude/rules/security-multitenancy.md`).
 - **`src/http/`** — supporting HTTP-adapter helpers (`viewport.ts`,
-  `tenantContext.ts`, `express.ts`) used by routes to stay genuinely thin:
-  request parsing/validation, server-side tenant resolution, and generic
+  `authenticate.ts`, `authorize.ts`, `express.ts`) used by routes to stay
+  genuinely thin: request parsing/validation, server-side auth/tenant
+  resolution (`authenticate()` attaches `req.context`; `../auth/context.ts`
+  defines the `AuthContext` contract and `requireOrgId(req)`), and generic
   Express plumbing (`asyncHandler`, `errorHandler`). Request adaptation only —
   no domain logic.
 

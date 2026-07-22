@@ -1,9 +1,9 @@
 // Signed "install state" token — this is what keeps org_id server-controlled
 // across the GitHub App install redirect round-trip: the org is signed at
 // install-start (services/githubAppInstallService.ts#startGithubAppInstall)
-// from the SERVER-RESOLVED org (req.orgId via tenantContext), and recovered
-// at callback time (#handleGithubAppCallback) — never read from a client-
-// supplied callback query param (.claude/rules/security-multitenancy.md).
+// from the SERVER-RESOLVED org (req.context.orgId via authenticate(), W1-03),
+// and recovered at callback time (#handleGithubAppCallback) — never read from
+// a client-supplied callback query param (.claude/rules/security-multitenancy.md).
 //
 // HS256, signed with env://JWT_SIGNING_KEY (W0-07 loader). 10-minute expiry:
 // long enough to cover the GitHub-hosted installation UI, short enough that a

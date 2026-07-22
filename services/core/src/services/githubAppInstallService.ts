@@ -5,8 +5,8 @@
 //
 // Tenant-isolation invariant (.claude/rules/security-multitenancy.md): org_id is
 // resolved ONLY from the signed install-state token (set at install-start from
-// req.orgId, itself server-stamped by tenantContext — see O-1) — NEVER from a
-// callback query param. All DB writes run inside `withOrgContext`.
+// req.context.orgId, itself server-resolved by authenticate() — W1-03, closing
+// O-1) — NEVER from a callback query param. All DB writes run inside `withOrgContext`.
 //
 // Credential invariant: the App private key and any minted installation token
 // are read/used ONLY via the W0-07 loader / in-memory (GithubAppClient) — never

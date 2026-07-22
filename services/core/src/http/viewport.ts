@@ -1,6 +1,6 @@
 // Request adaptation only — no domain logic (see .claude/rules/service-layer.md).
 // Parses/validates the client-supplied viewport window. Never reads orgId:
-// tenancy is resolved server-side (see ./tenantContext.ts), not client input.
+// tenancy is resolved server-side (see ./authenticate.ts / ../auth/context.ts), not client input.
 
 import type { Viewport } from '../graph-query/types';
 
