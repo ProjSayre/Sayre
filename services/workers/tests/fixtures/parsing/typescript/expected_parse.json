@@ -39,6 +39,7 @@
       "start_line": 17
     }
   ],
+  "covers": [],
   "deleted_file_paths": [],
   "functions": [
     {
@@ -145,5 +146,6 @@
     "models.ts",
     "widget.tsx"
   ],
-  "skipped_files": []
+  "skipped_files": [],
+  "tests": []
 }

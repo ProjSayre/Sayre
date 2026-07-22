@@ -84,6 +84,7 @@
       "start_line": 24
     }
   ],
+  "covers": [],
   "deleted_file_paths": [],
   "functions": [
     {
@@ -217,5 +218,6 @@
     "main.py",
     "models.py"
   ],
-  "skipped_files": []
+  "skipped_files": [],
+  "tests": []
 }
