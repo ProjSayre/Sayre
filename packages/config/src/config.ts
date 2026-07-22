@@ -25,6 +25,8 @@ export const CONFIG_NAMES = [
   'SQS_GRAPH_UPDATED_REALTIME_QUEUE',
   'GATEWAY_REDIS_CHANNEL',
   'CORE_INTERNAL_BASE_URL',
+  'NEO4J_URI',
+  'NEO4J_USER',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -56,6 +58,8 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   SQS_GRAPH_UPDATED_REALTIME_QUEUE: 'graph-updated-realtime',
   GATEWAY_REDIS_CHANNEL: 'sayre:graph.updated',
   CORE_INTERNAL_BASE_URL: 'http://localhost:4000',
+  NEO4J_URI: 'bolt://localhost:7687',
+  NEO4J_USER: 'neo4j',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

@@ -37,9 +37,9 @@ rotation means updating that external value and restarting every listed consumer
 | `AWS_REGION`, `SQS_ENDPOINT_URL`, queue names | Non-secret | Python SQS fleet | Sync config loader | Platform owner changes topology and restarts workers | Remains ordinary configuration |
 | `REDIS_PASSWORD` / `env://REDIS_PASSWORD` | Secret | Core BullMQ connection when Redis auth is enabled | Pre-provisioned env value; absent is the documented unauthenticated local default | Platform/security owner rotates Redis auth, updates deployment, restarts integration workers | Managed Redis credential reference |
 | `REDIS_HOST`, `REDIS_PORT` | Non-secret | Core BullMQ connection | Sync config loader | Platform owner changes topology and restarts core/integration workers | Remains ordinary configuration |
-| `NEO4J_PASSWORD` / `env://NEO4J_PASSWORD` | Secret | Python graph migration and ingestion writers | Pre-provisioned env value | Graph/security owner rotates Neo4j credential, updates deployment, restarts workers | Managed graph credential reference |
+| `NEO4J_PASSWORD` / `env://NEO4J_PASSWORD` | Secret | Python graph migration/ingestion writers and Node git/ticket integration workers | Pre-provisioned env value | Graph/security owner rotates Neo4j credential, updates deployment, restarts workers | Managed graph credential reference |
 | `NEO4J_AUTH` / `env://NEO4J_AUTH` | Secret | Local Neo4j container provisioning only | Pre-provisioned env value | Graph owner rotates with `NEO4J_PASSWORD`, recreates/restarts local Neo4j and dependants | Managed provisioning path; application consumers continue using split credentials |
-| `NEO4J_URI`, `NEO4J_USER` | Non-secret | Python graph clients | Sync config loader | Graph/platform owner updates topology and restarts workers | Remains ordinary configuration |
+| `NEO4J_URI`, `NEO4J_USER` | Non-secret | Python and Node graph clients | Sync config loader | Graph/platform owner updates topology and restarts workers | Remains ordinary configuration |
 
 PM-07 is the first ticket allowed to add raw-secret write APIs, managed encrypted
 persistence, issuance, automated rotation, or revocation. Swapping the loader backend
