@@ -14,6 +14,12 @@ export const CONFIG_NAMES = [
   'SQS_ENDPOINT_URL',
   'SQS_INGESTION_QUEUE',
   'PUPPETEER_EXECUTABLE_PATH',
+  'GITHUB_APP_SLUG',
+  'GITHUB_APP_ID',
+  'GITHUB_APP_CLIENT_ID',
+  'GITHUB_API_BASE_URL',
+  'GITHUB_WEB_BASE_URL',
+  'GITHUB_POST_INSTALL_REDIRECT_URL',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -34,6 +40,12 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // SQS_ENDPOINT_URL intentionally has NO default: unset means "use real AWS".
   // The SQS module treats a ConfigError here as "no override endpoint", mirroring
   // the Python client (services/workers/messaging/sqs_client.py).
+  GITHUB_API_BASE_URL: 'https://api.github.com',
+  GITHUB_WEB_BASE_URL: 'https://github.com',
+  GITHUB_POST_INSTALL_REDIRECT_URL: '/settings/integrations',
+  // GITHUB_APP_SLUG / GITHUB_APP_ID / GITHUB_APP_CLIENT_ID intentionally have NO
+  // default: they identify the specific per-environment GitHub App (see
+  // infra/github-app/README.md) and must be provisioned explicitly.
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

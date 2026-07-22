@@ -21,7 +21,7 @@ githubWebhookRouter.post(
     });
     const status = outcome.status === 'published' ? 202 : 200;
     const body =
-      outcome.status === 'published' ? { ok: true } : { ok: true, ignored: outcome.reason };
+      outcome.status === 'ignored' ? { ok: true, ignored: outcome.reason } : { ok: true };
     res.status(status).json(body);
   }),
 );

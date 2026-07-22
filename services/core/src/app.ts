@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import { healthRouter } from './routes/health';
 import { technicalTreeRouter } from './routes/technicalTree';
 import { githubWebhookRouter } from './routes/githubWebhook';
+import { githubInstallRouter } from './routes/githubInstall';
 import { tenantContext } from './http/tenantContext';
 import { errorHandler } from './http/express';
 
@@ -17,6 +18,10 @@ export function createApp(): Express {
   app.get('/', (_req, res) => res.json({ message: 'Sayre core API' }));
   app.use(healthRouter);
   app.use(technicalTreeRouter);
+  // Browser-facing GitHub App install flow (W1-06). Mounted AFTER
+  // express.json() + tenantContext, NOT under the raw-body webhook path — see
+  // routes/githubInstall.ts for the O-1 gating note.
+  app.use(githubInstallRouter);
   app.use(errorHandler);
   return app;
 }

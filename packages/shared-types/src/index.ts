@@ -30,3 +30,20 @@ export interface NormalizedRepoEvent {
   delivery_id: string; // provider delivery id (X-GitHub-Delivery) — idempotency key
   payload: Record<string, unknown>; // normalized, event-type-specific subset
 }
+
+/**
+ * Payload for the `repo.initial_parse` envelope, produced by W1-06's GitHub App
+ * install callback (`services/core/src/services/githubAppInstallService.ts`) and
+ * consumed by the (not-yet-built) W1-05 ingestion worker. Reuses the existing
+ * `RepoRef` shape ({ provider_repo_id, full_name, repo_id }). `org_id` is
+ * intentionally NOT a field here, same rationale as `NormalizedRepoEvent`: it
+ * lives on the MessageEnvelope top level only.
+ */
+export interface RepoInitialParseEvent {
+  provider: 'github' | 'cursor-origin'; // W1-06 emits 'github'; union kept for PM-06 parity
+  type: 'initial_parse'; // payload discriminator (envelope.type is authoritative)
+  repo: RepoRef; // repo_id populated after registration; provider_repo_id required
+  ref: string; // non-null default branch, e.g. 'refs/heads/main'
+  installation_id: string; // provider account binding, as string
+  reason: 'app_install';
+}

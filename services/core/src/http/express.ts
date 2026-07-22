@@ -6,6 +6,11 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { ViewportParseError } from './viewport';
 import { WebhookSignatureError } from '../webhooks/githubSignature';
 import { WebhookBadRequestError } from '../services/githubWebhookService';
+import {
+  GithubApiError,
+  InstallationOrgConflictError,
+  InstallCallbackBadRequestError,
+} from '../services/githubAppInstallService';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -44,6 +49,21 @@ export function errorHandler(
 
   if (err instanceof WebhookBadRequestError) {
     res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
+  if (err instanceof InstallCallbackBadRequestError) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
+  if (err instanceof InstallationOrgConflictError) {
+    res.status(409).json({ error: 'installation already bound to a different organization' });
+    return;
+  }
+
+  if (err instanceof GithubApiError) {
+    res.status(502).json({ error: 'GitHub API request failed' });
     return;
   }
 
