@@ -32,6 +32,19 @@ export interface GraphEdge {
   target: string; // GraphNode.id
 }
 
+// W2-03: affected-nodes result for a realtime `graph.updated` fan-out. `removed`
+// is documented as "stable node UIDs the caller was authorized to see, now
+// absent" -- true once W2-02 lands pre-deletion ACL tracking. The current
+// fixture stub cannot yet compute that (no deletion history), so it returns the
+// unmatched *paths* instead as a deterministic placeholder (see index.ts). The
+// gateway does not rely on the precise contents of `removed` today: per W2-03
+// O-3 it never relays itemized removals to a client, emitting a generic
+// `graph.resync` instead to avoid leaking the existence of a hidden node.
+export interface AffectedNodes {
+  visible: GraphNode[]; // authorized Folder/File nodes currently present among the given paths
+  removed: string[]; // stable node UIDs the caller was authorized to see, now absent
+}
+
 // orgId is a required, server-resolved parameter on every method below. This is
 // deliberate: the Graph Query Service is the layer that injects org_id server-side
 // and performs RBAC node-stripping (.claude/rules/security-multitenancy.md).
@@ -40,4 +53,7 @@ export interface GraphEdge {
 export interface GraphQueryService {
   getNodesInViewport(repoId: string, orgId: string, viewport: Viewport): Promise<GraphNode[]>;
   getStructuralEdges(repoId: string, orgId: string, nodes: GraphNode[]): Promise<GraphEdge[]>;
+  // NEW (W2-03). orgId is server-resolved and injected here; RBAC node-stripping is
+  // this layer's responsibility (stubbed today, real in W2-02). Only Folder/File ever returned.
+  getAffectedNodes(repoId: string, orgId: string, paths: string[]): Promise<AffectedNodes>;
 }

@@ -21,6 +21,10 @@ export const CONFIG_NAMES = [
   'GITHUB_API_BASE_URL',
   'GITHUB_WEB_BASE_URL',
   'GITHUB_POST_INSTALL_REDIRECT_URL',
+  'GATEWAY_PORT',
+  'SQS_GRAPH_UPDATED_REALTIME_QUEUE',
+  'GATEWAY_REDIS_CHANNEL',
+  'CORE_INTERNAL_BASE_URL',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -48,6 +52,10 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // GITHUB_APP_SLUG / GITHUB_APP_ID / GITHUB_APP_CLIENT_ID intentionally have NO
   // default: they identify the specific per-environment GitHub App (see
   // infra/github-app/README.md) and must be provisioned explicitly.
+  GATEWAY_PORT: '4100',
+  SQS_GRAPH_UPDATED_REALTIME_QUEUE: 'graph-updated-realtime',
+  GATEWAY_REDIS_CHANNEL: 'sayre:graph.updated',
+  CORE_INTERNAL_BASE_URL: 'http://localhost:4000',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

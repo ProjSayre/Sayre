@@ -4,6 +4,7 @@
 
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { ViewportParseError } from './viewport';
+import { RealtimeDeltaParseError } from './realtimeDeltaRequest';
 import { WebhookSignatureError } from '../webhooks/githubSignature';
 import { WebhookBadRequestError } from '../services/githubWebhookService';
 import {
@@ -33,6 +34,11 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (err instanceof ViewportParseError) {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+
+  if (err instanceof RealtimeDeltaParseError) {
     res.status(400).json({ error: err.message });
     return;
   }
