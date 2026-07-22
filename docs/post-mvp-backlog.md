@@ -32,6 +32,12 @@ file should stay the durable record, not the PR thread.
 | `installation_repositories` webhook event is subscribed in the App manifest but not explicitly handled (falls through to the normalizer's ignored path) | W1-06 security-checker | Doesn't affect `installation` (add/remove) handling already built; matters once repo-level add/remove-without-reinstall needs its own sync behavior |
 | FIFO group-id scheme (`org_id, provider_repo_id, ref`) must stay consistent between W1-02's push-delta path and any future initial-parse producer | W1-02 (O-3) | No correctness issue today (W1-06 already matches the scheme); flagging so a future ticket touching either producer doesn't drift them apart |
 
+## Enrichment
+
+| Item | Surfaced by | Why deferred |
+|---|---|---|
+| `Neo4jEnrichmentGraphStore.apply()` doesn't independently enforce write.scope-vs-job-scope agreement — only `EnrichmentService.handle` performs that check before calling `apply()` | W2-05 review/security-checker | `apply()`'s spec'd signature (`apply(self, write)`) has no channel for an external job scope to compare against; `handle()` is the only production caller today so there's no bypass path yet — revisit (e.g. thread scope through `apply()`, or add a defense-in-depth check inside it) if `apply()` gains a second caller |
+
 ## Secrets & infra
 
 | Item | Surfaced by | Why deferred |
