@@ -9,6 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "worker:git": "tsx src/integrations/git/worker.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
     "db:generate": "drizzle-kit generate",

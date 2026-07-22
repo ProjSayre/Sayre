@@ -121,6 +121,11 @@ describe('normalizeGithubEvent', () => {
     expect(result.destinations).toEqual(['ownership']);
     expect(result.event.type).toBe('pull_request');
     expect(result.event.ref).toBe('feature-x');
+    expect(result.event.payload.pull_request).toMatchObject({
+      merged_at: null,
+      merge_commit_sha: null,
+      html_url: null,
+    });
   });
 
   it('normalizes a pull_request with a null/absent head.ref to ref: null, ownership only', () => {
