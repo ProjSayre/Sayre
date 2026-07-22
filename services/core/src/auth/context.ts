@@ -16,11 +16,16 @@
 // INVARIANT: `orgId` is resolved server-side from a verified credential and
 // is NEVER read from req.query/req.body/headers a client controls
 // (.claude/rules/security-multitenancy.md).
+//
+// OrgRole is defined in @sayre/shared-types (hoisted there in W2-03 O-4) so
+// services/gateway can consume the same type without importing this Express-
+// specific module. Re-exported here (not redefined) so this remains the one
+// place callers within services/core look for the auth-context shape.
 
 import type { Request } from 'express';
+import type { OrgRole } from '@sayre/shared-types';
 
-/** Coarse org-level role. Rank order (low to high): member < admin < owner. */
-export type OrgRole = 'owner' | 'admin' | 'member';
+export type { OrgRole };
 
 interface BaseAuthContext {
   /** UUID, server-resolved from the validated token — NEVER from client input. */

@@ -10,7 +10,7 @@
 //
 // Do not import `neo4j-driver` (or any other data client) into this file.
 
-import type { GraphEdge, GraphNode, GraphQueryService, Viewport } from './types';
+import type { AffectedNodes, GraphEdge, GraphNode, GraphQueryService, Viewport } from './types';
 
 export * from './types';
 
@@ -69,7 +69,32 @@ async function getStructuralEdges(
     }));
 }
 
+// Fixture stub ignores repoId/orgId (real RBAC filtering is W2-02). Deterministic:
+// a `path` with a matching fixture node is "visible"; a `path` with no matching
+// fixture node is reported in `removed` (using the path itself as a placeholder
+// identifier -- the stub has no deletion history to resolve a real stable node
+// UID; see the AffectedNodes doc comment in ./types.ts).
+async function getAffectedNodes(
+  _repoId: string,
+  _orgId: string,
+  paths: string[],
+): Promise<AffectedNodes> {
+  const byPath = new Map(FIXTURE_NODES.map((node) => [node.path, node] as const));
+  const visible: GraphNode[] = [];
+  const removed: string[] = [];
+  for (const path of paths) {
+    const node = byPath.get(path);
+    if (node) {
+      visible.push(node);
+    } else {
+      removed.push(path);
+    }
+  }
+  return { visible, removed };
+}
+
 export const graphQueryService: GraphQueryService = {
   getNodesInViewport,
   getStructuralEdges,
+  getAffectedNodes,
 };

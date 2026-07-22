@@ -90,6 +90,44 @@ Note: no direct Graph DB/pgvector convenience dependency was added here — per
 `.claude/rules/service-layer.md`, the graph is only ever reached through the service layer /
 Graph Query Service, and the vector store client belongs to the Python fleet, not `services/core`.
 
+**W2-03:** `services/core`'s `package.json` gained `"main": "dist/lib.js"` / `"types": "dist/lib.d.ts"`,
+pointing at a new `src/lib.ts` library entry point (NOT `src/index.ts`, which has the side effect of
+starting the HTTP listener at import time). This is what lets `services/gateway` import
+`verifySessionToken`/`SessionClaims`/`assertValidEnvelope`/`MessageEnvelope` as a real `@sayre/core`
+package dependency instead of re-implementing JWT verification or envelope validation a second time
+(`.pipeline/spec.md` O-4). No other package resolves `@sayre/core` by its `main` field yet — `core`
+is still run directly via `tsx watch src/index.ts` / `node dist/index.js`, unaffected by this change.
+
+## `services/gateway` — Realtime Service (WebSocket gateway + Redis pub/sub fan-out)
+
+Introduced by W2-03: the "Realtime Service" box in `docs/architecture.md`. Fans out accepted
+`graph.updated` SQS events (`graph-updated-realtime`, provisioned since W0-04 and unconsumed until
+this ticket) to connected canvas clients as RBAC-filtered Folder/File node patches, re-checking
+authorization via a new Core-internal endpoint on every push, not just at WS-subscribe time
+(`.claude/rules/security-multitenancy.md`).
+
+| Package | Runtime/Location | Purpose | Reference | Future swap |
+|---|---|---|---|---|
+| `ws` | services/gateway (dep) | WebSocket server implementation for client connections | `docs/prd.md` §4.2 (Realtime Service); `.pipeline/spec.md` W2-03 O-6 | — |
+| `ioredis` | services/gateway (dep) | Redis pub/sub client — fan-out across gateway instances, same connection pattern as `services/core/src/queue/bullmq.ts` | `.claude/rules/async-messaging.md`; `.pipeline/spec.md` W2-03 | — |
+| `@aws-sdk/client-sqs` | services/gateway (dep) | Long-poll consumer of the `graph-updated-realtime` SQS queue — the first Node consumer of a Python-fleet SQS queue (`.pipeline/spec.md` W2-03 O-1) | `docs/architecture.md`; `.claude/rules/async-messaging.md` | — |
+| `@sayre/config` | services/gateway (dep) | Shared non-secret config / secret-reference loaders — same `GATEWAY_*`/`REDIS_*`/`AWS_*`/`SQS_*` names as `services/core` | `.pipeline/spec.md` W2-03 | — |
+| `@sayre/core` | services/gateway (dep) | Reuses Core's single `verifySessionToken`/`SessionClaims` (WS connection auth) and `assertValidEnvelope`/`MessageEnvelope` (SQS payload validation) implementations via `services/core`'s new `src/lib.ts` library entry point — avoids a second, divergent implementation of either. **Not listed in spec.md's literal Affected-files dependency list; added per O-4's resolution** (see `.pipeline/changes.md` deviation note). | `.pipeline/spec.md` W2-03 O-4 | — |
+| `@sayre/shared-types` | services/gateway (dep) | Cross-package wire contracts (`GraphUpdatedPayload`, `CanvasNode`, `RealtimeGraphDelta`, `RealtimeDeltaRequest`, `ClientToGatewayMessage`, `GatewayToClientMessage`, `OrgRole`) | `.pipeline/spec.md` W2-03 | — |
+| `@types/ws` | services/gateway (devDep) | Type defs for `ws` | `.pipeline/spec.md` W2-03 O-6 | — |
+| `@types/node` | services/gateway (devDep) | Node type defs (Node 20 LTS target) | `.nvmrc` | — |
+| `typescript` | services/gateway (devDep) | Type checking, pinned to the same minor as `services/core` | `CLAUDE.md` Stack | — |
+| `tsx` | services/gateway (devDep) | Dev/runtime TS execution (`dev` script) | Not named in PRD; build/test support | — |
+| `vitest` | services/gateway (devDep) | Test runner (`npm run test`) | `CLAUDE.md` Commands | — |
+| `eslint` | services/gateway (devDep) | Lint engine, pinned to the same 8.57 minor as `services/core`/`apps/web` | `.pipeline/spec.md` W0-01 D-6 | — |
+| `@typescript-eslint/parser` | services/gateway (devDep) | TypeScript parser for eslint | `.pipeline/spec.md` W0-01 D-6 | — |
+| `@typescript-eslint/eslint-plugin` | services/gateway (devDep) | TypeScript-aware lint rules | `.pipeline/spec.md` W0-01 D-6 | — |
+
+`ws`/`@types/ws` were not pinned by W0-00's dependency baseline (no WebSocket library was needed
+before this ticket) — pinned here to the `8.18.x` minor line per O-6. `services/gateway` has no
+`src/routes/**` lint-gate override (unlike `services/core`) — it has no Express routes at all, per
+spec.md's Affected-files note.
+
 ## `services/workers` — Python/FastAPI async worker fleet
 
 | Package | Runtime/Location | Purpose | Reference | Future swap |
@@ -146,6 +184,11 @@ spec text; see `.pipeline/changes.md`). The marketing site's own `dev`/`build`/`
 `lint:workspaces`/`typecheck:workspaces`/`test:workspaces` scripts drive the workspace packages
 via `turbo` instead. `services/workers` (Poetry) is **not** part of this npm workspace at all — see
 `.pipeline/spec.md` W0-01 D-3.
+
+**W2-03:** `workspaces` gained `"services/gateway"` (`["apps/web", "services/core",
+"services/gateway", "packages/*"]`), so `turbo run dev/build/lint/typecheck/test` (and the
+`*:workspaces` root scripts) pick up the new Realtime Service package with no `turbo.json` change —
+turbo derives its task graph from each package's own `package.json` scripts.
 
 ## `infra/docker-compose.yml` — pinned datastore images
 

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "packageManager": "npm@11.14.1",
-  "workspaces": ["apps/web", "services/core", "packages/*"],
+  "workspaces": ["apps/web", "services/core", "services/gateway", "packages/*"],
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
