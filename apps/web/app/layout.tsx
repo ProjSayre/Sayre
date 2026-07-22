@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import '@xyflow/react/dist/style.css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sayre — Codebase Visualizer',
-  description: 'AI-powered codebase ontology and visualization platform.',
+  title: 'Sayre — Engineering memory graph',
+  description: 'Explore the structure and context of your codebase.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
