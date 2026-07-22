@@ -15,10 +15,16 @@ afterEach(() => {
 describe('getConfig', () => {
   it('uses documented safe defaults and returns non-empty overrides unchanged', () => {
     expect(getConfig('CORE_PORT')).toBe('4000');
+    expect(getConfig('LINEAR_API_URL')).toBe('https://api.linear.app/graphql');
     expect(getConfig('NEO4J_URI')).toBe('bolt://localhost:7687');
     expect(getConfig('NEO4J_USER')).toBe('neo4j');
     setConfigOverrideForTests('CORE_PORT', ' 4100 ');
     expect(getConfig('CORE_PORT')).toBe(' 4100 ');
+  });
+
+  it('requires the tenant-specific Jira base URL to be provisioned', () => {
+    setConfigOverrideForTests('JIRA_BASE_URL', undefined);
+    expect(() => getConfig('JIRA_BASE_URL')).toThrow(/JIRA_BASE_URL.*missing/);
   });
 
   it('defaults broker-required mode off and validates boolean overrides centrally', () => {

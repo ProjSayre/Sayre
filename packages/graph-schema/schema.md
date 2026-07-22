@@ -57,7 +57,7 @@ inference (PM-01).
 | `Person` | `name`, `email`, `provider`, `provider_login`, `github_login` | Provider-neutral identity; `github_login` remains as a compatibility alias for GitHub-backed people. |
 | `Commit` | `sha`, `message`, `timestamp`, `author_name`, `author_email` | `author_name`/`author_email` are a denormalized cache; the canonical author link is the `AUTHORED` edge to a `Person`. |
 | `Feature` | `description`, `team`, `name` | Cached fields for the Product tree view. |
-| `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `status` | Mirror pointer to the Jira/Linear system of record. |
+| `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `title`, `status`, `url`, `synced_at` | Mirror pointer to the Jira/Linear system of record. |
 | `EnvStep` | `sequence` (int), `command` | Onboarding steps, ordered by `sequence`. |
 | `Test` | `path`, `name`, `coverage_status` (`'pass'` \| `'fail'` \| `'unknown'`) | Statically discovered tests begin as `unknown`; W4-03 updates measured results. |
 
@@ -75,7 +75,7 @@ Every relationship carries `org_id`. Direction below is canonical (source -> tar
 | `OWNS` | `Person->File` | — | Primary code owner. |
 | `AUTHORED` | `Person->Commit` | `timestamp` (datetime) | |
 | `MODIFIED` | `Commit->File` | `timestamp` (datetime) | |
-| `REFERENCES` | `Ticket->File` | — | |
+| `REFERENCES` | `Ticket->File`, `Ticket->Feature` | — | Drives the Specific Tickets overlay for either structural or product nodes. |
 | `PART_OF` | `File->Feature` | — | Backs a Feature's "Files Included" list. |
 | `REQUIRES` | `EnvStep->EnvStep` | — | Onboarding prerequisite ordering. |
 | `DEPENDS_ON` | `Module->Module` | — | |
