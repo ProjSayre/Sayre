@@ -34,16 +34,22 @@ export type QueueName = (typeof QUEUE_NAMES)[number];
 export type GithubSyncPayload = NormalizedRepoEvent;
 
 // Typed job payloads (skeletons — integration tickets extend these).
-export interface JiraSyncPayload {
-  site_id: string;
-  event: string;
-  issue_key?: string;
+export interface TicketUpdatePayload {
+  title?: string;
+  description?: string;
 }
-export interface LinearSyncPayload {
-  workspace_id: string;
-  event: string;
-  issue_id?: string;
+
+export interface TicketSyncPayload {
+  provider: 'jira' | 'linear';
+  direction: 'inbound' | 'outbound';
+  external_ticket_id: string;
+  repository_id: string;
+  ref_name: string;
+  patch?: TicketUpdatePayload;
 }
+
+export type JiraSyncPayload = TicketSyncPayload & { provider: 'jira' };
+export type LinearSyncPayload = TicketSyncPayload & { provider: 'linear' };
 
 export interface QueuePayloads {
   'github-sync': GithubSyncPayload;

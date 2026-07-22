@@ -25,6 +25,8 @@ export const CONFIG_NAMES = [
   'SQS_GRAPH_UPDATED_REALTIME_QUEUE',
   'GATEWAY_REDIS_CHANNEL',
   'CORE_INTERNAL_BASE_URL',
+  'JIRA_BASE_URL',
+  'LINEAR_API_URL',
   'NEO4J_URI',
   'NEO4J_USER',
 ] as const;
@@ -58,6 +60,7 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   SQS_GRAPH_UPDATED_REALTIME_QUEUE: 'graph-updated-realtime',
   GATEWAY_REDIS_CHANNEL: 'sayre:graph.updated',
   CORE_INTERNAL_BASE_URL: 'http://localhost:4000',
+  LINEAR_API_URL: 'https://api.linear.app/graphql',
   NEO4J_URI: 'bolt://localhost:7687',
   NEO4J_USER: 'neo4j',
 };
