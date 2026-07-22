@@ -451,9 +451,11 @@ export const codeChunks = pgTable(
   },
   (table) => [
     // Idempotent re-ingest; leading org_id covers RLS.
-    unique("code_chunks_org_ref_hash_unique").on(
+    unique("code_chunks_org_ref_node_index_hash_unique").on(
       table.orgId,
       table.refId,
+      table.graphNodeId,
+      table.chunkIndex,
       table.contentHash,
     ),
     // RAG lookups by node (org_id btree already provided by the unique above).
