@@ -11,6 +11,8 @@ import {
   InstallationOrgConflictError,
   InstallCallbackBadRequestError,
 } from '../services/githubAppInstallService';
+import { AuthenticationError } from './authenticate';
+import { AuthorizationError } from './authorize';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -72,6 +74,17 @@ export function errorHandler(
   // any handler runs. Surface its real 413, not the generic 500 fallback below.
   if (typeof err === 'object' && err !== null && (err as { type?: string }).type === 'entity.too.large') {
     res.status(413).json({ error: 'payload too large' });
+    return;
+  }
+
+  // Generic bodies only — no message leakage about which check failed.
+  if (err instanceof AuthenticationError) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+
+  if (err instanceof AuthorizationError) {
+    res.status(403).json({ error: 'forbidden' });
     return;
   }
 

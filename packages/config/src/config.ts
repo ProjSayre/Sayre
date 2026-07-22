@@ -3,6 +3,7 @@ export const CONFIG_NAMES = [
   'NODE_ENV',
   'CORE_PORT',
   'DEV_ORG_ID',
+  'DEV_USER_ID',
   'REDIS_HOST',
   'REDIS_PORT',
   'MESSAGING_INTEGRATION_REQUIRED',
@@ -28,6 +29,7 @@ export type ConfigName = (typeof CONFIG_NAMES)[number];
 const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   CORE_PORT: '4000',
   DEV_ORG_ID: 'org_dev_local',
+  DEV_USER_ID: 'user_dev_local',
   REDIS_HOST: 'localhost',
   REDIS_PORT: '6379',
   MESSAGING_INTEGRATION_REQUIRED: 'false',

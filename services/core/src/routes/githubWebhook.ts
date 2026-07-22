@@ -5,7 +5,8 @@ import { asyncHandler } from '../http/express';
 // Thin wrapper only — no business logic here (service-layer rule). This route reads
 // the RAW request body (see app.ts wiring: mounted before express.json()) so
 // signature validation runs over the exact bytes GitHub signed. Unauthenticated by
-// design (GitHub is the caller) — auth is the HMAC signature only, not tenantContext.
+// design (GitHub is the caller) — auth is the HMAC signature only, never
+// authenticate()/authorize() (W1-03) or a session.
 export const githubWebhookRouter = Router();
 
 // Mounted at the '/webhooks/github' prefix in app.ts (so express.raw() is scoped to
