@@ -1,0 +1,24 @@
+{
+  "name": "Sayre (dev)",
+  "url": "https://__SAYRE_HOST__",
+  "hook_attributes": {
+    "url": "https://__SAYRE_HOST__/webhooks/github"
+  },
+  "redirect_url": "https://__SAYRE_HOST__/integrations/github/callback",
+  "setup_url": "https://__SAYRE_HOST__/integrations/github/callback",
+  "setup_on_update": true,
+  "public": false,
+  "default_permissions": {
+    "contents": "read",
+    "metadata": "read",
+    "pull_requests": "read"
+  },
+  "default_events": [
+    "push",
+    "pull_request",
+    "create",
+    "delete",
+    "installation",
+    "installation_repositories"
+  ]
+}

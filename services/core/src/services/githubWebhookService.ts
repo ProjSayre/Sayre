@@ -20,6 +20,10 @@ import { makeEnvelope, type MessageEnvelope } from '../queue/envelope';
 import { publishIngestionEvent } from '../queue/sqs';
 import { enqueue } from '../queue/bullmq';
 import { getRuntimeDb, resolveInstallationOrg } from '../db/installations';
+import {
+  applyInstallationLifecycleEvent,
+  type InstallationLifecycleResult,
+} from './githubInstallationLifecycleService';
 
 export class WebhookBadRequestError extends Error {
   constructor(message = 'Malformed GitHub webhook request.') {
@@ -30,13 +34,20 @@ export class WebhookBadRequestError extends Error {
 
 export type WebhookOutcome =
   | { status: 'published'; type: RepoEventType; destinations: Array<'ingestion' | 'ownership'> }
-  | { status: 'ignored'; reason: IgnoreReason | 'unknown_installation' | 'revoked_installation' };
+  | { status: 'ignored'; reason: IgnoreReason | 'unknown_installation' | 'revoked_installation' }
+  | { status: 'installation'; result: InstallationLifecycleResult };
 
 export interface WebhookDeps {
   getWebhookSecret: () => Promise<string>; // default: getSecret('env://GITHUB_WEBHOOK_SECRET')
   resolveOrg: (installationId: number) => Promise<{ orgId: string; active: boolean } | null>;
   publishIngestion: (envelope: MessageEnvelope<NormalizedRepoEvent>) => Promise<void>;
   publishOwnership: (envelope: MessageEnvelope<NormalizedRepoEvent>) => Promise<void>;
+  // W1-06: `installation` events (deleted/suspend/unsuspend) delegate here
+  // instead of the normalize -> enqueue path. Default: applyInstallationLifecycleEvent.
+  applyInstallationLifecycle: (input: {
+    action: string;
+    installationId: number;
+  }) => Promise<InstallationLifecycleResult>;
 }
 
 const defaultDeps: WebhookDeps = {
@@ -49,7 +60,12 @@ const defaultDeps: WebhookDeps = {
   publishOwnership: async (envelope) => {
     await enqueue('github-sync', envelope, { jobId: envelope.idempotency_key });
   },
+  applyInstallationLifecycle: (input) => applyInstallationLifecycleEvent(input),
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 /**
  * Validate signature FIRST, then parse/normalize/resolve-org/publish.
@@ -89,6 +105,24 @@ export async function handleGithubWebhook(
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new WebhookBadRequestError();
+  }
+
+  // (d.5) W1-06: `installation` events (deleted/suspend/unsuspend/etc.) are a
+  // lifecycle mutation, not a repo event — delegate to the lifecycle service
+  // INSTEAD of the normalize -> resolve-org(active-gated) -> enqueue path
+  // below. `normalizeGithubEvent` has no case for this event type, so it must
+  // be intercepted here. installation.id / action missing or malformed is
+  // treated the same as `no_installation` (2xx ignored, never throws).
+  if (githubEvent === 'installation') {
+    const body = parsed as Record<string, unknown>;
+    const installation = isRecord(body.installation) ? body.installation : null;
+    const installationId = typeof installation?.id === 'number' ? installation.id : null;
+    if (installationId === null) {
+      return { status: 'ignored', reason: 'no_installation' };
+    }
+    const action = typeof body.action === 'string' ? body.action : '';
+    const result = await resolvedDeps.applyInstallationLifecycle({ action, installationId });
+    return { status: 'installation', result };
   }
 
   // (e) Normalize. A structurally malformed but otherwise-supported event (missing

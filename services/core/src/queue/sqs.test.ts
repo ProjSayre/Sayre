@@ -7,7 +7,7 @@ import {
   setConfigOverrideForTests,
   setSecretBackendForTests,
 } from '@sayre/config';
-import type { NormalizedRepoEvent } from '@sayre/shared-types';
+import type { NormalizedRepoEvent, RepoInitialParseEvent } from '@sayre/shared-types';
 import { makeEnvelope, type MessageEnvelope } from './envelope';
 import {
   closeSqsClient,
@@ -16,6 +16,7 @@ import {
   INGESTION_QUEUE,
   publish,
   publishIngestionEvent,
+  publishInitialParseEvent,
 } from './sqs';
 
 // This suite runs with the real @aws-sdk/client-sqs Command classes, but the
@@ -260,5 +261,73 @@ describe('publishIngestionEvent', () => {
     await getSqsClient(() => ({ send: vi.fn() }) as never);
     const envelope = buildEnvelope({ ref: null });
     await expect(publishIngestionEvent(envelope)).rejects.toThrow(/ref/);
+  });
+});
+
+function buildInitialParseEnvelope(
+  overrides: Partial<RepoInitialParseEvent> = {},
+): MessageEnvelope<RepoInitialParseEvent> {
+  return makeEnvelope<RepoInitialParseEvent>({
+    org_id: 'org_1',
+    type: 'repo.initial_parse',
+    source: 'github-app-install',
+    idempotency_key: 'github:initial_parse:999:42:refs/heads/main',
+    payload: {
+      provider: 'github',
+      type: 'initial_parse',
+      repo: { provider_repo_id: '42', full_name: 'acme/widgets', repo_id: null },
+      ref: 'refs/heads/main',
+      installation_id: '999',
+      reason: 'app_install',
+      ...overrides,
+    },
+  });
+}
+
+describe('publishInitialParseEvent', () => {
+  it('publishes to INGESTION_QUEUE with MessageGroupId = ingestionGroupId(org_id, provider_repo_id, ref)', async () => {
+    const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
+      if ('QueueName' in (command.input ?? {})) {
+        expect(command.input?.QueueName).toBe(INGESTION_QUEUE);
+        return { QueueUrl: 'https://sqs.example/ingestion.fifo' };
+      }
+      return { MessageId: 'sqs-msg-initial-parse' };
+    });
+    await getSqsClient(() => ({ send }) as never);
+
+    const envelope = buildInitialParseEnvelope();
+    await publishInitialParseEvent(envelope);
+
+    const sendMessageCall = send.mock.calls
+      .map(([command]) => command as { input: Record<string, unknown> })
+      .find((c) => 'MessageBody' in c.input);
+    expect(sendMessageCall?.input.MessageGroupId).toBe(
+      ingestionGroupId('org_1', '42', 'refs/heads/main'),
+    );
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(envelope.idempotency_key);
+  });
+
+  it('is stable across two deliveries for the same org/repo/ref', async () => {
+    const groupIds: string[] = [];
+    const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
+      if ('QueueName' in (command.input ?? {})) return { QueueUrl: 'https://sqs.example/ingestion.fifo' };
+      if (command.input?.MessageGroupId) groupIds.push(command.input.MessageGroupId as string);
+      return { MessageId: 'sqs-msg' };
+    });
+    await getSqsClient(() => ({ send }) as never);
+
+    await publishInitialParseEvent(buildInitialParseEnvelope());
+    await publishInitialParseEvent(
+      buildInitialParseEnvelope({ installation_id: '1000' }),
+    );
+
+    expect(groupIds).toHaveLength(2);
+    expect(groupIds[0]).toBe(groupIds[1]);
+  });
+
+  it('throws when ref is empty (cannot FIFO-group without a ref)', async () => {
+    await getSqsClient(() => ({ send: vi.fn() }) as never);
+    const envelope = buildInitialParseEnvelope({ ref: '' });
+    await expect(publishInitialParseEvent(envelope)).rejects.toThrow(/ref/);
   });
 });

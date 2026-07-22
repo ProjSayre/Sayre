@@ -21,7 +21,7 @@ import {
   type SQSClientConfig,
 } from '@aws-sdk/client-sqs';
 import { ConfigError, getConfig, getSecret, SecretNotFoundError, type SecretRef } from '@sayre/config';
-import type { NormalizedRepoEvent } from '@sayre/shared-types';
+import type { NormalizedRepoEvent, RepoInitialParseEvent } from '@sayre/shared-types';
 import type { MessageEnvelope } from './envelope';
 
 // Matches `INGESTION_QUEUE` in services/workers/messaging/sqs_client.py — one
@@ -183,6 +183,28 @@ export async function publishIngestionEvent(
   const { repo, ref } = envelope.payload;
   if (!ref) {
     throw new Error('publishIngestionEvent requires a non-null ref for FIFO grouping.');
+  }
+  return publish(INGESTION_QUEUE, envelope, {
+    messageGroupId: ingestionGroupId(envelope.org_id, repo.provider_repo_id, ref),
+    messageDeduplicationId: envelope.idempotency_key,
+  });
+}
+
+/**
+ * Sibling of `publishIngestionEvent` for the `repo.initial_parse` message type
+ * (W1-06 GitHub App install callback -> W1-05 ingestion worker). Requires a
+ * non-null `ref` (a full parse always targets a concrete revision) and
+ * FIFO-groups by `ingestionGroupId(org_id, provider_repo_id, ref)` — the SAME
+ * grouping scheme as `publishIngestionEvent`, so an initial parse and any
+ * subsequent delta for the same (org, repo, ref) serialize on one FIFO
+ * message group regardless of which flow produced them.
+ */
+export async function publishInitialParseEvent(
+  envelope: MessageEnvelope<RepoInitialParseEvent>,
+): Promise<string> {
+  const { repo, ref } = envelope.payload;
+  if (!ref) {
+    throw new Error('publishInitialParseEvent requires a non-null ref for FIFO grouping.');
   }
   return publish(INGESTION_QUEUE, envelope, {
     messageGroupId: ingestionGroupId(envelope.org_id, repo.provider_repo_id, ref),

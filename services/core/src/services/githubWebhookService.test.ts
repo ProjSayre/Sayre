@@ -40,6 +40,7 @@ interface Deps extends WebhookDeps {
   resolveOrg: ReturnType<typeof vi.fn>;
   publishIngestion: ReturnType<typeof vi.fn>;
   publishOwnership: ReturnType<typeof vi.fn>;
+  applyInstallationLifecycle: ReturnType<typeof vi.fn>;
 }
 
 function makeDeps(overrides: Partial<Deps> = {}): Deps {
@@ -48,6 +49,7 @@ function makeDeps(overrides: Partial<Deps> = {}): Deps {
     resolveOrg: vi.fn(async () => ({ orgId: 'org-resolved-1', active: true })),
     publishIngestion: vi.fn(async () => undefined),
     publishOwnership: vi.fn(async () => undefined),
+    applyInstallationLifecycle: vi.fn(async () => ({ status: 'revoked' as const })),
     ...overrides,
   };
 }
@@ -322,6 +324,47 @@ describe('handleGithubWebhook — tenant isolation (critical)', () => {
     const envelopeB = deps.publishIngestion.mock.calls[1][0] as MessageEnvelope<NormalizedRepoEvent>;
     expect(envelopeA.org_id).toBe('org-A');
     expect(envelopeB.org_id).toBe('org-B');
+  });
+});
+
+describe('handleGithubWebhook — installation lifecycle (W1-06)', () => {
+  it("delegates 'installation' events to applyInstallationLifecycle instead of the normalize/enqueue path", async () => {
+    const deps = makeDeps({
+      applyInstallationLifecycle: vi.fn(async () => ({ status: 'revoked' as const })),
+    });
+    const rawBody = Buffer.from(JSON.stringify({ action: 'deleted', installation: { id: 555 } }));
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation', deliveryId: 'd20' },
+      deps,
+    );
+    expect(outcome).toEqual({ status: 'installation', result: { status: 'revoked' } });
+    expect(deps.applyInstallationLifecycle).toHaveBeenCalledWith({ action: 'deleted', installationId: 555 });
+    expect(deps.publishIngestion).not.toHaveBeenCalled();
+    expect(deps.publishOwnership).not.toHaveBeenCalled();
+    expect(deps.resolveOrg).not.toHaveBeenCalled();
+  });
+
+  it("an 'installation' event missing installation.id is ignored (no_installation), never reaches the lifecycle service", async () => {
+    const deps = makeDeps();
+    const rawBody = Buffer.from(JSON.stringify({ action: 'deleted' }));
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation', deliveryId: 'd21' },
+      deps,
+    );
+    expect(outcome).toEqual({ status: 'ignored', reason: 'no_installation' });
+    expect(deps.applyInstallationLifecycle).not.toHaveBeenCalled();
+  });
+
+  it('signature validation still gates installation events (401 before any lifecycle mutation)', async () => {
+    const deps = makeDeps();
+    const rawBody = Buffer.from(JSON.stringify({ action: 'deleted', installation: { id: 555 } }));
+    await expect(
+      handleGithubWebhook(
+        { rawBody, signature: 'sha256=bad', githubEvent: 'installation', deliveryId: 'd22' },
+        deps,
+      ),
+    ).rejects.toBeInstanceOf(WebhookSignatureError);
+    expect(deps.applyInstallationLifecycle).not.toHaveBeenCalled();
   });
 });
 
