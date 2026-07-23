@@ -43,6 +43,34 @@ export interface AffectedNodes {
   removed: string[]; // stable node UIDs the caller was authorized to see, now absent
 }
 
+export interface FeatureRecentEdit {
+  fileId: string;
+  filePath: string;
+  editedAt: string;
+  editorName: string | null;
+  editorLogin: string | null;
+  pullRequestTitle: string | null;
+  pullRequestUrl: string | null;
+}
+
+export interface FeatureMember extends GraphNode {
+  label: 'File';
+  recentEdit: FeatureRecentEdit | null;
+}
+
+/**
+ * Feature is graph-internal metadata for a presentation boundary. Only its
+ * already-authorized File members may become canvas nodes.
+ */
+export interface FeatureCluster {
+  id: string;
+  name: string;
+  description: string | null;
+  team: string | null;
+  revisionSha: string;
+  members: FeatureMember[];
+}
+
 // Every method receives the complete, server-resolved AuthContext. This keeps
 // REST, realtime, and future MCP callers on one authorization path and prevents
 // a caller from supplying its own tenant or subject identity.
@@ -58,4 +86,9 @@ export interface GraphQueryService {
     paths: readonly string[],
     ctx: AuthContext,
   ): Promise<AffectedNodes>;
+  getFeatureClusters(
+    repoId: string,
+    refName: string,
+    ctx: AuthContext,
+  ): Promise<FeatureCluster[]>;
 }

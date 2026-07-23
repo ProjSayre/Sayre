@@ -11,6 +11,9 @@ import {
 import type {
   AffectedNodes,
   CanvasNodeLabel,
+  FeatureCluster,
+  FeatureMember,
+  FeatureRecentEdit,
   GraphEdge,
   GraphNode,
   GraphQueryService,
@@ -173,9 +176,76 @@ RETURN node.uid AS id,
 ORDER BY node.path, node.uid
 `;
 
+export const GET_FEATURE_CLUSTERS_CYPHER = `
+MATCH (root:Folder {
+  org_id: $org_id,
+  repo_id: $repo_id,
+  ref_name: $ref_name,
+  path: ''
+})
+WHERE root.revision_sha IS NOT NULL
+MATCH (member:File)-[membership:PART_OF]->(feature:Feature)
+WHERE member.org_id = $org_id
+  AND feature.org_id = $org_id
+  AND membership.org_id = $org_id
+  AND member.repo_id = $repo_id
+  AND feature.repo_id = $repo_id
+  AND member.ref_name = $ref_name
+  AND feature.ref_name = $ref_name
+  AND member.revision_sha = root.revision_sha
+  AND feature.revision_sha = root.revision_sha
+  AND member.uid IS NOT NULL
+  AND member.name IS NOT NULL
+  AND member.path IS NOT NULL
+  AND feature.uid IS NOT NULL
+  AND feature.name IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = member.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = member.ref_name) AND
+    (rule.path_prefix IS NULL OR member.path = rule.path_prefix OR
+      member.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = member.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = member.ref_name) AND
+    (rule.path_prefix IS NULL OR member.path = rule.path_prefix OR
+      member.path STARTS WITH rule.path_prefix + '/'))
+RETURN root.org_id AS root_org_id,
+       root.revision_sha AS current_revision_sha,
+       feature.org_id AS feature_org_id,
+       feature.repo_id AS feature_repo_id,
+       feature.ref_name AS feature_ref_name,
+       feature.revision_sha AS feature_revision_sha,
+       feature.uid AS feature_id,
+       feature.name AS feature_name,
+       feature.description AS feature_description,
+       feature.team AS feature_team,
+       membership.org_id AS membership_org_id,
+       member.org_id AS member_org_id,
+       member.repo_id AS member_repo_id,
+       member.ref_name AS member_ref_name,
+       member.revision_sha AS member_revision_sha,
+       member.uid AS member_id,
+       'File' AS member_label,
+       member.name AS member_name,
+       member.path AS member_path,
+       member.last_edited_at AS member_last_edited_at,
+       member.primary_owner_name AS member_editor_name,
+       member.primary_owner_login AS member_editor_login,
+       member.recent_pr_title AS member_recent_pr_title,
+       member.recent_pr_url AS member_recent_pr_url
+ORDER BY feature.name, feature.uid, member.path, member.uid
+`;
+
 function valueAsString(record: GraphReadRecord, key: string): string | null {
   const value = record.get(key);
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function valueAsOptionalString(record: GraphReadRecord, key: string): string | null {
+  const value = record.get(key);
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 function resourceFromRecord(
@@ -217,6 +287,169 @@ function distinctNodes(records: readonly GraphReadRecord[], scope: ReadScope): G
     if (node) nodes.set(node.id, node);
   }
   return [...nodes.values()];
+}
+
+interface FeatureRow {
+  cluster: Omit<FeatureCluster, 'members'>;
+  member: FeatureMember;
+}
+
+function safeWebUrl(value: string | null): string | null {
+  if (value === null) return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function mapFeatureRow(
+  record: GraphReadRecord,
+  scope: ReadScope,
+  requested: { orgId: string; repoId: string; refName: string },
+): FeatureRow | null {
+  const currentRevisionSha = valueAsString(record, 'current_revision_sha');
+  const featureRevisionSha = valueAsString(record, 'feature_revision_sha');
+  const memberRevisionSha = valueAsString(record, 'member_revision_sha');
+  if (
+    valueAsString(record, 'root_org_id') !== requested.orgId ||
+    valueAsString(record, 'feature_org_id') !== requested.orgId ||
+    valueAsString(record, 'membership_org_id') !== requested.orgId ||
+    valueAsString(record, 'member_org_id') !== requested.orgId ||
+    valueAsString(record, 'feature_repo_id') !== requested.repoId ||
+    valueAsString(record, 'feature_ref_name') !== requested.refName ||
+    !currentRevisionSha ||
+    featureRevisionSha !== currentRevisionSha ||
+    memberRevisionSha !== currentRevisionSha
+  ) {
+    return null;
+  }
+
+  const featureId = valueAsString(record, 'feature_id');
+  const featureName = valueAsOptionalString(record, 'feature_name');
+  const memberId = valueAsString(record, 'member_id');
+  const memberLabel = valueAsString(record, 'member_label');
+  const memberName = valueAsOptionalString(record, 'member_name');
+  const memberResource = resourceFromRecord(record, 'member_');
+  if (
+    !featureId ||
+    !featureName ||
+    !memberId ||
+    memberLabel !== 'File' ||
+    !memberName ||
+    !memberResource ||
+    memberResource.repoId !== requested.repoId ||
+    memberResource.refName !== requested.refName ||
+    !canReadResource(scope, memberResource)
+  ) {
+    return null;
+  }
+
+  const editedAt = valueAsOptionalString(record, 'member_last_edited_at');
+  const recentEdit: FeatureRecentEdit | null =
+    editedAt !== null && Number.isFinite(Date.parse(editedAt))
+      ? {
+          fileId: memberId,
+          filePath: memberResource.path,
+          editedAt,
+          editorName: valueAsOptionalString(record, 'member_editor_name'),
+          editorLogin: valueAsOptionalString(record, 'member_editor_login'),
+          pullRequestTitle: valueAsOptionalString(record, 'member_recent_pr_title'),
+          pullRequestUrl: safeWebUrl(
+            valueAsOptionalString(record, 'member_recent_pr_url'),
+          ),
+        }
+      : null;
+
+  return {
+    cluster: {
+      id: featureId,
+      name: featureName,
+      description: valueAsOptionalString(record, 'feature_description'),
+      team: valueAsOptionalString(record, 'feature_team'),
+      revisionSha: currentRevisionSha,
+    },
+    member: {
+      id: memberId,
+      label: 'File',
+      name: memberName,
+      path: memberResource.path,
+      parentId: null,
+      recentEdit,
+    },
+  };
+}
+
+function featureMetadataKey(cluster: Omit<FeatureCluster, 'members'>): string {
+  return JSON.stringify([
+    cluster.name,
+    cluster.description,
+    cluster.team,
+    cluster.revisionSha,
+  ]);
+}
+
+function featureMemberKey(member: FeatureMember): string {
+  return JSON.stringify([
+    member.label,
+    member.name,
+    member.path,
+    member.recentEdit,
+  ]);
+}
+
+function distinctFeatureClusters(
+  records: readonly GraphReadRecord[],
+  scope: ReadScope,
+  requested: { orgId: string; repoId: string; refName: string },
+): FeatureCluster[] {
+  const clusters = new Map<
+    string,
+    Omit<FeatureCluster, 'members'> & { members: Map<string, FeatureMember> }
+  >();
+  const invalidClusters = new Set<string>();
+
+  for (const record of records) {
+    const row = mapFeatureRow(record, scope, requested);
+    if (row === null || invalidClusters.has(row.cluster.id)) continue;
+
+    const existing = clusters.get(row.cluster.id);
+    if (existing === undefined) {
+      clusters.set(row.cluster.id, {
+        ...row.cluster,
+        members: new Map([[row.member.id, row.member]]),
+      });
+      continue;
+    }
+
+    if (featureMetadataKey(existing) !== featureMetadataKey(row.cluster)) {
+      clusters.delete(row.cluster.id);
+      invalidClusters.add(row.cluster.id);
+      continue;
+    }
+
+    const existingMember = existing.members.get(row.member.id);
+    if (
+      existingMember !== undefined &&
+      featureMemberKey(existingMember) !== featureMemberKey(row.member)
+    ) {
+      clusters.delete(row.cluster.id);
+      invalidClusters.add(row.cluster.id);
+      continue;
+    }
+    existing.members.set(row.member.id, row.member);
+  }
+
+  return [...clusters.values()]
+    .map(({ members, ...cluster }) => ({
+      ...cluster,
+      members: [...members.values()].sort(
+        (a, b) => a.path.localeCompare(b.path) || a.id.localeCompare(b.id),
+      ),
+    }))
+    .filter((cluster) => cluster.members.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
 function isStructuralEdgeType(value: string | null): value is StructuralEdgeType {
@@ -337,6 +570,37 @@ export class RbacGraphQueryService implements GraphQueryService {
     // Itemized removals therefore stay empty until an authorization-aware
     // deletion ledger exists; the realtime gateway already uses graph.resync.
     return { visible: distinctNodes(result.records, scope), removed: [] };
+  }
+
+  async getFeatureClusters(
+    repoId: string,
+    refName: string,
+    ctx: AuthContext,
+  ): Promise<FeatureCluster[]> {
+    const normalizedRepoId = repoId.trim();
+    const normalizedRefName = refName.trim();
+    if (!normalizedRepoId || !normalizedRefName) return [];
+
+    const scope = await this.permissions.getReadScope(ctx, normalizedRepoId);
+    if (scope.allows.length === 0) return [];
+
+    const result = await this.graph.run(
+      ctx.orgId,
+      'traversal',
+      GET_FEATURE_CLUSTERS_CYPHER,
+      {
+        org_id: ctx.orgId,
+        repo_id: normalizedRepoId,
+        ref_name: normalizedRefName,
+        ...scopeParameters(scope),
+      },
+    );
+
+    return distinctFeatureClusters(result.records, scope, {
+      orgId: ctx.orgId,
+      repoId: normalizedRepoId,
+      refName: normalizedRefName,
+    });
   }
 }
 
