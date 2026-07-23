@@ -241,35 +241,6 @@ a {
   white-space: nowrap;
 }
 
-.repo-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-top: 13px;
-}
-
-.repo-stat {
-  border-radius: 8px;
-  background: #0a0e13;
-  padding: 9px;
-}
-
-.repo-stat strong,
-.repo-stat span {
-  display: block;
-}
-
-.repo-stat strong {
-  font-size: 14px;
-}
-
-.repo-stat span {
-  margin-top: 2px;
-  color: #697584;
-  font-size: 9px;
-  text-transform: uppercase;
-}
-
 .sidebar-footer {
   margin-top: auto;
   padding: 15px 10px 0;
@@ -323,66 +294,6 @@ a {
   position: relative;
   width: 100%;
   height: 100%;
-}
-
-.renderer-status {
-  position: absolute;
-  z-index: 12;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(13, 17, 23, 0.92);
-  padding: 8px 12px;
-  color: #8995a3;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(14px);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.graph-canvas-state {
-  position: absolute;
-  z-index: 4;
-  top: 50%;
-  left: 50%;
-  width: min(420px, calc(100% - 48px));
-  transform: translate(-50%, -50%);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(13, 17, 23, 0.94);
-  padding: 24px;
-  text-align: center;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
-}
-
-.graph-canvas-state strong {
-  font-size: 15px;
-}
-
-.graph-canvas-state p {
-  margin: 9px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.graph-canvas-state code {
-  color: #c4d1df;
-}
-
-.graph-canvas-state button {
-  margin-top: 16px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--accent);
-  padding: 9px 13px;
-  color: #11170b;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
 }
 
 .react-flow-feature-boundary {
@@ -535,50 +446,64 @@ a {
   opacity: 0.62;
 }
 
-.renderer-switcher {
+.renderer-status {
   position: absolute;
   z-index: 12;
   top: 16px;
-  left: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 999px;
   background: rgba(13, 17, 23, 0.92);
-  padding: 6px;
+  padding: 8px 12px;
+  color: #8995a3;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(14px);
-}
-
-.renderer-switcher-buttons {
-  display: flex;
-  gap: 4px;
-}
-
-.renderer-switcher button {
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  padding: 7px 9px;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.renderer-switcher button:hover,
-.renderer-switcher button.active {
-  background: #202833;
-  color: var(--text);
-}
-
-.renderer-switcher > span {
-  padding-right: 6px;
-  color: #8995a3;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 9px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.graph-canvas-state {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  width: min(420px, calc(100% - 48px));
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(13, 17, 23, 0.94);
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+}
+
+.graph-canvas-state strong {
+  font-size: 15px;
+}
+
+.graph-canvas-state p {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.graph-canvas-state code {
+  color: #c4d1df;
+}
+
+.graph-canvas-state button {
+  margin-top: 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  padding: 9px 13px;
+  color: #11170b;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .canvas-node-inspector {
@@ -637,6 +562,12 @@ a {
 .react-flow__edge-path {
   stroke: #3b4653;
   stroke-width: 1.4;
+}
+
+.react-flow__edge.graph-edge-import .react-flow__edge-path {
+  stroke: #688bc0;
+  stroke-dasharray: 5 4;
+  stroke-width: 1.6;
 }
 
 .react-flow__controls,
