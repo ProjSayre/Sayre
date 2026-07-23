@@ -4,7 +4,9 @@ import type { GraphReadExecutor, GraphReadRecord } from './neo4j';
 import type { PermissionStore, ReadScope } from './permissions';
 import {
   GET_NODES_IN_VIEWPORT_CYPHER,
+  RESOLVE_RETRIEVAL_ANCHORS_CYPHER,
   RbacGraphQueryService,
+  TRAVERSE_RETRIEVAL_CONTEXT_CYPHER,
 } from './index';
 
 const VIEWPORT = { x: 0, y: 0, width: 100, height: 100, zoom: 1 };
@@ -36,6 +38,54 @@ function nodeRecord(
     parent_path: parent?.path ?? null,
     parent_repo_id: parent ? REPO_ID : null,
     parent_ref_name: parent ? 'refs/heads/main' : null,
+  });
+}
+
+function retrievalRecord(
+  id: string,
+  path: string,
+  distance = 0,
+  overrides: Record<string, unknown> = {},
+): GraphReadRecord {
+  return record({
+    id,
+    label: 'File',
+    name: path.split('/').at(-1),
+    path,
+    org_id: ORG_ID,
+    repo_id: REPO_ID,
+    ref_name: 'refs/heads/main',
+    revision_sha: 'a'.repeat(40),
+    distance,
+    ...overrides,
+  });
+}
+
+function traversalRecord(
+  id: string,
+  path: string,
+  distance: number,
+  overrides: Record<string, unknown> = {},
+): GraphReadRecord {
+  return record({
+    anchor_id: 'anchor',
+    anchor_label: 'File',
+    anchor_name: 'anchor.ts',
+    anchor_path: '/src/public/anchor.ts',
+    anchor_org_id: ORG_ID,
+    anchor_repo_id: REPO_ID,
+    anchor_ref_name: 'refs/heads/main',
+    anchor_revision_sha: 'a'.repeat(40),
+    id,
+    label: 'File',
+    name: path.split('/').at(-1),
+    path,
+    org_id: ORG_ID,
+    repo_id: REPO_ID,
+    ref_name: 'refs/heads/main',
+    revision_sha: 'a'.repeat(40),
+    distance,
+    ...overrides,
   });
 }
 
@@ -197,5 +247,111 @@ describe('RbacGraphQueryService', () => {
         user('alice'),
       ),
     ).resolves.toEqual({ visible: [], removed: [] });
+  });
+
+  it('resolves retrieval anchors through parameterized org/RBAC scope and drops malformed records', async () => {
+    const executor = new QueueExecutor([[
+      retrievalRecord('public-a', '/src/public/a.ts'),
+      retrievalRecord('public-a', '/src/public/a.ts'),
+      retrievalRecord('wrong-org', '/src/public/wrong.ts', 0, { org_id: 'org-attacker' }),
+      retrievalRecord('hidden', '/src/private/hidden.ts'),
+      retrievalRecord('function', '/src/public/fn.ts', 0, { label: 'Function' }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(
+      service.resolveRetrievalAnchors(['public', 'a.ts'], null, 8, user('alice')),
+    ).resolves.toEqual([
+      {
+        id: 'public-a',
+        label: 'File',
+        name: 'a.ts',
+        path: '/src/public/a.ts',
+        repositoryId: REPO_ID,
+        refName: 'refs/heads/main',
+        revisionSha: 'a'.repeat(40),
+        distance: 0,
+      },
+    ]);
+    expect(executor.run).toHaveBeenCalledWith(
+      ORG_ID,
+      'traversal',
+      RESOLVE_RETRIEVAL_ANCHORS_CYPHER,
+      expect.objectContaining({
+        org_id: ORG_ID,
+        query_terms: ['public', 'a.ts'],
+        exact_node_id: null,
+        limit: 8,
+      }),
+    );
+    expect(RESOLVE_RETRIEVAL_ANCHORS_CYPHER).toContain('node.org_id = $org_id');
+    expect(RESOLVE_RETRIEVAL_ANCHORS_CYPHER).toContain('ANY(rule IN $allow_rules');
+    expect(RESOLVE_RETRIEVAL_ANCHORS_CYPHER).not.toContain(ORG_ID);
+  });
+
+  it('returns a same-scope bounded traversal and rejects cross-scope driver records', async () => {
+    const executor = new QueueExecutor([[
+      traversalRecord('anchor', '/src/public/anchor.ts', 0),
+      traversalRecord('neighbor', '/src/public/neighbor.ts', 1),
+      traversalRecord('too-far', '/src/public/far.ts', 3),
+      traversalRecord('other-ref', '/src/public/other.ts', 1, {
+        ref_name: 'refs/heads/other',
+      }),
+      traversalRecord('wrong-org', '/src/public/wrong.ts', 1, {
+        org_id: 'org-attacker',
+      }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    const traversal = await service.traverseRetrievalContext(
+      'anchor',
+      ['auth'],
+      2,
+      64,
+      user('alice'),
+    );
+
+    expect(traversal?.anchor.id).toBe('anchor');
+    expect(traversal?.nodes.map((node) => node.id)).toEqual(['anchor', 'neighbor']);
+    expect(executor.run).toHaveBeenCalledWith(
+      ORG_ID,
+      'traversal',
+      TRAVERSE_RETRIEVAL_CONTEXT_CYPHER,
+      expect.objectContaining({
+        org_id: ORG_ID,
+        anchor_id: 'anchor',
+        max_hops: 2,
+        limit: 64,
+      }),
+    );
+    expect(TRAVERSE_RETRIEVAL_CONTEXT_CYPHER).toContain('[*0..2]');
+    expect(TRAVERSE_RETRIEVAL_CONTEXT_CYPHER).toContain(
+      'ALL(path_node IN nodes(path)',
+    );
+    expect(TRAVERSE_RETRIEVAL_CONTEXT_CYPHER).toContain(
+      "type(edge) IN ['CONTAINS', 'IMPORTS']",
+    );
+  });
+
+  it('fails retrieval closed without permission or with bounds above the hard cap', async () => {
+    const executor = new QueueExecutor([]);
+    const service = new RbacGraphQueryService(executor, new UserPermissionStore({}));
+
+    await expect(
+      service.resolveRetrievalAnchors(['secret'], null, 8, user('nobody')),
+    ).resolves.toEqual([]);
+    await expect(
+      service.traverseRetrievalContext('node', [], 3, 64, user('nobody')),
+    ).resolves.toBeNull();
+    await expect(
+      service.traverseRetrievalContext('node', [], 2, 65, user('nobody')),
+    ).resolves.toBeNull();
+    expect(executor.run).not.toHaveBeenCalled();
   });
 });

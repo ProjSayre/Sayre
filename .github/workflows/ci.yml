@@ -139,6 +139,7 @@ jobs:
           sayre_workers/telemetry/otel.py
           sayre_workers/ingestion
           sayre_workers/enrichment
+          sayre_workers/retrieval
 
       - name: Test (pytest)
         run: poetry run pytest
