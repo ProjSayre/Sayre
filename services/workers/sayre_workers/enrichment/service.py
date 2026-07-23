@@ -1,10 +1,16 @@
 """W2-05 semantic enrichment orchestration.
 
-Order: parse envelope -> load structural context from Neo4j (graph is source of
-truth) -> short-circuit on empty context -> load the org's generation config (raising
-on a missing row, Decision D2 -- no skip-and-ack, no fake-provider fallback) ->
-generate -> shape into graph primitives -> validate the write is scoped to this job
-and stays inside the closed sets -> apply to Neo4j.
+`handle(envelope)` is a thin wrapper -- parse then delegate -- so `process(job)` is the
+single shared entry point for both lanes (Decision D6): the default lane calls it via
+`handle`, and the priority lane calls it via `onboarding_bridge.build_onboarding_generator`,
+which builds an `EnrichmentJob` directly (bypassing envelope parsing, since W2-08's own
+`parse_onboarding_generate` owns that type end to end).
+
+`process`'s order: load structural context from Neo4j (graph is source of truth) ->
+short-circuit on empty context -> load the org's generation config (raising on a
+missing row, Decision D2 -- no skip-and-ack, no fake-provider fallback) -> generate ->
+shape into graph primitives -> validate the write is scoped to this job and stays
+inside the closed sets -> apply to Neo4j.
 
 No feedback loop: this module never publishes `graph.updated` (that topic fans out to
 `enrichment-default`; re-publishing would re-trigger enrichment forever), and it emits
@@ -22,6 +28,7 @@ from .enrichment_graph import EnrichmentGraphStore
 from .events import parse_enrichment_envelope
 from .graphify_adapter import GraphifyAdapterFactory
 from .models import (
+    EnrichmentJob,
     EnrichmentResult,
     GenerationConfig,
     GenerationConfigNotFoundError,
@@ -50,7 +57,9 @@ class EnrichmentService:
 
     async def handle(self, envelope: MessageEnvelope) -> EnrichmentResult:
         job = parse_enrichment_envelope(envelope)
+        return await self.process(job)
 
+    async def process(self, job: EnrichmentJob) -> EnrichmentResult:
         context = await self._graph_store.load_context(
             job.scope, job.changed_paths, job.full_rebuild
         )

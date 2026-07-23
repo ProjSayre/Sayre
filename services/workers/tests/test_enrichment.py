@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import threading
+from collections.abc import Iterator
 from types import SimpleNamespace
 
+import opentelemetry.metrics._internal as _otel_metrics_internal
 import pytest
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.util._once import Once
 
 from messaging.envelope import MessageEnvelope
 from messaging.idempotency import SqliteDeliveryStore
+from messaging.sqs_client import ENRICHMENT_DEFAULT_QUEUE
 from sayre_workers.enrichment.consumers import run_enrichment_consumer
 from sayre_workers.enrichment.enrichment_graph import validate_enrichment_write
 from sayre_workers.enrichment.events import parse_enrichment_envelope
@@ -17,6 +25,7 @@ from sayre_workers.enrichment.graphify_adapter import (
 from sayre_workers.enrichment.models import (
     EnrichmentContext,
     EnrichmentEdge,
+    EnrichmentJob,
     EnrichmentNode,
     EnrichmentWrite,
     FileContext,
@@ -25,6 +34,8 @@ from sayre_workers.enrichment.models import (
     InvalidEnrichmentEventError,
     InvalidEnrichmentWriteError,
 )
+from sayre_workers.enrichment.onboarding import OnboardingGenerateJob, OnboardingPriorityHandler
+from sayre_workers.enrichment.onboarding_bridge import build_onboarding_generator
 from sayre_workers.enrichment.providers import (
     FakeModelProvider,
     GenerationRequest,
@@ -34,6 +45,8 @@ from sayre_workers.enrichment.providers import (
 from sayre_workers.enrichment.service import EnrichmentService
 from sayre_workers.ingestion.models import GraphScope
 from sayre_workers.ingestion.projection import stable_uid
+from sayre_workers.telemetry import onboarding_metrics
+from sayre_workers.telemetry import otel as otel_module
 
 SHA = "a" * 40
 
@@ -92,6 +105,59 @@ def onboarding_envelope(
     )
 
 
+def real_onboarding_generate_envelope(
+    *,
+    org_id: str = "org-real",
+    repository_id: str = "repo-1",
+    ref_name: str = "refs/heads/main",
+    revision_sha: str = SHA,
+    graph_scope_key: str = "scope-key-priority",
+    graph_version: int = 1,
+    cold_start_started_at_ms: int = 1_000,
+) -> MessageEnvelope:
+    """W2-08's actual onboarding.generate payload shape (with
+    cold_start_started_at_ms), as parsed by parse_onboarding_generate -- distinct from
+    `onboarding_envelope()` above, which only exists to prove this worker's own
+    parse_enrichment_envelope rejects the type outright (D6)."""
+    return MessageEnvelope(
+        org_id=org_id,
+        type="onboarding.generate",
+        source="ingestion-worker",
+        idempotency_key=f"onboarding:{revision_sha}",
+        graph_scope_key=graph_scope_key,
+        graph_version=graph_version,
+        payload={
+            "repository_id": repository_id,
+            "ref_name": ref_name,
+            "revision_sha": revision_sha,
+            "cold_start_started_at_ms": cold_start_started_at_ms,
+        },
+    )
+
+
+def _onboarding_generate_job(
+    *,
+    org_id: str = "org-real",
+    repository_id: str = "repo-1",
+    ref_name: str = "refs/heads/main",
+    revision_sha: str = SHA,
+    graph_scope_key: str = "scope-key-priority",
+    graph_version: int = 1,
+    cold_start_started_at_ms: int = 1_000,
+    trace_id: str | None = None,
+) -> OnboardingGenerateJob:
+    return OnboardingGenerateJob(
+        org_id=org_id,
+        repository_id=repository_id,
+        ref_name=ref_name,
+        revision_sha=revision_sha,
+        graph_scope_key=graph_scope_key,
+        graph_version=graph_version,
+        cold_start_started_at_ms=cold_start_started_at_ms,
+        trace_id=trace_id,
+    )
+
+
 def _file_context(scope: GraphScope, path: str, *, language: str = "python") -> FileContext:
     return FileContext(uid=stable_uid(scope, "File", path), path=path, language=language)
 
@@ -116,11 +182,14 @@ def test_parse_enrichment_envelope_default_lane_for_graph_updated() -> None:
     assert job.graph_version == 1
 
 
-def test_parse_enrichment_envelope_priority_lane_routes_through_same_job_shape() -> None:
-    job = parse_enrichment_envelope(onboarding_envelope())
-
-    assert job.lane == "priority"
-    assert job.scope.org_id == "org-real"
+def test_parse_enrichment_envelope_rejects_onboarding_generate_d6_regression_guard() -> None:
+    """D6 regression guard: onboarding.generate is validated exclusively by W2-08's own
+    parse_onboarding_generate now. If this worker's own parser were ever handed one
+    directly (it shouldn't be reachable that way once run_enrichment_consumer only
+    polls ENRICHMENT_DEFAULT_QUEUE), it must raise -- proving D1's old
+    type -> lane="priority" reservation is fully removed, not just unused."""
+    with pytest.raises(InvalidEnrichmentEventError):
+        parse_enrichment_envelope(onboarding_envelope())
 
 
 def test_parse_enrichment_envelope_rejects_unrecognized_type() -> None:
@@ -160,24 +229,6 @@ def test_parse_enrichment_envelope_rejects_malformed_graph_updated_payload(mutat
 
     with pytest.raises(InvalidEnrichmentEventError):
         parse_enrichment_envelope(malformed)
-
-
-def test_parse_enrichment_envelope_requires_scope_metadata_for_priority_lane() -> None:
-    envelope = MessageEnvelope(
-        org_id="org-real",
-        type="onboarding.generate",
-        source="onboarding-worker",
-        payload={
-            "repository_id": "repo-1",
-            "ref_name": "refs/heads/main",
-            "revision_sha": SHA,
-        },
-        # graph_scope_key/graph_version intentionally omitted -- only graph.updated
-        # forces MessageEnvelope to require the pair.
-    )
-
-    with pytest.raises(InvalidEnrichmentEventError):
-        parse_enrichment_envelope(envelope)
 
 
 # --------------------------------------------------------------------------------
@@ -461,17 +512,21 @@ async def test_handle_returns_skipped_no_context_for_empty_scope_and_does_not_lo
 
 
 @pytest.mark.asyncio
-async def test_handle_priority_lane_with_no_enrichable_scope_is_skipped_not_errored(
+async def test_handle_rejects_onboarding_generate_d6_regression_guard(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """D6 regression guard: handle() itself raises when handed an onboarding.generate
+    envelope (via parse_enrichment_envelope), rather than silently routing it through
+    to a skipped_no_context ack the way the old D1 mechanism did."""
     monkeypatch.setenv("SAYRE_ENV", "test")
     graph_store = FakeEnrichmentGraphStore(files=())
     config_store = FakeGenerationConfigStore(_fake_config())
     service = _service(graph_store=graph_store, config_store=config_store)
 
-    result = await service.handle(onboarding_envelope())
+    with pytest.raises(InvalidEnrichmentEventError):
+        await service.handle(onboarding_envelope())
 
-    assert result.status == "skipped_no_context"
+    assert graph_store.applied == []
 
 
 @pytest.mark.asyncio
@@ -622,17 +677,21 @@ async def test_handle_never_writes_a_free_form_prose_node(monkeypatch: pytest.Mo
 # --------------------------------------------------------------------------------
 
 
-def test_run_enrichment_consumer_delegates_to_consume_enrichment_with_weighted_mode(
+def test_run_enrichment_consumer_delegates_to_plain_consume_on_default_queue_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[dict[str, object]] = []
+    """D6: run_enrichment_consumer no longer touches the priority queue at all -- it
+    calls plain consume(ENRICHMENT_DEFAULT_QUEUE, ...), not consume_enrichment, and no
+    longer accepts mode/priority_weight. Real priority-lane draining is exclusively
+    W2-08's run_onboarding_priority_consumer (a separate consumer loop/process)."""
+    calls: list[tuple[object, ...]] = []
+    kwargs_calls: list[dict[str, object]] = []
 
-    def fake_consume_enrichment(handler, **kwargs: object) -> None:
-        calls.append(kwargs)
+    def fake_consume(queue_name: object, handler: object, **kwargs: object) -> None:
+        calls.append((queue_name, handler))
+        kwargs_calls.append(kwargs)
 
-    monkeypatch.setattr(
-        "sayre_workers.enrichment.consumers.consume_enrichment", fake_consume_enrichment
-    )
+    monkeypatch.setattr("sayre_workers.enrichment.consumers.consume", fake_consume)
     store = SqliteDeliveryStore(":memory:")
     stop_event = threading.Event()
     stop_event.set()
@@ -644,11 +703,206 @@ def test_run_enrichment_consumer_delegates_to_consume_enrichment_with_weighted_m
         store.close()
 
     assert len(calls) == 1
-    assert calls[0]["consumer_id"] == "enrichment-worker"
-    assert calls[0]["mode"] == "weighted"
-    assert calls[0]["delivery_store"] is store
-    assert calls[0]["stop_event"] is stop_event
-    # This worker never receives from any queue other than the two enrichment lanes
-    # -- consume_enrichment (not consume/consume_once against INGESTION_QUEUE) is the
-    # only primitive it calls.
-    assert "queue_name" not in calls[0]
+    queue_name, _handler = calls[0]
+    assert queue_name == ENRICHMENT_DEFAULT_QUEUE
+    assert kwargs_calls[0]["consumer_id"] == "enrichment-worker"
+    assert kwargs_calls[0]["delivery_store"] is store
+    assert kwargs_calls[0]["stop_event"] is stop_event
+    # mode/priority_weight are gone entirely -- this consumer only ever polls the
+    # default lane now (D6).
+    assert "mode" not in kwargs_calls[0]
+    assert "priority_weight" not in kwargs_calls[0]
+
+
+# --------------------------------------------------------------------------------
+# onboarding_bridge.py -- D6 bridge into W2-08's OnboardingPriorityHandler
+# --------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _reset_otel_globals(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    # Matches test_onboarding_priority.py's fixture shape exactly (not autouse here,
+    # since only the TTFC-emitting test below needs a clean OTel meter provider).
+    monkeypatch.setattr(_otel_metrics_internal, "_METER_PROVIDER", None)
+    monkeypatch.setattr(_otel_metrics_internal, "_METER_PROVIDER_SET_ONCE", Once())
+    monkeypatch.setattr(otel_module, "_provider", None)
+    onboarding_metrics.reset_instruments_cache()
+    yield
+    otel_module.shutdown_metrics()
+    onboarding_metrics.reset_instruments_cache()
+
+
+def _install_metrics_backend() -> InMemoryMetricReader:
+    reader = InMemoryMetricReader()
+    metrics.set_meter_provider(MeterProvider(metric_readers=[reader], shutdown_on_exit=False))
+    return reader
+
+
+def _ttfc_metric(reader: InMemoryMetricReader):
+    data = reader.get_metrics_data()
+    assert data is not None
+    for resource_metrics in data.resource_metrics:
+        for scope_metrics in resource_metrics.scope_metrics:
+            for metric in scope_metrics.metrics:
+                if metric.name == onboarding_metrics.TTFC_METRIC_NAME:
+                    return metric
+    raise AssertionError("TTFC metric was not exported")
+
+
+def test_build_onboarding_generator_happy_path_matches_direct_process_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Deliberately a plain sync test, not @pytest.mark.asyncio -- the generator owns
+    # its own asyncio.Runner and must be called from a sync context with no event loop
+    # already running (that's the whole point: OnboardingPriorityHandler.__call__
+    # calls it unawaited from a sync consumer thread).
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    job = _onboarding_generate_job()
+
+    bridge_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    bridge_service = _service(
+        graph_store=bridge_store, config_store=FakeGenerationConfigStore(_fake_config())
+    )
+    generator = build_onboarding_generator(bridge_service)
+    generator(job)
+
+    assert len(bridge_store.applied) == 1
+    bridge_write = bridge_store.applied[0]
+    assert bridge_write.scope == scope
+
+    direct_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    direct_service = _service(
+        graph_store=direct_store, config_store=FakeGenerationConfigStore(_fake_config())
+    )
+    expected_job = EnrichmentJob(
+        scope=scope,
+        graph_scope_key=job.graph_scope_key,
+        graph_version=job.graph_version,
+        full_rebuild=True,
+        changed_paths=(),
+        lane="priority",
+        trace_id=job.trace_id,
+        idempotency_key=f"{job.graph_scope_key}:{job.revision_sha}:onboarding.generate",
+    )
+    asyncio.run(direct_service.process(expected_job))
+
+    direct_write = direct_store.applied[0]
+    assert bridge_write.nodes[0].uid == direct_write.nodes[0].uid
+    assert {edge.source_uid for edge in bridge_write.edges} == {
+        edge.source_uid for edge in direct_write.edges
+    }
+    assert {edge.target_uid for edge in bridge_write.edges} == {
+        edge.target_uid for edge in direct_write.edges
+    }
+
+
+def test_onboarding_bridge_missing_config_propagates_and_skips_ttfc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    config_store = FakeGenerationConfigStore(None)
+    service = _service(graph_store=graph_store, config_store=config_store)
+    generator = build_onboarding_generator(service)
+    handler = OnboardingPriorityHandler(generator, clock_ms=lambda: 1_500)
+
+    recorded: list[tuple[str, str, float]] = []
+    monkeypatch.setattr(
+        "sayre_workers.enrichment.onboarding.record_onboarding_ready",
+        lambda org_id, repo_id, duration_ms: recorded.append((org_id, repo_id, duration_ms)),
+    )
+
+    with pytest.raises(GenerationConfigNotFoundError):
+        handler(real_onboarding_generate_envelope())
+
+    assert recorded == []
+    assert graph_store.applied == []
+
+
+def test_onboarding_bridge_generation_config_error_is_not_the_only_exception_that_propagates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC11 says GenerationConfigNotFoundError '(and other process exceptions)'
+    propagate uncaught through the bridge. Dev's own tests only exercised
+    GenerationConfigNotFoundError; this proves the bridge's no-try/except design
+    generalizes to a different process()-raised error (InvalidEnrichmentWriteError,
+    from a GraphifyAdapter returning a disallowed primitive) and still skips
+    record_onboarding_ready with no write, matching the missing-config case above."""
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    config_store = FakeGenerationConfigStore(_fake_config())
+    service = _service(
+        graph_store=graph_store,
+        config_store=config_store,
+        graphify_factory=StubGraphifyAdapterFactory(DisallowedPrimitiveGraphifyAdapter()),
+    )
+    generator = build_onboarding_generator(service)
+    handler = OnboardingPriorityHandler(generator, clock_ms=lambda: 1_500)
+
+    recorded: list[tuple[str, str, float]] = []
+    monkeypatch.setattr(
+        "sayre_workers.enrichment.onboarding.record_onboarding_ready",
+        lambda org_id, repo_id, duration_ms: recorded.append((org_id, repo_id, duration_ms)),
+    )
+
+    with pytest.raises(InvalidEnrichmentWriteError):
+        handler(real_onboarding_generate_envelope())
+
+    assert recorded == []
+    assert graph_store.applied == []
+
+
+def test_onboarding_bridge_end_to_end_through_priority_handler_writes_once_and_emits_ttfc_once(
+    monkeypatch: pytest.MonkeyPatch, _reset_otel_globals: None
+) -> None:
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    reader = _install_metrics_backend()
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    config_store = FakeGenerationConfigStore(_fake_config())
+    service = _service(graph_store=graph_store, config_store=config_store)
+    handler = OnboardingPriorityHandler(
+        build_onboarding_generator(service), clock_ms=lambda: 2_500
+    )
+
+    handler(real_onboarding_generate_envelope())
+
+    assert len(graph_store.applied) == 1
+    write = graph_store.applied[0]
+    assert write.scope == scope
+    assert write.nodes[0].label == "Feature"
+
+    [point] = list(_ttfc_metric(reader).data.data_points)
+    assert point.count == 1
+    assert point.sum == 1_500  # clock_ms(2_500) - cold_start_started_at_ms(1_000)
+    assert point.attributes == {"org_id": "org-real", "repo_id": "repo-1"}
+
+
+def test_build_onboarding_generator_reuses_one_asyncio_runner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    config_store = FakeGenerationConfigStore(_fake_config())
+    service = _service(graph_store=graph_store, config_store=config_store)
+
+    created: list[asyncio.Runner] = []
+    real_init = asyncio.Runner.__init__
+
+    def counting_init(self: asyncio.Runner, *args: object, **kwargs: object) -> None:
+        created.append(self)
+        real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(asyncio.Runner, "__init__", counting_init)
+
+    generator = build_onboarding_generator(service)
+    generator(_onboarding_generate_job(revision_sha=SHA))
+    generator(_onboarding_generate_job(revision_sha=SHA, graph_scope_key="scope-key-priority-2"))
+
+    assert len(created) == 1
+    assert graph_store.applied[0].scope == scope
+    assert len(graph_store.applied) == 2

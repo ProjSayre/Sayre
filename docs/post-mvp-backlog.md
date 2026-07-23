@@ -38,6 +38,17 @@ file should stay the durable record, not the PR thread.
 |---|---|---|
 | `Neo4jEnrichmentGraphStore.apply()` doesn't independently enforce write.scope-vs-job-scope agreement — only `EnrichmentService.handle` performs that check before calling `apply()` | W2-05 review/security-checker | `apply()`'s spec'd signature (`apply(self, write)`) has no channel for an external job scope to compare against; `handle()` is the only production caller today so there's no bypass path yet — revisit (e.g. thread scope through `apply()`, or add a defense-in-depth check inside it) if `apply()` gains a second caller |
 
+**Review notes (2026-07-22):** W2-05's D6 addendum (integrating with W2-08's dedicated priority-lane
+consumer) split `EnrichmentService.handle(envelope)` into a thin envelope-parsing wrapper plus
+`async def process(self, job: EnrichmentJob) -> EnrichmentResult`, which now holds the
+`write.scope`-vs-`job.scope` guard (and the `apply()` call) that used to live directly in
+`handle()`. `process()` remains the single call site for `apply()` — it is invoked from both
+`handle()` (default lane, via `parse_enrichment_envelope`) and the new
+`onboarding_bridge.build_onboarding_generator` (priority lane, via a directly-constructed
+`EnrichmentJob`). So `apply()` still has exactly one production caller (`process()`); the two
+lanes now feeding into that one caller doesn't reopen the bypass path described above — this item
+stays deferred under the same reasoning, just re-anchored to `process()` instead of `handle()`.
+
 ## Secrets & infra
 
 | Item | Surfaced by | Why deferred |

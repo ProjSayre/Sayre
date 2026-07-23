@@ -1,6 +1,8 @@
 """Semantic enrichment worker: provider/adapter boundaries, envelope parsing, consumer
 wiring, and the org-scoped Neo4j graph-primitive writer (W2-05), plus the priority-lane
-onboarding entry points (W2-08)."""
+onboarding entry points (W2-08) and the D6 bridge (`build_onboarding_generator`) that
+plugs this worker's `EnrichmentService.process` into W2-08's dedicated priority-lane
+consumer."""
 
 from .config_store import PostgresGenerationConfigStore
 from .consumers import run_enrichment_consumer
@@ -33,6 +35,7 @@ from .onboarding import (
     parse_onboarding_generate,
     run_onboarding_priority_consumer,
 )
+from .onboarding_bridge import build_onboarding_generator
 from .providers import (
     FakeModelProvider,
     GenerationRequest,
@@ -74,6 +77,7 @@ __all__ = [
     "OnboardingPriorityHandler",
     "PostgresGenerationConfigStore",
     "build_enrichment_service",
+    "build_onboarding_generator",
     "parse_enrichment_envelope",
     "parse_onboarding_generate",
     "run_enrichment_consumer",

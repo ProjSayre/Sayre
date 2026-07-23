@@ -1,8 +1,11 @@
 """SQS consumer wiring over the W0-04 durable-delivery primitive.
 
-Consumes ONLY the two enrichment lanes via `consume_enrichment` -- no new queue,
-topic, subscription, or DLQ (W0-04 already provisions all of them), and this worker
-never touches `INGESTION_QUEUE`. Mirrors `sayre_workers.ingestion.consumers`.
+Consumes ONLY the default enrichment lane, via plain `consume(ENRICHMENT_DEFAULT_QUEUE,
+...)` (D6, supersedes the earlier `consume_enrichment(mode="weighted")` wiring). The
+priority lane is exclusively W2-08's `run_onboarding_priority_consumer` -- a separate
+consumer loop/process, with this ticket's `onboarding_bridge.build_onboarding_generator`
+plugged in as its `generator`. This worker never touches `INGESTION_QUEUE` or the
+priority queue. Mirrors `sayre_workers.ingestion.consumers`.
 """
 
 from __future__ import annotations
@@ -10,11 +13,10 @@ from __future__ import annotations
 import asyncio
 import sys
 import threading
-from typing import Literal
 
 from messaging.envelope import MessageEnvelope
 from messaging.idempotency import DeliveryStore
-from messaging.sqs_client import consume_enrichment
+from messaging.sqs_client import ENRICHMENT_DEFAULT_QUEUE, consume
 
 from .service import EnrichmentService
 
@@ -32,19 +34,21 @@ def run_enrichment_consumer(
     delivery_store: DeliveryStore,
     *,
     stop_event: threading.Event | None = None,
-    mode: Literal["priority_only", "weighted"] = "weighted",
-    priority_weight: int = 3,
     visibility_timeout_seconds: int = 120,
 ) -> None:
+    """Drive plain consume(ENRICHMENT_DEFAULT_QUEUE, ...) with an asyncio.Runner-wrapped
+    sync handler (mirror run_embedding_consumer). consumer_id is the fixed string
+    'enrichment-worker'. Default-lane only (D6) -- the priority lane is exclusively
+    W2-08's run_onboarding_priority_consumer, with this ticket's onboarding_bridge
+    plugged in as its generator."""
     with asyncio.Runner(loop_factory=_loop_factory) as runner:
         def handle(envelope: MessageEnvelope) -> None:
             runner.run(service.handle(envelope))
 
-        consume_enrichment(
+        consume(
+            ENRICHMENT_DEFAULT_QUEUE,
             handle,
             consumer_id="enrichment-worker",
-            mode=mode,
-            priority_weight=priority_weight,
             delivery_store=delivery_store,
             stop_event=stop_event,
             visibility_timeout_seconds=visibility_timeout_seconds,

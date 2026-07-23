@@ -15,11 +15,14 @@ from .models import LANE, EnrichmentJob, InvalidEnrichmentEventError
 
 _ENRICHABLE_TYPES: dict[str, LANE] = {
     "graph.updated": "default",
-    # Reserved for W2-08 (Decision D1): the priority lane's producer/payload shape is
-    # owned by that ticket. This worker only reserves the type -> lane mapping and
-    # routes it through the same EnrichmentService.handle as the default lane -- it
-    # does not invent onboarding.generate's internals beyond what handle() needs.
-    "onboarding.generate": "priority",
+    # D6 supersedes D1's mechanism: this worker's own parser no longer accepts
+    # "onboarding.generate" at all. W2-08 built its own dedicated priority-lane
+    # consumer (sayre_workers.enrichment.onboarding.parse_onboarding_generate) with
+    # its own payload shape; reserving the type here too would let a second,
+    # differently-shaped parser silently succeed on the same message type. If an
+    # "onboarding.generate" envelope ever reaches this parser directly, it must raise
+    # InvalidEnrichmentEventError (see events.py's docstring and the D6 regression-
+    # guard test in test_enrichment.py).
 }
 
 
@@ -38,12 +41,16 @@ def _required_string(value: object, name: str) -> str:
 def parse_enrichment_envelope(envelope: MessageEnvelope) -> EnrichmentJob:
     """Translate a trusted queue envelope into an enrichment job.
 
-    Accepts type 'graph.updated' (default lane). Reserves and, when present, accepts
-    the priority-lane type 'onboarding.generate' (W2-08) by mapping it to
-    lane='priority' without inventing its internals (Decision D1) -- it is routed
-    through the same handler. org_id ALWAYS comes from envelope.org_id -- a payload
-    org_id is ignored (see .claude/rules/security-multitenancy.md). Raises
-    InvalidEnrichmentEventError on any other type or a missing scope field.
+    Accepts only type 'graph.updated' (default lane). Does NOT accept
+    'onboarding.generate' (D6 supersedes D1's mechanism): the priority lane is
+    exclusively parsed by W2-08's own `parse_onboarding_generate`, whose payload shape
+    differs from this parser's ('graph.updated' carries `full_rebuild`/
+    `changed_paths`; 'onboarding.generate' carries `cold_start_started_at_ms` and
+    neither of those). Priority-lane `EnrichmentJob`s are instead built directly by
+    `onboarding_bridge.build_onboarding_generator`, bypassing this function entirely.
+    org_id ALWAYS comes from envelope.org_id -- a payload org_id is ignored (see
+    .claude/rules/security-multitenancy.md). Raises InvalidEnrichmentEventError on any
+    other type (including 'onboarding.generate') or a missing scope field.
     """
     lane = _ENRICHABLE_TYPES.get(envelope.type)
     if lane is None:
@@ -65,8 +72,8 @@ def parse_enrichment_envelope(envelope: MessageEnvelope) -> EnrichmentJob:
         raise InvalidEnrichmentEventError("payload.changed_paths must be a list of strings")
 
     # graph_scope_key/graph_version are top-level envelope fields, guaranteed present
-    # for graph.updated by MessageEnvelope's own validation. They are not enforced by
-    # MessageEnvelope for the reserved priority-lane type, so this is re-checked here.
+    # for graph.updated by MessageEnvelope's own validation. Re-checked here anyway as
+    # defense in depth, now that this is the only type this parser accepts.
     graph_scope_key = envelope.graph_scope_key
     graph_version = envelope.graph_version
     if graph_scope_key is None or graph_version is None:
