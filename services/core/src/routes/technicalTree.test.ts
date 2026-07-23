@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GraphEdge, GraphNode } from '../graph-query/types';
 import { getConfig } from '@sayre/config';
 
-// Spy on the graph-query singleton so we can assert exactly what orgId reaches
+// Spy on the graph-query singleton so we can assert exactly what auth context reaches
 // it through the full HTTP -> route -> service -> graph-query path, without a
 // new test dependency (no supertest — see .pipeline/changes.md decision log).
 // vi.mock is hoisted above these imports by vitest's transform, so the mocked
@@ -99,7 +99,7 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
     expect(res.status).toBe(200);
   });
 
-  it('a client-supplied ?orgId=attacker has no effect: the server-side req.orgId is what reaches the graph-query layer', async () => {
+  it('a client-supplied ?orgId=attacker has no effect: the server-derived auth context reaches the graph-query layer', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
     const expectedOrgId = getConfig('DEV_ORG_ID');
@@ -109,12 +109,13 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
     );
 
     expect(res.status).toBe(200);
-    expect(getNodesInViewport).toHaveBeenCalledWith('repo-1', expectedOrgId, expect.any(Object));
-    expect(getNodesInViewport).not.toHaveBeenCalledWith(
+    expect(getNodesInViewport).toHaveBeenCalledWith(
       'repo-1',
-      'attacker',
       expect.any(Object),
+      expect.objectContaining({ orgId: expectedOrgId, subjectType: 'user' }),
     );
+    const context = getNodesInViewport.mock.calls[0]?.[2] as { orgId: string };
+    expect(context.orgId).not.toBe('attacker');
   });
 
   it('missing :repoId (double slash) does not 500 — either 404s or runs with an empty repoId param', async () => {

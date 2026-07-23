@@ -1,83 +1,82 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { AuthContext } from '../auth/context';
 import { getTechnicalTree } from './technicalTreeService';
 import type { GraphEdge, GraphNode, GraphQueryService, Viewport } from '../graph-query/types';
 
 const VIEWPORT: Viewport = { x: 0, y: 0, width: 100, height: 100, zoom: 1 };
+const AUTH_CONTEXT: AuthContext = {
+  subjectType: 'user',
+  userId: 'user-1',
+  orgId: 'org-1',
+  roles: ['member'],
+};
 
 function makeFakeGraph(overrides: Partial<GraphQueryService> = {}): GraphQueryService {
   return {
     getNodesInViewport: vi.fn(async () => []),
     getStructuralEdges: vi.fn(async () => []),
+    getAffectedNodes: vi.fn(async () => ({ visible: [], removed: [] })),
     ...overrides,
   };
 }
 
 describe('getTechnicalTree', () => {
-  it('happy path: uses the default fixture stub and returns only Folder/File nodes with non-dangling CONTAINS edges', async () => {
-    const tree = await getTechnicalTree('repo-1', 'org-1', VIEWPORT);
+  it('returns only Folder/File nodes with non-dangling structural edges', async () => {
+    const nodes: GraphNode[] = [
+      { id: 'folder', label: 'Folder', name: 'src', path: '/src', parentId: null },
+      { id: 'file', label: 'File', name: 'index.ts', path: '/src/index.ts', parentId: 'folder' },
+    ];
+    const graph = makeFakeGraph({
+      getNodesInViewport: vi.fn(async () => nodes),
+      getStructuralEdges: vi.fn(async () => [
+        { id: 'CONTAINS:folder:file', type: 'CONTAINS', source: 'folder', target: 'file' },
+      ]),
+    });
 
-    expect(tree.nodes.length).toBeGreaterThan(0);
-    const ids = new Set(tree.nodes.map((n) => n.id));
-    for (const node of tree.nodes) {
-      expect(['Folder', 'File']).toContain(node.label);
-    }
+    const tree = await getTechnicalTree('repo-1', VIEWPORT, AUTH_CONTEXT, graph);
+
+    const ids = new Set(tree.nodes.map((node) => node.id));
+    expect(tree.nodes).toEqual(nodes);
     for (const edge of tree.edges) {
-      expect(edge.type).toBe('CONTAINS');
+      expect(['CONTAINS', 'IMPORTS']).toContain(edge.type);
       expect(ids.has(edge.source)).toBe(true);
       expect(ids.has(edge.target)).toBe(true);
     }
   });
 
-  it('empty graph: returns { nodes: [], edges: [] } and calls getStructuralEdges with []', async () => {
+  it('empty graph returns empty arrays and asks for no edges', async () => {
     const getStructuralEdges = vi.fn(async (): Promise<GraphEdge[]> => []);
-    const fakeGraph = makeFakeGraph({
-      getNodesInViewport: vi.fn(async (): Promise<GraphNode[]> => []),
-      getStructuralEdges,
-    });
+    const graph = makeFakeGraph({ getStructuralEdges });
 
-    const tree = await getTechnicalTree('repo-1', 'org-1', VIEWPORT, fakeGraph);
+    const tree = await getTechnicalTree('repo-1', VIEWPORT, AUTH_CONTEXT, graph);
 
     expect(tree).toEqual({ nodes: [], edges: [] });
-    expect(getStructuralEdges).toHaveBeenCalledWith('repo-1', 'org-1', []);
+    expect(getStructuralEdges).toHaveBeenCalledWith([], AUTH_CONTEXT);
   });
 
-  it('injected fake: getTechnicalTree composes getNodesInViewport then getStructuralEdges with the returned nodes', async () => {
+  it('composes the two context-taking graph-query methods', async () => {
     const nodes: GraphNode[] = [
       { id: 'f1', label: 'Folder', name: 'root', path: '/root', parentId: null },
     ];
-    const edges: GraphEdge[] = [];
     const getNodesInViewport = vi.fn(async () => nodes);
-    const getStructuralEdges = vi.fn(async () => edges);
-    const fakeGraph = makeFakeGraph({ getNodesInViewport, getStructuralEdges });
+    const getStructuralEdges = vi.fn(async (): Promise<GraphEdge[]> => []);
+    const graph = makeFakeGraph({ getNodesInViewport, getStructuralEdges });
 
-    const tree = await getTechnicalTree('repo-9', 'org-9', VIEWPORT, fakeGraph);
+    await getTechnicalTree('repo-9', VIEWPORT, AUTH_CONTEXT, graph);
 
-    expect(tree).toEqual({ nodes, edges });
-    expect(getStructuralEdges).toHaveBeenCalledWith('repo-9', 'org-9', nodes);
+    expect(getNodesInViewport).toHaveBeenCalledWith('repo-9', VIEWPORT, AUTH_CONTEXT);
+    expect(getStructuralEdges).toHaveBeenCalledWith(['f1'], AUTH_CONTEXT);
   });
 
-  it('threads orgId verbatim to both graph-query methods', async () => {
-    const getNodesInViewport = vi.fn(async () => []);
-    const getStructuralEdges = vi.fn(async () => []);
-    const fakeGraph = makeFakeGraph({ getNodesInViewport, getStructuralEdges });
-
-    await getTechnicalTree('repo-1', 'org-super-secret', VIEWPORT, fakeGraph);
-
-    expect(getNodesInViewport).toHaveBeenCalledWith('repo-1', 'org-super-secret', VIEWPORT);
-    expect(getStructuralEdges).toHaveBeenCalledWith('repo-1', 'org-super-secret', []);
-  });
-
-  it('resolver-shaped call: a GraphQL-resolver-like closure calls getTechnicalTree unchanged (AC3)', async () => {
-    // No `graphql` dependency added (non-goal) — this proves the signature is
-    // reusable by a resolver without a running GraphQL server.
+  it('is reusable unchanged from a resolver-shaped caller', async () => {
     type ResolverArgs = { repoId: string; viewport: Viewport };
-    type ResolverContext = { orgId: string };
-
+    type ResolverContext = { auth: AuthContext };
+    const graph = makeFakeGraph();
     const resolver = (_parent: unknown, args: ResolverArgs, ctx: ResolverContext) =>
-      getTechnicalTree(args.repoId, ctx.orgId, args.viewport);
+      getTechnicalTree(args.repoId, args.viewport, ctx.auth, graph);
 
-    const tree = await resolver({}, { repoId: 'repo-1', viewport: VIEWPORT }, { orgId: 'org-1' });
-
-    expect(tree.nodes.length).toBeGreaterThan(0);
+    await expect(
+      resolver({}, { repoId: 'repo-1', viewport: VIEWPORT }, { auth: AUTH_CONTEXT }),
+    ).resolves.toEqual({ nodes: [], edges: [] });
   });
 });

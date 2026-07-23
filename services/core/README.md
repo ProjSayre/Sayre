@@ -20,12 +20,12 @@ Route (src/routes/)  ->  Service (src/services/)  ->  Graph Query Service (src/g
   where business logic and data assembly live. A service function is
   `(inputs) => Promise<data>` so the same function is callable from a REST
   route today and a GraphQL resolver later with zero changes.
-- **`src/graph-query/`** — the only layer that talks to the graph store. Right
-  now it's a typed, fixture-returning stub (see `src/graph-query/README.md`);
-  W2-02 replaces it with a real openCypher client against Neo4j. `org_id` is
-  threaded through every method here because this is the layer that will
-  inject it server-side and perform RBAC node-stripping
-  (`.claude/rules/security-multitenancy.md`).
+- **`src/graph-query/`** — the only layer that talks to the graph store. It
+  resolves permission rows from Postgres under tenant RLS, embeds the resulting
+  org/repo/ref/path scope in parameterized openCypher, and strips unauthorized
+  Folder/File nodes and edges before returning. Every method takes the complete
+  server-derived `AuthContext`, so REST, realtime, and future MCP callers share
+  the identical authorization path.
 - **`src/http/`** — supporting HTTP-adapter helpers (`viewport.ts`,
   `authenticate.ts`, `authorize.ts`, `express.ts`) used by routes to stay
   genuinely thin: request parsing/validation, server-side auth/tenant

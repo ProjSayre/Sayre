@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getRealtimeGraphDelta } from '../services/realtimeDeltaService';
 import { parseRealtimeDeltaRequest } from '../http/realtimeDeltaRequest';
-import { requireOrgId } from '../auth/context';
+import { requireAuthContext } from '../auth/context';
 import { authenticate } from '../http/authenticate';
 import { authorize } from '../http/authorize';
 import { asyncHandler } from '../http/express';
@@ -34,11 +34,11 @@ realtimeInternalRouter.post(
   authorize('member'),
   asyncHandler(async (req, res) => {
     const { repoId, changedPaths, fullRebuild, graphVersion } = parseRealtimeDeltaRequest(req.body);
-    const delta = await getRealtimeGraphDelta(repoId, requireOrgId(req), {
-      changedPaths,
-      fullRebuild,
-      graphVersion,
-    });
+    const delta = await getRealtimeGraphDelta(
+      repoId,
+      { changedPaths, fullRebuild, graphVersion },
+      requireAuthContext(req),
+    );
     res.json(delta);
   }),
 );
