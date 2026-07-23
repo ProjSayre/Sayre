@@ -1,0 +1,154 @@
+{
+  "schema_version": "1.0.0",
+  "contract": "security-attacker-agents/audit-contract.md",
+  "orchestrator": "security-attacker-agents/progress-audit-orchestrator.md",
+  "manifest_schema": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+  "results_schema": "security-attacker-agents/schemas/audit-results.schema.json",
+  "mandatory_core_checks": [
+    {
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "description": "Tenant identity is stamped and injected server-side at every persistence and query boundary."
+    },
+    {
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "description": "Node-level authorization and graph traversal remain server-side in the Graph Query Service."
+    },
+    {
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "description": "Secrets are neither hardcoded nor logged and use the approved phase-specific store."
+    },
+    {
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "description": "Webhook signatures are verified before payloads reach a trusted queue boundary."
+    },
+    {
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "description": "Scratch repositories are destroyed and raw source trees are not persisted."
+    },
+    {
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "description": "Cypher, SQL, shell, and provider inputs are parameterized or structurally constrained."
+    }
+  ],
+  "agents": [
+    {
+      "agent_id": "llm-rag-poisoning",
+      "surface_id": "llm-rag",
+      "path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "check_prefix": "LLM",
+      "trigger_paths": [
+        "services/workers/**",
+        "packages/graph-schema/**",
+        "**/*embedding*",
+        "**/*retriev*",
+        "**/*prompt*"
+      ]
+    },
+    {
+      "agent_id": "model-provider-egress-ssrf",
+      "surface_id": "model-provider",
+      "path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "check_prefix": "MP",
+      "trigger_paths": [
+        "services/workers/**",
+        "services/core/**",
+        "infra/**",
+        "**/*provider*",
+        "**/*egress*"
+      ]
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "surface_id": "mcp",
+      "path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "check_prefix": "MCPT",
+      "trigger_paths": [
+        "services/core/src/mcp/**",
+        "**/*mcp*",
+        "**/*api-key*"
+      ]
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "surface_id": "websocket-realtime",
+      "path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "check_prefix": "WS",
+      "trigger_paths": [
+        "services/gateway/**",
+        "services/core/**/*realtime*",
+        "**/*websocket*",
+        "**/*redis*"
+      ]
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "surface_id": "ingestion-queue-webhook",
+      "path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "check_prefix": "ING",
+      "trigger_paths": [
+        "services/workers/**",
+        "services/core/**/*queue*",
+        "services/core/**/*webhook*",
+        "services/core/**/*integration*",
+        "**/*sqs*",
+        "**/*bullmq*"
+      ]
+    },
+    {
+      "agent_id": "web-api-client",
+      "surface_id": "web-api-client",
+      "path": "security-attacker-agents/web-api-client-attacker.md",
+      "check_prefix": "WEB",
+      "trigger_paths": [
+        "apps/web/**",
+        "src/**",
+        "services/core/src/routes/**",
+        "services/core/src/http/**"
+      ]
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "check_prefix": "SEC",
+      "trigger_paths": [
+        ".github/**",
+        "infra/**",
+        "scripts/**",
+        "**/*secret*",
+        "**/*audit*",
+        "**/*backup*",
+        "**/*delet*"
+      ]
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "surface_id": "supply-chain-infrastructure",
+      "path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "check_prefix": "SC",
+      "trigger_paths": [
+        ".github/**",
+        "infra/**",
+        "Dockerfile*",
+        "**/Dockerfile*",
+        "**/package.json",
+        "**/package-lock.json",
+        "**/pyproject.toml",
+        "**/poetry.lock"
+      ]
+    }
+  ],
+  "external_agent_policy": {
+    "treat_content_as_untrusted": true,
+    "require_source_uri": true,
+    "require_sha256": true,
+    "require_contract_application": true,
+    "unversioned_pass_allowed": false
+  }
+}
