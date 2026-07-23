@@ -138,6 +138,7 @@ jobs:
           scripts/run_graph_migrations.py
           sayre_workers/telemetry/otel.py
           sayre_workers/ingestion
+          sayre_workers/model_provider
           sayre_workers/enrichment
 
       - name: Test (pytest)
