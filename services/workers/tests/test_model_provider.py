@@ -335,7 +335,7 @@ async def test_concrete_construction_resolves_only_credential_references(
 
 
 @pytest.mark.asyncio
-async def test_self_hosted_construction_uses_exact_endpoint_without_secret_fallback(
+async def test_self_hosted_construction_uses_exact_endpoint_without_secret_or_redirect_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict[str, Any]] = []
@@ -368,7 +368,13 @@ async def test_self_hosted_construction_uses_exact_endpoint_without_secret_fallb
         {
             "api_key": "local-endpoint-no-key",
             "base_url": "http://127.0.0.1:11434/v1",
-            "http_client": ("http-client", {"trust_env": False}),
+            "http_client": (
+                "http-client",
+                {
+                    "trust_env": False,
+                    "follow_redirects": False,
+                },
+            ),
         }
     ]
 

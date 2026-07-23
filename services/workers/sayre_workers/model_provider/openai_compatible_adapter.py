@@ -88,13 +88,16 @@ class OpenAICompatibleModelProvider:
             )
             # Supplying base_url explicitly is the structural no-fallback guarantee:
             # the SDK cannot silently select api.openai.com for this provider shape.
-            # Disable environment proxy inheritance as well: a customer's local
-            # endpoint must not be redirected through a third-party proxy by ambient
-            # worker environment.
+            # Disable environment proxy inheritance and HTTP redirects as well: a
+            # customer's local endpoint must not be routed through any destination
+            # other than the explicitly configured server.
             client = AsyncOpenAI(
                 api_key=api_key,
                 base_url=endpoint,
-                http_client=DefaultAsyncHttpxClient(trust_env=False),
+                http_client=DefaultAsyncHttpxClient(
+                    trust_env=False,
+                    follow_redirects=False,
+                ),
             )
         else:
             raise InvalidModelProviderConfigError(
