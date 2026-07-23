@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sayre.dev/schemas/security-audit-run-manifest-1.0.0.json",
+  "title": "Sayre security audit run manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "mode",
+    "status",
+    "started_at",
+    "completed_at",
+    "repository",
+    "target",
+    "baseline",
+    "product_progress",
+    "authorization",
+    "surface_inventory",
+    "agent_versions",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{9}Z-[0-9a-f]{7,12}-(PR_DELTA|REMEDIATION_RECHECK|MILESTONE|FULL)-[0-9a-f]{6}$"
+    },
+    "mode": {
+      "enum": [
+        "PR_DELTA",
+        "REMEDIATION_RECHECK",
+        "MILESTONE",
+        "FULL"
+      ]
+    },
+    "status": {
+      "enum": [
+        "IN_PROGRESS",
+        "COMPLETE",
+        "INCOMPLETE"
+      ]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_id",
+        "remote",
+        "working_path"
+      ],
+      "properties": {
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+/[a-z0-9_.-]+$"
+        },
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "working_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit_sha",
+        "branch",
+        "dirty",
+        "environment",
+        "base_urls",
+        "changed_paths"
+      ],
+      "properties": {
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "changed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "commit_sha",
+        "comparable",
+        "selection_reason",
+        "incompatible_dimensions"
+      ],
+      "properties": {
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comparable": {
+          "type": "boolean"
+        },
+        "selection_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "incompatible_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "product_progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "milestone",
+        "phase",
+        "source_references",
+        "documentation_code_drift"
+      ],
+      "properties": {
+        "milestone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "phase": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "documentation_code_drift": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_tests_authorized",
+        "authorized_by",
+        "resource_ceiling",
+        "credential_references",
+        "tenant_fixtures"
+      ],
+      "properties": {
+        "runtime_tests_authorized": {
+          "type": "boolean"
+        },
+        "authorized_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resource_ceiling": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "credential_references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "tenant_fixtures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "surface_inventory": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "surface_id",
+          "brief_path",
+          "readiness",
+          "previous_readiness",
+          "readiness_transition",
+          "changed",
+          "selected",
+          "selection_reason",
+          "rationale",
+          "code_references"
+        ],
+        "properties": {
+          "surface_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "brief_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readiness": {
+            "enum": [
+              "ABSENT",
+              "PLANNED",
+              "PARTIAL",
+              "IMPLEMENTED",
+              "DEPRECATED"
+            ]
+          },
+          "previous_readiness": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "ABSENT",
+              "PLANNED",
+              "PARTIAL",
+              "IMPLEMENTED",
+              "DEPRECATED",
+              null
+            ]
+          },
+          "readiness_transition": {
+            "enum": [
+              "FIRST_OBSERVATION",
+              "UNCHANGED",
+              "ADVANCED",
+              "REGRESSED",
+              "CHANGED",
+              "NOT_COMPARABLE"
+            ]
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "selection_reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "code_references": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "agent_versions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agent_id",
+          "source",
+          "sha256"
+        ],
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
