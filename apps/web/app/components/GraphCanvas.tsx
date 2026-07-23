@@ -17,6 +17,8 @@ import {
   type AuthorizedCanvasNode,
 } from '../lib/scaleGraph';
 import { SigmaCanvas } from './SigmaCanvas';
+import { ProviderStateStatus } from './ProviderStateBanner';
+import type { ProviderStateSelection } from '../lib/providerState';
 
 interface SelectedNode {
   kind: 'Folder' | 'File';
@@ -59,7 +61,11 @@ function ReactFlowCanvas({ onSelect }: ReactFlowCanvasProps) {
   );
 }
 
-export function GraphCanvas() {
+export function GraphCanvas({
+  selection,
+}: {
+  selection: ProviderStateSelection | null;
+}) {
   const [fixture, setFixture] = useState<'small' | 'scale'>('small');
   const [selected, setSelected] = useState<SelectedNode>(mockNodes[0].data);
   const scalePayload = useMemo(() => createScaleFixture(), []);
@@ -72,6 +78,7 @@ export function GraphCanvas() {
 
   return (
     <div className="graph-canvas" aria-label="Interactive repository graph">
+      <ProviderStateStatus selection={selection} />
       <div className="renderer-switcher" aria-label="Graph scale fixture">
         <div className="renderer-switcher-buttons">
           <button

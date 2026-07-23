@@ -7,7 +7,13 @@ const views = [
   { label: 'Onboarding', icon: 'O', active: false },
 ];
 
-export function AppShell() {
+export function AppShell({
+  repositoryId,
+  refName,
+}: {
+  repositoryId: string | null;
+  refName: string;
+}) {
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -77,7 +83,13 @@ export function AppShell() {
             <h1>Technical tree</h1>
             <p>Folder and file structure · main</p>
           </div>
-          <GraphCanvas />
+          <GraphCanvas
+            selection={
+              repositoryId === null
+                ? null
+                : { repositoryId, refName, surface: 'product' }
+            }
+          />
         </section>
       </div>
     </main>

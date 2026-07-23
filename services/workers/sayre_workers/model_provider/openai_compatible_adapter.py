@@ -155,3 +155,8 @@ class OpenAICompatibleModelProvider:
                 "openai-compatible structured response must be an object"
             )
         return StructuredGenerationResponse(data=data)
+
+    async def aclose(self) -> None:
+        close = getattr(self._client, "close", None)
+        if close is not None:
+            await close()

@@ -4,6 +4,7 @@ import ipaddress
 import json
 import socket
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import SimpleNamespace
 from typing import Any
@@ -23,6 +24,7 @@ from sayre_workers.enrichment.models import (
     FileContext,
 )
 from sayre_workers.enrichment.service import EnrichmentService
+from sayre_workers.enrichment.state_store import ProviderJobState
 from sayre_workers.ingestion.models import GraphScope
 from sayre_workers.ingestion.projection import stable_uid
 from sayre_workers.model_provider import (
@@ -34,6 +36,7 @@ from sayre_workers.model_provider import (
     ModelProviderFactory,
     ModelProviderResponseError,
     OpenAICompatibleModelProvider,
+    ProviderCallScope,
 )
 
 SHA = "b" * 40
@@ -421,7 +424,7 @@ async def test_provider_config_rejects_unsafe_or_incomplete_shapes(
     config: GenerationConfig, message: str
 ) -> None:
     with pytest.raises(InvalidModelProviderConfigError, match=message):
-        await ModelProviderFactory().create(config)
+        await ModelProviderFactory().create(config, ProviderCallScope("org-real"))
 
 
 class _MemoryGraphStore:
@@ -451,6 +454,14 @@ class _MemoryConfigStore:
     async def load_generation_config(self, org_id: str) -> GenerationConfig:
         self.org_ids.append(org_id)
         return self._config
+
+
+class _MemoryStateStore:
+    def __init__(self) -> None:
+        self.states: list[ProviderJobState] = []
+
+    async def set_state(self, state: ProviderJobState) -> None:
+        self.states.append(state)
 
 
 def _graph_updated_envelope(context: EnrichmentContext):
@@ -576,11 +587,13 @@ async def test_self_hosted_enrichment_completes_with_non_loopback_network_blocke
         model_provider_factory=ModelProviderFactory(),
         graphify_factory=GraphifyAdapterFactory(),
         config_store=config_store,
+        state_store=_MemoryStateStore(),
     )
 
     try:
         result = await service.handle(_graph_updated_envelope(context))
     finally:
+        await service.aclose()
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
@@ -597,3 +610,68 @@ async def test_self_hosted_enrichment_completes_with_non_loopback_network_blocke
     # would hit the guard above and fail before it could connect.
     assert "localhost" in resolved
     assert blocked == []
+
+
+@pytest.mark.asyncio
+async def test_unresponsive_loopback_provider_degrades_within_application_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started = threading.Event()
+    release = threading.Event()
+
+    class SlowHandler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:  # noqa: N802 - stdlib callback name
+            started.set()
+            release.wait(timeout=1)
+
+        def log_message(self, _format: str, *args: object) -> None:
+            del args
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), SlowHandler)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setenv("SAYRE_ENV", "production")
+    context = _context()
+    graph_store = _MemoryGraphStore(context)
+    state_store = _MemoryStateStore()
+    service = EnrichmentService(
+        graph_store=graph_store,
+        model_provider_factory=ModelProviderFactory(),
+        graphify_factory=GraphifyAdapterFactory(),
+        config_store=_MemoryConfigStore(
+            GenerationConfig(
+                provider="openai_compatible",
+                model="local-fixture",
+                endpoint_url=f"http://127.0.0.1:{server.server_port}/v1",
+                options={
+                    "resilience": {
+                        "timeout_seconds": 0.05,
+                        "failure_threshold": 1,
+                        "fallback_mode": "degrade",
+                    }
+                },
+            )
+        ),
+        state_store=state_store,
+    )
+
+    began = time.monotonic()
+    try:
+        result = await service.handle(_graph_updated_envelope(context))
+        elapsed = time.monotonic() - began
+    finally:
+        await service.aclose()
+        release.set()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert started.is_set(), "the real loopback endpoint must receive the SDK request"
+    assert elapsed < 0.5, "application timeout must beat the unresponsive endpoint"
+    assert result.status == "degraded"
+    assert graph_store.applied == []
+    assert [(state.status, state.reason_code) for state in state_store.states] == [
+        ("generating", None),
+        ("degraded", "timeout"),
+    ]

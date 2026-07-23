@@ -13,6 +13,7 @@ from messaging.envelope import MessageEnvelope
 from messaging.idempotency import DeliveryStore
 from messaging.sqs_client import consume_enrichment
 from sayre_workers.telemetry.onboarding_metrics import record_onboarding_ready
+from .models import EnrichmentResult
 
 
 class InvalidOnboardingJobError(ValueError):
@@ -67,7 +68,7 @@ class OnboardingPriorityHandler:
 
     def __init__(
         self,
-        generator: Callable[[OnboardingGenerateJob], None],
+        generator: Callable[[OnboardingGenerateJob], EnrichmentResult | None],
         *,
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
@@ -76,13 +77,15 @@ class OnboardingPriorityHandler:
 
     def __call__(self, envelope: MessageEnvelope) -> None:
         job = parse_onboarding_generate(envelope)
-        self._generator(job)
+        result = self._generator(job)
+        if result is not None and result.status == "degraded":
+            return
         duration_ms = float(max(0, self._clock_ms() - job.cold_start_started_at_ms))
         record_onboarding_ready(job.org_id, job.repository_id, duration_ms)
 
 
 def run_onboarding_priority_consumer(
-    generator: Callable[[OnboardingGenerateJob], None],
+    generator: Callable[[OnboardingGenerateJob], EnrichmentResult | None],
     *,
     delivery_store: DeliveryStore,
     consumer_id: str = "onboarding-priority",
@@ -90,11 +93,16 @@ def run_onboarding_priority_consumer(
     visibility_timeout_seconds: int = 30,
 ) -> None:
     """Reserve priority-only capacity on W0-04's existing enrichment lane."""
-    consume_enrichment(
-        OnboardingPriorityHandler(generator),
-        consumer_id=consumer_id,
-        mode="priority_only",
-        delivery_store=delivery_store,
-        stop_event=stop_event,
-        visibility_timeout_seconds=visibility_timeout_seconds,
-    )
+    try:
+        consume_enrichment(
+            OnboardingPriorityHandler(generator),
+            consumer_id=consumer_id,
+            mode="priority_only",
+            delivery_store=delivery_store,
+            stop_event=stop_event,
+            visibility_timeout_seconds=visibility_timeout_seconds,
+        )
+    finally:
+        close = getattr(generator, "close", None)
+        if callable(close):
+            close()

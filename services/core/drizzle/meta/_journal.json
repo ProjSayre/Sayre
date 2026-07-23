@@ -64,6 +64,13 @@
       "when": 1784647200000,
       "tag": "0008_w1_05_chunk_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784772000000,
+      "tag": "0009_w3_08_provider_job_states",
+      "breakpoints": true
     }
   ]
 }
