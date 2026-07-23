@@ -198,11 +198,16 @@ class FakePublisher:
     def __init__(self, log: list[str]) -> None:
         self.log = log
         self.graph_events: list[dict[str, object]] = []
+        self.onboarding_events: list[dict[str, object]] = []
         self.embedding_tasks: list[EmbeddingTask] = []
 
     async def graph_updated(self, **kwargs: object) -> None:
         self.log.append("graph-event-published")
         self.graph_events.append(kwargs)
+
+    async def onboarding_generate(self, **kwargs: object) -> None:
+        self.log.append("onboarding-enqueued")
+        self.onboarding_events.append(kwargs)
 
     async def embedding_upsert(self, task: EmbeddingTask, content_hash: str) -> None:
         assert content_hash
@@ -307,10 +312,12 @@ async def test_initial_ingestion_commits_event_before_embedding_and_cleans_scrat
     assert result.full_rebuild is True
     assert result.structural_duration_ms is not None and result.structural_duration_ms < 15_000
     assert graph.projections[0].full_rebuild is True
+    assert publisher.onboarding_events
     assert publisher.embedding_tasks
     assert log.index("graph-committed") < log.index("state-committed")
     assert log.index("state-committed") < log.index("graph-event-published")
-    assert log.index("graph-event-published") < log.index("chunks-persisted")
+    assert log.index("graph-event-published") < log.index("onboarding-enqueued")
+    assert log.index("onboarding-enqueued") < log.index("chunks-persisted")
     assert log.index("chunks-persisted") < log.index("embedding-enqueued")
     assert log.index("scratch-cleaned") < log.index("state-committed")
 
@@ -326,7 +333,7 @@ async def test_fast_forward_delta_only_replaces_changed_and_deleted_paths() -> N
         ancestry={(SHA_A, SHA_B): True},
     )
     current = RefState("ref-from-postgres", SHA_A, 3)
-    service, _log, graph, chunks, _publisher = service_fixture(snapshot, current)
+    service, _log, graph, chunks, publisher = service_fixture(snapshot, current)
 
     result = await service.handle(push_envelope())
 
@@ -337,6 +344,7 @@ async def test_fast_forward_delta_only_replaces_changed_and_deleted_paths() -> N
     assert result.deleted_paths == ("src/old.py",)
     assert graph.projections[0].affected_file_paths == ("src/next.py", "src/old.py")
     assert chunks.calls[0]["full_rebuild"] is False
+    assert publisher.onboarding_events == []
 
 
 @pytest.mark.asyncio
@@ -394,6 +402,7 @@ async def test_replay_republishes_idempotent_post_commit_work_without_graph_rewr
     assert result.full_rebuild is False
     assert graph.projections == []
     assert publisher.graph_events
+    assert publisher.onboarding_events == []
     assert chunks.calls[0]["full_rebuild"] is True
 
 
@@ -420,7 +429,9 @@ async def test_deterministic_embedding_fake_is_stable_and_1024_dimensional() -> 
 
 
 @pytest.mark.asyncio
-async def test_deterministic_embedding_factory_is_test_only(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_deterministic_embedding_factory_is_test_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = EmbeddingProviderFactory()
     config = EmbeddingConfig(provider="deterministic_fake", model="ci-fake")
     monkeypatch.setenv("SAYRE_ENV", "development")
@@ -434,9 +445,7 @@ async def test_deterministic_embedding_factory_is_test_only(monkeypatch: pytest.
 @pytest.mark.parametrize("vector", [[0.0] * 1023, [0.0] * 1023 + [float("nan")]])
 async def test_openai_compatible_adapter_rejects_invalid_vectors(vector: list[float]) -> None:
     response = SimpleNamespace(data=[SimpleNamespace(index=0, embedding=vector)])
-    client = SimpleNamespace(
-        embeddings=SimpleNamespace(create=AsyncMock(return_value=response))
-    )
+    client = SimpleNamespace(embeddings=SimpleNamespace(create=AsyncMock(return_value=response)))
     provider = OpenAICompatibleEmbeddingProvider(client)
 
     with pytest.raises(InvalidEmbeddingError):
@@ -447,7 +456,9 @@ async def test_openai_compatible_adapter_rejects_invalid_vectors(vector: list[fl
 async def test_real_git_snapshot_is_destroyed_after_parse(tmp_path: Path) -> None:
     remote = tmp_path / "remote"
     subprocess.run(["git", "init", "--quiet", "-b", "main", str(remote)], check=True)
-    subprocess.run(["git", "-C", str(remote), "config", "user.email", "test@example.com"], check=True)
+    subprocess.run(
+        ["git", "-C", str(remote), "config", "user.email", "test@example.com"], check=True
+    )
     subprocess.run(["git", "-C", str(remote), "config", "user.name", "Test"], check=True)
     (remote / "app.py").write_text("def app():\n    return 1\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(remote), "add", "app.py"], check=True)

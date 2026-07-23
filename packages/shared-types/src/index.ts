@@ -31,7 +31,9 @@ export interface RepoRef {
  * server-resolved source of truth) so it can never be shadowed by a payload value.
  */
 export interface NormalizedRepoEvent {
-  provider: 'github' | 'cursor-origin'; // W1-02 only ever emits 'github'; union kept for PM-06
+  // Runtime support is governed by W3-04's provider registry. This remains a
+  // string so a provider plug-in does not require editing this shared schema.
+  provider: string;
   type: RepoEventType;
   repo: RepoRef;
   ref: string | null; // e.g. "refs/heads/main"; null when the event has no single ref

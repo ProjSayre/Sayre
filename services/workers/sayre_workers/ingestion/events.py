@@ -7,7 +7,11 @@ from typing import Protocol
 
 from messaging.envelope import MessageEnvelope
 from messaging.sns_client import publish_graph_updated
-from messaging.sqs_client import EMBEDDING_UPSERTS_QUEUE, publish
+from messaging.sqs_client import (
+    EMBEDDING_UPSERTS_QUEUE,
+    ENRICHMENT_PRIORITY_QUEUE,
+    publish,
+)
 
 from .models import EmbeddingTask, GraphScope, PersistedChunk
 
@@ -25,6 +29,15 @@ class IngestionPublisher(Protocol):
     ) -> None: ...
 
     async def embedding_upsert(self, task: EmbeddingTask, content_hash: str) -> None: ...
+
+    async def onboarding_generate(
+        self,
+        *,
+        scope: GraphScope,
+        graph_version: int,
+        cold_start_started_at_ms: int,
+        trace_id: str | None,
+    ) -> None: ...
 
 
 def graph_scope_key(scope: GraphScope) -> str:
@@ -63,6 +76,32 @@ class MessagingPublisher:
         )
         publish_graph_updated(envelope)
 
+    async def onboarding_generate(
+        self,
+        *,
+        scope: GraphScope,
+        graph_version: int,
+        cold_start_started_at_ms: int,
+        trace_id: str | None,
+    ) -> None:
+        scope_key = graph_scope_key(scope)
+        envelope = MessageEnvelope(
+            org_id=scope.org_id,
+            type="onboarding.generate",
+            source="ingestion-worker",
+            trace_id=trace_id,
+            idempotency_key=f"{scope_key}:{scope.revision_sha}:onboarding.generate",
+            graph_scope_key=scope_key,
+            graph_version=graph_version,
+            payload={
+                "repository_id": scope.repository_id,
+                "ref_name": scope.ref_name,
+                "revision_sha": scope.revision_sha,
+                "cold_start_started_at_ms": cold_start_started_at_ms,
+            },
+        )
+        publish(ENRICHMENT_PRIORITY_QUEUE, envelope)
+
     async def embedding_upsert(self, task: EmbeddingTask, content_hash: str) -> None:
         envelope = MessageEnvelope(
             org_id=task.org_id,
@@ -84,9 +123,7 @@ class MessagingPublisher:
         publish(EMBEDDING_UPSERTS_QUEUE, envelope)
 
 
-def embedding_task(
-    scope: GraphScope, ref_id: str, persisted: PersistedChunk
-) -> EmbeddingTask:
+def embedding_task(scope: GraphScope, ref_id: str, persisted: PersistedChunk) -> EmbeddingTask:
     return EmbeddingTask(
         org_id=scope.org_id,
         repository_id=scope.repository_id,

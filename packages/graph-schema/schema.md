@@ -50,14 +50,14 @@ inference (PM-01).
 | `Project` | `name` | Top of the containment tree; `CONTAINS` a `Repo`. |
 | `Repo` | `name`, `provider`, `default_branch`, `external_id` | Mirrors the Postgres `repositories` row. |
 | `Folder` | `path`, `name`, `coding_style`, `comment_style`, `agent_skill_md` | Drawable (canvas). `coding_style`/`comment_style` are two **distinct** style properties (not one merged field). |
-| `File` | `path`, `name`, `language`, `agent_skill_md` | Drawable (canvas). |
+| `File` | `path`, `name`, `language`, `agent_skill_md`, `primary_owner_name`, `primary_owner_email`, `primary_owner_provider`, `primary_owner_login`, `last_edited_at`, `recent_pr_number`, `recent_pr_title`, `recent_pr_url`, `recent_pr_merged_at` | Drawable (canvas). Ownership/recent-edit fields are denormalized overlays derived from canonical Person/Commit relationships. |
 | `Function` | `name`, `signature`, `file_path` | Graph-internal only — never rendered on canvas. |
 | `Class` | `name`, `file_path` | Graph-internal only — never rendered on canvas. |
 | `Module` | `name` | |
-| `Person` | `name`, `email`, `github_login` | Identity via name, email, or GitHub login. |
+| `Person` | `name`, `email`, `provider`, `provider_login`, `github_login` | Provider-neutral identity; `github_login` remains as a compatibility alias for GitHub-backed people. |
 | `Commit` | `sha`, `message`, `timestamp`, `author_name`, `author_email` | `author_name`/`author_email` are a denormalized cache; the canonical author link is the `AUTHORED` edge to a `Person`. |
 | `Feature` | `description`, `team`, `name` | Cached fields for the Product tree view. |
-| `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `status` | Mirror pointer to the Jira/Linear system of record. |
+| `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `title`, `status`, `url`, `synced_at` | Mirror pointer to the Jira/Linear system of record. |
 | `EnvStep` | `sequence` (int), `command` | Onboarding steps, ordered by `sequence`. |
 | `Test` | `path`, `name`, `coverage_status` (`'pass'` \| `'fail'` \| `'unknown'`) | Statically discovered tests begin as `unknown`; W4-03 updates measured results. |
 
@@ -75,7 +75,7 @@ Every relationship carries `org_id`. Direction below is canonical (source -> tar
 | `OWNS` | `Person->File` | — | Primary code owner. |
 | `AUTHORED` | `Person->Commit` | `timestamp` (datetime) | |
 | `MODIFIED` | `Commit->File` | `timestamp` (datetime) | |
-| `REFERENCES` | `Ticket->File` | — | |
+| `REFERENCES` | `Ticket->File`, `Ticket->Feature` | — | Drives the Specific Tickets overlay for either structural or product nodes. |
 | `PART_OF` | `File->Feature` | — | Backs a Feature's "Files Included" list. |
 | `REQUIRES` | `EnvStep->EnvStep` | — | Onboarding prerequisite ordering. |
 | `DEPENDS_ON` | `Module->Module` | — | |

@@ -1,5 +1,6 @@
-"""Semantic enrichment worker skeleton: provider/adapter boundaries, envelope parsing,
-consumer wiring, and the org-scoped Neo4j graph-primitive writer (W2-05)."""
+"""Semantic enrichment worker: provider/adapter boundaries, envelope parsing, consumer
+wiring, and the org-scoped Neo4j graph-primitive writer (W2-05), plus the priority-lane
+onboarding entry points (W2-08)."""
 
 from .config_store import PostgresGenerationConfigStore
 from .consumers import run_enrichment_consumer
@@ -24,6 +25,13 @@ from .models import (
     GenerationConfigNotFoundError,
     InvalidEnrichmentEventError,
     InvalidEnrichmentWriteError,
+)
+from .onboarding import (
+    InvalidOnboardingJobError,
+    OnboardingGenerateJob,
+    OnboardingPriorityHandler,
+    parse_onboarding_generate,
+    run_onboarding_priority_consumer,
 )
 from .providers import (
     FakeModelProvider,
@@ -58,12 +66,17 @@ __all__ = [
     "GraphifyAdapterFactory",
     "InvalidEnrichmentEventError",
     "InvalidEnrichmentWriteError",
+    "InvalidOnboardingJobError",
     "ModelProvider",
     "ModelProviderFactory",
     "Neo4jEnrichmentGraphStore",
+    "OnboardingGenerateJob",
+    "OnboardingPriorityHandler",
     "PostgresGenerationConfigStore",
     "build_enrichment_service",
     "parse_enrichment_envelope",
+    "parse_onboarding_generate",
     "run_enrichment_consumer",
+    "run_onboarding_priority_consumer",
     "validate_enrichment_write",
 ]

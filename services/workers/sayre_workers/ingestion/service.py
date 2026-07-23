@@ -1,7 +1,8 @@
 """W1-05 structural ingestion orchestration.
 
 The critical order is: scratch checkout -> parse -> one graph transaction -> accept
-the ref state -> publish graph.updated -> persist bounded chunks -> enqueue embeddings.
+the ref state -> publish graph.updated -> enqueue cold-start onboarding -> persist
+bounded chunks -> enqueue embeddings.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ class IngestionService:
 
     async def handle(self, envelope: MessageEnvelope) -> IngestionResult:
         job = parse_ingestion_envelope(envelope)
+        cold_start_started_at_ms = time.time_ns() // 1_000_000
         started = time.perf_counter()
         accepted_state = None
         source_files: tuple[SourceFile, ...] = ()
@@ -46,9 +48,7 @@ class IngestionService:
         full_rebuild = False
         replayed = False
 
-        async with self._state_store.lock(
-            job.org_id, job.repository, job.ref_name
-        ) as locked_ref:
+        async with self._state_store.lock(job.org_id, job.repository, job.ref_name) as locked_ref:
             current = locked_ref.current
             async with self._repository_source.checkout(
                 job.repository,
@@ -123,11 +123,16 @@ class IngestionService:
             trace_id=job.trace_id,
         )
         structural_duration_ms = (time.perf_counter() - started) * 1_000
+        if job.kind == "initial":
+            await self._publisher.onboarding_generate(
+                scope=scope,
+                graph_version=accepted_state.graph_version,
+                cold_start_started_at_ms=cold_start_started_at_ms,
+                trace_id=job.trace_id,
+            )
 
         chunks = build_bounded_chunks(scope, source_files)
-        affected_node_ids = tuple(
-            stable_uid(scope, "File", path) for path in affected_paths
-        )
+        affected_node_ids = tuple(stable_uid(scope, "File", path) for path in affected_paths)
         persisted = await self._chunk_store.replace_chunks(
             scope=scope,
             ref_id=accepted_state.ref_id,
