@@ -128,9 +128,18 @@ describe('provider settings web adapter', () => {
 
   it('rejects an oversized upstream body with a fixed response', async () => {
     vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    let cancelled = false;
+    const oversizedBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(262_145));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(new Uint8Array(262_145))),
+      vi.fn(async () => new Response(oversizedBody)),
     );
 
     const response = await GET(
@@ -142,6 +151,7 @@ describe('provider settings web adapter', () => {
     expect(await response.json()).toEqual({
       error: 'Provider settings service unavailable.',
     });
+    expect(cancelled).toBe(true);
   });
 
   it('returns fixed errors for invalid paths and upstream failures', async () => {

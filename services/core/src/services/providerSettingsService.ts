@@ -28,7 +28,9 @@ import {
 const ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,199}$/;
 const SECRET_LIKE_RE =
-  /^(?:sk(?:-ant|-proj)?-|gh[pousr]_|xox[baprs]-|AIza|eyJ[a-zA-Z0-9_-]{10,})|-----BEGIN|(?:api[_-]?key|access[_-]?token|password|secret)=/i;
+  /^(?:[a-z][a-z0-9+.-]*:\/\/|sk(?:-ant|-proj)?-|gh[pousr]_|xox[baprs]-|AIza|eyJ[a-zA-Z0-9_-]{10,}|-----BEGIN|(?:api[_-]?key|access[_-]?token|password|secret)=)/i;
+const SECRET_FIELD_RE =
+  /(?:^|[._:/+-])(?:api[_-]?key|access[_-]?token|password|secret)(?:$|[._:/+-])/i;
 
 const PURPOSE_PROVIDERS: Readonly<Record<ProviderPurpose, readonly ProviderKind[]>> = {
   generation: ['anthropic', 'openai', 'openai_compatible'],
@@ -107,6 +109,15 @@ function nullableId(value: unknown): string | null {
   return value;
 }
 
+function isSafeModel(value: string): boolean {
+  return (
+    value.trim() === value &&
+    MODEL_RE.test(value) &&
+    !SECRET_LIKE_RE.test(value) &&
+    !SECRET_FIELD_RE.test(value)
+  );
+}
+
 function parseUpdate(body: unknown): ProviderSettingsUpdateRequest {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     throw new ProviderSettingsValidationError();
@@ -138,11 +149,7 @@ function parseUpdate(body: unknown): ProviderSettingsUpdateRequest {
     throw new ProviderSettingsValidationError();
   }
   const model = record.model.trim();
-  if (
-    !MODEL_RE.test(model) ||
-    SECRET_LIKE_RE.test(model) ||
-    model !== record.model
-  ) {
+  if (!isSafeModel(record.model)) {
     throw new ProviderSettingsValidationError();
   }
   return {
@@ -185,7 +192,7 @@ function settingView(
   credentials: readonly CredentialRegistryEntry[],
   endpoints: readonly EndpointCatalogEntry[],
 ): ProviderSettingView {
-  if (!knownProvider(row.purpose, row.provider)) {
+  if (!knownProvider(row.purpose, row.provider) || !isSafeModel(row.model)) {
     throw new ProviderSettingsConfigurationError();
   }
   const credential =

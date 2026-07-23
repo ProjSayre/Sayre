@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const MAX_REQUEST_BYTES = 16_384;
 const MAX_RESPONSE_BYTES = 262_144;
+const MAX_BODY_CHUNKS = 256;
 const REQUEST_TIMEOUT_MS = 5_000;
 
 function upstreamUrl(purpose?: string): string {
@@ -18,12 +19,94 @@ function forwardedHeaders(request: NextRequest, hasBody: boolean): Headers {
   return headers;
 }
 
+async function boundedRequestBody(
+  request: NextRequest,
+): Promise<{ body: string } | { response: NextResponse }> {
+  const contentLength = request.headers.get('content-length');
+  if (
+    contentLength !== null &&
+    /^\d+$/.test(contentLength) &&
+    Number(contentLength) > MAX_REQUEST_BYTES
+  ) {
+    await request.body?.cancel();
+    return {
+      response: NextResponse.json({ error: 'Request too large.' }, { status: 413 }),
+    };
+  }
+  const reader = request.body?.getReader();
+  if (!reader) return { body: '' };
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  while (chunks.length <= MAX_BODY_CHUNKS) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    byteLength += value.byteLength;
+    if (byteLength > MAX_REQUEST_BYTES || chunks.length === MAX_BODY_CHUNKS) {
+      await reader.cancel();
+      return {
+        response: NextResponse.json(
+          { error: 'Request too large.' },
+          { status: 413 },
+        ),
+      };
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return { body: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
+  } catch {
+    return {
+      response: NextResponse.json({ error: 'Invalid request.' }, { status: 400 }),
+    };
+  }
+}
+
 async function boundedResponse(response: Response): Promise<NextResponse> {
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > MAX_RESPONSE_BYTES) {
+  const contentLength = response.headers.get('content-length');
+  if (
+    contentLength !== null &&
+    /^\d+$/.test(contentLength) &&
+    Number(contentLength) > MAX_RESPONSE_BYTES
+  ) {
+    await response.body?.cancel();
     return NextResponse.json({ error: 'Provider settings service unavailable.' }, { status: 502 });
   }
-  return new NextResponse(bytes, {
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    return new NextResponse(null, {
+      status: response.status,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
+  }
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  while (chunks.length <= MAX_BODY_CHUNKS) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    byteLength += value.byteLength;
+    if (byteLength > MAX_RESPONSE_BYTES || chunks.length === MAX_BODY_CHUNKS) {
+      await reader.cancel();
+      return NextResponse.json(
+        { error: 'Provider settings service unavailable.' },
+        { status: 502 },
+      );
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new NextResponse(byteLength === 0 ? null : bytes, {
     status: response.status,
     headers: { 'content-type': 'application/json; charset=utf-8' },
   });
@@ -36,9 +119,12 @@ async function proxy(
 ): Promise<NextResponse> {
   let body: string | undefined;
   if (method === 'PUT') {
-    body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
+    try {
+      const bounded = await boundedRequestBody(request);
+      if ('response' in bounded) return bounded.response;
+      body = bounded.body;
+    } catch {
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
   }
   try {

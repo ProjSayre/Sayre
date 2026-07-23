@@ -6,6 +6,7 @@ import type {
   StoredProviderSettingInput,
 } from '../db/providerSettingsStore';
 import {
+  ProviderSettingsConfigurationError,
   ProviderSettingsForbiddenError,
   ProviderSettingsValidationError,
   getProviderSettings,
@@ -219,6 +220,28 @@ describe('provider settings service', () => {
     expect(serialized).not.toContain('OPENAI_API_KEY');
   });
 
+  it.each([
+    'env://OPENAI_API_KEY',
+    'https://models.example/private-path',
+    'OPENAI_API_KEY',
+    'sk-ant-legacy-secret',
+  ])('fails closed instead of reflecting an unsafe stored model value: %s', async (model) => {
+    const store = new MemoryStore();
+    store.rows.set(`${ORG_A}:generation`, {
+      purpose: 'generation',
+      provider: 'anthropic',
+      model,
+      endpointUrl: null,
+      credentialRef: 'env://ANTHROPIC_API_KEY',
+      dimension: null,
+      updatedAt: NOW,
+    });
+
+    await expect(getProviderSettings(ADMIN, deps(store))).rejects.toBeInstanceOf(
+      ProviderSettingsConfigurationError,
+    );
+  });
+
   it.each<AuthContext>([
     { ...ADMIN, roles: ['member'] },
     {
@@ -303,6 +326,18 @@ describe('provider settings service', () => {
     [
       'generation',
       generationBody({ model: 'sk-proj-secret-looking-value' }),
+    ],
+    [
+      'generation',
+      generationBody({ model: 'env://OPENAI_API_KEY' }),
+    ],
+    [
+      'generation',
+      generationBody({ model: 'http://169.254.169.254/latest' }),
+    ],
+    [
+      'generation',
+      generationBody({ model: 'OPENAI_API_KEY' }),
     ],
     ['chatbot', generationBody()],
   ])('rejects invalid purpose/provider/model/endpoint combinations: %s', async (purpose, body) => {
