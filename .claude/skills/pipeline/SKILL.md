@@ -30,7 +30,7 @@ Invoke the `review` subagent. It reads `spec.md`, `changes.md`, and `test-result
 - If `review.md`'s verdict is **PASS**: continue to step 6.
 
 ## 6. Security Checker
-Invoke the `security-checker` subagent. It reads `review.md` (must be `PASS`), `spec.md`, and `changes.md`, and writes `.pipeline/security-report.md` with a verdict of `PASS` or `BLOCKED`.
+Invoke the `security-checker` subagent in `PR_DELTA` mode. It reads `review.md` (must be `PASS`), `spec.md`, and `changes.md`; applies the registered progress-audit briefs; writes immutable manifest/results/report artifacts under `.pipeline/security-history/<run-id>/`; and writes `.pipeline/security-report.md` with a verdict of `PASS` or `BLOCKED`.
 
 - If **BLOCKED**: go back to step 2 with the security findings as the fix list (treat it the same way as a `NEEDS_FIXES` review). Re-run steps 3–6 once. If still blocked, stop and hand to the user.
 - If **PASS**: continue to step 7.
@@ -40,4 +40,5 @@ Report back to the user:
 - Overall result: ready to merge, or stopped and why
 - One-line summary of what was built (from spec.md's Goal)
 - Links to the five `.pipeline/` files for anyone who wants the detail
+- The security run ID, baseline run ID, immutable artifact directory, and concise finding/coverage trajectory
 - Any Warnings/Suggestions from `review.md` or `security-report.md` that didn't block, so the user can decide whether to act on them before merging

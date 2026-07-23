@@ -1,0 +1,362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sayre.dev/schemas/security-audit-results-1.0.0.json",
+  "title": "Sayre normalized security audit results",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "baseline_run_id",
+    "generated_at",
+    "verdict",
+    "summary",
+    "observations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline_run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "BLOCKED"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "results",
+        "result_transitions",
+        "coverage_transitions",
+        "finding_statuses",
+        "surface_readiness",
+        "readiness_transitions"
+      ],
+      "properties": {
+        "results": {
+          "$ref": "#/$defs/counts"
+        },
+        "result_transitions": {
+          "$ref": "#/$defs/counts"
+        },
+        "coverage_transitions": {
+          "$ref": "#/$defs/counts"
+        },
+        "finding_statuses": {
+          "$ref": "#/$defs/counts"
+        },
+        "surface_readiness": {
+          "$ref": "#/$defs/counts"
+        },
+        "readiness_transitions": {
+          "$ref": "#/$defs/counts"
+        }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/observation"
+      }
+    }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "risk_acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approver",
+        "reason",
+        "ticket",
+        "expires_at"
+      ],
+      "properties": {
+        "approver": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ticket": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "status",
+        "first_seen_run_id",
+        "first_seen_commit",
+        "last_seen_run_id",
+        "last_seen_commit",
+        "owner",
+        "due_at",
+        "remediation_reference",
+        "risk_acceptance"
+      ],
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "pattern": "^FND-[0-9a-f]{12}$"
+        },
+        "status": {
+          "enum": [
+            "OPEN",
+            "FIX_PENDING_VERIFICATION",
+            "RISK_ACCEPTED",
+            "RESOLVED"
+          ]
+        },
+        "first_seen_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_seen_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "last_seen_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_seen_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "due_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "remediation_reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "risk_acceptance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/risk_acceptance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_key",
+        "check_id",
+        "surface_id",
+        "surface_readiness",
+        "target_asset",
+        "attack_path_version",
+        "attempt",
+        "evidence",
+        "evidence_type",
+        "result",
+        "previous_result",
+        "result_transition",
+        "coverage_transition",
+        "severity",
+        "confidence",
+        "single_point_of_failure",
+        "finding",
+        "reproduction_and_cleanup",
+        "code_references"
+      ],
+      "properties": {
+        "observation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "check_id": {
+          "type": "string",
+          "pattern": "^(CORE|LLM|MP|MCPT|WS|ING|WEB|SEC|SC)-[0-9]{2}$"
+        },
+        "surface_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface_readiness": {
+          "enum": [
+            "ABSENT",
+            "PLANNED",
+            "PARTIAL",
+            "IMPLEMENTED",
+            "DEPRECATED"
+          ]
+        },
+        "target_asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attack_path_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attempt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence_type": {
+          "enum": [
+            "STATIC",
+            "DYNAMIC",
+            "BOTH"
+          ]
+        },
+        "result": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNVERIFIED",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "previous_result": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNVERIFIED",
+            "NOT_APPLICABLE",
+            null
+          ]
+        },
+        "result_transition": {
+          "enum": [
+            "FIRST_OBSERVATION",
+            "UNCHANGED",
+            "NEW",
+            "REGRESSED",
+            "RESOLVED",
+            "CHANGED",
+            "NOT_COMPARABLE"
+          ]
+        },
+        "coverage_transition": {
+          "enum": [
+            "GAINED",
+            "UNCHANGED",
+            "LOST",
+            "NOT_COMPARABLE"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "NONE"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "HIGH",
+            "MEDIUM",
+            "LOW"
+          ]
+        },
+        "single_point_of_failure": {
+          "type": "boolean"
+        },
+        "finding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/finding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reproduction_and_cleanup": {
+          "type": "string"
+        },
+        "code_references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "FAIL"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "finding": {
+                "$ref": "#/$defs/finding"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
