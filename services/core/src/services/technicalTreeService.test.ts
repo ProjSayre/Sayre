@@ -36,6 +36,8 @@ describe('getTechnicalTree', () => {
     const tree = await getTechnicalTree('repo-1', VIEWPORT, AUTH_CONTEXT, graph);
 
     const ids = new Set(tree.nodes.map((node) => node.id));
+    expect(tree.authorization).toBe('server-filtered');
+    expect(tree.visibleNodeCount).toBe(nodes.length);
     expect(tree.nodes).toEqual(nodes);
     for (const edge of tree.edges) {
       expect(['CONTAINS', 'IMPORTS']).toContain(edge.type);
@@ -50,7 +52,12 @@ describe('getTechnicalTree', () => {
 
     const tree = await getTechnicalTree('repo-1', VIEWPORT, AUTH_CONTEXT, graph);
 
-    expect(tree).toEqual({ nodes: [], edges: [] });
+    expect(tree).toEqual({
+      authorization: 'server-filtered',
+      visibleNodeCount: 0,
+      nodes: [],
+      edges: [],
+    });
     expect(getStructuralEdges).toHaveBeenCalledWith([], AUTH_CONTEXT);
   });
 
@@ -77,6 +84,11 @@ describe('getTechnicalTree', () => {
 
     await expect(
       resolver({}, { repoId: 'repo-1', viewport: VIEWPORT }, { auth: AUTH_CONTEXT }),
-    ).resolves.toEqual({ nodes: [], edges: [] });
+    ).resolves.toEqual({
+      authorization: 'server-filtered',
+      visibleNodeCount: 0,
+      nodes: [],
+      edges: [],
+    });
   });
 });

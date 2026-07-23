@@ -7,6 +7,8 @@ import type { AuthContext } from '../auth/context';
 import type { GraphEdge, GraphNode, GraphQueryService, Viewport } from '../graph-query/types';
 
 export interface TechnicalTree {
+  authorization: 'server-filtered';
+  visibleNodeCount: number;
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
@@ -19,5 +21,10 @@ export async function getTechnicalTree(
 ): Promise<TechnicalTree> {
   const nodes = await graph.getNodesInViewport(repoId, viewport, ctx);
   const edges = await graph.getStructuralEdges(nodes.map((node) => node.id), ctx);
-  return { nodes, edges };
+  return {
+    authorization: 'server-filtered',
+    visibleNodeCount: nodes.length,
+    nodes,
+    edges,
+  };
 }

@@ -7,13 +7,17 @@ const views = [
   { label: 'Onboarding', icon: 'O', active: false },
 ];
 
-export function AppShell({
-  repositoryId,
-  refName,
-}: {
-  repositoryId: string | null;
+interface AppShellProps {
+  repoId: string | null;
+  providerStateRepositoryId: string | null;
   refName: string;
-}) {
+}
+
+export function AppShell({
+  repoId,
+  providerStateRepositoryId,
+  refName,
+}: AppShellProps) {
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -22,11 +26,13 @@ export function AppShell({
           sayre
         </Link>
         <div className="repo-crumb">
-          acme-engineering <span>/</span> <strong>sayre</strong>
+          repositories <span>/</span> <strong>{repoId ?? 'not selected'}</strong>
         </div>
         <div className="topbar-actions">
-          <span className="branch-pill">main</span>
-          <span className="sync-pill">Synced 12s ago</span>
+          <span className="branch-pill">Technical</span>
+          <span className="sync-pill">
+            {repoId === null ? 'Selection required' : 'Server-authorized'}
+          </span>
           <Link className="avatar" href="/login" aria-label="Open account sign in">
             AK
           </Link>
@@ -52,25 +58,12 @@ export function AppShell({
 
           <section className="repo-card" aria-labelledby="repository-summary">
             <h2 id="repository-summary">Repository map</h2>
-            <p>Static foundation fixture for the first interactive canvas.</p>
-            <div className="repo-stats">
-              <div className="repo-stat">
-                <strong>20</strong>
-                <span>Nodes</span>
-              </div>
-              <div className="repo-stat">
-                <strong>19</strong>
-                <span>Edges</span>
-              </div>
-              <div className="repo-stat">
-                <strong>9</strong>
-                <span>Folders</span>
-              </div>
-              <div className="repo-stat">
-                <strong>11</strong>
-                <span>Files</span>
-              </div>
-            </div>
+            <p>
+              {repoId === null
+                ? 'Choose a registered repository to load its Technical Tree.'
+                : 'Live Folder/File data from the authorized graph projection.'}
+            </p>
+            {repoId !== null && <code className="repo-id">{repoId}</code>}
           </section>
 
           <p className="sidebar-footer">
@@ -81,13 +74,18 @@ export function AppShell({
         <section className="canvas-wrap">
           <div className="canvas-heading">
             <h1>Technical tree</h1>
-            <p>Folder and file structure · main</p>
+            <p>Folder/File structure · containment and imports</p>
           </div>
           <GraphCanvas
-            selection={
-              repositoryId === null
+            repoId={repoId}
+            providerStateSelection={
+              providerStateRepositoryId === null
                 ? null
-                : { repositoryId, refName, surface: 'product' }
+                : {
+                    repositoryId: providerStateRepositoryId,
+                    refName,
+                    surface: 'product',
+                  }
             }
           />
         </section>

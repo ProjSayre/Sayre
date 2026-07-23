@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -10,29 +10,45 @@ import {
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
-import { mockEdges, mockNodes } from '../lib/mockGraph';
 import {
-  createScaleFixture,
   rendererForVisibleNodeCount,
   type AuthorizedCanvasNode,
+  type AuthorizedCanvasPayload,
 } from '../lib/scaleGraph';
+import {
+  TechnicalTreeRequestError,
+  fetchTechnicalTree,
+  toReactFlowElements,
+} from '../lib/technicalTree';
 import { SigmaCanvas } from './SigmaCanvas';
 import { ProviderStateStatus } from './ProviderStateBanner';
 import type { ProviderStateSelection } from '../lib/providerState';
 
-interface SelectedNode {
-  kind: 'Folder' | 'File';
-  label: string;
-  path: string;
+interface GraphCanvasProps {
+  repoId: string | null;
+  providerStateSelection: ProviderStateSelection | null;
 }
 
 interface ReactFlowCanvasProps {
-  onSelect: (node: SelectedNode) => void;
+  payload: AuthorizedCanvasPayload;
+  onSelect: (nodeId: string) => void;
 }
 
-function ReactFlowCanvas({ onSelect }: ReactFlowCanvasProps) {
-  const [nodes, , onNodesChange] = useNodesState(mockNodes);
-  const [edges, , onEdgesChange] = useEdgesState(mockEdges);
+type CanvasState =
+  | { status: 'missing' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; payload: AuthorizedCanvasPayload };
+
+function ReactFlowCanvas({ payload, onSelect }: ReactFlowCanvasProps) {
+  const elements = useMemo(() => toReactFlowElements(payload), [payload]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(elements.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(elements.edges);
+
+  useEffect(() => {
+    setNodes(elements.nodes);
+    setEdges(elements.edges);
+  }, [elements, setEdges, setNodes]);
 
   return (
     <ReactFlow
@@ -40,7 +56,7 @@ function ReactFlowCanvas({ onSelect }: ReactFlowCanvasProps) {
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
-      onNodeClick={(_event, node) => onSelect(node.data)}
+      onNodeClick={(_event, node) => onSelect(node.id)}
       fitView
       fitViewOptions={{ padding: 0.22 }}
       minZoom={0.35}
@@ -61,59 +77,130 @@ function ReactFlowCanvas({ onSelect }: ReactFlowCanvasProps) {
   );
 }
 
-export function GraphCanvas({
-  selection,
+function messageForError(error: unknown): string {
+  if (error instanceof TechnicalTreeRequestError) return error.message;
+  return 'The Technical Tree could not be loaded. Try again.';
+}
+
+function CanvasMessage({
+  title,
+  children,
 }: {
-  selection: ProviderStateSelection | null;
+  title: string;
+  children: React.ReactNode;
 }) {
-  const [fixture, setFixture] = useState<'small' | 'scale'>('small');
-  const [selected, setSelected] = useState<SelectedNode>(mockNodes[0].data);
-  const scalePayload = useMemo(() => createScaleFixture(), []);
-  const visibleNodeCount = fixture === 'scale' ? scalePayload.visibleNodeCount : mockNodes.length;
-  const renderer = rendererForVisibleNodeCount(visibleNodeCount);
-  const selectScaleNode = useCallback(
-    (node: AuthorizedCanvasNode) => setSelected(node),
-    [],
+  return (
+    <div className="graph-canvas-state" role="status">
+      <strong>{title}</strong>
+      <p>{children}</p>
+    </div>
+  );
+}
+
+function selectedNode(
+  payload: AuthorizedCanvasPayload,
+  selectedId: string | null,
+): AuthorizedCanvasNode {
+  return payload.nodes.find((node) => node.id === selectedId) ?? payload.nodes[0];
+}
+
+export function GraphCanvas({
+  repoId,
+  providerStateSelection,
+}: GraphCanvasProps) {
+  const [requestVersion, setRequestVersion] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [state, setState] = useState<CanvasState>(
+    repoId === null ? { status: 'missing' } : { status: 'loading' },
   );
 
-  return (
-    <div className="graph-canvas" aria-label="Interactive repository graph">
-      <ProviderStateStatus selection={selection} />
-      <div className="renderer-switcher" aria-label="Graph scale fixture">
-        <div className="renderer-switcher-buttons">
-          <button
-            type="button"
-            className={fixture === 'small' ? 'active' : ''}
-            aria-pressed={fixture === 'small'}
-            onClick={() => {
-              setFixture('small');
-              setSelected(mockNodes[0].data);
-            }}
-          >
-            20 nodes
-          </button>
-          <button
-            type="button"
-            className={fixture === 'scale' ? 'active' : ''}
-            aria-pressed={fixture === 'scale'}
-            onClick={() => {
-              setFixture('scale');
-              setSelected(scalePayload.nodes[0]);
-            }}
-          >
-            2,000 nodes
+  useEffect(() => {
+    setSelectedId(null);
+    if (repoId === null) {
+      setState({ status: 'missing' });
+      return undefined;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+    setState({ status: 'loading' });
+    void fetchTechnicalTree(repoId, { signal: controller.signal })
+      .then((payload) => {
+        if (active) setState({ status: 'ready', payload });
+      })
+      .catch((error: unknown) => {
+        if (active) setState({ status: 'error', message: messageForError(error) });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [repoId, requestVersion]);
+
+  if (state.status === 'missing') {
+    return (
+      <div className="graph-canvas" aria-label="Technical Tree repository graph">
+        <ProviderStateStatus selection={providerStateSelection} />
+        <CanvasMessage title="Select a repository">
+          Add a registered repository ID with <code>?repoId=&lt;id&gt;</code>.
+        </CanvasMessage>
+      </div>
+    );
+  }
+
+  if (state.status === 'loading') {
+    return (
+      <div className="graph-canvas" aria-label="Technical Tree repository graph" aria-busy="true">
+        <ProviderStateStatus selection={providerStateSelection} />
+        <CanvasMessage title="Loading Technical Tree">
+          Requesting the authorized repository projection.
+        </CanvasMessage>
+      </div>
+    );
+  }
+
+  if (state.status === 'error') {
+    return (
+      <div className="graph-canvas" aria-label="Technical Tree repository graph">
+        <ProviderStateStatus selection={providerStateSelection} />
+        <div className="graph-canvas-state" role="alert">
+          <strong>Unable to load Technical Tree</strong>
+          <p>{state.message}</p>
+          <button type="button" onClick={() => setRequestVersion((version) => version + 1)}>
+            Try again
           </button>
         </div>
-        <span>
-          {renderer === 'sigma' ? 'Sigma · WebGL' : 'React Flow'} ·{' '}
-          {visibleNodeCount.toLocaleString()} authorized nodes
-        </span>
+      </div>
+    );
+  }
+
+  const { payload } = state;
+  if (payload.nodes.length === 0) {
+    return (
+      <div className="graph-canvas" aria-label="Technical Tree repository graph">
+        <ProviderStateStatus selection={providerStateSelection} />
+        <CanvasMessage title="No structural nodes yet">
+          The repository is authorized, but its full parse has not produced Folder/File nodes.
+        </CanvasMessage>
+      </div>
+    );
+  }
+
+  const renderer = rendererForVisibleNodeCount(payload.visibleNodeCount);
+  const selected = selectedNode(payload, selectedId);
+  return (
+    <div className="graph-canvas" aria-label="Interactive Technical Tree repository graph">
+      <ProviderStateStatus selection={providerStateSelection} />
+      <div className="renderer-status" aria-label="Technical Tree renderer">
+        {renderer === 'sigma' ? 'Sigma · WebGL' : 'React Flow'} ·{' '}
+        {payload.visibleNodeCount.toLocaleString()} authorized nodes
       </div>
 
       {renderer === 'sigma' ? (
-        <SigmaCanvas payload={scalePayload} onSelect={selectScaleNode} />
+        <SigmaCanvas payload={payload} onSelect={(node) => setSelectedId(node.id)} />
       ) : (
-        <ReactFlowCanvas onSelect={setSelected} />
+        <ReactFlowCanvas payload={payload} onSelect={setSelectedId} />
       )}
 
       <aside className="node-inspector canvas-node-inspector" aria-live="polite">
