@@ -59,3 +59,26 @@ export interface GraphQueryService {
     ctx: AuthContext,
   ): Promise<AffectedNodes>;
 }
+
+export interface ResolvedStyleValue {
+  value: string | null;
+  sourceNodeId: string | null;
+}
+
+export interface ResolvedStyleRules {
+  nodeId: string;
+  codingStyle: ResolvedStyleValue;
+  commentStyle: ResolvedStyleValue;
+}
+
+/**
+ * Separate from GraphQueryService so existing Technical Tree/realtime callers do
+ * not need a style-resolution method in their narrow test doubles. REST and future
+ * MCP callers share this context-taking contract.
+ */
+export interface StyleRuleGraphQueryService {
+  resolveStyleRules(
+    nodeId: string,
+    ctx: AuthContext,
+  ): Promise<ResolvedStyleRules | null>;
+}

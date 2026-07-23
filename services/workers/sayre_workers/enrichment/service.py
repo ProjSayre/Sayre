@@ -20,6 +20,7 @@ request.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Protocol
 
 from messaging.envelope import MessageEnvelope
@@ -35,6 +36,7 @@ from .models import (
     InvalidEnrichmentWriteError,
 )
 from .providers import GenerationRequest, ModelProviderFactory
+from .style_classifier import ModelStyleClassifier, StyleClassifier
 
 
 class GenerationConfigStore(Protocol):
@@ -49,11 +51,13 @@ class EnrichmentService:
         model_provider_factory: ModelProviderFactory,
         graphify_factory: GraphifyAdapterFactory,
         config_store: GenerationConfigStore,
+        style_classifier: StyleClassifier | None = None,
     ) -> None:
         self._graph_store = graph_store
         self._model_provider_factory = model_provider_factory
         self._graphify_factory = graphify_factory
         self._config_store = config_store
+        self._style_classifier = style_classifier or ModelStyleClassifier()
 
     async def handle(self, envelope: MessageEnvelope) -> EnrichmentResult:
         job = parse_enrichment_envelope(envelope)
@@ -63,7 +67,7 @@ class EnrichmentService:
         context = await self._graph_store.load_context(
             job.scope, job.changed_paths, job.full_rebuild
         )
-        if not context.files:
+        if not context.files and not context.folders:
             # A valid ack -- nothing to enrich (empty repo, no matching changed
             # paths, or a priority-lane job that carries no enrichable scope yet).
             return EnrichmentResult(
@@ -100,6 +104,20 @@ class EnrichmentService:
             # scope and the adapter's returned write are in hand) so no Cypher runs.
             raise InvalidEnrichmentWriteError(
                 "GraphifyAdapter returned a write scoped to a different job"
+            )
+        style_patches = await self._style_classifier.classify(context, provider)
+        if style_patches:
+            write = replace(
+                write,
+                property_patches=(*write.property_patches, *style_patches),
+            )
+        context_folder_uids = {folder.uid for folder in context.folders}
+        if any(
+            patch.label != "Folder" or patch.uid not in context_folder_uids
+            for patch in write.property_patches
+        ):
+            raise InvalidEnrichmentWriteError(
+                "enrichment property patch targets a Folder outside the loaded context"
             )
         await self._graph_store.apply(write)
 

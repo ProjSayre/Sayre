@@ -16,6 +16,8 @@ from .graphify_adapter import FakeGraphifyAdapter, GraphifyAdapter, GraphifyAdap
 from .models import (
     ENRICHMENT_EDGE_TYPES,
     ENRICHMENT_NODE_LABELS,
+    MAX_STYLE_VALUE_CHARS,
+    PATCHABLE_PROPERTIES,
     EnrichmentContext,
     EnrichmentEdge,
     EnrichmentJob,
@@ -23,10 +25,13 @@ from .models import (
     EnrichmentResult,
     EnrichmentWrite,
     FileContext,
+    FolderContext,
     GenerationConfig,
     GenerationConfigNotFoundError,
     InvalidEnrichmentEventError,
     InvalidEnrichmentWriteError,
+    InvalidStyleClassificationError,
+    NodePropertyPatch,
 )
 from .onboarding import (
     InvalidOnboardingJobError,
@@ -45,10 +50,13 @@ from .providers import (
 )
 from .runtime import build_enrichment_service
 from .service import EnrichmentService, GenerationConfigStore
+from .style_classifier import ModelStyleClassifier, StyleClassifier
 
 __all__ = [
     "ENRICHMENT_EDGE_TYPES",
     "ENRICHMENT_NODE_LABELS",
+    "MAX_STYLE_VALUE_CHARS",
+    "PATCHABLE_PROPERTIES",
     "EnrichmentContext",
     "EnrichmentEdge",
     "EnrichmentGraphStore",
@@ -60,6 +68,7 @@ __all__ = [
     "FakeGraphifyAdapter",
     "FakeModelProvider",
     "FileContext",
+    "FolderContext",
     "GenerationConfig",
     "GenerationConfigNotFoundError",
     "GenerationConfigStore",
@@ -69,13 +78,17 @@ __all__ = [
     "GraphifyAdapterFactory",
     "InvalidEnrichmentEventError",
     "InvalidEnrichmentWriteError",
+    "InvalidStyleClassificationError",
     "InvalidOnboardingJobError",
     "ModelProvider",
     "ModelProviderFactory",
     "Neo4jEnrichmentGraphStore",
+    "NodePropertyPatch",
     "OnboardingGenerateJob",
     "OnboardingPriorityHandler",
     "PostgresGenerationConfigStore",
+    "ModelStyleClassifier",
+    "StyleClassifier",
     "build_enrichment_service",
     "build_onboarding_generator",
     "parse_enrichment_envelope",
