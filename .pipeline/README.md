@@ -9,7 +9,10 @@ Shared working folder for the Planner -> Dev -> Tester -> Review -> Security pip
 | `test-results.md` | tester | review |
 | `review.md` | review (read-only) | security-checker, dev (if `NEEDS_FIXES`), humans |
 | `security-report.md` | security-checker (read-only) | dev (if `BLOCKED`), humans |
+| `security-history/<run-id>/manifest.json` | security-checker (read-only) | later security runs, humans, artifact exporter |
+| `security-history/<run-id>/results.json` | security-checker (read-only) | later security runs, humans, progress tooling |
+| `security-history/<run-id>/report.md` | security-checker (read-only) | later security runs, humans |
 
 **Routing:** if `review.md`'s verdict is `NEEDS_FIXES`, the pipeline goes back to `dev`, which reads `review.md`'s fix list before re-implementing. Same pattern if `security-report.md` comes back `BLOCKED`. `review` and `security-checker` cannot edit source code themselves — enforced by a hook (`scripts/validate-pipeline-only-write.sh`) that blocks any `Write`/`Edit` outside this folder for those two agents.
 
-These files are per-ticket working state, not permanent documentation — they're gitignored by default (see root `.gitignore`). Copy them out before starting the next ticket if you want a record of a given run, since each stage overwrites its file every time.
+The five top-level stage files are per-ticket working state and may be overwritten. Security history directories are immutable and must never be reused or overwritten; later runs use them as progress baselines. Everything under `.pipeline/` except this README is gitignored because audit evidence may contain sensitive paths or sanitized attack traces. Export completed `security-history/<run-id>/` directories to an approved access-controlled CI or security-artifact store before deleting a worktree or when history must survive machines.

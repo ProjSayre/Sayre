@@ -29,10 +29,17 @@ describe('at-scale renderer selection', () => {
 
   it('constructs graphology only from the already-authorized payload', () => {
     const fixture = createScaleFixture();
+    fixture.edges.push({
+      id: 'imports-file-0-file-1',
+      source: 'file-0',
+      target: 'file-1',
+      relationship: 'IMPORTS',
+    });
     const graph = toPresentationGraph(fixture);
 
     expect(graph.order).toBe(2_000);
-    expect(graph.size).toBe(1_999);
+    expect(graph.size).toBe(2_000);
+    expect(graph.getEdgeAttribute('imports-file-0-file-1', 'relationship')).toBe('IMPORTS');
     expect(GRAPHLOGY_PRESENTATION_ALLOWLIST).not.toContain('RBAC filtering');
     expect(GRAPHLOGY_PRESENTATION_ALLOWLIST).not.toContain('graph traversal');
   });
