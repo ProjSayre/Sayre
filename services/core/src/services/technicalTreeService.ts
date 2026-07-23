@@ -3,6 +3,7 @@
 // identically from a REST route today and a GraphQL resolver later (§4.10).
 
 import { graphQueryService } from '../graph-query';
+import type { AuthContext } from '../auth/context';
 import type { GraphEdge, GraphNode, GraphQueryService, Viewport } from '../graph-query/types';
 
 export interface TechnicalTree {
@@ -12,11 +13,11 @@ export interface TechnicalTree {
 
 export async function getTechnicalTree(
   repoId: string,
-  orgId: string,
   viewport: Viewport,
+  ctx: AuthContext,
   graph: GraphQueryService = graphQueryService,
 ): Promise<TechnicalTree> {
-  const nodes = await graph.getNodesInViewport(repoId, orgId, viewport);
-  const edges = await graph.getStructuralEdges(repoId, orgId, nodes);
+  const nodes = await graph.getNodesInViewport(repoId, viewport, ctx);
+  const edges = await graph.getStructuralEdges(nodes.map((node) => node.id), ctx);
   return { nodes, edges };
 }

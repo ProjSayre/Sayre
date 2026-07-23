@@ -2,11 +2,12 @@
 // Turns a `graph.updated` change set into an RBAC-filtered, per-context delta of
 // Folder/File nodes for the Realtime Service (services/gateway) to fan out.
 //
-// `orgId` is a required parameter resolved server-side by the caller (the
-// `/internal/realtime/graph-delta` route, via requireOrgId(req)) — NEVER read
-// from the request body (.claude/rules/security-multitenancy.md, W2-03 AC5).
+// `ctx` is resolved server-side by the caller (the internal route uses
+// requireAuthContext(req)) — identity is NEVER read from the request body
+// (.claude/rules/security-multitenancy.md, W2-03 AC5).
 
 import type { CanvasNode, RealtimeGraphDelta } from '@sayre/shared-types';
+import type { AuthContext } from '../auth/context';
 import { graphQueryService } from '../graph-query';
 import type { GraphNode, GraphQueryService } from '../graph-query/types';
 
@@ -34,8 +35,8 @@ function toCanvasNode(node: GraphNode): CanvasNode {
  */
 export async function getRealtimeGraphDelta(
   repoId: string,
-  orgId: string,
   change: RealtimeGraphChange,
+  ctx: AuthContext,
   graph: GraphQueryService = graphQueryService,
 ): Promise<RealtimeGraphDelta> {
   if (change.fullRebuild) {
@@ -48,7 +49,7 @@ export async function getRealtimeGraphDelta(
     };
   }
 
-  const { visible, removed } = await graph.getAffectedNodes(repoId, orgId, change.changedPaths);
+  const { visible, removed } = await graph.getAffectedNodes(repoId, change.changedPaths, ctx);
 
   return {
     repoId,
