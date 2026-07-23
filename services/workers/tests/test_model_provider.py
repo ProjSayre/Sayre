@@ -129,6 +129,67 @@ async def test_postgres_config_store_preserves_json_options_and_generation_scope
 
 
 @pytest.mark.asyncio
+async def test_generation_config_store_reads_fresh_settings_for_each_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "provider": "anthropic",
+            "model": "claude-first",
+            "endpoint_url": None,
+            "credential_ref": "env://ANTHROPIC_API_KEY",
+            "config": {},
+        },
+        {
+            "provider": "openai",
+            "model": "gpt-next",
+            "endpoint_url": None,
+            "credential_ref": "env://OPENAI_API_KEY",
+            "config": {},
+        },
+    ]
+    queries: list[tuple[str, tuple[str, ...]]] = []
+
+    class Cursor:
+        def __init__(self, row: dict[str, Any]) -> None:
+            self._row = row
+
+        async def fetchone(self) -> dict[str, Any]:
+            return self._row
+
+    class Connection:
+        async def __aenter__(self) -> Connection:
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            del args
+
+        async def execute(self, statement: str, params: tuple[str, ...]) -> Cursor:
+            queries.append((statement, params))
+            return Cursor(rows.pop(0))
+
+    store = PostgresGenerationConfigStore("postgresql://not-used")
+
+    async def connect(org_id: str) -> Connection:
+        assert org_id == "org-real"
+        return Connection()
+
+    monkeypatch.setattr(store, "_connect", connect)
+
+    first = await store.load_generation_config("org-real")
+    second = await store.load_generation_config("org-real")
+
+    assert first is not None and first.model == "claude-first"
+    assert second is not None and second.model == "gpt-next"
+    assert len(queries) == 2
+    assert all(
+        "WHERE org_id = %s AND purpose = 'generation'" in statement
+        and params == ("org-real",)
+        for statement, params in queries
+    )
+
+
+@pytest.mark.asyncio
 async def test_anthropic_adapter_uses_real_sdk_contract_for_plain_and_structured_output() -> None:
     captured: list[dict[str, Any]] = []
 
@@ -365,7 +426,10 @@ async def test_self_hosted_construction_uses_exact_endpoint_without_secret_fallb
         {
             "api_key": "local-endpoint-no-key",
             "base_url": "http://127.0.0.1:11434/v1",
-            "http_client": ("http-client", {"trust_env": False}),
+            "http_client": (
+                "http-client",
+                {"trust_env": False, "follow_redirects": False},
+            ),
         }
     ]
 

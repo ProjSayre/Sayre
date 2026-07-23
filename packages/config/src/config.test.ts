@@ -18,6 +18,7 @@ describe('getConfig', () => {
     expect(getConfig('LINEAR_API_URL')).toBe('https://api.linear.app/graphql');
     expect(getConfig('NEO4J_URI')).toBe('bolt://localhost:7687');
     expect(getConfig('NEO4J_USER')).toBe('neo4j');
+    expect(getConfig('MODEL_PROVIDER_ENDPOINT_CATALOG')).toBe('[]');
     setConfigOverrideForTests('CORE_PORT', ' 4100 ');
     expect(getConfig('CORE_PORT')).toBe(' 4100 ');
   });

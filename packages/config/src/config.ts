@@ -29,6 +29,7 @@ export const CONFIG_NAMES = [
   'LINEAR_API_URL',
   'NEO4J_URI',
   'NEO4J_USER',
+  'MODEL_PROVIDER_ENDPOINT_CATALOG',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -63,6 +64,9 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   LINEAR_API_URL: 'https://api.linear.app/graphql',
   NEO4J_URI: 'bolt://localhost:7687',
   NEO4J_USER: 'neo4j',
+  // Non-secret W3-09 allowlist. Each production endpoint must be explicitly
+  // provisioned for an org; an empty catalog makes self-hosted selection fail closed.
+  MODEL_PROVIDER_ENDPOINT_CATALOG: '[]',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

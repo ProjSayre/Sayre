@@ -4,6 +4,7 @@ import { technicalTreeRouter } from './routes/technicalTree';
 import { realtimeInternalRouter } from './routes/realtimeInternal';
 import { githubWebhookRouter } from './routes/githubWebhook';
 import { githubInstallRouter } from './routes/githubInstall';
+import { providerSettingsRouter } from './routes/providerSettings';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -29,6 +30,7 @@ export function createApp(): Express {
   // start only; the callback route resolves org from the signed `state` JWT
   // and stays exempt — it can't rely on a session surviving the GitHub redirect).
   app.use(githubInstallRouter);
+  app.use(providerSettingsRouter);
   app.use(errorHandler);
   return app;
 }

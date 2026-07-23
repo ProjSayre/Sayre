@@ -14,6 +14,10 @@ import {
 } from '../services/githubAppInstallService';
 import { AuthenticationError } from './authenticate';
 import { AuthorizationError } from './authorize';
+import {
+  ProviderSettingsForbiddenError,
+  ProviderSettingsValidationError,
+} from '../services/providerSettingsService';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -91,6 +95,16 @@ export function errorHandler(
 
   if (err instanceof AuthorizationError) {
     res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof ProviderSettingsForbiddenError) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof ProviderSettingsValidationError) {
+    res.status(400).json({ error: 'invalid provider settings' });
     return;
   }
 

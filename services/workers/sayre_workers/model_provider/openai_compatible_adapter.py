@@ -94,7 +94,10 @@ class OpenAICompatibleModelProvider:
             client = AsyncOpenAI(
                 api_key=api_key,
                 base_url=endpoint,
-                http_client=DefaultAsyncHttpxClient(trust_env=False),
+                http_client=DefaultAsyncHttpxClient(
+                    trust_env=False,
+                    follow_redirects=False,
+                ),
             )
         else:
             raise InvalidModelProviderConfigError(

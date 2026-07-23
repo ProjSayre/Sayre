@@ -21,6 +21,9 @@ export function AppShell() {
         <div className="topbar-actions">
           <span className="branch-pill">main</span>
           <span className="sync-pill">Synced 12s ago</span>
+          <Link className="settings-link" href="/settings/providers">
+            Provider settings
+          </Link>
           <Link className="avatar" href="/login" aria-label="Open account sign in">
             AK
           </Link>
