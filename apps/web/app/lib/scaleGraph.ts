@@ -18,7 +18,7 @@ export interface AuthorizedCanvasEdge {
   id: string;
   source: string;
   target: string;
-  relationship: 'CONTAINS';
+  relationship: 'CONTAINS' | 'IMPORTS';
 }
 
 /**
@@ -126,8 +126,8 @@ export function toPresentationGraph(payload: AuthorizedCanvasPayload): Graph {
       throw new Error(`edge ${edge.id} references a node outside the authorized payload`);
     }
     graph.addDirectedEdgeWithKey(edge.id, edge.source, edge.target, {
-      color: '#303b47',
-      size: 0.45,
+      color: edge.relationship === 'IMPORTS' ? '#688bc0' : '#303b47',
+      size: edge.relationship === 'IMPORTS' ? 0.7 : 0.45,
       relationship: edge.relationship,
     });
   }

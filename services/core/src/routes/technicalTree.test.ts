@@ -60,7 +60,14 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
     );
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { nodes: GraphNode[]; edges: GraphEdge[] };
+    const body = (await res.json()) as {
+      authorization: string;
+      visibleNodeCount: number;
+      nodes: GraphNode[];
+      edges: GraphEdge[];
+    };
+    expect(body.authorization).toBe('server-filtered');
+    expect(body.visibleNodeCount).toBe(body.nodes.length);
     expect(body.nodes.length).toBeGreaterThan(0);
     expect(body.edges).toEqual([]);
   });
