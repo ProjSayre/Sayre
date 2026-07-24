@@ -79,7 +79,10 @@ jobs:
       # DATABASE_ADMIN_URL the RLS steps use, or it silently skips instead of
       # actually proving the "filter removed" isolation guarantee.
       - name: core — test
-        run: npx turbo run test --filter=@sayre/core
+        # Run the workspace test command directly so DATABASE_ADMIN_URL reaches
+        # Vitest. Turbo's strict env mode strips undeclared variables, which
+        # would make the penetration suite silently take its reachability skip.
+        run: npm run test --workspace @sayre/core
         env:
           DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 

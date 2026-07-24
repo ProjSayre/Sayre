@@ -15,7 +15,7 @@ No real Postgres required -- exercises `org_scoped_connection` and
   - `assert_runtime_role_rls_safe` no-ops outside `SAYRE_ENV` in `{"ci","production"}`
     (so it never blocks local dev, where the login role is intentionally a superuser)
     and is enforcing (raises `RuntimeRoleUnsafeError`) inside them, for both the
-    bypass-role and not-a-sayre_app-member cases.
+    bypass-role and cannot-SET-sayre_app cases.
 
 Real-Postgres coverage of the actual RLS-engagement guarantee (the "privileged-DSN
 trap": a superuser/BYPASSRLS DSN still isolates once routed through
@@ -61,7 +61,7 @@ class _FakeCursor:
 
 
 class _FakeTransaction:
-    def __init__(self, log: list[str]) -> None:
+    def __init__(self, log: list[Any]) -> None:
         self._log = log
 
     async def __aenter__(self) -> "_FakeTransaction":
@@ -237,11 +237,13 @@ async def test_raises_when_bypassrls_even_if_not_superuser(install_fake_connect)
         await assert_runtime_role_rls_safe(FAKE_DSN)
 
 
-async def test_raises_when_role_not_a_sayre_app_member(install_fake_connect):
+async def test_raises_when_role_cannot_set_sayre_app(install_fake_connect):
     set_config_override_for_tests("SAYRE_ENV", "ci")
-    install_fake_connect(next_row=(False, False, False))  # in_sayre_app=False
-    with pytest.raises(RuntimeRoleUnsafeError, match="not a member of sayre_app"):
+    created = install_fake_connect(next_row=(False, False, False))
+    with pytest.raises(RuntimeRoleUnsafeError, match="cannot SET ROLE to sayre_app"):
         await assert_runtime_role_rls_safe(FAKE_DSN)
+    assert "'set'" in _sql_calls(created[0])[0][0].lower()
+    assert "session_user" in _sql_calls(created[0])[0][0].lower()
 
 
 async def test_raises_when_role_cannot_be_resolved(install_fake_connect):
@@ -253,7 +255,7 @@ async def test_raises_when_role_cannot_be_resolved(install_fake_connect):
 
 async def test_passes_and_closes_connection_when_role_is_safe(install_fake_connect):
     set_config_override_for_tests("SAYRE_ENV", "ci")
-    created = install_fake_connect(next_row=(False, False, True))  # safe, in_sayre_app=True
+    created = install_fake_connect(next_row=(False, False, True))
     await assert_runtime_role_rls_safe(FAKE_DSN)
     assert created[0].closed is True
 

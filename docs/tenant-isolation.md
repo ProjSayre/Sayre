@@ -218,9 +218,11 @@ guarantee, `assert_runtime_role_rls_safe(dsn)` (Python:
 `services/workers/sayre_workers/db/session.py`; Node:
 `services/core/src/security/assertRuntimeRoleRlsSafe.ts`) queries `pg_roles` for the
 resolved `DATABASE_RUNTIME_URL` login role and fails closed if that role can bypass
-RLS (`rolsuper`/`rolbypassrls`) or is not a member of `sayre_app` (i.e. `SET LOCAL
-ROLE sayre_app` would fail at every call). This assertion is invoked once at service
-startup (`sayre_workers/ingestion/runtime.py`'s `build_ingestion_service`/
+RLS (`rolsuper`/`rolbypassrls`) or lacks the PostgreSQL `SET` privilege for
+`sayre_app` (i.e. `SET LOCAL ROLE sayre_app` would fail at every call).
+Generic role membership is insufficient because PostgreSQL 16 memberships can
+be granted with `SET FALSE`. This assertion is invoked once at service startup
+(`sayre_workers/ingestion/runtime.py`'s `build_ingestion_service`/
 `build_embedding_consumer`; `services/core/src/index.ts`) and is deliberately a
 **CI/production gate, not a local-dev block**: local dev's login role (`sayre_dev`,
 per `infra/.env.example`) is intentionally a superuser, so the assertion is a no-op

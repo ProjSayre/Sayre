@@ -25,35 +25,37 @@ afterEach(() => {
 describe('assertRuntimeRoleRlsSafe', () => {
   it('no-ops outside NODE_ENV=production and CI!=true (never even connects)', async () => {
     vi.stubEnv('NODE_ENV', 'development');
-    vi.stubEnv('CI', '');
+    vi.stubEnv('CI', 'false');
     await assertRuntimeRoleRlsSafe(FAKE_DSN);
     expect(connectMock).not.toHaveBeenCalled();
   });
 
   it('no-ops for NODE_ENV=test', async () => {
     vi.stubEnv('NODE_ENV', 'test');
-    vi.stubEnv('CI', '');
+    vi.stubEnv('CI', 'false');
     await assertRuntimeRoleRlsSafe(FAKE_DSN);
     expect(connectMock).not.toHaveBeenCalled();
   });
 
   it('enforces when NODE_ENV=production', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    queryMock.mockResolvedValue({ rows: [{ rolsuper: true, rolbypassrls: false, in_sayre_app: true }] });
+    queryMock.mockResolvedValue({ rows: [{ rolsuper: true, rolbypassrls: false, can_set_sayre_app: true }] });
     await expect(assertRuntimeRoleRlsSafe(FAKE_DSN)).rejects.toBeInstanceOf(RuntimeRoleUnsafeError);
     expect(connectMock).toHaveBeenCalled();
   });
 
   it('enforces when CI=true even if NODE_ENV is unset', async () => {
     vi.stubEnv('CI', 'true');
-    queryMock.mockResolvedValue({ rows: [{ rolsuper: false, rolbypassrls: true, in_sayre_app: true }] });
+    queryMock.mockResolvedValue({ rows: [{ rolsuper: false, rolbypassrls: true, can_set_sayre_app: true }] });
     await expect(assertRuntimeRoleRlsSafe(FAKE_DSN)).rejects.toThrow(/bypass row-level security/);
   });
 
-  it('raises when the role is not a member of sayre_app', async () => {
+  it('raises when the role lacks SET privilege for sayre_app', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    queryMock.mockResolvedValue({ rows: [{ rolsuper: false, rolbypassrls: false, in_sayre_app: false }] });
-    await expect(assertRuntimeRoleRlsSafe(FAKE_DSN)).rejects.toThrow(/not a member of sayre_app/);
+    queryMock.mockResolvedValue({ rows: [{ rolsuper: false, rolbypassrls: false, can_set_sayre_app: false }] });
+    await expect(assertRuntimeRoleRlsSafe(FAKE_DSN)).rejects.toThrow(/cannot SET ROLE to sayre_app/);
+    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining("'set'"));
+    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining('session_user'));
   });
 
   it('raises when the role cannot be resolved', async () => {
@@ -64,21 +66,21 @@ describe('assertRuntimeRoleRlsSafe', () => {
 
   it('passes and closes the connection when the role is safe', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    queryMock.mockResolvedValue({ rows: [{ rolsuper: false, rolbypassrls: false, in_sayre_app: true }] });
+    queryMock.mockResolvedValue({ rows: [{ rolsuper: false, rolbypassrls: false, can_set_sayre_app: true }] });
     await expect(assertRuntimeRoleRlsSafe(FAKE_DSN)).resolves.toBeUndefined();
     expect(endMock).toHaveBeenCalled();
   });
 
   it('always closes the connection, even when it throws', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    queryMock.mockResolvedValue({ rows: [{ rolsuper: true, rolbypassrls: false, in_sayre_app: true }] });
+    queryMock.mockResolvedValue({ rows: [{ rolsuper: true, rolbypassrls: false, can_set_sayre_app: true }] });
     await expect(assertRuntimeRoleRlsSafe(FAKE_DSN)).rejects.toThrow();
     expect(endMock).toHaveBeenCalled();
   });
 
   it('never leaks the DSN in the thrown error message', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    queryMock.mockResolvedValue({ rows: [{ rolsuper: true, rolbypassrls: false, in_sayre_app: true }] });
+    queryMock.mockResolvedValue({ rows: [{ rolsuper: true, rolbypassrls: false, can_set_sayre_app: true }] });
     const secretMarker = 's3cr3t-credential-marker';
     await expect(
       assertRuntimeRoleRlsSafe(`postgresql://user:${secretMarker}@host/db`),

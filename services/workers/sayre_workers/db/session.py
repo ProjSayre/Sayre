@@ -50,8 +50,8 @@ class InvalidOrgIdError(ValueError):
 
 class RuntimeRoleUnsafeError(RuntimeError):
     """The resolved `DATABASE_RUNTIME_URL` login role can bypass Postgres RLS
-    (`rolsuper` or `rolbypassrls`), or is not granted membership in
-    `sayre_app`. CI/production gate only (Resolved decision Q2) -- see
+    (`rolsuper` or `rolbypassrls`), or cannot `SET ROLE` to `sayre_app`.
+    CI/production gate only (Resolved decision Q2) -- see
     `assert_runtime_role_rls_safe`."""
 
 
@@ -115,9 +115,12 @@ async def assert_runtime_role_rls_safe(dsn: str) -> None:
     Queries `pg_roles` for the DSN's *login* role (before any `SET LOCAL
     ROLE`) and raises `RuntimeRoleUnsafeError` if that role:
       - can bypass RLS (`rolsuper` or `rolbypassrls`), or
-      - is not granted membership in `sayre_app` (which would mean every
-        `org_scoped_connection` call's `SET LOCAL ROLE sayre_app` fails
-        closed at runtime -- better to catch the misprovisioning at boot).
+      - cannot `SET ROLE` to `sayre_app` (which would mean every
+        `org_scoped_connection` call's `SET LOCAL ROLE sayre_app` fails closed
+        at runtime -- better to catch the misprovisioning at boot).
+
+    PostgreSQL 16 role memberships can be granted with `SET FALSE`, so generic
+    membership is not sufficient for this capability check.
 
     This is a *defense-in-depth early warning*, not the enforcement mechanism
     itself: `org_scoped_connection` already unconditionally drops to
@@ -141,8 +144,8 @@ async def assert_runtime_role_rls_safe(dsn: str) -> None:
     try:
         cursor = await connection.execute(
             "SELECT rolsuper, rolbypassrls, "
-            "pg_has_role(current_user, 'sayre_app', 'member') AS in_sayre_app "
-            "FROM pg_roles WHERE rolname = current_user"
+            "pg_has_role(session_user, 'sayre_app', 'set') AS can_set_sayre_app "
+            "FROM pg_roles WHERE rolname = session_user"
         )
         row = await cursor.fetchone()
     finally:
@@ -152,7 +155,7 @@ async def assert_runtime_role_rls_safe(dsn: str) -> None:
         raise RuntimeRoleUnsafeError(
             "assert_runtime_role_rls_safe: could not resolve the runtime login role."
         )
-    rolsuper, rolbypassrls, in_sayre_app = row
+    rolsuper, rolbypassrls, can_set_sayre_app = row
     if rolsuper or rolbypassrls:
         raise RuntimeRoleUnsafeError(
             "assert_runtime_role_rls_safe: DATABASE_RUNTIME_URL's login role "
@@ -160,10 +163,10 @@ async def assert_runtime_role_rls_safe(dsn: str) -> None:
             "Provision a NOBYPASSRLS, non-superuser login role granted "
             "membership in sayre_app before this deploys to CI/production."
         )
-    if not in_sayre_app:
+    if not can_set_sayre_app:
         raise RuntimeRoleUnsafeError(
             "assert_runtime_role_rls_safe: DATABASE_RUNTIME_URL's login role "
-            "is not a member of sayre_app; org_scoped_connection's SET LOCAL "
-            "ROLE sayre_app will fail closed on every call. Fix the grant "
-            "before this deploys to CI/production."
+            "cannot SET ROLE to sayre_app; org_scoped_connection's SET LOCAL "
+            "ROLE sayre_app will fail closed on every call. Grant a SET-enabled "
+            "membership before this deploys to CI/production."
         )
