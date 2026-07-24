@@ -13,6 +13,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from sayre_workers.ingestion.models import GraphScope
+from sayre_workers.model_provider import GenerationConfig as ProviderGenerationConfig
+
+GenerationConfig = ProviderGenerationConfig
 
 LANE = Literal["default", "priority"]
 
@@ -64,15 +67,6 @@ class EnrichmentJob:
     lane: LANE
     trace_id: str | None
     idempotency_key: str
-
-
-@dataclass(frozen=True)
-class GenerationConfig:
-    provider: str  # 'fake_deterministic' (test) | 'anthropic' | 'openai' | 'openai_compatible'
-    model: str
-    endpoint_url: str | None = None
-    credential_ref: str | None = None
-    options: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

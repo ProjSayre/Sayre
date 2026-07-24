@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +24,10 @@ from sayre_workers.enrichment.models import (
     GenerationConfig,
     InvalidEnrichmentWriteError,
 )
-from sayre_workers.enrichment.providers import GenerationResponse, ModelProviderFactory
+from sayre_workers.enrichment.providers import (
+    ModelProviderFactory,
+    StructuredGenerationResponse,
+)
 from sayre_workers.enrichment.service import EnrichmentService
 from sayre_workers.ingestion.graph import Neo4jGraphStore
 from sayre_workers.ingestion.models import GraphNode, GraphProjection, GraphScope
@@ -393,12 +397,16 @@ class _RecordingConfigStore:
 
 
 class _CheckoutGraphifyAdapter:
+    def schema(self, context: EnrichmentContext) -> Mapping[str, Any]:
+        del context
+        return {}
+
     async def shape(
         self,
         context: EnrichmentContext,
-        generation: GenerationResponse,
+        generation: StructuredGenerationResponse,
     ) -> EnrichmentWrite:
-        assert generation.text
+        assert isinstance(generation.data, dict)
         return _checkout_candidate(context)
 
 

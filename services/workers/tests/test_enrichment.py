@@ -19,7 +19,9 @@ from sayre_workers.enrichment.consumers import run_enrichment_consumer
 from sayre_workers.enrichment.enrichment_graph import validate_enrichment_write
 from sayre_workers.enrichment.events import parse_enrichment_envelope
 from sayre_workers.enrichment.graphify_adapter import (
+    BaseGraphifyAdapter,
     FakeGraphifyAdapter,
+    GRAPHIFY_OUTPUT_SCHEMA,
     GraphifyAdapterFactory,
 )
 from sayre_workers.enrichment.models import (
@@ -39,8 +41,8 @@ from sayre_workers.enrichment.onboarding_bridge import build_onboarding_generato
 from sayre_workers.enrichment.providers import (
     FakeModelProvider,
     GenerationRequest,
-    GenerationResponse,
     ModelProviderFactory,
+    StructuredGenerationResponse,
 )
 from sayre_workers.enrichment.service import EnrichmentService
 from sayre_workers.ingestion.models import GraphScope
@@ -264,19 +266,6 @@ async def test_model_provider_factory_gates_fake_deterministic_to_test_env(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("provider_name", ["anthropic", "openai", "openai_compatible"])
-async def test_model_provider_factory_defers_real_providers_to_w3_07(
-    monkeypatch: pytest.MonkeyPatch, provider_name: str
-) -> None:
-    monkeypatch.setenv("SAYRE_ENV", "test")
-    factory = ModelProviderFactory()
-    config = GenerationConfig(provider=provider_name, model="some-model")
-
-    with pytest.raises(NotImplementedError, match="W3-07"):
-        await factory.create(config)
-
-
-@pytest.mark.asyncio
 async def test_model_provider_factory_rejects_unsupported_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -300,7 +289,7 @@ async def test_fake_graphify_adapter_emits_placeholder_feature_and_part_of_edges
     context = EnrichmentContext(scope=scope, files=files)
     adapter = FakeGraphifyAdapter()
 
-    write = await adapter.shape(context, GenerationResponse(text="ignored by the skeleton"))
+    write = await adapter.shape(context, StructuredGenerationResponse(data={}))
 
     assert write.scope == scope
     assert len(write.nodes) == 1
@@ -323,15 +312,15 @@ async def test_fake_graphify_adapter_is_idempotent_across_calls_for_merge_safety
     context = EnrichmentContext(scope=scope, files=(_file_context(scope, "src/a.py"),))
     adapter = FakeGraphifyAdapter()
 
-    first = await adapter.shape(context, GenerationResponse(text="x"))
-    second = await adapter.shape(context, GenerationResponse(text="y"))
+    first = await adapter.shape(context, StructuredGenerationResponse(data={"x": 1}))
+    second = await adapter.shape(context, StructuredGenerationResponse(data={"y": 2}))
 
     assert first.nodes[0].uid == second.nodes[0].uid
     assert {edge.source_uid for edge in first.edges} == {edge.source_uid for edge in second.edges}
 
 
-def test_graphify_adapter_factory_returns_the_fake() -> None:
-    assert isinstance(GraphifyAdapterFactory().create(), FakeGraphifyAdapter)
+def test_graphify_adapter_factory_returns_the_production_adapter() -> None:
+    assert isinstance(GraphifyAdapterFactory().create(), BaseGraphifyAdapter)
 
 
 # --------------------------------------------------------------------------------
@@ -433,7 +422,16 @@ class StubGraphifyAdapterFactory:
 
 
 class DisallowedPrimitiveGraphifyAdapter:
-    async def shape(self, context: EnrichmentContext, generation: GenerationResponse) -> EnrichmentWrite:
+    def schema(self, context: EnrichmentContext):
+        del context
+        return GRAPHIFY_OUTPUT_SCHEMA
+
+    async def shape(
+        self,
+        context: EnrichmentContext,
+        generation: StructuredGenerationResponse,
+    ) -> EnrichmentWrite:
+        del generation
         return EnrichmentWrite(
             scope=context.scope,
             nodes=(EnrichmentNode(label="Function", uid="not-allowed", properties={}),),
@@ -441,7 +439,16 @@ class DisallowedPrimitiveGraphifyAdapter:
 
 
 class WrongScopeGraphifyAdapter:
-    async def shape(self, context: EnrichmentContext, generation: GenerationResponse) -> EnrichmentWrite:
+    def schema(self, context: EnrichmentContext):
+        del context
+        return GRAPHIFY_OUTPUT_SCHEMA
+
+    async def shape(
+        self,
+        context: EnrichmentContext,
+        generation: StructuredGenerationResponse,
+    ) -> EnrichmentWrite:
+        del generation
         forged_scope = GraphScope(
             "org-other-tenant",
             context.scope.repository_id,
@@ -464,7 +471,8 @@ def _service(
     return EnrichmentService(
         graph_store=graph_store,
         model_provider_factory=ModelProviderFactory(),
-        graphify_factory=graphify_factory or GraphifyAdapterFactory(),
+        graphify_factory=graphify_factory
+        or StubGraphifyAdapterFactory(FakeGraphifyAdapter()),
         config_store=config_store,
     )
 
@@ -582,7 +590,7 @@ async def test_handle_does_not_substitute_fake_provider_outside_tests_on_missing
 
 
 @pytest.mark.asyncio
-async def test_handle_propagates_not_implemented_for_real_provider_request(
+async def test_handle_rejects_real_provider_without_credential_reference(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SAYRE_ENV", "test")
@@ -591,7 +599,7 @@ async def test_handle_propagates_not_implemented_for_real_provider_request(
     config_store = FakeGenerationConfigStore(GenerationConfig(provider="anthropic", model="claude"))
     service = _service(graph_store=graph_store, config_store=config_store)
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError, match="credential reference"):
         await service.handle(graph_updated_envelope())
 
     assert graph_store.applied == []

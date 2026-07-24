@@ -18,7 +18,13 @@ from .feature_clustering import (
     canonical_feature_key,
     canonicalize_feature_clustering_write,
 )
-from .graphify_adapter import FakeGraphifyAdapter, GraphifyAdapter, GraphifyAdapterFactory
+from .graphify_adapter import (
+    BaseGraphifyAdapter,
+    FakeGraphifyAdapter,
+    GraphifyAdapter,
+    GraphifyAdapterFactory,
+    InvalidGraphifyOutputError,
+)
 from .models import (
     ENRICHMENT_EDGE_TYPES,
     ENRICHMENT_NODE_LABELS,
@@ -48,6 +54,7 @@ from .providers import (
     GenerationResponse,
     ModelProvider,
     ModelProviderFactory,
+    StructuredGenerationResponse,
 )
 from .runtime import build_enrichment_service
 from .service import EnrichmentService, GenerationConfigStore
@@ -64,6 +71,7 @@ __all__ = [
     "EnrichmentService",
     "EnrichmentWrite",
     "FEATURE_CLUSTERING_SYSTEM_PROMPT",
+    "BaseGraphifyAdapter",
     "FakeGraphifyAdapter",
     "FakeModelProvider",
     "FileContext",
@@ -74,6 +82,7 @@ __all__ = [
     "GenerationResponse",
     "GraphifyAdapter",
     "GraphifyAdapterFactory",
+    "InvalidGraphifyOutputError",
     "InvalidEnrichmentEventError",
     "InvalidEnrichmentWriteError",
     "InvalidOnboardingJobError",
@@ -83,6 +92,7 @@ __all__ = [
     "OnboardingGenerateJob",
     "OnboardingPriorityHandler",
     "PostgresGenerationConfigStore",
+    "StructuredGenerationResponse",
     "build_enrichment_service",
     "build_feature_clustering_request",
     "build_onboarding_generator",

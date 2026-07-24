@@ -4,6 +4,7 @@ import {
   instrumentGraphQuery,
   type GraphQueryShape,
 } from '../telemetry/graphMetrics';
+import { assertOrgScopedCypher } from '../security/graphOrgGuard';
 
 export interface GraphReadRecord {
   get(key: string): unknown;
@@ -39,6 +40,7 @@ class InstrumentedNeo4jReadExecutor implements GraphReadExecutor {
     parameters: Readonly<Record<string, unknown>>,
   ): Promise<GraphReadResult> {
     return instrumentGraphQuery(orgId, queryShape, async (measurement) => {
+      assertOrgScopedCypher(orgId, cypher, parameters);
       const session = this.driver.session();
       try {
         const result = await session.executeRead((transaction) =>
