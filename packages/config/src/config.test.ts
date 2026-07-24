@@ -29,6 +29,9 @@ describe('getConfig', () => {
   });
 
   it('defaults broker-required mode off and validates boolean overrides centrally', () => {
+    // Mask GitHub Actions' real CI=true so the default assertion is
+    // deterministic on both developer machines and CI runners.
+    setConfigOverrideForTests('CI', undefined);
     expect(getConfig('CI')).toBe('false');
     expect(getConfig('MESSAGING_INTEGRATION_REQUIRED')).toBe('false');
 
