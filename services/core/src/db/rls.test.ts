@@ -8,10 +8,11 @@
 // AC-10 tests below, which prove the RLS-bypass fix (SET LOCAL ROLE
 // sayre_app now runs inside withOrgContext's transaction).
 //
-// W0-05 v2: extended from 9 to 13 tables (github_app_installations,
+// W0-05 v2/W3-08: extended from 9 to 14 tables (github_app_installations,
 // mcp_client_keys redesign, model_provider -> model_provider_configs
 // rename/reshape, repository_refs, code_chunks, code_embeddings) per
-// docs/wave0-foundation-contracts.md "Persistence and tenant enforcement".
+// docs/wave0-foundation-contracts.md "Persistence and tenant enforcement",
+// plus the minimal model_provider_job_states visibility contract.
 //
 // Coordination note (this ticket runs alongside parallel tickets sharing the
 // same sayre-postgres container / sayre_dev database): this test does NOT
@@ -42,6 +43,7 @@ const TABLE_NAMES = [
   "github_app_installations",
   "mcp_client_keys",
   "model_provider_configs",
+  "model_provider_job_states",
   "repository_refs",
   "code_chunks",
   "code_embeddings",
@@ -108,6 +110,7 @@ interface SeededOrg {
   githubAppInstallationId: string;
   mcpClientKeyId: string;
   modelProviderConfigId: string;
+  modelProviderJobStateId: string;
   repositoryRefId: string;
   codeChunkId: string;
   codeEmbeddingId: string;
@@ -125,13 +128,14 @@ function idsByTable(seed: SeededOrg): Record<TableName, string> {
     github_app_installations: seed.githubAppInstallationId,
     mcp_client_keys: seed.mcpClientKeyId,
     model_provider_configs: seed.modelProviderConfigId,
+    model_provider_job_states: seed.modelProviderJobStateId,
     repository_refs: seed.repositoryRefId,
     code_chunks: seed.codeChunkId,
     code_embeddings: seed.codeEmbeddingId,
   };
 }
 
-/** Seeds one row in every one of the thirteen tables for a throwaway org, as the admin (bypasses RLS). */
+/** Seeds one row in every one of the fourteen tables for a throwaway org, as the admin (bypasses RLS). */
 async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
   const orgId = randomUUID();
   const userId = randomUUID();
@@ -143,6 +147,7 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
   const githubAppInstallationId = randomUUID();
   const mcpClientKeyId = randomUUID();
   const modelProviderConfigId = randomUUID();
+  const modelProviderJobStateId = randomUUID();
   const repositoryRefId = randomUUID();
   const codeChunkId = randomUUID();
   const codeEmbeddingId = randomUUID();
@@ -203,6 +208,19 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
     [modelProviderConfigId, orgId, "generation", "anthropic", "claude-opus-4"],
   );
   await pool.query(
+    "INSERT INTO model_provider_job_states (id, org_id, repository_id, ref_name, revision_sha, surface, status, reason_code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    [
+      modelProviderJobStateId,
+      orgId,
+      repoId,
+      "refs/heads/main",
+      `${label.toLowerCase()}${"0".repeat(39)}`.slice(0, 40),
+      "product",
+      "degraded",
+      "timeout",
+    ],
+  );
+  await pool.query(
     "INSERT INTO repository_refs (id, org_id, repository_id, ref_name, revision_sha) VALUES ($1, $2, $3, $4, $5)",
     [repositoryRefId, orgId, repoId, "refs/heads/main", `${label.toLowerCase()}${"0".repeat(39)}`.slice(0, 40)],
   );
@@ -246,6 +264,7 @@ async function seedOrg(pool: Pool, label: string): Promise<SeededOrg> {
     githubAppInstallationId,
     mcpClientKeyId,
     modelProviderConfigId,
+    modelProviderJobStateId,
     repositoryRefId,
     codeChunkId,
     codeEmbeddingId,
@@ -311,7 +330,7 @@ after(async () => {
   await pool.end();
 });
 
-test("org A tenant session sees only its own row (and zero org B rows) across all 13 tables", async () => {
+test("org A tenant session sees only its own row (and zero org B rows) across all 14 tables", async () => {
   await withTenantSession(pool, orgA.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
@@ -324,7 +343,7 @@ test("org A tenant session sees only its own row (and zero org B rows) across al
   });
 });
 
-test("org B tenant session sees only its own row (and zero org A rows) across all 13 tables", async () => {
+test("org B tenant session sees only its own row (and zero org A rows) across all 14 tables", async () => {
   await withTenantSession(pool, orgB.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);

@@ -15,6 +15,15 @@ from .protocol import (
     ModelProviderResponseError,
     StructuredGenerationResponse,
 )
+from .resilience import (
+    CircuitBreaker,
+    FallbackMode,
+    ProviderCallFailedError,
+    ProviderCallScope,
+    ProviderFailureReason,
+    ResiliencePolicy,
+    ResilientModelProvider,
+)
 
 __all__ = [
     "MAX_OUTPUT_TOKENS",
@@ -30,4 +39,11 @@ __all__ = [
     "ModelProviderResponseError",
     "OpenAICompatibleModelProvider",
     "StructuredGenerationResponse",
+    "CircuitBreaker",
+    "FallbackMode",
+    "ProviderCallFailedError",
+    "ProviderCallScope",
+    "ProviderFailureReason",
+    "ResiliencePolicy",
+    "ResilientModelProvider",
 ]

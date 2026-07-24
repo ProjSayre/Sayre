@@ -45,11 +45,14 @@ def run_enrichment_consumer(
         def handle(envelope: MessageEnvelope) -> None:
             runner.run(service.handle(envelope))
 
-        consume(
-            ENRICHMENT_DEFAULT_QUEUE,
-            handle,
-            consumer_id="enrichment-worker",
-            delivery_store=delivery_store,
-            stop_event=stop_event,
-            visibility_timeout_seconds=visibility_timeout_seconds,
-        )
+        try:
+            consume(
+                ENRICHMENT_DEFAULT_QUEUE,
+                handle,
+                consumer_id="enrichment-worker",
+                delivery_store=delivery_store,
+                stop_event=stop_event,
+                visibility_timeout_seconds=visibility_timeout_seconds,
+            )
+        finally:
+            runner.run(service.aclose())

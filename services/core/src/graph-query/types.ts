@@ -43,6 +43,53 @@ export interface AffectedNodes {
   removed: string[]; // stable node UIDs the caller was authorized to see, now absent
 }
 
+// Retrieval uses the same Folder/File authorization boundary as the canvas, but
+// also needs immutable repository/ref/revision scope so the worker can constrain
+// its tenant chunk read to the graph projection that produced these nodes.
+export interface RetrievalGraphNode {
+  id: string;
+  label: CanvasNodeLabel;
+  name: string;
+  path: string;
+  repositoryId: string;
+  refName: string;
+  revisionSha: string;
+  distance: number;
+}
+
+export interface RetrievalTraversal {
+  anchor: RetrievalGraphNode;
+  nodes: RetrievalGraphNode[];
+}
+
+export interface FeatureRecentEdit {
+  fileId: string;
+  filePath: string;
+  editedAt: string;
+  editorName: string | null;
+  editorLogin: string | null;
+  pullRequestTitle: string | null;
+  pullRequestUrl: string | null;
+}
+
+export interface FeatureMember extends GraphNode {
+  label: 'File';
+  recentEdit: FeatureRecentEdit | null;
+}
+
+/**
+ * Feature is graph-internal metadata for a presentation boundary. Only its
+ * already-authorized File members may become canvas nodes.
+ */
+export interface FeatureCluster {
+  id: string;
+  name: string;
+  description: string | null;
+  team: string | null;
+  revisionSha: string;
+  members: FeatureMember[];
+}
+
 // Every method receives the complete, server-resolved AuthContext. This keeps
 // REST, realtime, and future MCP callers on one authorization path and prevents
 // a caller from supplying its own tenant or subject identity.
@@ -58,4 +105,52 @@ export interface GraphQueryService {
     paths: readonly string[],
     ctx: AuthContext,
   ): Promise<AffectedNodes>;
+  getFeatureClusters(
+    repoId: string,
+    refName: string,
+    ctx: AuthContext,
+  ): Promise<FeatureCluster[]>;
+}
+
+// Kept separate from GraphQueryService so existing canvas/realtime test doubles
+// do not need retrieval methods. RbacGraphQueryService implements both, and the
+// service-layer functions in services/retrievalContextService depend only on
+// this narrow contract.
+export interface RetrievalGraphQueryService {
+  resolveRetrievalAnchors(
+    terms: readonly string[],
+    exactNodeId: string | null,
+    limit: number,
+    ctx: AuthContext,
+  ): Promise<RetrievalGraphNode[]>;
+  traverseRetrievalContext(
+    anchorId: string,
+    intentTerms: readonly string[],
+    maxHops: number,
+    maxNodes: number,
+    ctx: AuthContext,
+  ): Promise<RetrievalTraversal | null>;
+}
+
+export interface ResolvedStyleValue {
+  value: string | null;
+  sourceNodeId: string | null;
+}
+
+export interface ResolvedStyleRules {
+  nodeId: string;
+  codingStyle: ResolvedStyleValue;
+  commentStyle: ResolvedStyleValue;
+}
+
+/**
+ * Separate from GraphQueryService so existing Technical Tree/realtime callers do
+ * not need a style-resolution method in their narrow test doubles. REST and future
+ * MCP callers share this context-taking contract.
+ */
+export interface StyleRuleGraphQueryService {
+  resolveStyleRules(
+    nodeId: string,
+    ctx: AuthContext,
+  ): Promise<ResolvedStyleRules | null>;
 }

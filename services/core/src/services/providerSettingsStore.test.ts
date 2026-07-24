@@ -116,5 +116,6 @@ describe('PostgresProviderSettingsStore', () => {
     expect(conflict.set).not.toHaveProperty('purpose');
     expect(conflict.set).not.toHaveProperty('apiKey');
     expect(conflict.set).not.toHaveProperty('token');
+    expect(conflict.set).not.toHaveProperty('config');
   });
 });

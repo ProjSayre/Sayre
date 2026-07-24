@@ -15,6 +15,7 @@ function makeFakeGraph(overrides: Partial<GraphQueryService> = {}): GraphQuerySe
     getNodesInViewport: vi.fn(async () => []),
     getStructuralEdges: vi.fn(async () => []),
     getAffectedNodes: vi.fn(async (): Promise<AffectedNodes> => ({ visible: [], removed: [] })),
+    getFeatureClusters: vi.fn(async () => []),
     ...overrides,
   };
 }

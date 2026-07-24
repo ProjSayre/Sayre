@@ -9,9 +9,24 @@ const views = [
 
 interface AppShellProps {
   repoId: string | null;
+  providerStateRepositoryId: string | null;
+  refName: string;
 }
 
-export function AppShell({ repoId }: AppShellProps) {
+function productTreeHref(repoId: string | null, refName: string): string {
+  if (repoId === null) return '/product';
+  const query = new URLSearchParams({
+    repoId,
+    ref: refName,
+  });
+  return `/product?${query.toString()}`;
+}
+
+export function AppShell({
+  repoId,
+  providerStateRepositoryId,
+  refName,
+}: AppShellProps) {
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -41,15 +56,26 @@ export function AppShell({ repoId }: AppShellProps) {
           <p className="sidebar-label">Graph views</p>
           <nav className="nav-list" aria-label="Graph views">
             {views.map((view) => (
-              <button
-                className={`nav-item${view.active ? ' active' : ''}`}
-                key={view.label}
-                type="button"
-                aria-current={view.active ? 'page' : undefined}
-              >
-                <span className="nav-icon">{view.icon}</span>
-                {view.label}
-              </button>
+              view.label === 'Product' ? (
+                <Link
+                  className="nav-item"
+                  href={productTreeHref(repoId, refName)}
+                  key={view.label}
+                >
+                  <span className="nav-icon">{view.icon}</span>
+                  {view.label}
+                </Link>
+              ) : (
+                <button
+                  className={`nav-item${view.active ? ' active' : ''}`}
+                  key={view.label}
+                  type="button"
+                  aria-current={view.active ? 'page' : undefined}
+                >
+                  <span className="nav-icon">{view.icon}</span>
+                  {view.label}
+                </button>
+              )
             ))}
           </nav>
 
@@ -73,7 +99,18 @@ export function AppShell({ repoId }: AppShellProps) {
             <h1>Technical tree</h1>
             <p>Folder/File structure · containment and imports</p>
           </div>
-          <GraphCanvas repoId={repoId} />
+          <GraphCanvas
+            repoId={repoId}
+            providerStateSelection={
+              providerStateRepositoryId === null
+                ? null
+                : {
+                    repositoryId: providerStateRepositoryId,
+                    refName,
+                    surface: 'product',
+                  }
+            }
+          />
         </section>
       </div>
     </main>

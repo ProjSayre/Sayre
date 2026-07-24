@@ -102,7 +102,9 @@ export class PostgresProviderSettingsStore implements ProviderSettingsStore {
             endpointUrl: setting.endpointUrl,
             credentialRef: setting.credentialRef,
             dimension: setting.dimension,
-            config: {},
+            // Provider settings do not own adapter/resilience options. Preserve
+            // the existing JSON so a UI selection cannot silently erase W3-08's
+            // timeout, retry, circuit-breaker, or fallback policy.
             updatedAt: new Date(),
           },
         })

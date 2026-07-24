@@ -1,10 +1,12 @@
 import express, { type Express } from 'express';
 import { healthRouter } from './routes/health';
 import { technicalTreeRouter } from './routes/technicalTree';
+import { productTreeRouter } from './routes/productTree';
 import { realtimeInternalRouter } from './routes/realtimeInternal';
 import { githubWebhookRouter } from './routes/githubWebhook';
 import { githubInstallRouter } from './routes/githubInstall';
 import { providerSettingsRouter } from './routes/providerSettings';
+import { providerJobStateRouter } from './routes/providerJobState';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -19,6 +21,8 @@ export function createApp(): Express {
   app.get('/', (_req, res) => res.json({ message: 'Sayre core API' }));
   app.use(healthRouter);
   app.use(technicalTreeRouter);
+  app.use(providerJobStateRouter);
+  app.use(productTreeRouter);
   // Internal-only (services/gateway callers only in a real deployment — see
   // routes/realtimeInternal.ts's header comment for the network-isolation
   // requirement). Mounted here, after express.json(), alongside the other

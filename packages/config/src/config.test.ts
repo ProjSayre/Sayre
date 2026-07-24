@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ConfigError,
   getConfig,
+  getOptionalConfig,
   resetConfigForTests,
   setConfigOverrideForTests,
 } from './config';
@@ -29,7 +30,14 @@ describe('getConfig', () => {
   });
 
   it('defaults broker-required mode off and validates boolean overrides centrally', () => {
+    // Mask GitHub Actions' real CI=true so the default assertion is
+    // deterministic on both developer machines and CI runners.
+    setConfigOverrideForTests('CI', undefined);
+    expect(getConfig('CI')).toBe('false');
     expect(getConfig('MESSAGING_INTEGRATION_REQUIRED')).toBe('false');
+
+    setConfigOverrideForTests('CI', ' TRUE ');
+    expect(getConfig('CI')).toBe('true');
 
     setConfigOverrideForTests('MESSAGING_INTEGRATION_REQUIRED', ' TRUE ');
     expect(getConfig('MESSAGING_INTEGRATION_REQUIRED')).toBe('true');
@@ -38,6 +46,15 @@ describe('getConfig', () => {
     expect(() => getConfig('MESSAGING_INTEGRATION_REQUIRED')).toThrow(
       /MESSAGING_INTEGRATION_REQUIRED.*true.*false/,
     );
+  });
+
+  it('allows callers to distinguish an optional unset setting from an invalid value', () => {
+    setConfigOverrideForTests('NODE_ENV', undefined);
+    expect(getOptionalConfig('NODE_ENV')).toBeUndefined();
+    expect(() => getConfig('NODE_ENV')).toThrow(/NODE_ENV.*missing/);
+
+    setConfigOverrideForTests('NODE_ENV', '   ');
+    expect(() => getOptionalConfig('NODE_ENV')).toThrow(/NODE_ENV.*empty/);
   });
 
   it('treats an explicit undefined override as missing instead of reading the environment', () => {

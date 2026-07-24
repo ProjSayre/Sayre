@@ -26,11 +26,9 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from collections.abc import Callable
-
 from sayre_workers.ingestion.models import GraphScope
 
-from .models import EnrichmentJob
+from .models import EnrichmentJob, EnrichmentResult
 from .onboarding import OnboardingGenerateJob
 from .service import EnrichmentService
 
@@ -44,25 +42,15 @@ def _loop_factory() -> asyncio.AbstractEventLoop:
     return asyncio.new_event_loop()
 
 
-def build_onboarding_generator(
-    service: EnrichmentService,
-) -> Callable[[OnboardingGenerateJob], None]:
-    """Return a sync callable wrapping `service.process(...)` for W2-08's
-    `OnboardingPriorityHandler(generator=...)`.
+class OnboardingGenerator:
+    def __init__(self, service: EnrichmentService) -> None:
+        self._service = service
+        self._runner = asyncio.Runner(loop_factory=_loop_factory)
+        self._closed = False
 
-    Builds an `EnrichmentJob` from the `OnboardingGenerateJob`: `full_rebuild=True`
-    (cold start has no prior state to diff against, so there is nothing to compare
-    `changed_paths` against) and `changed_paths=()`; `lane="priority"`;
-    `idempotency_key` mirrors the convention already used for `graph.updated` jobs
-    (`f"{graph_scope_key}:{revision_sha}:<event type>"`).
-
-    Owns one long-lived `asyncio.Runner`, built once when this function is called and
-    reused across every invocation of the returned callable -- not a new event loop
-    per message.
-    """
-    runner = asyncio.Runner(loop_factory=_loop_factory)
-
-    def generate(job: OnboardingGenerateJob) -> None:
+    def __call__(self, job: OnboardingGenerateJob) -> EnrichmentResult:
+        if self._closed:
+            raise RuntimeError("onboarding generator is closed")
         enrichment_job = EnrichmentJob(
             scope=GraphScope(
                 org_id=job.org_id,
@@ -78,6 +66,30 @@ def build_onboarding_generator(
             trace_id=job.trace_id,
             idempotency_key=f"{job.graph_scope_key}:{job.revision_sha}:onboarding.generate",
         )
-        runner.run(service.process(enrichment_job))
+        return self._runner.run(self._service.process(enrichment_job))
 
-    return generate
+    def close(self) -> None:
+        if self._closed:
+            return
+        try:
+            self._runner.run(self._service.aclose())
+        finally:
+            self._runner.close()
+            self._closed = True
+
+
+def build_onboarding_generator(service: EnrichmentService) -> OnboardingGenerator:
+    """Return a sync callable wrapping `service.process(...)` for W2-08's
+    `OnboardingPriorityHandler(generator=...)`.
+
+    Builds an `EnrichmentJob` from the `OnboardingGenerateJob`: `full_rebuild=True`
+    (cold start has no prior state to diff against, so there is nothing to compare
+    `changed_paths` against) and `changed_paths=()`; `lane="priority"`;
+    `idempotency_key` mirrors the convention already used for `graph.updated` jobs
+    (`f"{graph_scope_key}:{revision_sha}:<event type>"`).
+
+    Owns one long-lived `asyncio.Runner`, built once when this function is called and
+    reused across every invocation of the returned callable -- not a new event loop
+    per message.
+    """
+    return OnboardingGenerator(service)

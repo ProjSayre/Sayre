@@ -10,6 +10,8 @@ from sayre_workers.model_provider import (
     GenerationResponse,
     ModelProvider,
     ModelProviderFactory,
+    ProviderCallScope,
+    ResilientModelProvider,
     StructuredGenerationResponse,
 )
 
@@ -19,5 +21,7 @@ __all__ = [
     "GenerationResponse",
     "ModelProvider",
     "ModelProviderFactory",
+    "ProviderCallScope",
+    "ResilientModelProvider",
     "StructuredGenerationResponse",
 ]

@@ -23,6 +23,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   customType,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -110,6 +111,9 @@ export const repositories = pgTable(
       table.provider,
       table.externalId,
     ),
+    // Supports tenant-consistent composite foreign keys from child tables whose
+    // repository id must belong to the same org (W3-08 provider job state).
+    unique("repositories_org_id_id_unique").on(table.orgId, table.id),
     index("repositories_org_id_idx").on(table.orgId),
   ],
 );
@@ -375,6 +379,48 @@ export const modelProviderConfigs = pgTable(
 );
 
 /**
+ * Minimal visible state for provider-backed semantic work. This deliberately has
+ * no provider/model/endpoint/prompt/response/error-detail columns: callers may
+ * persist only a closed status, a sanitized reason code, scope, and timestamps.
+ */
+export const modelProviderJobStates = pgTable(
+  "model_provider_job_states",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id").notNull(),
+    refName: text("ref_name").notNull(),
+    revisionSha: text("revision_sha").notNull(),
+    surface: text("surface").notNull(),
+    status: text("status").notNull(),
+    reasonCode: text("reason_code"),
+    ...timestamps,
+  },
+  (table) => [
+    unique("model_provider_job_states_org_repo_ref_surface_unique").on(
+      table.orgId,
+      table.repositoryId,
+      table.refName,
+      table.surface,
+    ),
+    foreignKey({
+      name: "model_provider_job_states_org_repository_fk",
+      columns: [table.orgId, table.repositoryId],
+      foreignColumns: [repositories.orgId, repositories.id],
+    }).onDelete("cascade"),
+    index("model_provider_job_states_scope_updated_idx").on(
+      table.orgId,
+      table.repositoryId,
+      table.refName,
+      table.surface,
+      table.updatedAt.desc(),
+    ),
+  ],
+);
+
+/**
  * Records each mutable ref's currently accepted revision + graph version, so
  * "a ref maps to exactly one accepted revision, and stale/replayed work
  * cannot move it backward" is enforceable. Columns only — the anti-rollback /
@@ -529,6 +575,8 @@ export type McpClientKey = typeof mcpClientKeys.$inferSelect;
 export type NewMcpClientKey = typeof mcpClientKeys.$inferInsert;
 export type ModelProviderConfig = typeof modelProviderConfigs.$inferSelect;
 export type NewModelProviderConfig = typeof modelProviderConfigs.$inferInsert;
+export type ModelProviderJobState = typeof modelProviderJobStates.$inferSelect;
+export type NewModelProviderJobState = typeof modelProviderJobStates.$inferInsert;
 export type RepositoryRef = typeof repositoryRefs.$inferSelect;
 export type NewRepositoryRef = typeof repositoryRefs.$inferInsert;
 export type CodeChunk = typeof codeChunks.$inferSelect;

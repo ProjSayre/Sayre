@@ -215,70 +215,7 @@ def test_no_realtime_notification_or_feedback_loop_publish_in_enrichment_package
     assert not violations, "\n".join(violations)
 
 
-# --------------------------------------------------------------------------------
-# D5 regression guard: no NodePropertyPatch code path was reintroduced. Scans actual
-# code identifiers (class/function defs, assignment targets, names referenced) via
-# `ast`, not raw text -- module docstrings and comments are expected to *mention*
-# these forbidden names when documenting their deliberate absence (see models.py's
-# own docstring), so a plain substring scan would false-positive on that prose.
-# --------------------------------------------------------------------------------
-
-_FORBIDDEN_PATCH_IDENTIFIERS = {
-    "NodePropertyPatch",
-    "PATCHABLE_PROPERTIES",
-    "property_patches",
-    "patch_count",
-}
-
-
-def _code_identifiers(source: str) -> set[str]:
-    tree = ast.parse(source)
-    identifiers: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-            identifiers.add(node.name)
-        elif isinstance(node, ast.Name):
-            identifiers.add(node.id)
-        elif isinstance(node, ast.arg):
-            identifiers.add(node.arg)
-        elif isinstance(node, ast.Attribute):
-            identifiers.add(node.attr)
-    return identifiers
-
-
-def test_no_node_property_patch_code_path_anywhere_in_enrichment_package() -> None:
-    violations: list[str] = []
-    for path in _enrichment_source_files():
-        identifiers = _code_identifiers(path.read_text(encoding="utf-8"))
-        hit = identifiers & _FORBIDDEN_PATCH_IDENTIFIERS
-        if hit:
-            violations.append(
-                f"{path.name} contains a property-patch code identifier: {sorted(hit)} "
-                "(D5: no property-patch path in this skeleton)"
-            )
-    assert not violations, "\n".join(violations)
-
-
-def test_property_patch_identifier_scan_detects_a_reintroduced_field() -> None:
-    # Fault-injection: prove the AST-based scan above would actually catch a future
-    # regression, not just that today's tree happens to be clean.
-    offending_source = (
-        "from dataclasses import dataclass\n\n"
-        "@dataclass(frozen=True)\n"
-        "class EnrichmentWrite:\n"
-        "    property_patches: tuple[int, ...] = ()\n"
-    )
-    identifiers = _code_identifiers(offending_source)
-    assert identifiers & _FORBIDDEN_PATCH_IDENTIFIERS == {"property_patches"}
-
-
-def test_property_patch_identifier_scan_ignores_docstring_and_comment_mentions() -> None:
-    # models.py's own docstring/comments legitimately name these tokens to document
-    # their deliberate absence -- the scan must not flag prose, only real code.
-    documenting_source = (
-        '"""No NodePropertyPatch, no PATCHABLE_PROPERTIES, no property_patches field."""\n'
-        "# patch_count is intentionally absent too.\n"
-        "x = 1\n"
-    )
-    identifiers = _code_identifiers(documenting_source)
-    assert identifiers & _FORBIDDEN_PATCH_IDENTIFIERS == set()
+# W3-06 intentionally introduces a closed Folder-only property-patch path for
+# coding_style/comment_style. Its allowlist and writer defenses are covered by
+# test_style_classification.py; the vendor and feedback-loop boundaries above remain
+# unchanged.
