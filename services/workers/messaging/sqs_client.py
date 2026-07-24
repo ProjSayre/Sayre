@@ -43,6 +43,7 @@ REALTIME_QUEUE = "graph-updated-realtime"
 ENRICHMENT_DEFAULT_QUEUE = "enrichment-default"
 ENRICHMENT_PRIORITY_QUEUE = "enrichment-onboarding-priority"
 EMBEDDING_UPSERTS_QUEUE = "embedding-upserts"
+DYNAMIC_COVERAGE_QUEUE = "dynamic-coverage-refresh"
 SELFTEST_QUEUE = "w0-04-selftest"  # used only by the round-trip integration test
 
 # Source-compatible aliases for the pre-v5 wrapper surface.
@@ -56,6 +57,7 @@ _PRODUCTION_QUEUES = frozenset(
         ENRICHMENT_DEFAULT_QUEUE,
         ENRICHMENT_PRIORITY_QUEUE,
         EMBEDDING_UPSERTS_QUEUE,
+        DYNAMIC_COVERAGE_QUEUE,
     }
 )
 

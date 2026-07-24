@@ -1,6 +1,7 @@
 """Dynamic COVERS refresh and conservative impact-analysis surface."""
 
 from .command_runner import CommandCoverageRunExecutor, CoverageRunnerError
+from .consumers import run_coverage_consumer
 from .graph import CoverageGraphStore, InvalidCoverageReportError, Neo4jCoverageGraphStore
 from .impact import CoverageTopologyEdge, ImpactPlan, plan_impacted_tests
 from .models import (
@@ -31,4 +32,5 @@ __all__ = [
     "parse_nightly_envelope",
     "parse_report_envelope",
     "plan_impacted_tests",
+    "run_coverage_consumer",
 ]
