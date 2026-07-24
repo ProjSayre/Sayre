@@ -43,7 +43,10 @@ export function AppShell({
             {repoId === null ? 'Selection required' : 'Server-authorized'}
           </span>
           <Link className="settings-link" href="/settings/providers">
-            Provider settings
+            Providers
+          </Link>
+          <Link className="settings-link" href="/settings/mcp">
+            MCP access
           </Link>
           <Link className="avatar" href="/login" aria-label="Open account sign in">
             AK

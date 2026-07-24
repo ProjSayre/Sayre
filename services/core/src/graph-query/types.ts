@@ -209,6 +209,31 @@ export interface NodeOverlayGraphQueryService {
   ): Promise<NodeOverlayGraphSnapshot | null>;
 }
 
+export type CoveringTestStatus = 'pass' | 'fail' | 'unknown';
+export type CoveringTestFreshness = 'inferred' | 'fresh' | 'stale';
+
+export interface CoveringTest {
+  id: string;
+  name: string;
+  path: string;
+  coverageStatus: CoveringTestStatus;
+  edgeStatus: 'inferred' | 'measured';
+  lastRun: string | null;
+  freshness: CoveringTestFreshness;
+}
+
+export interface CoveringTestsSnapshot {
+  node: OverlayNodeIdentity;
+  tests: CoveringTest[];
+}
+
+export interface CoveringTestsGraphQueryService {
+  getCoveringTests(
+    nodeId: string,
+    ctx: AuthContext,
+  ): Promise<CoveringTestsSnapshot | null>;
+}
+
 /**
  * Separate from GraphQueryService so existing Technical Tree/realtime callers do
  * not need a style-resolution method in their narrow test doubles. REST and future
