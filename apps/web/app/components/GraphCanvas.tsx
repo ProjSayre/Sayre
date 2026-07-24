@@ -23,6 +23,7 @@ import {
 import { SigmaCanvas } from './SigmaCanvas';
 import { ProviderStateStatus } from './ProviderStateBanner';
 import type { ProviderStateSelection } from '../lib/providerState';
+import { NodeOverlayPanel } from './NodeOverlayPanel';
 
 interface GraphCanvasProps {
   repoId: string | null;
@@ -203,11 +204,7 @@ export function GraphCanvas({
         <ReactFlowCanvas payload={payload} onSelect={setSelectedId} />
       )}
 
-      <aside className="node-inspector canvas-node-inspector" aria-live="polite">
-        <span className="node-inspector-label">Selected {selected.kind}</span>
-        <h3>{selected.label}</h3>
-        <p title={selected.path}>{selected.path || '/'}</p>
-      </aside>
+      <NodeOverlayPanel nodeId={selected.id} />
     </div>
   );
 }

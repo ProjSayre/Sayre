@@ -71,6 +71,13 @@
       "when": 1784772000000,
       "tag": "0009_w3_08_provider_job_states",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784865600000,
+      "tag": "0010_w4_02_agent_skill_md_versions",
+      "breakpoints": true
     }
   ]
 }

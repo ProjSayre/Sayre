@@ -1861,9 +1861,18 @@ test("[AC-12/edge] running migrate() a second time is a no-op (no duplicate poli
     await p2.end();
   }
   const pol = await pool.query(
-    `SELECT count(*)::int AS n FROM pg_policies WHERE schemaname='public' AND policyname='org_isolation'`,
+    `SELECT count(*)::int AS n
+       FROM pg_policies
+      WHERE schemaname='public'
+        AND policyname='org_isolation'
+        AND tablename = ANY($1)`,
+    [TABLE_NAMES],
   );
-  assert.equal(pol.rows[0].n, TABLE_NAMES.length, "expected exactly one org_isolation policy per table (14 total)");
+  assert.equal(
+    pol.rows[0].n,
+    TABLE_NAMES.length,
+    "expected exactly one org_isolation policy per foundational table",
+  );
 
   const role = await pool.query("SELECT count(*)::int AS n FROM pg_roles WHERE rolname='sayre_app'");
   assert.equal(role.rows[0].n, 1, "sayre_app role must not be duplicated");
