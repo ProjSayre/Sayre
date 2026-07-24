@@ -12,6 +12,12 @@ from .enrichment_graph import (
     validate_enrichment_write,
 )
 from .events import parse_enrichment_envelope
+from .feature_clustering import (
+    FEATURE_CLUSTERING_SYSTEM_PROMPT,
+    build_feature_clustering_request,
+    canonical_feature_key,
+    canonicalize_feature_clustering_write,
+)
 from .graphify_adapter import (
     BaseGraphifyAdapter,
     FakeGraphifyAdapter,
@@ -64,6 +70,7 @@ __all__ = [
     "EnrichmentResult",
     "EnrichmentService",
     "EnrichmentWrite",
+    "FEATURE_CLUSTERING_SYSTEM_PROMPT",
     "BaseGraphifyAdapter",
     "FakeGraphifyAdapter",
     "FakeModelProvider",
@@ -87,7 +94,10 @@ __all__ = [
     "PostgresGenerationConfigStore",
     "StructuredGenerationResponse",
     "build_enrichment_service",
+    "build_feature_clustering_request",
     "build_onboarding_generator",
+    "canonical_feature_key",
+    "canonicalize_feature_clustering_write",
     "parse_enrichment_envelope",
     "parse_onboarding_generate",
     "run_enrichment_consumer",
