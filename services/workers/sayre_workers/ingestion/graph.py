@@ -54,6 +54,13 @@ _NODE_QUERIES = {
             node.name = item.name, node.qualified_name = item.qualified_name,
             node.start_line = item.start_line, node.end_line = item.end_line
     """,
+    "Test": """
+        UNWIND $items AS item
+        MERGE (node:Test {org_id: $org_id, uid: item.uid})
+        SET node.repo_id = $repo_id, node.ref_name = $ref_name,
+            node.revision_sha = $revision_sha, node.path = item.path,
+            node.name = item.name, node.coverage_status = item.coverage_status
+    """,
 }
 
 _EDGE_QUERIES = {
@@ -80,6 +87,13 @@ _EDGE_QUERIES = {
         MATCH (source:Class {org_id: $org_id, uid: item.source_uid})
         MATCH (target:Class {org_id: $org_id, uid: item.target_uid})
         MERGE (source)-[edge:INHERITS {org_id: $org_id}]->(target)
+    """,
+    "COVERS": """
+        UNWIND $items AS item
+        MATCH (source:Test {org_id: $org_id, uid: item.source_uid})
+        MATCH (target {org_id: $org_id, uid: item.target_uid})
+        MERGE (source)-[edge:COVERS {org_id: $org_id}]->(target)
+        SET edge.status = item.status, edge.last_run = item.last_run
     """,
 }
 
@@ -132,10 +146,10 @@ class Neo4jGraphStore:
         nodes_by_label: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for node in projection.nodes:
             nodes_by_label[node.label].append({"uid": node.uid, **node.properties})
-        edges_by_type: dict[str, list[dict[str, str]]] = defaultdict(list)
+        edges_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for edge in projection.edges:
             edges_by_type[edge.relationship].append(
-                {"source_uid": edge.source_uid, "target_uid": edge.target_uid}
+                {"source_uid": edge.source_uid, "target_uid": edge.target_uid, **edge.properties}
             )
 
         async def write_projection(transaction: Any) -> None:
@@ -186,7 +200,7 @@ class Neo4jGraphStore:
                 **common,
             )
             if projection.full_rebuild:
-                for label in ("Function", "Class", "File", "Folder"):
+                for label in ("Function", "Class", "File", "Folder", "Test"):
                     await transaction.run(
                         f"MATCH (node:{label} {{org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name}}) DETACH DELETE node",
                         **common,
@@ -213,6 +227,15 @@ class Neo4jGraphStore:
                     DETACH DELETE node
                     """,
                     current_folders=current_folders,
+                    **common,
+                )
+                await transaction.run(
+                    """
+                    MATCH (node:Test {org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name})
+                    WHERE NOT (node.path IN $current_files)
+                    DETACH DELETE node
+                    """,
+                    current_files=current_files,
                     **common,
                 )
                 for label, valid_uids in (("Function", function_uids), ("Class", class_uids)):
@@ -251,6 +274,16 @@ class Neo4jGraphStore:
                     MATCH (source:Class {org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name})
                     WHERE source.file_path IN $affected
                     MATCH (source)-[edge:INHERITS]->()
+                    DELETE edge
+                    """,
+                    affected=affected,
+                    **common,
+                )
+                await transaction.run(
+                    """
+                    MATCH (source:Test {org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name})
+                    WHERE source.path IN $affected
+                    MATCH (source)-[edge:COVERS]->()
                     DELETE edge
                     """,
                     affected=affected,

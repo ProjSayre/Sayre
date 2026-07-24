@@ -129,6 +129,7 @@ export class Neo4jOwnershipGraphStore implements OwnershipGraphStore {
         org_id: input.orgId,
         provider: input.provider,
         repo_id: input.repositoryId,
+        repository_id: input.repositoryId,
         ref_name: input.refName,
         edits,
       },
