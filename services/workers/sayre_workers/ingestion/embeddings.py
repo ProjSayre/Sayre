@@ -7,7 +7,7 @@ import math
 from collections.abc import Sequence
 from typing import Any, Protocol
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, DefaultAsyncHttpxClient
 
 from messaging.envelope import MessageEnvelope
 from sayre_workers.config import get_config, get_secret
@@ -73,7 +73,15 @@ class OpenAICompatibleEmbeddingProvider:
             if config.credential_ref is not None
             else "local-endpoint-no-key"
         )
-        client = AsyncOpenAI(api_key=api_key, base_url=config.endpoint_url, timeout=30.0)
+        client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=config.endpoint_url,
+            timeout=30.0,
+            http_client=DefaultAsyncHttpxClient(
+                trust_env=False,
+                follow_redirects=False,
+            ),
+        )
         return cls(client, config.model or DEFAULT_EMBEDDING_MODEL)
 
     async def embed(self, texts: Sequence[str]) -> tuple[tuple[float, ...], ...]:

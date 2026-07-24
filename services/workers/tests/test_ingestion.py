@@ -453,6 +453,49 @@ async def test_openai_compatible_adapter_rejects_invalid_vectors(vector: list[fl
 
 
 @pytest.mark.asyncio
+async def test_openai_compatible_embedding_disables_proxy_and_redirect_inheritance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    async def unexpected_secret(_reference: str) -> str:
+        raise AssertionError("credential loader must not run without a reference")
+
+    monkeypatch.setattr(
+        "sayre_workers.ingestion.embeddings.get_secret",
+        unexpected_secret,
+    )
+    monkeypatch.setattr(
+        "sayre_workers.ingestion.embeddings.DefaultAsyncHttpxClient",
+        lambda **kwargs: ("http-client", kwargs),
+    )
+    monkeypatch.setattr(
+        "sayre_workers.ingestion.embeddings.AsyncOpenAI",
+        lambda **kwargs: calls.append(kwargs) or SimpleNamespace(),
+    )
+
+    await OpenAICompatibleEmbeddingProvider.from_config(
+        EmbeddingConfig(
+            provider="openai_compatible",
+            model="Qwen3-Embedding-0.6B",
+            endpoint_url="http://10.20.30.40:8000/v1",
+        )
+    )
+
+    assert calls == [
+        {
+            "api_key": "local-endpoint-no-key",
+            "base_url": "http://10.20.30.40:8000/v1",
+            "timeout": 30.0,
+            "http_client": (
+                "http-client",
+                {"trust_env": False, "follow_redirects": False},
+            ),
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_real_git_snapshot_is_destroyed_after_parse(tmp_path: Path) -> None:
     remote = tmp_path / "remote"
     subprocess.run(["git", "init", "--quiet", "-b", "main", str(remote)], check=True)

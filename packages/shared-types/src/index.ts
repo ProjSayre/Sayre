@@ -16,6 +16,72 @@ export interface HealthStatus {
  */
 export type OrgRole = 'owner' | 'admin' | 'member';
 
+// --- W3-09: redacted provider-settings API contract ---
+
+/** Generation drives enrichment/chatbot; embedding remains a separate provider boundary. */
+export type ProviderPurpose = 'generation' | 'embedding';
+
+/** User-selectable MVP providers. Test-only deterministic adapters are intentionally absent. */
+export type ProviderKind = 'anthropic' | 'openai' | 'openai_compatible';
+
+/**
+ * Opaque, server-authorized credential choice. `id` is not the underlying
+ * credential_ref and `label` never contains secret material.
+ */
+export interface ProviderCredentialOption {
+  id: string;
+  label: string;
+  purpose: ProviderPurpose;
+  providers: ProviderKind[];
+}
+
+/**
+ * Opaque, operator-approved endpoint choice. The actual URL remains server-side
+ * so an untrusted browser cannot turn settings validation into an SSRF probe.
+ */
+export interface ProviderEndpointOption {
+  id: string;
+  label: string;
+  purpose: ProviderPurpose;
+  providers: ProviderKind[];
+}
+
+export interface ProviderSettingView {
+  purpose: ProviderPurpose;
+  provider: ProviderKind;
+  model: string;
+  credentialReferenceId: string | null;
+  endpointId: string | null;
+  credentialConfigured: boolean;
+  endpointConfigured: boolean;
+  updatedAt: string;
+}
+
+export interface ProviderSettingsTradeoffs {
+  hostedGuarantee: string;
+  selfHostedGuarantee: string;
+  quality: string;
+  latency: string;
+}
+
+export interface ProviderSettingsResponse {
+  settings: Record<ProviderPurpose, ProviderSettingView | null>;
+  credentialOptions: ProviderCredentialOption[];
+  endpointOptions: ProviderEndpointOption[];
+  tradeoffs: ProviderSettingsTradeoffs;
+}
+
+/**
+ * Exact browser write shape. In particular, there is no org id, endpoint URL,
+ * credential reference, API key, token, password, or generic config bag.
+ */
+export interface ProviderSettingsUpdateRequest {
+  provider: ProviderKind;
+  model: string;
+  credentialReferenceId: string | null;
+  endpointId: string | null;
+}
+
 export type RepoEventType = 'push' | 'pull_request' | 'branch';
 
 export interface RepoRef {

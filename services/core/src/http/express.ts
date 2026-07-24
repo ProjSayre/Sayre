@@ -15,6 +15,10 @@ import {
 import { AuthenticationError } from './authenticate';
 import { AuthorizationError } from './authorize';
 import {
+  ProviderSettingsForbiddenError,
+  ProviderSettingsValidationError,
+} from '../services/providerSettingsService';
+import {
   ProviderJobStateAccessDeniedError,
   ProviderJobStateInputError,
 } from '../services/providerJobStateService';
@@ -105,6 +109,16 @@ export function errorHandler(
 
   if (err instanceof ProviderJobStateAccessDeniedError) {
     res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof ProviderSettingsForbiddenError) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof ProviderSettingsValidationError) {
+    res.status(400).json({ error: 'invalid provider settings' });
     return;
   }
 

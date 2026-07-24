@@ -42,6 +42,9 @@ export function AppShell({
           <span className="sync-pill">
             {repoId === null ? 'Selection required' : 'Server-authorized'}
           </span>
+          <Link className="settings-link" href="/settings/providers">
+            Provider settings
+          </Link>
           <Link className="avatar" href="/login" aria-label="Open account sign in">
             AK
           </Link>
