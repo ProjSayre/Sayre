@@ -16,6 +16,8 @@ import {
 import type {
   AffectedNodes,
   CanvasNodeLabel,
+  CoverageBadge,
+  CoverageBadgeStatus,
   FeatureCluster,
   FeatureMember,
   FeatureRecentEdit,
@@ -111,6 +113,26 @@ WHERE parent.org_id = $org_id
     (rule.branch IS NULL OR rule.branch = parent.ref_name) AND
     (rule.path_prefix IS NULL OR parent.path = rule.path_prefix OR
       parent.path STARTS WITH rule.path_prefix + '/'))
+OPTIONAL MATCH (test:Test)-[coverage:COVERS]->(node)
+WHERE node:File
+  AND test.org_id = $org_id
+  AND coverage.org_id = $org_id
+  AND test.repo_id = node.repo_id
+  AND test.ref_name = node.ref_name
+  AND test.revision_sha = node.revision_sha
+  AND coverage.repo_id = node.repo_id
+  AND coverage.ref_name = node.ref_name
+  AND coverage.revision_sha = node.revision_sha
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = test.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = test.ref_name) AND
+    (rule.path_prefix IS NULL OR test.path = rule.path_prefix OR
+      test.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = test.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = test.ref_name) AND
+    (rule.path_prefix IS NULL OR test.path = rule.path_prefix OR
+      test.path STARTS WITH rule.path_prefix + '/'))
 RETURN node.uid AS id,
        CASE WHEN node:Folder THEN 'Folder' ELSE 'File' END AS label,
        node.name AS name,
@@ -120,7 +142,12 @@ RETURN node.uid AS id,
        parent.uid AS parent_id,
        parent.path AS parent_path,
        parent.repo_id AS parent_repo_id,
-       parent.ref_name AS parent_ref_name
+       parent.ref_name AS parent_ref_name,
+       node.last_edited_at AS node_last_edited_at,
+       node.last_structural_change_at AS node_last_structural_change_at,
+       test.coverage_status AS coverage_test_status,
+       coverage.status AS coverage_edge_status,
+       coverage.last_run AS coverage_last_run
 ORDER BY node.path, node.uid
 `;
 
@@ -992,6 +1019,115 @@ function distinctNodes(
   return [...nodes.values()];
 }
 
+const COVERAGE_FRESHNESS_MS = 7 * 24 * 60 * 60 * 1_000;
+
+function valueAsTimestamp(record: GraphReadRecord, key: string): string | null {
+  const value = record.get(key);
+  const candidate =
+    typeof value === 'string'
+      ? value
+      : value !== null &&
+          typeof value === 'object' &&
+          value.constructor?.name !== 'Object' &&
+          typeof value.toString === 'function'
+        ? value.toString()
+        : null;
+  if (candidate === null || !Number.isFinite(Date.parse(candidate))) return null;
+  return new Date(candidate).toISOString();
+}
+
+function coverageObservation(
+  record: GraphReadRecord,
+  nowMs: number,
+): CoverageBadge | null {
+  const edgeStatus = valueAsOptionalString(record, 'coverage_edge_status');
+  if (edgeStatus !== 'inferred' && edgeStatus !== 'measured') return null;
+
+  const testStatus = valueAsOptionalString(record, 'coverage_test_status');
+  const lastRun = valueAsTimestamp(record, 'coverage_last_run');
+  const lastEditedAt = valueAsTimestamp(record, 'node_last_edited_at');
+  const lastStructuralChangeAt = valueAsTimestamp(
+    record,
+    'node_last_structural_change_at',
+  );
+  const lastRunMs = lastRun === null ? null : Date.parse(lastRun);
+  const changedAtMs = Math.max(
+    lastEditedAt === null ? Number.NEGATIVE_INFINITY : Date.parse(lastEditedAt),
+    lastStructuralChangeAt === null
+      ? Number.NEGATIVE_INFINITY
+      : Date.parse(lastStructuralChangeAt),
+  );
+  const stale =
+    lastRunMs === null ||
+    nowMs - lastRunMs > COVERAGE_FRESHNESS_MS ||
+    changedAtMs > lastRunMs;
+
+  let status: CoverageBadgeStatus = 'unknown';
+  if (testStatus === 'fail') status = 'fail';
+  else if (stale) status = 'stale';
+  else if (testStatus === 'pass') status = 'pass';
+
+  return { status, lastRun, coveringTests: 1 };
+}
+
+const COVERAGE_PRIORITY: Readonly<Record<CoverageBadgeStatus, number>> = {
+  pass: 0,
+  unknown: 1,
+  stale: 2,
+  fail: 3,
+};
+
+function mergeCoverage(left: CoverageBadge, right: CoverageBadge): CoverageBadge {
+  const status =
+    COVERAGE_PRIORITY[right.status] > COVERAGE_PRIORITY[left.status]
+      ? right.status
+      : left.status;
+  const lastRun =
+    left.lastRun === null
+      ? right.lastRun
+      : right.lastRun === null || Date.parse(left.lastRun) >= Date.parse(right.lastRun)
+        ? left.lastRun
+        : right.lastRun;
+  return {
+    status,
+    lastRun,
+    coveringTests: left.coveringTests + right.coveringTests,
+  };
+}
+
+function distinctViewportNodes(
+  records: readonly GraphReadRecord[],
+  scope: ReadScope,
+  nowMs: number,
+  expected: { repoId: string; refName: string },
+): GraphNode[] {
+  const nodes = new Map<string, GraphNode>();
+  for (const record of records) {
+    const node = mapNode(record, scope, expected);
+    if (!node) continue;
+    if (node.label === 'Folder') {
+      nodes.set(node.id, node);
+      continue;
+    }
+
+    const observation = coverageObservation(record, nowMs);
+    const coverage = observation ?? {
+      status: 'unknown' as const,
+      lastRun: null,
+      coveringTests: 0,
+    };
+    const existing = nodes.get(node.id);
+    nodes.set(node.id, {
+      ...node,
+      coverage:
+        existing?.coverage && observation
+          ? mergeCoverage(existing.coverage, observation)
+          : existing?.coverage ?? coverage,
+    });
+  }
+  return [...nodes.values()];
+}
+
 function valueAsSafeDistance(record: GraphReadRecord, key: string): number | null {
   const raw = record.get(key);
   if (typeof raw === 'number') {
@@ -1630,6 +1766,7 @@ export class RbacGraphQueryService
   constructor(
     private readonly graph: GraphReadExecutor,
     private readonly permissions: PermissionStore,
+    private readonly now: () => number = Date.now,
   ) {}
 
   async getNodesInViewport(
@@ -1668,7 +1805,7 @@ export class RbacGraphQueryService
       viewport_max_y: viewportMaxY,
       ...scopeParameters(scope),
     });
-    return distinctNodes(result.records, scope, {
+    return distinctViewportNodes(result.records, scope, this.now(), {
       repoId: normalizedRepoId,
       refName: normalizedRefName,
     });

@@ -8,6 +8,8 @@ import type {
   AuthorizedCanvasEdge,
   AuthorizedCanvasNode,
   AuthorizedCanvasPayload,
+  CoverageBadge,
+  CoverageBadgeStatus,
 } from './scaleGraph';
 import { coreFetch } from './coreFetch';
 
@@ -25,6 +27,7 @@ export interface TechnicalTreeNode {
   name: string;
   path: string;
   parentId: string | null;
+  coverage?: CoverageBadge;
 }
 
 export interface TechnicalTreeEdge {
@@ -45,6 +48,7 @@ export interface GraphNodeData extends Record<string, unknown> {
   label: string;
   kind: 'Folder' | 'File';
   path: string;
+  coverage?: CoverageBadge;
 }
 
 export interface FetchTechnicalTreeOptions {
@@ -105,6 +109,30 @@ function requireString(
   return value;
 }
 
+function parseCoverage(value: unknown): CoverageBadge {
+  if (!isRecord(value)) throw new TechnicalTreeResponseError();
+  const status = value.status;
+  const lastRun = value.lastRun;
+  const coveringTests = value.coveringTests;
+  if (
+    (status !== 'pass' &&
+      status !== 'fail' &&
+      status !== 'stale' &&
+      status !== 'unknown') ||
+    (lastRun !== null &&
+      (typeof lastRun !== 'string' || !Number.isFinite(Date.parse(lastRun)))) ||
+    !Number.isSafeInteger(coveringTests) ||
+    (coveringTests as number) < 0
+  ) {
+    throw new TechnicalTreeResponseError();
+  }
+  return {
+    status: status as CoverageBadgeStatus,
+    lastRun: lastRun === null ? null : new Date(lastRun as string).toISOString(),
+    coveringTests: coveringTests as number,
+  };
+}
+
 function parseNode(value: unknown): TechnicalTreeNode {
   if (!isRecord(value)) throw new TechnicalTreeResponseError();
   const label = value.label;
@@ -117,12 +145,19 @@ function parseNode(value: unknown): TechnicalTreeNode {
     throw new TechnicalTreeResponseError();
   }
 
+  const coverage =
+    value.coverage === undefined ? undefined : parseCoverage(value.coverage);
+  if (label === 'Folder' && coverage !== undefined) {
+    throw new TechnicalTreeResponseError();
+  }
+
   return {
     id: requireString(value, 'id'),
     label,
     name: requireString(value, 'name'),
     path: requireString(value, 'path', { allowEmpty: true }),
     parentId,
+    ...(coverage === undefined ? {} : { coverage }),
   };
 }
 
@@ -214,6 +249,7 @@ function layoutNodes(nodes: readonly TechnicalTreeNode[]): AuthorizedCanvasNode[
         path: node.path,
         x: depth * 260,
         y: (index - center) * 92,
+        ...(node.coverage === undefined ? {} : { coverage: node.coverage }),
       });
     });
   }
@@ -318,8 +354,20 @@ export function toReactFlowElements(payload: AuthorizedCanvasPayload): {
     position: { x: node.x, y: node.y },
     sourcePosition: Position.Right,
     targetPosition: Position.Left,
-    className: node.kind === 'Folder' ? 'graph-node-folder' : 'graph-node-file',
-    data: { label: node.label, kind: node.kind, path: node.path },
+    className: [
+      node.kind === 'Folder' ? 'graph-node-folder' : 'graph-node-file',
+      node.kind === 'File'
+        ? `graph-coverage-${node.coverage?.status ?? 'unknown'}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    data: {
+      label: node.label,
+      kind: node.kind,
+      path: node.path,
+      ...(node.coverage === undefined ? {} : { coverage: node.coverage }),
+    },
   }));
 
   const edges: Edge[] = payload.edges.map((edge) => {

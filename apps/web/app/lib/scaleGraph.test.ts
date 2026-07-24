@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GRAPHLOGY_PRESENTATION_ALLOWLIST,
+  coverageColor,
   createScaleFixture,
   rendererForVisibleNodeCount,
   toPresentationGraph,
@@ -42,5 +43,12 @@ describe('at-scale renderer selection', () => {
     expect(graph.getEdgeAttribute('imports-file-0-file-1', 'relationship')).toBe('IMPORTS');
     expect(GRAPHLOGY_PRESENTATION_ALLOWLIST).not.toContain('RBAC filtering');
     expect(GRAPHLOGY_PRESENTATION_ALLOWLIST).not.toContain('graph traversal');
+  });
+
+  it('uses the same coverage palette for badge-capable renderers', () => {
+    expect(coverageColor('pass')).toBe('#78dba9');
+    expect(coverageColor('fail')).toBe('#ff6b78');
+    expect(coverageColor('stale')).toBe('#f7c66c');
+    expect(coverageColor('unknown')).toBe('#8795a5');
   });
 });

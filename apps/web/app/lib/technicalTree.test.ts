@@ -30,6 +30,11 @@ const FULL_PARSE_RESPONSE: TechnicalTreeResponse = {
       name: 'app.ts',
       path: 'src/app.ts',
       parentId: 'folder-src',
+      coverage: {
+        status: 'stale',
+        lastRun: '2026-07-22T12:00:00Z',
+        coveringTests: 2,
+      },
     },
     {
       id: 'file-util',
@@ -37,6 +42,11 @@ const FULL_PARSE_RESPONSE: TechnicalTreeResponse = {
       name: 'util.ts',
       path: 'src/util.ts',
       parentId: 'folder-src',
+      coverage: {
+        status: 'pass',
+        lastRun: '2026-07-23T12:00:00Z',
+        coveringTests: 1,
+      },
     },
   ],
   edges: [
@@ -95,9 +105,14 @@ describe('Technical Tree full-parse-to-render contract', () => {
       true,
     );
     expect(reactFlow.nodes).toHaveLength(4);
+    expect(reactFlow.nodes.find((node) => node.id === 'file-app')?.className).toContain(
+      'graph-coverage-stale',
+    );
     expect(reactFlow.edges.find((edge) => edge.id.startsWith('IMPORTS'))?.animated).toBe(true);
     expect(sigma.order).toBe(4);
     expect(sigma.size).toBe(4);
+    expect(sigma.getNodeAttribute('file-app', 'color')).toBe('#f7c66c');
+    expect(sigma.getNodeAttribute('file-util', 'label')).toContain('PASS');
     expect(rendererForVisibleNodeCount(payload.visibleNodeCount)).toBe('react-flow');
   });
 
@@ -177,6 +192,24 @@ describe('Technical Tree response validation', () => {
       'invalid containment source kind',
       (value: Record<string, unknown>) =>
         (((value.edges as Array<Record<string, unknown>>)[0].source = 'file-app')),
+    ],
+    [
+      'invalid coverage status',
+      (value: Record<string, unknown>) =>
+        (((value.nodes as Array<Record<string, unknown>>)[2].coverage = {
+          status: 'maybe',
+          lastRun: null,
+          coveringTests: 1,
+        })),
+    ],
+    [
+      'coverage metadata on a Folder',
+      (value: Record<string, unknown>) =>
+        (((value.nodes as Array<Record<string, unknown>>)[1].coverage = {
+          status: 'pass',
+          lastRun: '2026-07-23T12:00:00Z',
+          coveringTests: 1,
+        })),
     ],
   ])('rejects %s', (_name, mutate) => {
     const value = cloneFixture();

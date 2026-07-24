@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -39,6 +40,7 @@ class IngestionJob(BaseModel):
     revision_sha: str
     previous_revision_sha: str | None = None
     forced: bool = False
+    occurred_at: datetime
     trace_id: str | None = None
     idempotency_key: str = Field(min_length=1)
 
@@ -55,6 +57,13 @@ class IngestionJob(BaseModel):
         if not value.startswith("refs/") or any(char in value for char in ("\0", "\n", "\r")):
             raise ValueError("ref_name must be a canonical refs/* name")
         return value
+
+    @field_validator("occurred_at")
+    @classmethod
+    def validate_occurred_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("occurred_at must include a timezone")
+        return value.astimezone(timezone.utc)
 
 
 @dataclass(frozen=True)
@@ -84,8 +93,8 @@ class GraphEdge:
     relationship: Literal["CONTAINS", "IMPORTS", "CALLS", "INHERITS", "COVERS"]
     source_uid: str
     target_uid: str
-    # Only COVERS carries edge properties today (status, last_run) -- the other
-    # relationship types stay bare, matching the graph schema (docs/graph-schema.md).
+    # COVERS carries status/last_run; CONTAINS/IMPORTS/CALLS/INHERITS stay bare,
+    # matching the graph schema (docs/graph-schema.md).
     properties: dict[str, Any] = field(default_factory=dict)
 
 
@@ -242,6 +251,7 @@ def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
         revision_sha=revision,
         previous_revision_sha=previous,
         forced=forced,
+        occurred_at=envelope.occurred_at,
         trace_id=envelope.trace_id,
         idempotency_key=envelope.idempotency_key or envelope.message_id,
     )

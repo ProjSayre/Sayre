@@ -15,12 +15,21 @@ export interface Viewport {
 // Function/Class are graph-internal and never surface through this service.
 export type CanvasNodeLabel = 'Folder' | 'File';
 
+export type CoverageBadgeStatus = 'pass' | 'fail' | 'stale' | 'unknown';
+
+export interface CoverageBadge {
+  status: CoverageBadgeStatus;
+  lastRun: string | null;
+  coveringTests: number;
+}
+
 export interface GraphNode {
   id: string;
   label: CanvasNodeLabel;
   name: string;
   path: string;
   parentId: string | null;
+  coverage?: CoverageBadge;
 }
 
 // Folder/File are the only canvas nodes, so only relationships whose endpoints

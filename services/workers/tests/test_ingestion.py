@@ -8,6 +8,7 @@ import sys
 import time
 from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -330,6 +331,7 @@ def test_job_parser_uses_only_server_resolved_envelope_org() -> None:
     assert job.repository.provider_repo_id == "583231"
     assert job.repository.installation_id == 777
     assert not hasattr(job.repository, "repo_id")
+    assert job.occurred_at.tzinfo is not None
 
 
 def test_push_job_parser_preserves_github_installation_id() -> None:
@@ -414,6 +416,68 @@ def test_projection_resolves_javascript_parent_relative_import() -> None:
     assert any(edge.relationship == "IMPORTS" for edge in projection.edges)
 
 
+def test_projection_writes_scoped_test_nodes_and_inferred_covers_edges() -> None:
+    sources = (
+        SourceFile(path="src/calculator.py", content=b"def add(a, b):\n    return a + b\n"),
+        SourceFile(
+            path="tests/test_calculator.py",
+            content=b"from src.calculator import add\n\ndef test_add():\n    assert add(1, 2) == 3\n",
+        ),
+    )
+    scope = GraphScope("org-1", "repo-1", "refs/heads/main", SHA_A)
+
+    projection = build_projection(
+        scope=scope,
+        parsed=parse_full(sources),
+        tracked_paths=tuple(source.path for source in sources),
+        affected_paths=tuple(source.path for source in sources),
+        full_rebuild=True,
+        changed_at=datetime(2026, 7, 23, 12, tzinfo=timezone.utc),
+    )
+
+    tests = [node for node in projection.nodes if node.label == "Test"]
+    covers = [edge for edge in projection.edges if edge.relationship == "COVERS"]
+    changed_files = [node for node in projection.nodes if node.label == "File"]
+    assert [(node.properties["path"], node.properties["coverage_status"]) for node in tests] == [
+        ("tests/test_calculator.py", "unknown")
+    ]
+    assert len(covers) == 1
+    assert covers[0].properties == {"status": "inferred", "last_run": None}
+    assert tests[0].properties["org_id"] == scope.org_id
+    assert tests[0].properties["repo_id"] == scope.repository_id
+    assert all(
+        node.properties["last_structural_change_at"] == "2026-07-23T12:00:00+00:00"
+        for node in changed_files
+    )
+
+
+def test_delta_projection_marks_only_affected_files_as_structurally_changed() -> None:
+    sources = (
+        SourceFile(path="src/changed.py", content=b"CHANGED = True\n"),
+        SourceFile(path="src/unchanged.py", content=b"UNCHANGED = True\n"),
+    )
+    scope = GraphScope("org-1", "repo-1", "refs/heads/main", SHA_B)
+
+    projection = build_projection(
+        scope=scope,
+        parsed=parse_full(sources),
+        tracked_paths=tuple(source.path for source in sources),
+        affected_paths=("src/changed.py",),
+        full_rebuild=False,
+        changed_at=datetime(2026, 7, 23, 13, tzinfo=timezone.utc),
+    )
+
+    files = {
+        node.properties["path"]: node.properties
+        for node in projection.nodes
+        if node.label == "File"
+    }
+    assert files["src/changed.py"]["last_structural_change_at"] == (
+        "2026-07-23T13:00:00+00:00"
+    )
+    assert "last_structural_change_at" not in files["src/unchanged.py"]
+
+
 @pytest.mark.asyncio
 async def test_initial_ingestion_commits_event_before_embedding_and_cleans_scratch() -> None:
     snapshot = FakeSnapshot(
@@ -463,6 +527,33 @@ async def test_fast_forward_delta_only_replaces_changed_and_deleted_paths() -> N
     assert graph.projections[0].affected_file_paths == ("src/next.py", "src/old.py")
     assert chunks.calls[0]["full_rebuild"] is False
     assert publisher.onboarding_events == []
+
+
+@pytest.mark.asyncio
+async def test_delta_resolves_changed_test_import_against_unchanged_repository_path() -> None:
+    snapshot = FakeSnapshot(
+        revision=SHA_B,
+        tracked=("src/calculator.py", "tests/test_calculator.py"),
+        sources={
+            "tests/test_calculator.py": (
+                b"from src.calculator import add\n\ndef test_add():\n    assert add(1, 2) == 3\n"
+            )
+        },
+        changed=("tests/test_calculator.py",),
+        ancestry={(SHA_A, SHA_B): True},
+    )
+    current = RefState("ref-from-postgres", SHA_A, 3)
+    service, _log, graph, _chunks, _publisher = service_fixture(snapshot, current)
+
+    await service.handle(push_envelope())
+
+    covers = [
+        edge
+        for edge in graph.projections[0].edges
+        if edge.relationship == "COVERS"
+    ]
+    assert len(covers) == 1
+    assert covers[0].properties["status"] == "inferred"
 
 
 @pytest.mark.asyncio

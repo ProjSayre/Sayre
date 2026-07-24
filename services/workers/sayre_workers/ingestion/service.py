@@ -106,7 +106,11 @@ class IngestionService:
                     )
                     affected_paths = tuple(sorted(set(changed_paths) | set(deleted_paths)))
                     source_files = await snapshot.source_files(changed_paths)
-                    parsed = parse_diff(source_files, deleted_paths)
+                    parsed = parse_diff(
+                        source_files,
+                        deleted_paths,
+                        repository_paths=tracked_paths,
+                    )
 
                 scope = GraphScope(
                     org_id=job.org_id,
@@ -125,6 +129,7 @@ class IngestionService:
                         existing_symbols=existing_symbols,
                         affected_paths=affected_paths,
                         full_rebuild=full_rebuild,
+                        changed_at=job.occurred_at,
                     )
                     await self._graph_store.apply(projection)
                     accepted_state = await locked_ref.accept(job.revision_sha)

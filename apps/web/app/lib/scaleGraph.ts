@@ -4,6 +4,13 @@ export const SIGMA_NODE_THRESHOLD = 500;
 
 export type CanvasNodeKind = 'Folder' | 'File';
 export type GraphRenderer = 'react-flow' | 'sigma';
+export type CoverageBadgeStatus = 'pass' | 'fail' | 'stale' | 'unknown';
+
+export interface CoverageBadge {
+  status: CoverageBadgeStatus;
+  lastRun: string | null;
+  coveringTests: number;
+}
 
 export interface AuthorizedCanvasNode {
   id: string;
@@ -12,6 +19,7 @@ export interface AuthorizedCanvasNode {
   path: string;
   x: number;
   y: number;
+  coverage?: CoverageBadge;
 }
 
 export interface AuthorizedCanvasEdge {
@@ -39,6 +47,21 @@ export const GRAPHLOGY_PRESENTATION_ALLOWLIST = [
   'extract an induced subgraph from server-supplied node ids',
   'apply client-side layout coordinates',
 ] as const;
+
+export function coverageColor(status: CoverageBadgeStatus | undefined): string {
+  switch (status) {
+    case 'pass':
+      return '#78dba9';
+    case 'fail':
+      return '#ff6b78';
+    case 'stale':
+      return '#f7c66c';
+    case 'unknown':
+      return '#8795a5';
+    default:
+      return '#77a7ff';
+  }
+}
 
 export function rendererForVisibleNodeCount(visibleNodeCount: number): GraphRenderer {
   if (!Number.isSafeInteger(visibleNodeCount) || visibleNodeCount < 0) {
@@ -115,10 +138,17 @@ export function toPresentationGraph(payload: AuthorizedCanvasPayload): Graph {
       x: node.x,
       y: node.y,
       size: node.kind === 'Folder' ? 5 : 2.6,
-      color: node.kind === 'Folder' ? '#f7c66c' : '#77a7ff',
-      label: node.label,
+      color:
+        node.kind === 'Folder'
+          ? '#f7c66c'
+          : coverageColor(node.coverage?.status),
+      label:
+        node.kind === 'File' && node.coverage?.status !== undefined
+          ? `${node.label} · ${node.coverage.status.toUpperCase()}`
+          : node.label,
       kind: node.kind,
       path: node.path,
+      coverageStatus: node.coverage?.status,
     });
   }
   for (const edge of payload.edges) {
