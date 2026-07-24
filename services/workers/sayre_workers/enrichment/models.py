@@ -1,10 +1,8 @@
-"""Tenant-scoped contracts for the W2-05 semantic enrichment worker skeleton.
+"""Tenant-scoped contracts for semantic enrichment.
 
-Deliberately absent (Resolved decisions D5, `.pipeline/spec.md`): a
-`NodePropertyPatch` dataclass, a `PATCHABLE_PROPERTIES` map, and a `property_patches`
-field on `EnrichmentWrite`. Property patching (e.g. `File.agent_skill_md`,
-`Folder.coding_style`) is owned by W3-01/W3-06 and will reintroduce these types when
-needed. This skeleton's only demonstrable write is graph nodes + edges.
+W2-05 introduced graph-node/edge writes. W3-06 adds a deliberately narrow property
+patch boundary for the two Folder style properties; it does not make arbitrary node
+properties model-writable.
 """
 
 from __future__ import annotations
@@ -24,6 +22,11 @@ LANE = Literal["default", "priority"]
 # the writer (defense in depth behind GraphifyAdapter) -- see enrichment_graph.py.
 ENRICHMENT_NODE_LABELS: frozenset[str] = frozenset({"Feature", "EnvStep"})
 ENRICHMENT_EDGE_TYPES: frozenset[str] = frozenset({"PART_OF", "REFERENCES", "REQUIRES"})
+PATCHABLE_PROPERTIES: dict[str, frozenset[str]] = {
+    "Folder": frozenset({"coding_style", "comment_style"}),
+}
+
+MAX_STYLE_VALUE_CHARS = 2_048
 
 
 class InvalidEnrichmentEventError(ValueError):
@@ -33,6 +36,10 @@ class InvalidEnrichmentEventError(ValueError):
 class InvalidEnrichmentWriteError(ValueError):
     """A GraphifyAdapter write used a label/edge outside the closed sets, or a scope
     that disagrees with the job that produced it."""
+
+
+class InvalidStyleClassificationError(InvalidEnrichmentWriteError):
+    """A style-classification response was malformed or escaped its requested scope."""
 
 
 class GenerationConfigNotFoundError(RuntimeError):
@@ -52,9 +59,16 @@ class FileContext:
 
 
 @dataclass(frozen=True)
+class FolderContext:
+    uid: str
+    path: str
+
+
+@dataclass(frozen=True)
 class EnrichmentContext:
     scope: GraphScope
     files: tuple[FileContext, ...]
+    folders: tuple[FolderContext, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -85,10 +99,18 @@ class EnrichmentEdge:
 
 
 @dataclass(frozen=True)
+class NodePropertyPatch:
+    label: str
+    uid: str
+    properties: dict[str, str | None]
+
+
+@dataclass(frozen=True)
 class EnrichmentWrite:
     scope: GraphScope
     nodes: tuple[EnrichmentNode, ...] = ()
     edges: tuple[EnrichmentEdge, ...] = ()
+    property_patches: tuple[NodePropertyPatch, ...] = ()
 
 
 @dataclass(frozen=True)

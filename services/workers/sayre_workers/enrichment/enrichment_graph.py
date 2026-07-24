@@ -24,9 +24,12 @@ from sayre_workers.telemetry.graph_metrics import (
 from .models import (
     ENRICHMENT_EDGE_TYPES,
     ENRICHMENT_NODE_LABELS,
+    MAX_STYLE_VALUE_CHARS,
+    PATCHABLE_PROPERTIES,
     EnrichmentContext,
     EnrichmentWrite,
     FileContext,
+    FolderContext,
     InvalidEnrichmentWriteError,
 )
 
@@ -41,6 +44,39 @@ class EnrichmentGraphStore(Protocol):
     async def apply(self, write: EnrichmentWrite) -> None: ...
 
     async def apply_feature_projection(self, write: EnrichmentWrite) -> bool: ...
+
+
+LOAD_ENRICHMENT_FILES_CYPHER = """
+    MATCH (node:File {
+        org_id: $org_id,
+        repo_id: $repo_id,
+        ref_name: $ref_name,
+        revision_sha: $revision_sha
+    })
+    WHERE $full_rebuild OR node.path IN $changed_paths
+    RETURN node.uid AS uid, node.path AS path, node.language AS language
+    ORDER BY node.path
+"""
+
+LOAD_STYLE_FOLDERS_CYPHER = """
+    MATCH (folder:Folder {
+        org_id: $org_id,
+        repo_id: $repo_id,
+        ref_name: $ref_name,
+        revision_sha: $revision_sha
+    })
+    WHERE folder.uid IS NOT NULL
+      AND folder.path IS NOT NULL
+      AND (
+        $full_rebuild OR
+        ANY(changed_path IN $changed_paths WHERE
+          folder.path = '' OR
+          changed_path = folder.path OR
+          changed_path STARTS WITH folder.path + '/')
+      )
+    RETURN folder.uid AS uid, folder.path AS path
+    ORDER BY folder.path, folder.uid
+"""
 
 
 # Static, closed-set Cypher shapes -- one per permitted label/relationship. Endpoints
@@ -82,6 +118,21 @@ _EDGE_QUERIES = {
         MATCH (source {org_id: $org_id, uid: item.source_uid})
         MATCH (target {org_id: $org_id, uid: item.target_uid})
         MERGE (source)-[edge:REQUIRES {org_id: $org_id}]->(target)
+    """,
+}
+
+_PROPERTY_PATCH_QUERIES = {
+    "Folder": """
+        UNWIND $items AS item
+        MATCH (node:Folder {
+            org_id: $org_id,
+            repo_id: $repo_id,
+            ref_name: $ref_name,
+            revision_sha: $revision_sha,
+            uid: item.uid
+        })
+        SET node.coding_style = item.coding_style,
+            node.comment_style = item.comment_style
     """,
 }
 
@@ -141,6 +192,37 @@ def validate_enrichment_write(write: EnrichmentWrite) -> None:
             raise InvalidEnrichmentWriteError(
                 f"enrichment write attempted a disallowed relationship: {edge.relationship!r}"
             )
+    seen_patches: set[tuple[str, str]] = set()
+    for patch in write.property_patches:
+        allowed = PATCHABLE_PROPERTIES.get(patch.label)
+        if allowed is None:
+            raise InvalidEnrichmentWriteError(
+                f"enrichment write attempted a disallowed patch label: {patch.label!r}"
+            )
+        if not patch.uid.strip() or len(patch.uid) > 512:
+            raise InvalidEnrichmentWriteError("enrichment property patch requires a bounded uid")
+        patch_key = (patch.label, patch.uid)
+        if patch_key in seen_patches:
+            raise InvalidEnrichmentWriteError(
+                f"enrichment write contains a duplicate property patch for {patch.label}:{patch.uid}"
+            )
+        seen_patches.add(patch_key)
+        if set(patch.properties) != allowed:
+            raise InvalidEnrichmentWriteError(
+                f"{patch.label} patch must contain exactly {sorted(allowed)!r}"
+            )
+        for property_name, value in patch.properties.items():
+            if value is None:
+                continue
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+                or "\x00" in value
+                or len(value) > MAX_STYLE_VALUE_CHARS
+            ):
+                raise InvalidEnrichmentWriteError(
+                    f"{patch.label}.{property_name} must be null or a bounded non-blank string"
+                )
 
 
 class Neo4jEnrichmentGraphStore:
@@ -175,31 +257,33 @@ class Neo4jEnrichmentGraphStore:
     async def load_context(
         self, scope: GraphScope, changed_paths: tuple[str, ...], full_rebuild: bool
     ) -> EnrichmentContext:
-        query = """
-            MATCH (node:File {
-                org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name,
-                revision_sha: $revision_sha
-            })
-            WHERE $full_rebuild OR node.path IN $changed_paths
-            RETURN node.uid AS uid, node.path AS path, node.language AS language
-            ORDER BY node.path
-        """
+        parameters: dict[str, Any] = {
+            "org_id": scope.org_id,
+            "repo_id": scope.repository_id,
+            "ref_name": scope.ref_name,
+            "revision_sha": scope.revision_sha,
+            "full_rebuild": full_rebuild,
+            "changed_paths": list(changed_paths),
+        }
         async with instrument_graph_query(scope.org_id, QUERY_SHAPE_TRAVERSAL) as measurement:
-            records, _summary, _keys = await self._driver.execute_query(
-                query,
-                org_id=scope.org_id,
-                repo_id=scope.repository_id,
-                ref_name=scope.ref_name,
-                revision_sha=scope.revision_sha,
-                full_rebuild=full_rebuild,
-                changed_paths=list(changed_paths),
+            file_records, _file_summary, _file_keys = await self._driver.execute_query(
+                LOAD_ENRICHMENT_FILES_CYPHER,
+                **parameters,
             )
-            measurement.set_result_node_count(len(records))
+            folder_records, _folder_summary, _folder_keys = await self._driver.execute_query(
+                LOAD_STYLE_FOLDERS_CYPHER,
+                **parameters,
+            )
+            measurement.set_result_node_count(len(file_records) + len(folder_records))
         files = tuple(
             FileContext(uid=record["uid"], path=record["path"], language=record["language"])
-            for record in records
+            for record in file_records
         )
-        return EnrichmentContext(scope=scope, files=files)
+        folders = tuple(
+            FolderContext(uid=record["uid"], path=record["path"])
+            for record in folder_records
+        )
+        return EnrichmentContext(scope=scope, files=files, folders=folders)
 
     async def apply(self, write: EnrichmentWrite) -> None:
         # Closed-set validation happens BEFORE any Cypher runs (AC5).
@@ -214,6 +298,9 @@ class Neo4jEnrichmentGraphStore:
             edges_by_type[edge.relationship].append(
                 {"source_uid": edge.source_uid, "target_uid": edge.target_uid}
             )
+        patches_by_label: dict[str, list[dict[str, str | None]]] = defaultdict(list)
+        for patch in write.property_patches:
+            patches_by_label[patch.label].append({"uid": patch.uid, **patch.properties})
 
         async def write_transaction(transaction: Any) -> None:
             common = {
@@ -230,11 +317,14 @@ class Neo4jEnrichmentGraphStore:
                     await transaction.run(
                         query, items=edges_by_type[relationship], org_id=scope.org_id
                     )
+            for label, query in _PROPERTY_PATCH_QUERIES.items():
+                if patches_by_label[label]:
+                    await transaction.run(query, items=patches_by_label[label], **common)
 
         async with instrument_graph_query(scope.org_id, QUERY_SHAPE_WRITE) as measurement:
             async with self._driver.session() as session:
                 await session.execute_write(write_transaction)
-            measurement.set_result_node_count(len(write.nodes))
+            measurement.set_result_node_count(len(write.nodes) + len(write.property_patches))
 
     async def apply_feature_projection(self, write: EnrichmentWrite) -> bool:
         """Replace one ref head's Feature membership projection if still current.
@@ -263,6 +353,11 @@ class Neo4jEnrichmentGraphStore:
         for edge in write.edges:
             edges_by_type[edge.relationship].append(
                 {"source_uid": edge.source_uid, "target_uid": edge.target_uid}
+            )
+        patches_by_label: dict[str, list[dict[str, str | None]]] = defaultdict(list)
+        for patch in write.property_patches:
+            patches_by_label[patch.label].append(
+                {"uid": patch.uid, **patch.properties}
             )
 
         async def replace_projection(transaction: Any) -> bool:
@@ -302,10 +397,19 @@ class Neo4jEnrichmentGraphStore:
                         items=edges_by_type[relationship],
                         **common,
                     )
+            for label, query in _PROPERTY_PATCH_QUERIES.items():
+                if patches_by_label[label]:
+                    await transaction.run(
+                        query,
+                        items=patches_by_label[label],
+                        **common,
+                    )
             return True
 
         async with instrument_graph_query(scope.org_id, QUERY_SHAPE_WRITE) as measurement:
             async with self._driver.session() as session:
                 applied = bool(await session.execute_write(replace_projection))
-            measurement.set_result_node_count(len(write.nodes) if applied else 0)
+            measurement.set_result_node_count(
+                len(write.nodes) + len(write.property_patches) if applied else 0
+            )
         return applied

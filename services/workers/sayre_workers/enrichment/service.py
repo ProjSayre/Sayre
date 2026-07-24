@@ -22,6 +22,7 @@ request.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Protocol
 
 from messaging.envelope import MessageEnvelope
@@ -46,6 +47,7 @@ from .models import (
     GenerationConfigNotFoundError,
     InvalidEnrichmentWriteError,
 )
+from .style_classifier import ModelStyleClassifier, StyleClassifier
 from .state_store import (
     ProviderJobState,
     ProviderJobStateStore,
@@ -67,12 +69,14 @@ class EnrichmentService:
         graphify_factory: GraphifyAdapterFactory,
         config_store: GenerationConfigStore,
         state_store: ProviderJobStateStore,
+        style_classifier: StyleClassifier | None = None,
     ) -> None:
         self._graph_store = graph_store
         self._model_provider_factory = model_provider_factory
         self._graphify_factory = graphify_factory
         self._config_store = config_store
         self._state_store = state_store
+        self._style_classifier = style_classifier or ModelStyleClassifier()
 
     async def handle(self, envelope: MessageEnvelope) -> EnrichmentResult:
         job = parse_enrichment_envelope(envelope)
@@ -162,6 +166,23 @@ class EnrichmentService:
                 )
             if job.lane == "default":
                 write = canonicalize_feature_clustering_write(context, write)
+
+            style_patches = await self._style_classifier.classify(context, provider)
+            if style_patches:
+                write = replace(
+                    write,
+                    property_patches=(*write.property_patches, *style_patches),
+                )
+            context_folder_uids = {folder.uid for folder in context.folders}
+            if any(
+                patch.label != "Folder" or patch.uid not in context_folder_uids
+                for patch in write.property_patches
+            ):
+                raise InvalidEnrichmentWriteError(
+                    "enrichment property patch targets a Folder outside the loaded context"
+                )
+
+            if job.lane == "default":
                 if not await self._graph_store.apply_feature_projection(write):
                     return EnrichmentResult(
                         status="skipped_stale",

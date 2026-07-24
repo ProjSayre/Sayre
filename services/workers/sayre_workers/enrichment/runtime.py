@@ -8,6 +8,7 @@ from .enrichment_graph import Neo4jEnrichmentGraphStore
 from .graphify_adapter import GraphifyAdapterFactory
 from sayre_workers.model_provider import ModelProviderFactory
 from .service import EnrichmentService
+from .style_classifier import ModelStyleClassifier
 from .state_store import PostgresProviderJobStateStore
 
 
@@ -17,5 +18,6 @@ async def build_enrichment_service() -> EnrichmentService:
         model_provider_factory=ModelProviderFactory(),
         graphify_factory=GraphifyAdapterFactory(),
         config_store=await PostgresGenerationConfigStore.from_config(),
+        style_classifier=ModelStyleClassifier(),
         state_store=await PostgresProviderJobStateStore.from_config(),
     )
