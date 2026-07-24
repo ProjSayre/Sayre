@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { AuthContext } from '../auth/context';
 import { createDb, createPoolFromSecret, type Db, withOrgContext } from '../db/client';
-import { permissions } from '../db/schema';
+import { mcpClientKeys, permissions, users } from '../db/schema';
 
 export interface AuthorizationRule {
   repoId: string | null;
@@ -81,6 +81,16 @@ function normalizeRule(row: PermissionRow): AuthorizationRule {
   };
 }
 
+export function normalizeAuthorizationRule(
+  rule: AuthorizationRule,
+): AuthorizationRule {
+  return {
+    repoId: rule.repoId?.trim() || null,
+    branch: normalizeBranch(rule.branch),
+    pathPrefix: normalizePathPrefix(rule.pathPrefix),
+  };
+}
+
 function deduplicate(rules: AuthorizationRule[]): AuthorizationRule[] {
   const seen = new Set<string>();
   return rules.filter((rule) => {
@@ -102,6 +112,98 @@ export function scopeFromRows(rows: readonly PermissionRow[]): ReadScope {
   }
 
   return { allows: deduplicate(allows), denies: deduplicate(denies) };
+}
+
+function compatibleExact(
+  left: string | null,
+  right: string | null,
+): string | null | undefined {
+  if (left === null) return right;
+  if (right === null) return left;
+  return left === right ? left : undefined;
+}
+
+function intersectPath(
+  left: string | null,
+  right: string | null,
+): string | null | undefined {
+  if (left === null) return right;
+  if (right === null) return left;
+  if (left === right || left.startsWith(`${right}/`)) return left;
+  if (right.startsWith(`${left}/`)) return right;
+  return undefined;
+}
+
+function intersectRules(
+  left: AuthorizationRule,
+  right: AuthorizationRule,
+): AuthorizationRule | null {
+  const repoId = compatibleExact(left.repoId, right.repoId);
+  const branch = compatibleExact(left.branch, right.branch);
+  const pathPrefix = intersectPath(left.pathPrefix, right.pathPrefix);
+  if (
+    repoId === undefined ||
+    branch === undefined ||
+    pathPrefix === undefined
+  ) {
+    return null;
+  }
+  return { repoId, branch, pathPrefix };
+}
+
+/**
+ * Agent-key reads are always the intersection of their immutable issuance
+ * grants and the issuing user's current effective scope. Revoking or narrowing
+ * the issuer therefore narrows the key on its very next graph query.
+ */
+export function intersectReadScopes(
+  ceiling: ReadScope,
+  issuer: ReadScope,
+): ReadScope {
+  const allows: AuthorizationRule[] = [];
+  for (const keyRule of ceiling.allows) {
+    for (const issuerRule of issuer.allows) {
+      const intersection = intersectRules(keyRule, issuerRule);
+      if (intersection) allows.push(intersection);
+    }
+  }
+  return {
+    allows: deduplicate(allows),
+    denies: deduplicate([...ceiling.denies, ...issuer.denies]),
+  };
+}
+
+function ruleContains(
+  parent: AuthorizationRule,
+  child: AuthorizationRule,
+): boolean {
+  if (parent.repoId !== null && parent.repoId !== child.repoId) return false;
+  if (parent.branch !== null && parent.branch !== child.branch) return false;
+  if (parent.pathPrefix === null) return true;
+  return (
+    child.pathPrefix !== null &&
+    (child.pathPrefix === parent.pathPrefix ||
+      child.pathPrefix.startsWith(`${parent.pathPrefix}/`))
+  );
+}
+
+function rulesOverlap(
+  left: AuthorizationRule,
+  right: AuthorizationRule,
+): boolean {
+  return intersectRules(left, right) !== null;
+}
+
+/** Used by issuance to reject grants broader than the admin's current scope. */
+export function isRuleWithinScope(
+  input: AuthorizationRule,
+  scope: ReadScope,
+): boolean {
+  const rule = normalizeAuthorizationRule(input);
+  return (
+    scope.allows.some((allow) => ruleContains(allow, rule)) &&
+    !scope.denies.some((deny) => rulesOverlap(deny, rule))
+  );
 }
 
 export interface ScopedGraphResource {
@@ -145,6 +247,99 @@ export class PostgresPermissionStore implements PermissionStore {
     // repositories.id is UUID-backed. A malformed route/MCP argument cannot be
     // bound safely to Postgres and should reveal no permission rows.
     if (repoId !== undefined && !UUID_RE.test(repoId)) return EMPTY_SCOPE;
+
+    if (ctx.subjectType === 'agent_key') {
+      const db = await this.database();
+      return withOrgContext(db, ctx.orgId, async (tx) => {
+        const [key] = await tx
+          .select({
+            createdBy: mcpClientKeys.createdBy,
+            revokedAt: mcpClientKeys.revokedAt,
+            expiresAt: mcpClientKeys.expiresAt,
+          })
+          .from(mcpClientKeys)
+          .where(
+            and(
+              eq(mcpClientKeys.orgId, ctx.orgId),
+              eq(mcpClientKeys.keyPrefix, ctx.agentKeyId),
+            ),
+          )
+          .limit(1);
+        if (
+          !key?.createdBy ||
+          key.revokedAt !== null ||
+          (key.expiresAt !== null && key.expiresAt <= new Date())
+        ) {
+          return EMPTY_SCOPE;
+        }
+
+        const [issuer] = await tx
+          .select({ orgRole: users.orgRole })
+          .from(users)
+          .where(
+            and(eq(users.orgId, ctx.orgId), eq(users.id, key.createdBy)),
+          )
+          .limit(1);
+        if (!issuer) return EMPTY_SCOPE;
+
+        const keyRows = await tx
+          .select({
+            repoId: permissions.repoId,
+            branch: permissions.branch,
+            pathPrefix: permissions.pathPrefix,
+            effect: permissions.effect,
+          })
+          .from(permissions)
+          .where(
+            and(
+              eq(permissions.orgId, ctx.orgId),
+              eq(permissions.subjectType, 'agent_key'),
+              eq(permissions.subjectId, ctx.agentKeyId),
+              inArray(permissions.action, ['read', 'write', 'admin']),
+              repoId === undefined
+                ? undefined
+                : or(isNull(permissions.repoId), eq(permissions.repoId, repoId)),
+            ),
+          );
+
+        const issuerScope =
+          issuer.orgRole === 'owner'
+            ? OWNER_SCOPE
+            : scopeFromRows(
+                await tx
+                  .select({
+                    repoId: permissions.repoId,
+                    branch: permissions.branch,
+                    pathPrefix: permissions.pathPrefix,
+                    effect: permissions.effect,
+                  })
+                  .from(permissions)
+                  .where(
+                    and(
+                      eq(permissions.orgId, ctx.orgId),
+                      or(
+                        and(
+                          eq(permissions.subjectType, 'user'),
+                          eq(permissions.subjectId, key.createdBy),
+                        ),
+                        and(
+                          eq(permissions.subjectType, 'role'),
+                          eq(permissions.subjectId, issuer.orgRole),
+                        ),
+                      ),
+                      inArray(permissions.action, ['read', 'write', 'admin']),
+                      repoId === undefined
+                        ? undefined
+                        : or(
+                            isNull(permissions.repoId),
+                            eq(permissions.repoId, repoId),
+                          ),
+                    ),
+                  ),
+              );
+        return intersectReadScopes(scopeFromRows(keyRows), issuerScope);
+      });
+    }
 
     const subjects = permissionSubjects(ctx);
     const subjectClause = or(

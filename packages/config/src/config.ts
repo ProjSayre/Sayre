@@ -32,6 +32,8 @@ export const CONFIG_NAMES = [
   'NEO4J_URI',
   'NEO4J_USER',
   'MODEL_PROVIDER_ENDPOINT_CATALOG',
+  'MCP_TOKEN_PEPPER_VERSION',
+  'MCP_ALLOWED_ORIGINS',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -71,6 +73,11 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // Non-secret W3-09 allowlist. Each production endpoint must be explicitly
   // provisioned for an org; an empty catalog makes self-hosted selection fail closed.
   MODEL_PROVIDER_ENDPOINT_CATALOG: '[]',
+  // W4-06 MCP defaults. The pepper itself remains in the secret catalog.
+  MCP_TOKEN_PEPPER_VERSION: '1',
+  // Empty JSON array rejects browser Origins while allowing non-browser MCP
+  // clients that omit Origin. Production may provision explicit HTTPS origins.
+  MCP_ALLOWED_ORIGINS: '[]',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

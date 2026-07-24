@@ -8,6 +8,8 @@ import { githubInstallRouter } from './routes/githubInstall';
 import { providerSettingsRouter } from './routes/providerSettings';
 import { providerJobStateRouter } from './routes/providerJobState';
 import { nodeOverlayRouter } from './routes/nodeOverlay';
+import { mcpKeysRouter } from './routes/mcpKeys';
+import { mcpGatewayRouter } from './mcp/gateway';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -37,6 +39,8 @@ export function createApp(): Express {
   app.use(githubInstallRouter);
   app.use(providerSettingsRouter);
   app.use(nodeOverlayRouter);
+  app.use(mcpKeysRouter);
+  app.use(mcpGatewayRouter);
   app.use(errorHandler);
   return app;
 }

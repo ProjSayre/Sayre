@@ -3,6 +3,8 @@ import type { AuthContext } from '../auth/context';
 import {
   PostgresPermissionStore,
   canReadResource,
+  intersectReadScopes,
+  isRuleWithinScope,
   permissionSubjects,
   scopeFromRows,
 } from './permissions';
@@ -56,6 +58,95 @@ describe('permission scope resolution', () => {
     expect(canReadResource(scope, resource('/src/private/secret.ts'))).toBe(false);
     expect(canReadResource(scope, resource('/src/privateer/not-secret.ts'))).toBe(true);
     expect(canReadResource(scope, { ...resource('/src/public/a.ts'), repoId: 'repo-2' })).toBe(false);
+  });
+
+  it('intersects an agent-key ceiling with the issuer current scope', () => {
+    expect(
+      intersectReadScopes(
+        {
+          allows: [
+            { repoId: 'repo-1', branch: null, pathPrefix: '/src' },
+          ],
+          denies: [],
+        },
+        {
+          allows: [
+            {
+              repoId: 'repo-1',
+              branch: 'refs/heads/main',
+              pathPrefix: '/src/public',
+            },
+          ],
+          denies: [
+            {
+              repoId: 'repo-1',
+              branch: null,
+              pathPrefix: '/src/public/secrets',
+            },
+          ],
+        },
+      ),
+    ).toEqual({
+      allows: [
+        {
+          repoId: 'repo-1',
+          branch: 'refs/heads/main',
+          pathPrefix: '/src/public',
+        },
+      ],
+      denies: [
+        {
+          repoId: 'repo-1',
+          branch: null,
+          pathPrefix: '/src/public/secrets',
+        },
+      ],
+    });
+  });
+
+  it('rejects an issuance rule broader than, or overlapping a deny in, current scope', () => {
+    const scope = {
+      allows: [
+        {
+          repoId: 'repo-1',
+          branch: 'refs/heads/main',
+          pathPrefix: '/src',
+        },
+      ],
+      denies: [
+        {
+          repoId: 'repo-1',
+          branch: 'refs/heads/main',
+          pathPrefix: '/src/private',
+        },
+      ],
+    };
+    expect(
+      isRuleWithinScope(
+        {
+          repoId: 'repo-1',
+          branch: 'main',
+          pathPrefix: '/src/public',
+        },
+        scope,
+      ),
+    ).toBe(true);
+    expect(
+      isRuleWithinScope(
+        { repoId: 'repo-1', branch: null, pathPrefix: '/src' },
+        scope,
+      ),
+    ).toBe(false);
+    expect(
+      isRuleWithinScope(
+        {
+          repoId: 'repo-1',
+          branch: 'main',
+          pathPrefix: '/src/private',
+        },
+        scope,
+      ),
+    ).toBe(false);
   });
 
   it('grants a user owner tenant-wide access without querying Postgres', async () => {

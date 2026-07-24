@@ -28,6 +28,12 @@ import {
   AgentSkillMdValidationError,
   AgentSkillMdVersionConflictError,
 } from '../services/agentSkillMdService';
+import {
+  McpKeyAuthenticationError,
+  McpKeyForbiddenError,
+  McpKeyNotFoundError,
+  McpKeyValidationError,
+} from '../services/mcpKeyService';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -148,6 +154,26 @@ export function errorHandler(
       error: 'version conflict',
       currentVersion: err.currentVersion,
     });
+    return;
+  }
+
+  if (err instanceof McpKeyAuthenticationError) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+
+  if (err instanceof McpKeyForbiddenError) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof McpKeyValidationError) {
+    res.status(400).json({ error: 'invalid MCP key settings' });
+    return;
+  }
+
+  if (err instanceof McpKeyNotFoundError) {
+    res.status(404).json({ error: 'not found' });
     return;
   }
 
