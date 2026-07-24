@@ -14,6 +14,7 @@
     "lint": "eslint . --ext .ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=../../infra/.env --import tsx src/db/migrate.ts",
+    "db:migrate:ci": "node --import tsx src/db/migrate.ts",
     "test": "vitest run",
     "test:integration": "vitest run",
     "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts",
