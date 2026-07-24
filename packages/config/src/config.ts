@@ -1,6 +1,7 @@
 /** The closed set of non-secret settings consumed by checked-in Node code. */
 export const CONFIG_NAMES = [
   'NODE_ENV',
+  'CI',
   'CORE_PORT',
   'DEV_ORG_ID',
   'DEV_USER_ID',
@@ -11,6 +12,7 @@ export const CONFIG_NAMES = [
   'SMOKE_SHOTS',
   'RLS_TEST_DB_NAME',
   'RLS_TESTER_DB_NAME',
+  'TENANT_ISOLATION_TESTER_DB_NAME',
   'AWS_REGION',
   'SQS_ENDPOINT_URL',
   'SQS_INGESTION_QUEUE',
@@ -35,6 +37,7 @@ export type ConfigName = (typeof CONFIG_NAMES)[number];
 
 /** Safe, non-secret defaults that preserve the existing local-development behavior. */
 const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
+  CI: 'false',
   CORE_PORT: '4000',
   DEV_ORG_ID: 'org_dev_local',
   DEV_USER_ID: 'user_dev_local',
@@ -45,6 +48,7 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   SMOKE_SHOTS: 'scripts/.shots',
   RLS_TEST_DB_NAME: 'w005_rls_test',
   RLS_TESTER_DB_NAME: 'w005_rls_tester',
+  TENANT_ISOLATION_TESTER_DB_NAME: 'w206_tenant_isolation_tester',
   AWS_REGION: 'us-east-1',
   SQS_INGESTION_QUEUE: 'ingestion.fifo',
   // SQS_ENDPOINT_URL intentionally has NO default: unset means "use real AWS".
@@ -97,12 +101,10 @@ function validateValue(name: ConfigName, value: string | undefined): string {
     throw new ConfigError(`Configuration ${name} is empty.`);
   }
 
-  if (name === 'MESSAGING_INTEGRATION_REQUIRED') {
+  if (name === 'CI' || name === 'MESSAGING_INTEGRATION_REQUIRED') {
     const normalized = value.trim().toLowerCase();
     if (normalized !== 'true' && normalized !== 'false') {
-      throw new ConfigError(
-        'Configuration MESSAGING_INTEGRATION_REQUIRED must be "true" or "false".',
-      );
+      throw new ConfigError(`Configuration ${name} must be "true" or "false".`);
     }
     return normalized;
   }
@@ -111,8 +113,17 @@ function validateValue(name: ConfigName, value: string | undefined): string {
 }
 
 export function getConfig(name: ConfigName): string {
+  const value = getOptionalConfig(name);
+  if (value === undefined) {
+    throw new ConfigError(`Configuration ${name} is missing.`);
+  }
+  return value;
+}
+
+export function getOptionalConfig(name: ConfigName): string | undefined {
   assertConfigName(name as string);
   const value = overrides.has(name) ? overrides.get(name) : process.env[name];
+  if (value === undefined && DEFAULTS[name] === undefined) return undefined;
   return validateValue(name, value);
 }
 
