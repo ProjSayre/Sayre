@@ -43,6 +43,25 @@ export interface AffectedNodes {
   removed: string[]; // stable node UIDs the caller was authorized to see, now absent
 }
 
+// Retrieval uses the same Folder/File authorization boundary as the canvas, but
+// also needs immutable repository/ref/revision scope so the worker can constrain
+// its tenant chunk read to the graph projection that produced these nodes.
+export interface RetrievalGraphNode {
+  id: string;
+  label: CanvasNodeLabel;
+  name: string;
+  path: string;
+  repositoryId: string;
+  refName: string;
+  revisionSha: string;
+  distance: number;
+}
+
+export interface RetrievalTraversal {
+  anchor: RetrievalGraphNode;
+  nodes: RetrievalGraphNode[];
+}
+
 export interface FeatureRecentEdit {
   fileId: string;
   filePath: string;
@@ -91,4 +110,24 @@ export interface GraphQueryService {
     refName: string,
     ctx: AuthContext,
   ): Promise<FeatureCluster[]>;
+}
+
+// Kept separate from GraphQueryService so existing canvas/realtime test doubles
+// do not need retrieval methods. RbacGraphQueryService implements both, and the
+// service-layer functions in services/retrievalContextService depend only on
+// this narrow contract.
+export interface RetrievalGraphQueryService {
+  resolveRetrievalAnchors(
+    terms: readonly string[],
+    exactNodeId: string | null,
+    limit: number,
+    ctx: AuthContext,
+  ): Promise<RetrievalGraphNode[]>;
+  traverseRetrievalContext(
+    anchorId: string,
+    intentTerms: readonly string[],
+    maxHops: number,
+    maxNodes: number,
+    ctx: AuthContext,
+  ): Promise<RetrievalTraversal | null>;
 }

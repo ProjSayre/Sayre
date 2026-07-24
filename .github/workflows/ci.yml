@@ -190,6 +190,7 @@ jobs:
           sayre_workers/ingestion
           sayre_workers/model_provider
           sayre_workers/enrichment
+          sayre_workers/retrieval
 
       # DATABASE_ADMIN_URL lets test_tenant_isolation.py's Postgres-gated suite
       # actually execute here instead of skipping (mirrors the `core — RLS`
