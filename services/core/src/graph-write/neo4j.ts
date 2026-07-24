@@ -1,6 +1,7 @@
 import neo4j, { type Driver } from 'neo4j-driver';
 import { getConfig, getSecret } from '@sayre/config';
 import { instrumentGraphWrite } from '../telemetry/graphMetrics';
+import { assertOrgScopedCypher } from '../security/graphOrgGuard';
 
 export interface GraphWriteRecord {
   get(key: string): unknown;
@@ -36,6 +37,7 @@ class InstrumentedNeo4jWriteExecutor implements GraphWriteExecutor {
     resultNodeCountKey?: string,
   ): Promise<GraphWriteResult> {
     return instrumentGraphWrite(orgId, async (measurement) => {
+      assertOrgScopedCypher(orgId, cypher, parameters);
       const session = this.driver.session();
       try {
         const result = await session.executeWrite((transaction) =>

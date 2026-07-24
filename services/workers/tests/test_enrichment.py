@@ -376,16 +376,30 @@ def test_validate_enrichment_write_accepts_closed_set_primitives() -> None:
 
 
 class FakeEnrichmentGraphStore:
-    def __init__(self, files: tuple[FileContext, ...] = (), *, fail_apply: bool = False) -> None:
+    def __init__(
+        self,
+        files: tuple[FileContext, ...] = (),
+        *,
+        fail_apply: bool = False,
+        current: bool = True,
+    ) -> None:
         self._files = files
         self._fail_apply = fail_apply
+        self._current = current
+        self.is_current_calls: list[GraphScope] = []
         self.load_context_calls: list[GraphScope] = []
+        self.load_context_arguments: list[tuple[tuple[str, ...], bool]] = []
         self.applied: list[EnrichmentWrite] = []
+
+    async def is_current(self, scope: GraphScope) -> bool:
+        self.is_current_calls.append(scope)
+        return self._current
 
     async def load_context(
         self, scope: GraphScope, changed_paths: tuple[str, ...], full_rebuild: bool
     ) -> EnrichmentContext:
         self.load_context_calls.append(scope)
+        self.load_context_arguments.append((changed_paths, full_rebuild))
         return EnrichmentContext(scope=scope, files=self._files)
 
     async def apply(self, write: EnrichmentWrite) -> None:
@@ -393,6 +407,10 @@ class FakeEnrichmentGraphStore:
         if self._fail_apply:
             raise RuntimeError("simulated neo4j write failure")
         self.applied.append(write)
+
+    async def apply_feature_projection(self, write: EnrichmentWrite) -> bool:
+        await self.apply(write)
+        return True
 
 
 class FakeGenerationConfigStore:

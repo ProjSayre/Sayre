@@ -13,6 +13,15 @@ interface AppShellProps {
   refName: string;
 }
 
+function productTreeHref(repoId: string | null, refName: string): string {
+  if (repoId === null) return '/product';
+  const query = new URLSearchParams({
+    repoId,
+    ref: refName,
+  });
+  return `/product?${query.toString()}`;
+}
+
 export function AppShell({
   repoId,
   providerStateRepositoryId,
@@ -44,15 +53,26 @@ export function AppShell({
           <p className="sidebar-label">Graph views</p>
           <nav className="nav-list" aria-label="Graph views">
             {views.map((view) => (
-              <button
-                className={`nav-item${view.active ? ' active' : ''}`}
-                key={view.label}
-                type="button"
-                aria-current={view.active ? 'page' : undefined}
-              >
-                <span className="nav-icon">{view.icon}</span>
-                {view.label}
-              </button>
+              view.label === 'Product' ? (
+                <Link
+                  className="nav-item"
+                  href={productTreeHref(repoId, refName)}
+                  key={view.label}
+                >
+                  <span className="nav-icon">{view.icon}</span>
+                  {view.label}
+                </Link>
+              ) : (
+                <button
+                  className={`nav-item${view.active ? ' active' : ''}`}
+                  key={view.label}
+                  type="button"
+                  aria-current={view.active ? 'page' : undefined}
+                >
+                  <span className="nav-icon">{view.icon}</span>
+                  {view.label}
+                </button>
+              )
             ))}
           </nav>
 

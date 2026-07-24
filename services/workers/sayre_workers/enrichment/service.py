@@ -35,6 +35,10 @@ from sayre_workers.model_provider import (
 
 from .enrichment_graph import EnrichmentGraphStore
 from .events import parse_enrichment_envelope
+from .feature_clustering import (
+    build_feature_clustering_request,
+    canonicalize_feature_clustering_write,
+)
 from .graphify_adapter import GraphifyAdapterFactory
 from .models import (
     EnrichmentJob,
@@ -75,14 +79,34 @@ class EnrichmentService:
         return await self.process(job)
 
     async def process(self, job: EnrichmentJob) -> EnrichmentResult:
+        if not await self._graph_store.is_current(job.scope):
+            return EnrichmentResult(
+                status="skipped_stale", scope=job.scope, node_count=0, edge_count=0
+            )
+
+        # Feature clustering is a complete projection of the current ref head, not a
+        # per-file patch. Re-reading every current File keeps cross-folder clusters
+        # coherent after changed-file deltas and allows one atomic replacement.
+        changed_paths = () if job.lane == "default" else job.changed_paths
+        full_rebuild = True if job.lane == "default" else job.full_rebuild
         context = await self._graph_store.load_context(
-            job.scope, job.changed_paths, job.full_rebuild
+            job.scope, changed_paths, full_rebuild
         )
         if not context.files:
+            if not await self._graph_store.is_current(job.scope):
+                return EnrichmentResult(
+                    status="skipped_stale",
+                    scope=job.scope,
+                    node_count=0,
+                    edge_count=0,
+                )
             # A valid ack -- nothing to enrich (empty repo, no matching changed
             # paths, or a priority-lane job that carries no enrichable scope yet).
             return EnrichmentResult(
-                status="skipped_no_context", scope=job.scope, node_count=0, edge_count=0
+                status="skipped_no_context",
+                scope=job.scope,
+                node_count=0,
+                edge_count=0,
             )
 
         config = await self._config_store.load_generation_config(job.scope.org_id)
@@ -109,18 +133,23 @@ class EnrichmentService:
                 config, ProviderCallScope(org_id=job.scope.org_id)
             )
             graphify = self._graphify_factory.create()
-            generation = await provider.generate_structured(
-                GenerationRequest(
+            request = (
+                build_feature_clustering_request(context)
+                if job.lane == "default"
+                else GenerationRequest(
                     system=(
                         "Emit only schema-constrained semantic graph primitives. "
                         "Never return free-form prose or structural parser output."
                     ),
                     input=(
-                        f"org={job.scope.org_id} repository={job.scope.repository_id} "
+                        f"repository={job.scope.repository_id} "
                         f"ref={job.scope.ref_name} revision={job.scope.revision_sha} "
                         f"files={[file.path for file in context.files]!r}"
                     ),
-                ),
+                )
+            )
+            generation = await provider.generate_structured(
+                request,
                 graphify.schema(context),
             )
 
@@ -131,7 +160,17 @@ class EnrichmentService:
                 raise InvalidEnrichmentWriteError(
                     "GraphifyAdapter returned a write scoped to a different job"
                 )
-            await self._graph_store.apply(write)
+            if job.lane == "default":
+                write = canonicalize_feature_clustering_write(context, write)
+                if not await self._graph_store.apply_feature_projection(write):
+                    return EnrichmentResult(
+                        status="skipped_stale",
+                        scope=job.scope,
+                        node_count=0,
+                        edge_count=0,
+                    )
+            else:
+                await self._graph_store.apply(write)
         except ProviderCallFailedError as error:
             status: ProviderJobStatus = (
                 "degraded" if error.fallback_mode == "degrade" else "failed"

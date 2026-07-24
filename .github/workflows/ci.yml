@@ -72,8 +72,19 @@ jobs:
       - name: core — typecheck
         run: npx turbo run typecheck --filter=@sayre/core
 
+      # tenantIsolation.penetration.test.ts (services/core/src/security/**) lives
+      # outside vitest.config.ts's `src/db/**` exclude, so it runs as part of the
+      # normal `turbo run test` suite, not a dedicated :ci script like the two RLS
+      # steps below. Its Postgres-gated section (W2-06 AC-2) needs the same
+      # DATABASE_ADMIN_URL the RLS steps use, or it silently skips instead of
+      # actually proving the "filter removed" isolation guarantee.
       - name: core — test
-        run: npx turbo run test --filter=@sayre/core
+        # Run the workspace test command directly so DATABASE_ADMIN_URL reaches
+        # Vitest. Turbo's strict env mode strips undeclared variables, which
+        # would make the penetration suite silently take its reachability skip.
+        run: npm run test --workspace @sayre/core
+        env:
+          DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 
       - name: core messaging — Redis required (zero broker skips)
         env:
@@ -101,6 +112,23 @@ jobs:
     defaults:
       run:
         working-directory: services/workers
+    services:
+      # Same image/shape as the `node` job's Postgres service (pgvector build,
+      # same throwaway sayre_dev credentials) -- test_tenant_isolation.py (W2-06)
+      # needs a real, migrated Postgres to prove the "privileged-DSN trap"
+      # (org_scoped_connection still isolates under a superuser/BYPASSRLS DSN),
+      # otherwise it silently skips forever, same gap the Node side had.
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: sayre_dev
+          POSTGRES_PASSWORD: changeme_local_only
+          POSTGRES_DB: sayre_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sayre_dev -d sayre_dev"
+          --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -122,6 +150,27 @@ jobs:
           docker compose --env-file infra/.env.example
           -f infra/docker-compose.yml up -d --wait localstack
 
+      # The Postgres schema (RLS policies, sayre_app role, pgvector extension)
+      # is Node/drizzle-owned (services/core/drizzle/**) -- the Python worker
+      # fleet has no migration runner of its own (docs/tenant-isolation.md).
+      # Apply it here, against this job's own Postgres service, before pytest
+      # runs, exactly the same migrate() call the Node RLS/pen-test suites
+      # apply against theirs.
+      - name: Setup Node (for schema migration only)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies (root, for services/core's migrator)
+        working-directory: ${{ github.workspace }}
+        run: npm ci
+
+      - name: Migrate Postgres schema (RLS + sayre_app role + pgvector) onto this job's DB
+        working-directory: ${{ github.workspace }}
+        run: npm --prefix services/core run db:migrate:ci
+        env:
+          DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+
       - name: Lint (ruff)
         run: poetry run ruff check .
 
@@ -137,12 +186,25 @@ jobs:
           sayre_workers/graph_migrations/runner.py
           scripts/run_graph_migrations.py
           sayre_workers/telemetry/otel.py
+          sayre_workers/db
           sayre_workers/ingestion
           sayre_workers/model_provider
           sayre_workers/enrichment
+          sayre_workers/retrieval
 
+      # DATABASE_ADMIN_URL lets test_tenant_isolation.py's Postgres-gated suite
+      # actually execute here instead of skipping (mirrors the `core — RLS`
+      # steps' env in the node job). DATABASE_RUNTIME_URL is set to the same
+      # DSN for parity with infra/.env.example's two-variable contract; no
+      # current pytest file drives assert_runtime_role_rls_safe's CI-gated
+      # path against a real DB (test_db_session.py covers that logic against
+      # fakes), but wiring it now avoids a second silent-skip gap if that
+      # coverage is added later.
       - name: Test (pytest)
         run: poetry run pytest
+        env:
+          DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+          DATABASE_RUNTIME_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 
       - name: Messaging integration — LocalStack required (zero broker skips)
         env:

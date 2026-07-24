@@ -438,6 +438,9 @@ class _MemoryGraphStore:
         self._context = context
         self.applied: list[EnrichmentWrite] = []
 
+    async def is_current(self, scope: GraphScope) -> bool:
+        return scope == self._context.scope
+
     async def load_context(
         self,
         scope: GraphScope,
@@ -450,6 +453,10 @@ class _MemoryGraphStore:
 
     async def apply(self, write: EnrichmentWrite) -> None:
         self.applied.append(write)
+
+    async def apply_feature_projection(self, write: EnrichmentWrite) -> bool:
+        self.applied.append(write)
+        return True
 
 
 class _MemoryConfigStore:
