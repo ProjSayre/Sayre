@@ -23,6 +23,11 @@ from __future__ import annotations
 from typing import Protocol
 
 from messaging.envelope import MessageEnvelope
+from sayre_workers.model_provider import (
+    GenerationConfig,
+    GenerationRequest,
+    ModelProviderFactory,
+)
 
 from .enrichment_graph import EnrichmentGraphStore
 from .events import parse_enrichment_envelope
@@ -30,11 +35,9 @@ from .graphify_adapter import GraphifyAdapterFactory
 from .models import (
     EnrichmentJob,
     EnrichmentResult,
-    GenerationConfig,
     GenerationConfigNotFoundError,
     InvalidEnrichmentWriteError,
 )
-from .providers import GenerationRequest, ModelProviderFactory
 
 
 class GenerationConfigStore(Protocol):
@@ -79,21 +82,23 @@ class EnrichmentService:
             )
 
         provider = await self._model_provider_factory.create(config)
-        generation = await provider.generate(
+        graphify = self._graphify_factory.create()
+        generation = await provider.generate_structured(
             GenerationRequest(
                 system=(
-                    "Sayre semantic enrichment skeleton. Emit only structured graph "
-                    "primitives (nodes and edges) -- never free-form prose."
+                    "Emit only schema-constrained semantic graph primitives. "
+                    "Never return free-form prose or structural parser output."
                 ),
                 input=(
                     f"org={job.scope.org_id} repository={job.scope.repository_id} "
                     f"ref={job.scope.ref_name} revision={job.scope.revision_sha} "
                     f"files={[file.path for file in context.files]!r}"
                 ),
-            )
+            ),
+            graphify.schema(context),
         )
 
-        write = await self._graphify_factory.create().shape(context, generation)
+        write = await graphify.shape(context, generation)
         if write.scope != job.scope:
             # Defense in depth: a GraphifyAdapter must never write outside the scope
             # it was asked to enrich. Checked here (where both the job's authoritative

@@ -188,6 +188,7 @@ jobs:
           sayre_workers/telemetry/otel.py
           sayre_workers/db
           sayre_workers/ingestion
+          sayre_workers/model_provider
           sayre_workers/enrichment
 
       # DATABASE_ADMIN_URL lets test_tenant_isolation.py's Postgres-gated suite
