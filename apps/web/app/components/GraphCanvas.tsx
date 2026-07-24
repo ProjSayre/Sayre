@@ -23,6 +23,7 @@ import {
 } from '../lib/technicalTree';
 import { ProviderStateStatus } from './ProviderStateBanner';
 import type { ProviderStateSelection } from '../lib/providerState';
+import { NodeOverlayPanel } from './NodeOverlayPanel';
 
 // `sigma` touches WebGL2RenderingContext at module-load time, which doesn't
 // exist during Next.js SSR. ssr: false keeps that import out of the server
@@ -210,11 +211,7 @@ export function GraphCanvas({
         <ReactFlowCanvas payload={payload} onSelect={setSelectedId} />
       )}
 
-      <aside className="node-inspector canvas-node-inspector" aria-live="polite">
-        <span className="node-inspector-label">Selected {selected.kind}</span>
-        <h3>{selected.label}</h3>
-        <p title={selected.path}>{selected.path || '/'}</p>
-      </aside>
+      <NodeOverlayPanel nodeId={selected.id} />
     </div>
   );
 }

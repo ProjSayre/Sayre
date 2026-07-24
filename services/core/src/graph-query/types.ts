@@ -143,6 +143,72 @@ export interface ResolvedStyleRules {
   commentStyle: ResolvedStyleValue;
 }
 
+export interface OverlayNodeIdentity {
+  id: string;
+  label: CanvasNodeLabel;
+  name: string;
+  path: string;
+  repositoryId: string;
+  refName: string;
+  revisionSha: string;
+}
+
+export interface OverlayDependency {
+  id: string;
+  label: CanvasNodeLabel;
+  name: string;
+  path: string;
+  relationship: 'IMPORTS';
+  direction: 'outbound' | 'inbound';
+}
+
+export interface OverlayRecentChange {
+  commitId: string;
+  sha: string;
+  message: string | null;
+  timestamp: string;
+  authorName: string | null;
+  authorLogin: string | null;
+  pullRequestTitle: string | null;
+  pullRequestUrl: string | null;
+}
+
+export interface OverlayFeature {
+  id: string;
+  name: string;
+  description: string | null;
+  team: string | null;
+}
+
+export interface OverlayTicket {
+  id: string;
+  externalId: string;
+  system: string;
+  title: string | null;
+  status: string | null;
+  url: string | null;
+}
+
+/**
+ * One authorized graph snapshot for the interactive node overlay. Agent/Skill
+ * MD is joined in the service layer from its audited Postgres history.
+ */
+export interface NodeOverlayGraphSnapshot {
+  node: OverlayNodeIdentity;
+  dependencies: OverlayDependency[];
+  recentChanges: OverlayRecentChange[];
+  features: OverlayFeature[];
+  description: string | null;
+  tickets: OverlayTicket[];
+}
+
+export interface NodeOverlayGraphQueryService {
+  getNodeOverlay(
+    nodeId: string,
+    ctx: AuthContext,
+  ): Promise<NodeOverlayGraphSnapshot | null>;
+}
+
 /**
  * Separate from GraphQueryService so existing Technical Tree/realtime callers do
  * not need a style-resolution method in their narrow test doubles. REST and future

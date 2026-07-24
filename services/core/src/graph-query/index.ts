@@ -22,6 +22,12 @@ import type {
   GraphEdge,
   GraphNode,
   GraphQueryService,
+  NodeOverlayGraphQueryService,
+  NodeOverlayGraphSnapshot,
+  OverlayDependency,
+  OverlayFeature,
+  OverlayRecentChange,
+  OverlayTicket,
   ResolvedStyleRules,
   ResolvedStyleValue,
   StyleRuleGraphQueryService,
@@ -433,6 +439,162 @@ RETURN root.org_id AS root_org_id,
        member.recent_pr_title AS member_recent_pr_title,
        member.recent_pr_url AS member_recent_pr_url
 ORDER BY feature.name, feature.uid, member.path, member.uid
+`;
+
+/**
+ * One graph round-trip supplies every graph-backed overlay layer. Optional
+ * matches can form a cross product, so the mapper below de-duplicates every
+ * layer and this query applies a hard row cap. Visibility predicates are
+ * repeated for both dependency endpoints; hidden neighbors never leave the
+ * graph store.
+ */
+export const GET_NODE_OVERLAY_CYPHER = `
+MATCH (target)
+WHERE (target:Folder OR target:File)
+  AND target.org_id = $org_id
+  AND target.uid = $node_id
+  AND target.name IS NOT NULL
+  AND target.path IS NOT NULL
+  AND target.repo_id IS NOT NULL
+  AND target.ref_name IS NOT NULL
+  AND target.revision_sha IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = target.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = target.ref_name) AND
+    (rule.path_prefix IS NULL OR target.path = rule.path_prefix OR
+      target.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = target.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = target.ref_name) AND
+    (rule.path_prefix IS NULL OR target.path = rule.path_prefix OR
+      target.path STARTS WITH rule.path_prefix + '/'))
+OPTIONAL MATCH (target)-[out_import:IMPORTS]->(out_dependency)
+WHERE (out_dependency:Folder OR out_dependency:File)
+  AND out_import.org_id = $org_id
+  AND out_dependency.org_id = $org_id
+  AND out_dependency.repo_id = target.repo_id
+  AND out_dependency.ref_name = target.ref_name
+  AND out_dependency.revision_sha = target.revision_sha
+  AND out_dependency.uid IS NOT NULL
+  AND out_dependency.name IS NOT NULL
+  AND out_dependency.path IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = out_dependency.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = out_dependency.ref_name) AND
+    (rule.path_prefix IS NULL OR out_dependency.path = rule.path_prefix OR
+      out_dependency.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = out_dependency.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = out_dependency.ref_name) AND
+    (rule.path_prefix IS NULL OR out_dependency.path = rule.path_prefix OR
+      out_dependency.path STARTS WITH rule.path_prefix + '/'))
+OPTIONAL MATCH (in_dependency)-[in_import:IMPORTS]->(target)
+WHERE (in_dependency:Folder OR in_dependency:File)
+  AND in_import.org_id = $org_id
+  AND in_dependency.org_id = $org_id
+  AND in_dependency.repo_id = target.repo_id
+  AND in_dependency.ref_name = target.ref_name
+  AND in_dependency.revision_sha = target.revision_sha
+  AND in_dependency.uid IS NOT NULL
+  AND in_dependency.name IS NOT NULL
+  AND in_dependency.path IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = in_dependency.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = in_dependency.ref_name) AND
+    (rule.path_prefix IS NULL OR in_dependency.path = rule.path_prefix OR
+      in_dependency.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = in_dependency.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = in_dependency.ref_name) AND
+    (rule.path_prefix IS NULL OR in_dependency.path = rule.path_prefix OR
+      in_dependency.path STARTS WITH rule.path_prefix + '/'))
+OPTIONAL MATCH (commit:Commit)-[modified:MODIFIED]->(target)
+WHERE commit.org_id = $org_id
+  AND commit.repository_id = target.repo_id
+  AND commit.ref_name = target.ref_name
+  AND modified.org_id = $org_id
+OPTIONAL MATCH (author:Person)-[authored:AUTHORED]->(commit)
+WHERE author.org_id = $org_id
+  AND authored.org_id = $org_id
+OPTIONAL MATCH (target)-[membership:PART_OF]->(feature:Feature)
+WHERE membership.org_id = $org_id
+  AND feature.org_id = $org_id
+  AND feature.repo_id = target.repo_id
+  AND feature.ref_name = target.ref_name
+  AND feature.revision_sha = target.revision_sha
+OPTIONAL MATCH (ticket:Ticket)-[reference:REFERENCES]->(target)
+WHERE ticket.org_id = $org_id
+  AND reference.org_id = $org_id
+  AND ticket.repo_id = target.repo_id
+  AND ticket.ref_name = target.ref_name
+RETURN target.uid AS target_id,
+       CASE WHEN target:Folder THEN 'Folder' ELSE 'File' END AS target_label,
+       target.name AS target_name,
+       target.path AS target_path,
+       target.org_id AS target_org_id,
+       target.repo_id AS target_repo_id,
+       target.ref_name AS target_ref_name,
+       target.revision_sha AS target_revision_sha,
+       target.description AS target_description,
+       out_dependency.uid AS out_dependency_id,
+       CASE
+         WHEN out_dependency:Folder THEN 'Folder'
+         WHEN out_dependency:File THEN 'File'
+         ELSE NULL
+       END AS out_dependency_label,
+       out_dependency.name AS out_dependency_name,
+       out_dependency.path AS out_dependency_path,
+       out_dependency.org_id AS out_dependency_org_id,
+       out_dependency.repo_id AS out_dependency_repo_id,
+       out_dependency.ref_name AS out_dependency_ref_name,
+       out_dependency.revision_sha AS out_dependency_revision_sha,
+       in_dependency.uid AS in_dependency_id,
+       CASE
+         WHEN in_dependency:Folder THEN 'Folder'
+         WHEN in_dependency:File THEN 'File'
+         ELSE NULL
+       END AS in_dependency_label,
+       in_dependency.name AS in_dependency_name,
+       in_dependency.path AS in_dependency_path,
+       in_dependency.org_id AS in_dependency_org_id,
+       in_dependency.repo_id AS in_dependency_repo_id,
+       in_dependency.ref_name AS in_dependency_ref_name,
+       in_dependency.revision_sha AS in_dependency_revision_sha,
+       commit.uid AS commit_id,
+       commit.org_id AS commit_org_id,
+       commit.repository_id AS commit_repository_id,
+       commit.ref_name AS commit_ref_name,
+       commit.sha AS commit_sha,
+       commit.message AS commit_message,
+       coalesce(modified.timestamp, commit.timestamp) AS commit_timestamp,
+       author.name AS author_name,
+       author.provider_login AS author_login,
+       author.org_id AS author_org_id,
+       authored.org_id AS authored_org_id,
+       modified.org_id AS modified_org_id,
+       target.recent_pr_title AS recent_pr_title,
+       target.recent_pr_url AS recent_pr_url,
+       feature.uid AS feature_id,
+       feature.name AS feature_name,
+       feature.description AS feature_description,
+       feature.team AS feature_team,
+       feature.org_id AS feature_org_id,
+       feature.repo_id AS feature_repo_id,
+       feature.ref_name AS feature_ref_name,
+       feature.revision_sha AS feature_revision_sha,
+       membership.org_id AS membership_org_id,
+       ticket.uid AS ticket_id,
+       ticket.external_id AS ticket_external_id,
+       ticket.system AS ticket_system,
+       ticket.title AS ticket_title,
+       ticket.status AS ticket_status,
+       ticket.url AS ticket_url,
+       ticket.org_id AS ticket_org_id,
+       ticket.repo_id AS ticket_repo_id,
+       ticket.ref_name AS ticket_ref_name,
+       reference.org_id AS reference_org_id
+ORDER BY commit_timestamp DESC, feature_name, ticket_external_id
+LIMIT 512
 `;
 
 function valueAsString(record: GraphReadRecord, key: string): string | null {
@@ -876,6 +1038,260 @@ function distinctFeatureClusters(
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
+interface OverlayTargetResource extends ScopedGraphResource {
+  id: string;
+  label: CanvasNodeLabel;
+  name: string;
+  orgId: string;
+  revisionSha: string;
+}
+
+function overlayTargetFromRecord(
+  record: GraphReadRecord,
+  expectedNodeId: string,
+  expectedOrgId: string,
+  scope: ReadScope,
+): OverlayTargetResource | null {
+  const id = valueAsString(record, 'target_id');
+  const label = valueAsString(record, 'target_label');
+  const name = valueAsOptionalString(record, 'target_name');
+  const orgId = valueAsString(record, 'target_org_id');
+  const repoId = valueAsString(record, 'target_repo_id');
+  const refName = valueAsString(record, 'target_ref_name');
+  const revisionSha = valueAsString(record, 'target_revision_sha');
+  const path = record.get('target_path');
+  if (
+    id !== expectedNodeId ||
+    !isCanvasLabel(label) ||
+    !name ||
+    orgId !== expectedOrgId ||
+    !repoId ||
+    !refName ||
+    !revisionSha ||
+    typeof path !== 'string'
+  ) {
+    return null;
+  }
+  const target = { id, label, name, orgId, repoId, refName, revisionSha, path };
+  return canReadResource(scope, target) ? target : null;
+}
+
+function sameOverlayTarget(
+  left: OverlayTargetResource,
+  right: OverlayTargetResource,
+): boolean {
+  return (
+    left.id === right.id &&
+    left.label === right.label &&
+    left.name === right.name &&
+    left.orgId === right.orgId &&
+    left.repoId === right.repoId &&
+    left.refName === right.refName &&
+    left.revisionSha === right.revisionSha &&
+    left.path === right.path
+  );
+}
+
+function overlayDependency(
+  record: GraphReadRecord,
+  prefix: 'out_dependency_' | 'in_dependency_',
+  target: OverlayTargetResource,
+  scope: ReadScope,
+): OverlayDependency | null {
+  const id = valueAsString(record, `${prefix}id`);
+  const label = valueAsString(record, `${prefix}label`);
+  const name = valueAsOptionalString(record, `${prefix}name`);
+  const orgId = valueAsString(record, `${prefix}org_id`);
+  const repoId = valueAsString(record, `${prefix}repo_id`);
+  const refName = valueAsString(record, `${prefix}ref_name`);
+  const revisionSha = valueAsString(record, `${prefix}revision_sha`);
+  const path = record.get(`${prefix}path`);
+  if (
+    !id ||
+    !isCanvasLabel(label) ||
+    !name ||
+    orgId !== target.orgId ||
+    repoId !== target.repoId ||
+    refName !== target.refName ||
+    revisionSha !== target.revisionSha ||
+    typeof path !== 'string' ||
+    !canReadResource(scope, { repoId, refName, path })
+  ) {
+    return null;
+  }
+  return {
+    id,
+    label,
+    name,
+    path,
+    relationship: 'IMPORTS',
+    direction: prefix === 'out_dependency_' ? 'outbound' : 'inbound',
+  };
+}
+
+function overlayRecentChange(
+  record: GraphReadRecord,
+  target: OverlayTargetResource,
+): OverlayRecentChange | null {
+  const commitId = valueAsString(record, 'commit_id');
+  const sha = valueAsString(record, 'commit_sha');
+  const timestamp = valueAsString(record, 'commit_timestamp');
+  if (
+    !commitId ||
+    !sha ||
+    !timestamp ||
+    !Number.isFinite(Date.parse(timestamp)) ||
+    valueAsString(record, 'commit_org_id') !== target.orgId ||
+    valueAsString(record, 'commit_repository_id') !== target.repoId ||
+    valueAsString(record, 'commit_ref_name') !== target.refName ||
+    valueAsString(record, 'modified_org_id') !== target.orgId
+  ) {
+    return null;
+  }
+  const authorInScope =
+    valueAsString(record, 'author_org_id') === target.orgId &&
+    valueAsString(record, 'authored_org_id') === target.orgId;
+  return {
+    commitId,
+    sha,
+    message: valueAsOptionalString(record, 'commit_message'),
+    timestamp,
+    authorName: authorInScope
+      ? valueAsOptionalString(record, 'author_name')
+      : null,
+    authorLogin: authorInScope
+      ? valueAsOptionalString(record, 'author_login')
+      : null,
+    pullRequestTitle: valueAsOptionalString(record, 'recent_pr_title'),
+    pullRequestUrl: safeWebUrl(valueAsOptionalString(record, 'recent_pr_url')),
+  };
+}
+
+function overlayFeature(
+  record: GraphReadRecord,
+  target: OverlayTargetResource,
+): OverlayFeature | null {
+  const id = valueAsString(record, 'feature_id');
+  const name = valueAsOptionalString(record, 'feature_name');
+  return (
+    id &&
+    name &&
+    valueAsString(record, 'feature_org_id') === target.orgId &&
+    valueAsString(record, 'feature_repo_id') === target.repoId &&
+    valueAsString(record, 'feature_ref_name') === target.refName &&
+    valueAsString(record, 'feature_revision_sha') === target.revisionSha &&
+    valueAsString(record, 'membership_org_id') === target.orgId
+  )
+    ? {
+        id,
+        name,
+        description: valueAsOptionalString(record, 'feature_description'),
+        team: valueAsOptionalString(record, 'feature_team'),
+      }
+    : null;
+}
+
+function overlayTicket(
+  record: GraphReadRecord,
+  target: OverlayTargetResource,
+): OverlayTicket | null {
+  const id = valueAsString(record, 'ticket_id');
+  const externalId = valueAsOptionalString(record, 'ticket_external_id');
+  const system = valueAsOptionalString(record, 'ticket_system');
+  return (
+    id &&
+    externalId &&
+    system &&
+    valueAsString(record, 'ticket_org_id') === target.orgId &&
+    valueAsString(record, 'ticket_repo_id') === target.repoId &&
+    valueAsString(record, 'ticket_ref_name') === target.refName &&
+    valueAsString(record, 'reference_org_id') === target.orgId
+  )
+    ? {
+        id,
+        externalId,
+        system,
+        title: valueAsOptionalString(record, 'ticket_title'),
+        status: valueAsOptionalString(record, 'ticket_status'),
+        url: safeWebUrl(valueAsOptionalString(record, 'ticket_url')),
+      }
+    : null;
+}
+
+function overlayDescription(record: GraphReadRecord): string | null {
+  const value = valueAsOptionalString(record, 'target_description');
+  return value !== null && value.length <= 16_384 ? value : null;
+}
+
+function distinctNodeOverlay(
+  records: readonly GraphReadRecord[],
+  nodeId: string,
+  orgId: string,
+  scope: ReadScope,
+): NodeOverlayGraphSnapshot | null {
+  let target: OverlayTargetResource | null = null;
+  let description: string | null = null;
+  const dependencies = new Map<string, OverlayDependency>();
+  const recentChanges = new Map<string, OverlayRecentChange>();
+  const features = new Map<string, OverlayFeature>();
+  const tickets = new Map<string, OverlayTicket>();
+
+  for (const record of records) {
+    const rowTarget = overlayTargetFromRecord(record, nodeId, orgId, scope);
+    if (!rowTarget) continue;
+    if (target !== null && !sameOverlayTarget(target, rowTarget)) return null;
+    target = rowTarget;
+    description ??= overlayDescription(record);
+
+    for (const prefix of ['out_dependency_', 'in_dependency_'] as const) {
+      const dependency = overlayDependency(record, prefix, rowTarget, scope);
+      if (dependency) {
+        dependencies.set(`${dependency.direction}:${dependency.id}`, dependency);
+      }
+    }
+    const change = overlayRecentChange(record, rowTarget);
+    if (change) recentChanges.set(change.commitId, change);
+    const feature = overlayFeature(record, rowTarget);
+    if (feature) features.set(feature.id, feature);
+    const ticket = overlayTicket(record, rowTarget);
+    if (ticket) tickets.set(ticket.id, ticket);
+  }
+
+  if (!target) return null;
+  return {
+    node: {
+      id: target.id,
+      label: target.label,
+      name: target.name,
+      path: target.path,
+      repositoryId: target.repoId,
+      refName: target.refName,
+      revisionSha: target.revisionSha,
+    },
+    dependencies: [...dependencies.values()]
+      .sort((a, b) => a.path.localeCompare(b.path) || a.id.localeCompare(b.id))
+      .slice(0, 128),
+    recentChanges: [...recentChanges.values()]
+      .sort(
+        (a, b) =>
+          Date.parse(b.timestamp) - Date.parse(a.timestamp) ||
+          a.commitId.localeCompare(b.commitId),
+      )
+      .slice(0, 50),
+    features: [...features.values()]
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+      .slice(0, 64),
+    description,
+    tickets: [...tickets.values()]
+      .sort(
+        (a, b) =>
+          a.system.localeCompare(b.system) ||
+          a.externalId.localeCompare(b.externalId),
+      )
+      .slice(0, 64),
+  };
+}
+
 function isStructuralEdgeType(value: string | null): value is StructuralEdgeType {
   return value === 'CONTAINS' || value === 'IMPORTS';
 }
@@ -888,7 +1304,11 @@ function scopeParameters(scope: ReadScope): Record<string, unknown> {
 }
 
 export class RbacGraphQueryService
-  implements GraphQueryService, RetrievalGraphQueryService, StyleRuleGraphQueryService
+  implements
+    GraphQueryService,
+    RetrievalGraphQueryService,
+    StyleRuleGraphQueryService,
+    NodeOverlayGraphQueryService
 {
   constructor(
     private readonly graph: GraphReadExecutor,
@@ -1147,10 +1567,46 @@ export class RbacGraphQueryService
       refName: normalizedRefName,
     });
   }
+
+  async getNodeOverlay(
+    nodeId: string,
+    ctx: AuthContext,
+  ): Promise<NodeOverlayGraphSnapshot | null> {
+    const requestedNodeId = nodeId.trim();
+    if (
+      requestedNodeId.length === 0 ||
+      requestedNodeId.length > 512 ||
+      requestedNodeId !== nodeId
+    ) {
+      return null;
+    }
+    const scope = await this.permissions.getReadScope(ctx);
+    if (scope.allows.length === 0) return null;
+
+    const result = await this.graph.run(
+      ctx.orgId,
+      'traversal',
+      GET_NODE_OVERLAY_CYPHER,
+      {
+        org_id: ctx.orgId,
+        node_id: requestedNodeId,
+        ...scopeParameters(scope),
+      },
+    );
+    return distinctNodeOverlay(
+      result.records,
+      requestedNodeId,
+      ctx.orgId,
+      scope,
+    );
+  }
 }
 
 export const graphQueryService:
-  GraphQueryService & RetrievalGraphQueryService & StyleRuleGraphQueryService =
+  GraphQueryService &
+  RetrievalGraphQueryService &
+  StyleRuleGraphQueryService &
+  NodeOverlayGraphQueryService =
   new RbacGraphQueryService(
     new LazyGraphReadExecutor(),
     new PostgresPermissionStore(),

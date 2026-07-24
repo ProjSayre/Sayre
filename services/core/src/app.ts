@@ -7,6 +7,7 @@ import { githubWebhookRouter } from './routes/githubWebhook';
 import { githubInstallRouter } from './routes/githubInstall';
 import { providerSettingsRouter } from './routes/providerSettings';
 import { providerJobStateRouter } from './routes/providerJobState';
+import { nodeOverlayRouter } from './routes/nodeOverlay';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -35,6 +36,7 @@ export function createApp(): Express {
   // and stays exempt — it can't rely on a session surviving the GitHub redirect).
   app.use(githubInstallRouter);
   app.use(providerSettingsRouter);
+  app.use(nodeOverlayRouter);
   app.use(errorHandler);
   return app;
 }

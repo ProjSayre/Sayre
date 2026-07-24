@@ -5,6 +5,7 @@ import type { GraphReadExecutor, GraphReadRecord } from './neo4j';
 import type { PermissionStore, ReadScope } from './permissions';
 import {
   GET_FEATURE_CLUSTERS_CYPHER,
+  GET_NODE_OVERLAY_CYPHER,
   GET_NODES_IN_VIEWPORT_CYPHER,
   RESOLVE_RETRIEVAL_ANCHORS_CYPHER,
   RbacGraphQueryService,
@@ -121,6 +122,72 @@ function featureRecord(
     member_editor_login: 'ada',
     member_recent_pr_title: 'Ship checkout',
     member_recent_pr_url: 'https://example.test/pull/17',
+    ...overrides,
+  });
+}
+
+function overlayRecord(
+  overrides: Record<string, unknown> = {},
+): GraphReadRecord {
+  return record({
+    target_id: 'public-file',
+    target_label: 'File',
+    target_name: 'index.ts',
+    target_path: '/src/public/index.ts',
+    target_org_id: ORG_ID,
+    target_repo_id: REPO_ID,
+    target_ref_name: 'refs/heads/main',
+    target_revision_sha: 'a'.repeat(40),
+    target_description: 'Public entrypoint.',
+    out_dependency_id: 'public-dependency',
+    out_dependency_label: 'File',
+    out_dependency_name: 'dependency.ts',
+    out_dependency_path: '/src/public/dependency.ts',
+    out_dependency_org_id: ORG_ID,
+    out_dependency_repo_id: REPO_ID,
+    out_dependency_ref_name: 'refs/heads/main',
+    out_dependency_revision_sha: 'a'.repeat(40),
+    in_dependency_id: null,
+    in_dependency_label: null,
+    in_dependency_name: null,
+    in_dependency_path: null,
+    in_dependency_org_id: null,
+    in_dependency_repo_id: null,
+    in_dependency_ref_name: null,
+    in_dependency_revision_sha: null,
+    commit_id: 'commit-1',
+    commit_org_id: ORG_ID,
+    commit_repository_id: REPO_ID,
+    commit_ref_name: 'refs/heads/main',
+    commit_sha: 'b'.repeat(40),
+    commit_message: 'Update entrypoint',
+    commit_timestamp: '2026-07-23T12:00:00Z',
+    author_name: 'Ada',
+    author_login: 'ada',
+    author_org_id: ORG_ID,
+    authored_org_id: ORG_ID,
+    modified_org_id: ORG_ID,
+    recent_pr_title: 'Update entrypoint',
+    recent_pr_url: 'https://example.test/pull/42',
+    feature_id: 'feature-checkout',
+    feature_name: 'Checkout',
+    feature_description: 'Completes checkout.',
+    feature_team: 'Commerce',
+    feature_org_id: ORG_ID,
+    feature_repo_id: REPO_ID,
+    feature_ref_name: 'refs/heads/main',
+    feature_revision_sha: 'a'.repeat(40),
+    membership_org_id: ORG_ID,
+    ticket_id: 'ticket-pay-42',
+    ticket_external_id: 'PAY-42',
+    ticket_system: 'jira',
+    ticket_title: 'Fix checkout',
+    ticket_status: 'Open',
+    ticket_url: 'https://example.test/PAY-42',
+    ticket_org_id: ORG_ID,
+    ticket_repo_id: REPO_ID,
+    ticket_ref_name: 'refs/heads/main',
+    reference_org_id: ORG_ID,
     ...overrides,
   });
 }
@@ -517,5 +584,68 @@ describe('RbacGraphQueryService', () => {
       service.getFeatureClusters(REPO_ID, 'refs/heads/main', user('nobody')),
     ).resolves.toEqual([]);
     expect(executor.run).not.toHaveBeenCalled();
+  });
+
+  it('returns all graph-backed overlay layers while stripping hidden dependencies', async () => {
+    const executor = new QueueExecutor([[
+      overlayRecord(),
+      overlayRecord({
+        out_dependency_id: 'private-dependency',
+        out_dependency_name: 'secret.ts',
+        out_dependency_path: '/src/private/secret.ts',
+      }),
+      overlayRecord({
+        commit_id: 'commit-2',
+        commit_sha: 'c'.repeat(40),
+        commit_timestamp: '2026-07-24T12:00:00Z',
+        ticket_url: 'javascript:alert(1)',
+      }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    const overlay = await service.getNodeOverlay('public-file', user('alice'));
+
+    expect(overlay).toMatchObject({
+      node: {
+        id: 'public-file',
+        label: 'File',
+        path: '/src/public/index.ts',
+        repositoryId: REPO_ID,
+      },
+      dependencies: [{ id: 'public-dependency', direction: 'outbound' }],
+      recentChanges: [
+        { commitId: 'commit-2' },
+        { commitId: 'commit-1' },
+      ],
+      features: [{ id: 'feature-checkout' }],
+      description: 'Public entrypoint.',
+      tickets: [{ id: 'ticket-pay-42', url: null }],
+    });
+    expect(overlay?.dependencies.some(({ id }) => id === 'private-dependency')).toBe(
+      false,
+    );
+    expect(executor.run).toHaveBeenCalledWith(
+      ORG_ID,
+      'traversal',
+      GET_NODE_OVERLAY_CYPHER,
+      expect.objectContaining({
+        org_id: ORG_ID,
+        node_id: 'public-file',
+        allow_rules: [{
+          repo_id: REPO_ID,
+          branch: 'refs/heads/main',
+          path_prefix: '/src/public',
+        }],
+      }),
+    );
+    expect(GET_NODE_OVERLAY_CYPHER).toContain('target.org_id = $org_id');
+    expect(GET_NODE_OVERLAY_CYPHER).toContain(
+      'out_dependency.org_id = $org_id',
+    );
+    expect(GET_NODE_OVERLAY_CYPHER).toContain('LIMIT 512');
+    expect(GET_NODE_OVERLAY_CYPHER).not.toContain(ORG_ID);
   });
 });

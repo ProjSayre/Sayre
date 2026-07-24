@@ -235,6 +235,61 @@ export const onboardingSteps = pgTable(
 );
 
 /**
+ * Immutable Agent/Skill MD edit history (W4-02).
+ *
+ * A graph UID identifies the Folder/File presentation node, while the
+ * repository/ref/path snapshot makes every version attributable even if a
+ * later graph projection removes that node. Reads still authorize the live
+ * graph node first; this table is not a parallel authorization source.
+ */
+export const agentSkillMdVersions = pgTable(
+  "agent_skill_md_versions",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    repoId: uuid("repo_id").notNull(),
+    refName: text("ref_name").notNull(),
+    graphNodeId: text("graph_node_id").notNull(),
+    nodePath: text("node_path").notNull(),
+    nodeLabel: text("node_label").notNull(), // 'Folder' | 'File'
+    revisionSha: text("revision_sha").notNull(),
+    version: integer("version").notNull(),
+    content: text("content").notNull(),
+    editorUserId: uuid("editor_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // Immutable attribution survives account deletion.
+    editorLabel: text("editor_label").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.orgId, table.repoId],
+      foreignColumns: [repositories.orgId, repositories.id],
+      name: "agent_skill_md_versions_org_repository_fk",
+    }).onDelete("cascade"),
+    unique("agent_skill_md_versions_scope_version_unique").on(
+      table.orgId,
+      table.repoId,
+      table.refName,
+      table.graphNodeId,
+      table.version,
+    ),
+    index("agent_skill_md_versions_latest_idx").on(
+      table.orgId,
+      table.repoId,
+      table.refName,
+      table.graphNodeId,
+      table.version,
+    ),
+  ],
+);
+
+/**
  * GitHub App installation metadata, resolved by the webhook receiver
  * (`installation_id` -> `org_id`, never trusting the payload's org claim) and
  * the App-install/onboarding flow (W1-06). See the RLS chicken-and-egg note
@@ -569,6 +624,8 @@ export type StyleRule = typeof styleRules.$inferSelect;
 export type NewStyleRule = typeof styleRules.$inferInsert;
 export type OnboardingStep = typeof onboardingSteps.$inferSelect;
 export type NewOnboardingStep = typeof onboardingSteps.$inferInsert;
+export type AgentSkillMdVersion = typeof agentSkillMdVersions.$inferSelect;
+export type NewAgentSkillMdVersion = typeof agentSkillMdVersions.$inferInsert;
 export type GithubAppInstallation = typeof githubAppInstallations.$inferSelect;
 export type NewGithubAppInstallation = typeof githubAppInstallations.$inferInsert;
 export type McpClientKey = typeof mcpClientKeys.$inferSelect;

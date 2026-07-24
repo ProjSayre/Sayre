@@ -22,6 +22,12 @@ import {
   ProviderJobStateAccessDeniedError,
   ProviderJobStateInputError,
 } from '../services/providerJobStateService';
+import {
+  AgentSkillMdForbiddenError,
+  AgentSkillMdNotFoundError,
+  AgentSkillMdValidationError,
+  AgentSkillMdVersionConflictError,
+} from '../services/agentSkillMdService';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -119,6 +125,29 @@ export function errorHandler(
 
   if (err instanceof ProviderSettingsValidationError) {
     res.status(400).json({ error: 'invalid provider settings' });
+    return;
+  }
+
+  if (err instanceof AgentSkillMdValidationError) {
+    res.status(400).json({ error: 'invalid Agent/Skill MD', issues: err.issues });
+    return;
+  }
+
+  if (err instanceof AgentSkillMdForbiddenError) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof AgentSkillMdNotFoundError) {
+    res.status(404).json({ error: 'not found' });
+    return;
+  }
+
+  if (err instanceof AgentSkillMdVersionConflictError) {
+    res.status(409).json({
+      error: 'version conflict',
+      currentVersion: err.currentVersion,
+    });
     return;
   }
 
