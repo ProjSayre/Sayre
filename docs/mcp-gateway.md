@@ -5,6 +5,9 @@ Streamable HTTP transport. It is deliberately read-only: the server advertises
 only read-only tools, creates no mutation resources or prompts, and rejects
 `GET`/`DELETE` transport operations in stateless mode.
 
+The standalone customer contract, including every input and result schema plus
+reference client code, is published in [`MCP_TOOL_CONTRACT.md`](../MCP_TOOL_CONTRACT.md).
+
 ## Administration
 
 Organization owners and admins manage credentials at `/settings/mcp`.
