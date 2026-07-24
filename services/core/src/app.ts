@@ -11,6 +11,8 @@ import { providerJobStateRouter } from './routes/providerJobState';
 import { nodeOverlayRouter } from './routes/nodeOverlay';
 import { repositoryCatalogRouter } from './routes/repositoryCatalog';
 import { onboardingTreeRouter } from './routes/onboardingTree';
+import { mcpKeysRouter } from './routes/mcpKeys';
+import { mcpGatewayRouter } from './mcp/gateway';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -48,6 +50,8 @@ export function createApp(): Express {
   app.use(providerSettingsRouter);
   app.use(nodeOverlayRouter);
   app.use(repositoryCatalogRouter);
+  app.use(mcpKeysRouter);
+  app.use(mcpGatewayRouter);
   app.use(errorHandler);
   return app;
 }

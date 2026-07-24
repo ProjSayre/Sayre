@@ -45,6 +45,8 @@ export const CONFIG_NAMES = [
   'DOCKER_HOST',
   'DOCKER_CONTEXT',
   'DOCKER_CONFIG',
+  'MCP_TOKEN_PEPPER_VERSION',
+  'MCP_ALLOWED_ORIGINS',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -92,6 +94,11 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // an approved image by sha256 digest before executable onboarding is enabled.
   ONBOARDING_SANDBOX_TIMEOUT_MS: '30000',
   ONBOARDING_SANDBOX_MAX_OUTPUT_BYTES: '32768',
+  // W4-06 MCP defaults. The pepper itself remains in the secret catalog.
+  MCP_TOKEN_PEPPER_VERSION: '1',
+  // Empty JSON array rejects browser Origins while allowing non-browser MCP
+  // clients that omit Origin. Production may provision explicit HTTPS origins.
+  MCP_ALLOWED_ORIGINS: '[]',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

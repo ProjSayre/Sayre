@@ -18,6 +18,9 @@ import type {
   CanvasNodeLabel,
   CoverageBadge,
   CoverageBadgeStatus,
+  CoveringTest,
+  CoveringTestsGraphQueryService,
+  CoveringTestsSnapshot,
   FeatureCluster,
   FeatureMember,
   FeatureRecentEdit,
@@ -769,6 +772,67 @@ RETURN root.revision_sha AS root_revision_sha,
        parent.path AS parent_path,
        parent.revision_sha AS parent_revision_sha
 ORDER BY node.path, node.uid
+`;
+
+export const GET_COVERING_TESTS_CYPHER = `
+MATCH (target)
+WHERE (target:Folder OR target:File)
+  AND target.org_id = $org_id
+  AND target.uid = $node_id
+  AND target.name IS NOT NULL
+  AND target.path IS NOT NULL
+  AND target.repo_id IS NOT NULL
+  AND target.ref_name IS NOT NULL
+  AND target.revision_sha IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = target.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = target.ref_name) AND
+    (rule.path_prefix IS NULL OR target.path = rule.path_prefix OR
+      target.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = target.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = target.ref_name) AND
+    (rule.path_prefix IS NULL OR target.path = rule.path_prefix OR
+      target.path STARTS WITH rule.path_prefix + '/'))
+OPTIONAL MATCH (test:Test)-[coverage:COVERS]->(target)
+WHERE test.org_id = $org_id
+  AND coverage.org_id = $org_id
+  AND test.repo_id = target.repo_id
+  AND test.ref_name = target.ref_name
+  AND test.revision_sha = target.revision_sha
+  AND test.uid IS NOT NULL
+  AND test.name IS NOT NULL
+  AND test.path IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = test.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = test.ref_name) AND
+    (rule.path_prefix IS NULL OR test.path = rule.path_prefix OR
+      test.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = test.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = test.ref_name) AND
+    (rule.path_prefix IS NULL OR test.path = rule.path_prefix OR
+      test.path STARTS WITH rule.path_prefix + '/'))
+RETURN target.uid AS target_id,
+       CASE WHEN target:Folder THEN 'Folder' ELSE 'File' END AS target_label,
+       target.name AS target_name,
+       target.path AS target_path,
+       target.org_id AS target_org_id,
+       target.repo_id AS target_repo_id,
+       target.ref_name AS target_ref_name,
+       target.revision_sha AS target_revision_sha,
+       test.uid AS test_id,
+       test.name AS test_name,
+       test.path AS test_path,
+       test.org_id AS test_org_id,
+       test.repo_id AS test_repo_id,
+       test.ref_name AS test_ref_name,
+       test.revision_sha AS test_revision_sha,
+       test.coverage_status AS test_coverage_status,
+       coverage.status AS coverage_edge_status,
+       toString(coverage.last_run) AS coverage_last_run
+ORDER BY test.path, test.uid
+LIMIT 256
 `;
 
 function valueAsString(record: GraphReadRecord, key: string): string | null {
@@ -1744,6 +1808,107 @@ function mapOnboardingNode(
   return { id, label, name, path, parentId };
 }
 
+function coveringTestFromRecord(
+  record: GraphReadRecord,
+  target: OverlayTargetResource,
+  scope: ReadScope,
+): CoveringTest | null {
+  const id = valueAsString(record, 'test_id');
+  const name = valueAsOptionalString(record, 'test_name');
+  const path = record.get('test_path');
+  const edgeStatus = valueAsString(record, 'coverage_edge_status');
+  if (
+    !id ||
+    !name ||
+    typeof path !== 'string' ||
+    valueAsString(record, 'test_org_id') !== target.orgId ||
+    valueAsString(record, 'test_repo_id') !== target.repoId ||
+    valueAsString(record, 'test_ref_name') !== target.refName ||
+    valueAsString(record, 'test_revision_sha') !== target.revisionSha ||
+    !canReadResource(scope, {
+      repoId: target.repoId,
+      refName: target.refName,
+      path,
+    }) ||
+    (edgeStatus !== 'inferred' && edgeStatus !== 'measured')
+  ) {
+    return null;
+  }
+  const rawCoverageStatus = valueAsString(record, 'test_coverage_status');
+  const coverageStatus =
+    rawCoverageStatus === 'pass' || rawCoverageStatus === 'fail'
+      ? rawCoverageStatus
+      : 'unknown';
+  const lastRunValue = valueAsString(record, 'coverage_last_run');
+  const lastRun =
+    lastRunValue !== null && Number.isFinite(Date.parse(lastRunValue))
+      ? new Date(lastRunValue).toISOString()
+      : null;
+  const freshness =
+    edgeStatus === 'inferred'
+      ? 'inferred'
+      : lastRun !== null &&
+          Date.now() - Date.parse(lastRun) <= COVERAGE_FRESHNESS_MS
+        ? 'fresh'
+        : 'stale';
+  return {
+    id,
+    name,
+    path,
+    coverageStatus,
+    edgeStatus,
+    lastRun,
+    freshness,
+  };
+}
+
+function coveringTestKey(test: CoveringTest): string {
+  return JSON.stringify(test);
+}
+
+function distinctCoveringTests(
+  records: readonly GraphReadRecord[],
+  nodeId: string,
+  orgId: string,
+  scope: ReadScope,
+): CoveringTestsSnapshot | null {
+  let target: OverlayTargetResource | null = null;
+  const tests = new Map<string, CoveringTest>();
+  const invalid = new Set<string>();
+  for (const record of records) {
+    const rowTarget = overlayTargetFromRecord(record, nodeId, orgId, scope);
+    if (!rowTarget) continue;
+    if (target !== null && !sameOverlayTarget(target, rowTarget)) return null;
+    target = rowTarget;
+    const test = coveringTestFromRecord(record, rowTarget, scope);
+    if (!test || invalid.has(test.id)) continue;
+    const existing = tests.get(test.id);
+    if (existing && coveringTestKey(existing) !== coveringTestKey(test)) {
+      tests.delete(test.id);
+      invalid.add(test.id);
+      continue;
+    }
+    tests.set(test.id, test);
+  }
+  if (!target) return null;
+  return {
+    node: {
+      id: target.id,
+      label: target.label,
+      name: target.name,
+      path: target.path,
+      repositoryId: target.repoId,
+      refName: target.refName,
+      revisionSha: target.revisionSha,
+    },
+    tests: [...tests.values()]
+      .sort((left, right) =>
+        left.path.localeCompare(right.path) || left.id.localeCompare(right.id),
+      )
+      .slice(0, 128),
+  };
+}
+
 function isStructuralEdgeType(value: string | null): value is StructuralEdgeType {
   return value === 'CONTAINS' || value === 'IMPORTS';
 }
@@ -1761,7 +1926,8 @@ export class RbacGraphQueryService
     RetrievalGraphQueryService,
     StyleRuleGraphQueryService,
     NodeOverlayGraphQueryService,
-    OnboardingGraphQueryService
+    OnboardingGraphQueryService,
+    CoveringTestsGraphQueryService
 {
   constructor(
     private readonly graph: GraphReadExecutor,
@@ -2144,6 +2310,38 @@ export class RbacGraphQueryService
       ),
     };
   }
+
+  async getCoveringTests(
+    nodeId: string,
+    ctx: AuthContext,
+  ): Promise<CoveringTestsSnapshot | null> {
+    const requestedNodeId = nodeId.trim();
+    if (
+      requestedNodeId.length === 0 ||
+      requestedNodeId.length > 512 ||
+      requestedNodeId !== nodeId
+    ) {
+      return null;
+    }
+    const scope = await this.permissions.getReadScope(ctx);
+    if (scope.allows.length === 0) return null;
+    const result = await this.graph.run(
+      ctx.orgId,
+      'traversal',
+      GET_COVERING_TESTS_CYPHER,
+      {
+        org_id: ctx.orgId,
+        node_id: requestedNodeId,
+        ...scopeParameters(scope),
+      },
+    );
+    return distinctCoveringTests(
+      result.records,
+      requestedNodeId,
+      ctx.orgId,
+      scope,
+    );
+  }
 }
 
 export const graphQueryService:
@@ -2151,7 +2349,8 @@ export const graphQueryService:
   RetrievalGraphQueryService &
   StyleRuleGraphQueryService &
   NodeOverlayGraphQueryService &
-  OnboardingGraphQueryService =
+  OnboardingGraphQueryService &
+  CoveringTestsGraphQueryService =
   new RbacGraphQueryService(
     new LazyGraphReadExecutor(),
     new PostgresPermissionStore(),
