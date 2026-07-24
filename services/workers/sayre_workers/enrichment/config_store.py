@@ -14,8 +14,10 @@ import psycopg
 from psycopg.rows import dict_row
 
 from sayre_workers.config import get_secret
-
-from .models import GenerationConfig
+from sayre_workers.model_provider import (
+    GenerationConfig,
+    InvalidModelProviderConfigError,
+)
 
 
 class PostgresGenerationConfigStore:
@@ -40,7 +42,7 @@ class PostgresGenerationConfigStore:
         async with connection:
             cursor = await connection.execute(
                 """
-                SELECT provider, model, endpoint_url, credential_ref
+                SELECT provider, model, endpoint_url, credential_ref, config
                 FROM model_provider_configs
                 WHERE org_id = %s AND purpose = 'generation'
                 """,
@@ -51,9 +53,19 @@ class PostgresGenerationConfigStore:
             # The ONLY signal for the missing-config path (Decision D2) -- never
             # synthesize a fake config here.
             return None
+        raw_options = row["config"]
+        if raw_options is None:
+            options: dict[str, Any] = {}
+        elif isinstance(raw_options, dict):
+            options = dict(raw_options)
+        else:
+            raise InvalidModelProviderConfigError(
+                "generation provider options must be a JSON object"
+            )
         return GenerationConfig(
             provider=str(row["provider"]),
             model=str(row["model"]),
             endpoint_url=row["endpoint_url"],
             credential_ref=row["credential_ref"],
+            options=options,
         )

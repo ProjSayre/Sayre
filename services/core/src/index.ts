@@ -1,9 +1,20 @@
 import { createApp } from './app';
-import { getConfig } from '@sayre/config';
+import { getConfig, getSecret } from '@sayre/config';
+import { assertRuntimeRoleRlsSafe } from './security/assertRuntimeRoleRlsSafe';
 
 const portText = getConfig('CORE_PORT');
 const port = Number(portText);
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error('CORE_PORT must be an integer between 1 and 65535.');
 }
-createApp().listen(port, () => console.log(`[core] listening on :${port}`));
+
+async function main(): Promise<void> {
+  // CI/production startup gate (Resolved decision Q2, docs/tenant-isolation.md
+  // "DSN-role provisioning risk"). No-ops outside NODE_ENV=production/CI=true
+  // -- local dev's login role is intentionally a superuser.
+  await assertRuntimeRoleRlsSafe(await getSecret('env://DATABASE_RUNTIME_URL'));
+
+  createApp().listen(port, () => console.log(`[core] listening on :${port}`));
+}
+
+void main();

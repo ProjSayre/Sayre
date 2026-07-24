@@ -2,6 +2,7 @@ export {
   ConfigError,
   type ConfigName,
   getConfig,
+  getOptionalConfig,
   resetConfigForTests,
   setConfigOverrideForTests,
 } from './config';

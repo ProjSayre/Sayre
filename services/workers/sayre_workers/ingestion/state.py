@@ -7,9 +7,9 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any, Protocol
 
 import psycopg
-from psycopg.rows import dict_row
 
 from sayre_workers.config import get_secret
+from sayre_workers.db import org_scoped_connection
 
 from .models import RefState, RepositoryLocator
 
@@ -110,53 +110,50 @@ class PostgresRefStateStore:
     async def lock(
         self, org_id: str, repository: RepositoryLocator, ref_name: str
     ) -> AsyncIterator[_PostgresLockedRef]:
-        connection = await psycopg.AsyncConnection.connect(self._dsn, row_factory=dict_row)
-        async with connection:
-            async with connection.transaction():
-                await connection.execute("SELECT set_config('app.org_id', %s, true)", (org_id,))
-                repository_cursor = await connection.execute(
-                    """
-                    SELECT id::text
-                    FROM repositories
-                    WHERE org_id = %s AND provider = %s AND external_id = %s
-                    """,
-                    (org_id, repository.provider, repository.provider_repo_id),
+        async with org_scoped_connection(self._dsn, org_id) as connection:
+            repository_cursor = await connection.execute(
+                """
+                SELECT id::text
+                FROM repositories
+                WHERE org_id = %s AND provider = %s AND external_id = %s
+                """,
+                (org_id, repository.provider, repository.provider_repo_id),
+            )
+            repository_row = await repository_cursor.fetchone()
+            if repository_row is None:
+                raise UnknownRepositoryError("repository is not registered for this organization")
+            repository_id = str(repository_row["id"])
+            # SELECT ... FOR UPDATE cannot lock a ref row that does not exist yet.
+            # Serialize the whole graph-write/accept sequence for this scope so
+            # concurrent cold-start deliveries cannot project different heads
+            # before racing to create the first repository_refs row.
+            await connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"{org_id}\0{repository_id}\0{ref_name}",),
+            )
+            ref_cursor = await connection.execute(
+                """
+                SELECT id::text, revision_sha, graph_version
+                FROM repository_refs
+                WHERE org_id = %s AND repository_id = %s AND ref_name = %s
+                FOR UPDATE
+                """,
+                (org_id, repository_id, ref_name),
+            )
+            ref_row = await ref_cursor.fetchone()
+            current = (
+                None
+                if ref_row is None
+                else RefState(
+                    ref_id=str(ref_row["id"]),
+                    revision_sha=str(ref_row["revision_sha"]),
+                    graph_version=int(ref_row["graph_version"]),
                 )
-                repository_row = await repository_cursor.fetchone()
-                if repository_row is None:
-                    raise UnknownRepositoryError("repository is not registered for this organization")
-                repository_id = str(repository_row["id"])
-                # SELECT ... FOR UPDATE cannot lock a ref row that does not exist yet.
-                # Serialize the whole graph-write/accept sequence for this scope so
-                # concurrent cold-start deliveries cannot project different heads
-                # before racing to create the first repository_refs row.
-                await connection.execute(
-                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                    (f"{org_id}\0{repository_id}\0{ref_name}",),
-                )
-                ref_cursor = await connection.execute(
-                    """
-                    SELECT id::text, revision_sha, graph_version
-                    FROM repository_refs
-                    WHERE org_id = %s AND repository_id = %s AND ref_name = %s
-                    FOR UPDATE
-                    """,
-                    (org_id, repository_id, ref_name),
-                )
-                ref_row = await ref_cursor.fetchone()
-                current = (
-                    None
-                    if ref_row is None
-                    else RefState(
-                        ref_id=str(ref_row["id"]),
-                        revision_sha=str(ref_row["revision_sha"]),
-                        graph_version=int(ref_row["graph_version"]),
-                    )
-                )
-                yield _PostgresLockedRef(
-                    connection,
-                    org_id=org_id,
-                    repository_id=repository_id,
-                    ref_name=ref_name,
-                    current=current,
-                )
+            )
+            yield _PostgresLockedRef(
+                connection,
+                org_id=org_id,
+                repository_id=repository_id,
+                ref_name=ref_name,
+                current=current,
+            )
