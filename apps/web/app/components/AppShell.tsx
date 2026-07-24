@@ -9,18 +9,24 @@ const views = [
 
 interface AppShellProps {
   repoId: string | null;
+  providerStateRepositoryId: string | null;
+  refName: string;
 }
 
-function productTreeHref(repoId: string | null): string {
+function productTreeHref(repoId: string | null, refName: string): string {
   if (repoId === null) return '/product';
   const query = new URLSearchParams({
     repoId,
-    ref: 'refs/heads/main',
+    ref: refName,
   });
   return `/product?${query.toString()}`;
 }
 
-export function AppShell({ repoId }: AppShellProps) {
+export function AppShell({
+  repoId,
+  providerStateRepositoryId,
+  refName,
+}: AppShellProps) {
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -50,7 +56,7 @@ export function AppShell({ repoId }: AppShellProps) {
               view.label === 'Product' ? (
                 <Link
                   className="nav-item"
-                  href={productTreeHref(repoId)}
+                  href={productTreeHref(repoId, refName)}
                   key={view.label}
                 >
                   <span className="nav-icon">{view.icon}</span>
@@ -90,7 +96,18 @@ export function AppShell({ repoId }: AppShellProps) {
             <h1>Technical tree</h1>
             <p>Folder/File structure · containment and imports</p>
           </div>
-          <GraphCanvas repoId={repoId} />
+          <GraphCanvas
+            repoId={repoId}
+            providerStateSelection={
+              providerStateRepositoryId === null
+                ? null
+                : {
+                    repositoryId: providerStateRepositoryId,
+                    refName,
+                    surface: 'product',
+                  }
+            }
+          />
         </section>
       </div>
     </main>

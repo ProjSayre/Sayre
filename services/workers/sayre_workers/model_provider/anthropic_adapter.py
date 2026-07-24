@@ -106,3 +106,8 @@ class AnthropicModelProvider:
         raise ModelProviderResponseError(
             "anthropic response contained no structured tool result"
         )
+
+    async def aclose(self) -> None:
+        close = getattr(self._client, "close", None)
+        if close is not None:
+            await close()

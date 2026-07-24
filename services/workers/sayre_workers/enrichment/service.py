@@ -8,9 +8,11 @@ which builds an `EnrichmentJob` directly (bypassing envelope parsing, since W2-0
 
 `process`'s order: load structural context from Neo4j (graph is source of truth) ->
 short-circuit on empty context -> load the org's generation config (raising on a
-missing row, Decision D2 -- no skip-and-ack, no fake-provider fallback) -> generate ->
-shape into graph primitives -> validate the write is scoped to this job and stays
-inside the closed sets -> apply to Neo4j.
+missing row, Decision D2 -- no skip-and-ack, no fake-provider fallback) -> persist a
+sanitized generating state -> generate through the bounded provider wrapper -> shape
+and validate graph primitives -> apply to Neo4j -> persist ready. A configured
+degrade fallback persists degraded and acknowledges without a semantic write; fail
+and retry-exhausted outcomes persist failed and propagate for SQS redelivery.
 
 No feedback loop: this module never publishes `graph.updated` (that topic fans out to
 `enrichment-default`; re-publishing would re-trigger enrichment forever), and it emits
@@ -27,6 +29,8 @@ from sayre_workers.model_provider import (
     GenerationConfig,
     GenerationRequest,
     ModelProviderFactory,
+    ProviderCallFailedError,
+    ProviderCallScope,
 )
 
 from .enrichment_graph import EnrichmentGraphStore
@@ -42,6 +46,12 @@ from .models import (
     GenerationConfigNotFoundError,
     InvalidEnrichmentWriteError,
 )
+from .state_store import (
+    ProviderJobState,
+    ProviderJobStateStore,
+    ProviderJobStatus,
+    ProviderJobSurface,
+)
 
 
 class GenerationConfigStore(Protocol):
@@ -56,11 +66,13 @@ class EnrichmentService:
         model_provider_factory: ModelProviderFactory,
         graphify_factory: GraphifyAdapterFactory,
         config_store: GenerationConfigStore,
+        state_store: ProviderJobStateStore,
     ) -> None:
         self._graph_store = graph_store
         self._model_provider_factory = model_provider_factory
         self._graphify_factory = graphify_factory
         self._config_store = config_store
+        self._state_store = state_store
 
     async def handle(self, envelope: MessageEnvelope) -> EnrichmentResult:
         job = parse_enrichment_envelope(envelope)
@@ -105,51 +117,100 @@ class EnrichmentService:
                 f"no generation model_provider_configs row for org {job.scope.org_id!r}"
             )
 
-        provider = await self._model_provider_factory.create(config)
-        graphify = self._graphify_factory.create()
-        request = (
-            build_feature_clustering_request(context)
-            if job.lane == "default"
-            else GenerationRequest(
-                system=(
-                    "Emit only schema-constrained semantic graph primitives. "
-                    "Never return free-form prose or structural parser output."
-                ),
-                input=(
-                    f"repository={job.scope.repository_id} "
-                    f"ref={job.scope.ref_name} revision={job.scope.revision_sha} "
-                    f"files={[file.path for file in context.files]!r}"
-                ),
-            )
+        surface: ProviderJobSurface = (
+            "onboarding" if job.lane == "priority" else "product"
         )
-        generation = await provider.generate_structured(
-            request,
-            graphify.schema(context),
+        await self._state_store.set_state(
+            ProviderJobState(
+                scope=job.scope,
+                surface=surface,
+                status="generating",
+            )
         )
 
-        write = await graphify.shape(context, generation)
-        if write.scope != job.scope:
-            # Defense in depth: a GraphifyAdapter must never write outside the scope
-            # it was asked to enrich. Checked here (where both the job's authoritative
-            # scope and the adapter's returned write are in hand) so no Cypher runs.
-            raise InvalidEnrichmentWriteError(
-                "GraphifyAdapter returned a write scoped to a different job"
+        try:
+            provider = await self._model_provider_factory.create(
+                config, ProviderCallScope(org_id=job.scope.org_id)
             )
-        if job.lane == "default":
-            write = canonicalize_feature_clustering_write(context, write)
-            if not await self._graph_store.apply_feature_projection(write):
+            graphify = self._graphify_factory.create()
+            request = (
+                build_feature_clustering_request(context)
+                if job.lane == "default"
+                else GenerationRequest(
+                    system=(
+                        "Emit only schema-constrained semantic graph primitives. "
+                        "Never return free-form prose or structural parser output."
+                    ),
+                    input=(
+                        f"repository={job.scope.repository_id} "
+                        f"ref={job.scope.ref_name} revision={job.scope.revision_sha} "
+                        f"files={[file.path for file in context.files]!r}"
+                    ),
+                )
+            )
+            generation = await provider.generate_structured(
+                request,
+                graphify.schema(context),
+            )
+
+            write = await graphify.shape(context, generation)
+            if write.scope != job.scope:
+                # Defense in depth: a GraphifyAdapter must never write outside the
+                # scope it was asked to enrich.
+                raise InvalidEnrichmentWriteError(
+                    "GraphifyAdapter returned a write scoped to a different job"
+                )
+            if job.lane == "default":
+                write = canonicalize_feature_clustering_write(context, write)
+                if not await self._graph_store.apply_feature_projection(write):
+                    return EnrichmentResult(
+                        status="skipped_stale",
+                        scope=job.scope,
+                        node_count=0,
+                        edge_count=0,
+                    )
+            else:
+                await self._graph_store.apply(write)
+        except ProviderCallFailedError as error:
+            status: ProviderJobStatus = (
+                "degraded" if error.fallback_mode == "degrade" else "failed"
+            )
+            await self._state_store.set_state(
+                ProviderJobState(
+                    scope=job.scope,
+                    surface=surface,
+                    status=status,
+                    reason_code=error.reason,
+                )
+            )
+            if status == "degraded":
                 return EnrichmentResult(
-                    status="skipped_stale",
+                    status="degraded",
                     scope=job.scope,
                     node_count=0,
                     edge_count=0,
                 )
-        else:
-            await self._graph_store.apply(write)
+            raise
+        except Exception:
+            await self._state_store.set_state(
+                ProviderJobState(
+                    scope=job.scope,
+                    surface=surface,
+                    status="failed",
+                    reason_code="processing_error",
+                )
+            )
+            raise
 
+        await self._state_store.set_state(
+            ProviderJobState(scope=job.scope, surface=surface, status="ready")
+        )
         return EnrichmentResult(
             status="written",
             scope=job.scope,
             node_count=len(write.nodes),
             edge_count=len(write.edges),
         )
+
+    async def aclose(self) -> None:
+        await self._model_provider_factory.aclose()

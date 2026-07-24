@@ -11,6 +11,7 @@ from sayre_workers.enrichment import (
     GenerationRequest,
     GenerationResponse,
 )
+from sayre_workers.model_provider import ProviderCallScope
 from sayre_workers.retrieval import (
     MAX_CONTEXT_TOKENS,
     MAX_PROMPT_TOKENS,
@@ -156,9 +157,15 @@ class FakeProviderFactory:
     def __init__(self, provider: FakeProvider) -> None:
         self.provider = provider
         self.configs: list[GenerationConfig] = []
+        self.scopes: list[ProviderCallScope] = []
 
-    async def create(self, config: GenerationConfig) -> FakeProvider:
+    async def create(
+        self,
+        config: GenerationConfig,
+        scope: ProviderCallScope,
+    ) -> FakeProvider:
         self.configs.append(config)
+        self.scopes.append(scope)
         return self.provider
 
 
@@ -253,6 +260,7 @@ async def test_graph_guided_query_uses_less_than_full_repo_and_records_ratio() -
     assert store.baseline_calls == [SCOPE]
     assert config.calls == [ORG_ID]
     assert factory.configs == [CONFIG]
+    assert factory.scopes == [ProviderCallScope(ORG_ID, purpose="retrieval")]
     assert len(provider.requests) == 1
     assert "authenticate()" in provider.requests[0].input
     assert provider.requests[0].max_output_tokens == 512

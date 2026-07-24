@@ -29,6 +29,7 @@ from sayre_workers.enrichment.providers import (
     StructuredGenerationResponse,
 )
 from sayre_workers.enrichment.service import EnrichmentService
+from sayre_workers.enrichment.state_store import ProviderJobState
 from sayre_workers.ingestion.graph import Neo4jGraphStore
 from sayre_workers.ingestion.models import GraphNode, GraphProjection, GraphScope
 from sayre_workers.ingestion.projection import stable_uid
@@ -396,6 +397,14 @@ class _RecordingConfigStore:
         return GenerationConfig(provider="fake_deterministic", model="ci")
 
 
+class _RecordingStateStore:
+    def __init__(self) -> None:
+        self.states: list[ProviderJobState] = []
+
+    async def set_state(self, state: ProviderJobState) -> None:
+        self.states.append(state)
+
+
 class _CheckoutGraphifyAdapter:
     def schema(self, context: EnrichmentContext) -> Mapping[str, Any]:
         del context
@@ -436,11 +445,13 @@ async def test_default_lane_clusters_full_head_behind_existing_boundaries(
     context = _fixture_context()
     graph_store = _RecordingGraphStore(context)
     config_store = _RecordingConfigStore()
+    state_store = _RecordingStateStore()
     service = EnrichmentService(
         graph_store=graph_store,
         model_provider_factory=ModelProviderFactory(),
         graphify_factory=_CheckoutGraphifyFactory(),
         config_store=config_store,
+        state_store=state_store,
     )
 
     result = await service.process(_job(context))
@@ -454,6 +465,7 @@ async def test_default_lane_clusters_full_head_behind_existing_boundaries(
         context.scope, "Feature", "checkout"
     )
     assert config_store.org_ids == ["org-a"]
+    assert [state.status for state in state_store.states] == ["generating", "ready"]
 
 
 @pytest.mark.asyncio
@@ -464,11 +476,13 @@ async def test_stale_job_stops_before_context_config_model_or_write(
     context = _fixture_context()
     graph_store = _RecordingGraphStore(context, current=False)
     config_store = _RecordingConfigStore()
+    state_store = _RecordingStateStore()
     service = EnrichmentService(
         graph_store=graph_store,
         model_provider_factory=ModelProviderFactory(),
         graphify_factory=_CheckoutGraphifyFactory(),
         config_store=config_store,
+        state_store=state_store,
     )
 
     result = await service.process(_job(context))
@@ -476,6 +490,7 @@ async def test_stale_job_stops_before_context_config_model_or_write(
     assert result.status == "skipped_stale"
     assert graph_store.load_arguments == []
     assert config_store.org_ids == []
+    assert state_store.states == []
     assert graph_store.feature_writes == []
 
 
@@ -486,11 +501,13 @@ async def test_head_change_during_generation_is_rejected_by_atomic_apply_guard(
     monkeypatch.setenv("SAYRE_ENV", "test")
     context = _fixture_context()
     graph_store = _RecordingGraphStore(context, apply_current=False)
+    state_store = _RecordingStateStore()
     service = EnrichmentService(
         graph_store=graph_store,
         model_provider_factory=ModelProviderFactory(),
         graphify_factory=_CheckoutGraphifyFactory(),
         config_store=_RecordingConfigStore(),
+        state_store=state_store,
     )
 
     result = await service.process(_job(context))
@@ -498,6 +515,7 @@ async def test_head_change_during_generation_is_rejected_by_atomic_apply_guard(
     assert result.status == "skipped_stale"
     assert result.node_count == 0
     assert graph_store.feature_writes == []
+    assert [state.status for state in state_store.states] == ["generating"]
 
 
 class _FakeResult:

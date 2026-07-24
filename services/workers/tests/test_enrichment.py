@@ -42,11 +42,18 @@ from sayre_workers.enrichment.providers import (
     FakeModelProvider,
     GenerationRequest,
     ModelProviderFactory,
+    ProviderCallScope,
+    ResilientModelProvider,
     StructuredGenerationResponse,
 )
 from sayre_workers.enrichment.service import EnrichmentService
+from sayre_workers.enrichment.state_store import ProviderJobState
 from sayre_workers.ingestion.models import GraphScope
 from sayre_workers.ingestion.projection import stable_uid
+from sayre_workers.model_provider import (
+    ProviderCallFailedError,
+    ProviderCallScope as CanonicalProviderCallScope,
+)
 from sayre_workers.telemetry import onboarding_metrics
 from sayre_workers.telemetry import otel as otel_module
 
@@ -259,10 +266,13 @@ async def test_model_provider_factory_gates_fake_deterministic_to_test_env(
 
     monkeypatch.setenv("SAYRE_ENV", "development")
     with pytest.raises(ValueError, match="test-only"):
-        await factory.create(config)
+        await factory.create(config, ProviderCallScope("org-real"))
 
     monkeypatch.setenv("SAYRE_ENV", "test")
-    assert isinstance(await factory.create(config), FakeModelProvider)
+    assert isinstance(
+        await factory.create(config, ProviderCallScope("org-real")),
+        ResilientModelProvider,
+    )
 
 
 @pytest.mark.asyncio
@@ -274,7 +284,7 @@ async def test_model_provider_factory_rejects_unsupported_provider(
     config = GenerationConfig(provider="not-a-real-provider", model="x")
 
     with pytest.raises(ValueError, match="unsupported"):
-        await factory.create(config)
+        await factory.create(config, ProviderCallScope("org-real"))
 
 
 # --------------------------------------------------------------------------------
@@ -413,6 +423,42 @@ class FakeGenerationConfigStore:
         return self._config
 
 
+class FakeProviderJobStateStore:
+    def __init__(self) -> None:
+        self.states: list[ProviderJobState] = []
+
+    async def set_state(self, state: ProviderJobState) -> None:
+        self.states.append(state)
+
+
+class FailingModelProvider:
+    def __init__(self, *, reason: str, fallback_mode: str) -> None:
+        self._reason = reason
+        self._fallback_mode = fallback_mode
+
+    async def generate_structured(self, request, schema):
+        del request, schema
+        raise ProviderCallFailedError(self._reason, self._fallback_mode)  # type: ignore[arg-type]
+
+    async def aclose(self) -> None:
+        return None
+
+
+class StubModelProviderFactory:
+    def __init__(self, provider: FailingModelProvider) -> None:
+        self._provider = provider
+        self.scopes: list[CanonicalProviderCallScope] = []
+        self.closed = 0
+
+    async def create(self, config, scope: CanonicalProviderCallScope):
+        del config
+        self.scopes.append(scope)
+        return self._provider
+
+    async def aclose(self) -> None:
+        self.closed += 1
+
+
 class StubGraphifyAdapterFactory:
     def __init__(self, adapter) -> None:
         self._adapter = adapter
@@ -467,13 +513,16 @@ def _service(
     graph_store: FakeEnrichmentGraphStore,
     config_store: FakeGenerationConfigStore,
     graphify_factory=None,
+    state_store: FakeProviderJobStateStore | None = None,
+    model_provider_factory=None,
 ) -> EnrichmentService:
     return EnrichmentService(
         graph_store=graph_store,
-        model_provider_factory=ModelProviderFactory(),
+        model_provider_factory=model_provider_factory or ModelProviderFactory(),
         graphify_factory=graphify_factory
         or StubGraphifyAdapterFactory(FakeGraphifyAdapter()),
         config_store=config_store,
+        state_store=state_store or FakeProviderJobStateStore(),
     )
 
 
@@ -499,6 +548,64 @@ async def test_handle_happy_path_writes_org_stamped_feature_and_part_of_edges(
     assert {edge.relationship for edge in write.edges} == {"PART_OF"}
     # Never a free-form/prose blob node -- only the closed enrichment label set.
     assert all(node.label in {"Feature", "EnvStep"} for node in write.nodes)
+
+
+@pytest.mark.asyncio
+async def test_degrade_fallback_returns_degraded_without_graph_write_and_persists_closed_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    state_store = FakeProviderJobStateStore()
+    factory = StubModelProviderFactory(
+        FailingModelProvider(reason="timeout", fallback_mode="degrade")
+    )
+    service = _service(
+        graph_store=graph_store,
+        config_store=FakeGenerationConfigStore(_fake_config()),
+        state_store=state_store,
+        model_provider_factory=factory,
+    )
+
+    result = await service.handle(graph_updated_envelope())
+
+    assert result.status == "degraded"
+    assert result.node_count == result.edge_count == 0
+    assert graph_store.applied == []
+    assert [(state.surface, state.status, state.reason_code) for state in state_store.states] == [
+        ("product", "generating", None),
+        ("product", "degraded", "timeout"),
+    ]
+    assert factory.scopes == [CanonicalProviderCallScope("org-real")]
+
+
+@pytest.mark.asyncio
+async def test_fail_fallback_marks_failed_then_propagates_for_redelivery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    state_store = FakeProviderJobStateStore()
+    service = _service(
+        graph_store=graph_store,
+        config_store=FakeGenerationConfigStore(_fake_config()),
+        state_store=state_store,
+        model_provider_factory=StubModelProviderFactory(
+            FailingModelProvider(reason="circuit_open", fallback_mode="fail")
+        ),
+    )
+
+    with pytest.raises(ProviderCallFailedError) as failure:
+        await service.handle(graph_updated_envelope())
+
+    assert failure.value.reason == "circuit_open"
+    assert graph_store.applied == []
+    assert [(state.status, state.reason_code) for state in state_store.states] == [
+        ("generating", None),
+        ("failed", "circuit_open"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -721,7 +828,14 @@ def test_run_enrichment_consumer_delegates_to_plain_consume_on_default_queue_onl
     store = SqliteDeliveryStore(":memory:")
     stop_event = threading.Event()
     stop_event.set()
-    dummy_service = SimpleNamespace(handle=lambda envelope: None)
+
+    async def close_service() -> None:
+        return None
+
+    dummy_service = SimpleNamespace(
+        handle=lambda envelope: None,
+        aclose=close_service,
+    )
 
     try:
         run_enrichment_consumer(dummy_service, store, stop_event=stop_event)  # type: ignore[arg-type]
@@ -845,6 +959,42 @@ def test_onboarding_bridge_missing_config_propagates_and_skips_ttfc(
 
     assert recorded == []
     assert graph_store.applied == []
+
+
+def test_onboarding_bridge_degraded_outcome_acks_without_false_ready_metric(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SAYRE_ENV", "test")
+    scope = GraphScope("org-real", "repo-1", "refs/heads/main", SHA)
+    graph_store = FakeEnrichmentGraphStore(files=(_file_context(scope, "src/a.py"),))
+    state_store = FakeProviderJobStateStore()
+    service = _service(
+        graph_store=graph_store,
+        config_store=FakeGenerationConfigStore(_fake_config()),
+        state_store=state_store,
+        model_provider_factory=StubModelProviderFactory(
+            FailingModelProvider(reason="timeout", fallback_mode="degrade")
+        ),
+    )
+    generator = build_onboarding_generator(service)
+    handler = OnboardingPriorityHandler(generator, clock_ms=lambda: 1_500)
+    recorded: list[tuple[str, str, float]] = []
+    monkeypatch.setattr(
+        "sayre_workers.enrichment.onboarding.record_onboarding_ready",
+        lambda org_id, repo_id, duration_ms: recorded.append((org_id, repo_id, duration_ms)),
+    )
+
+    try:
+        handler(real_onboarding_generate_envelope())
+    finally:
+        generator.close()
+
+    assert recorded == []
+    assert graph_store.applied == []
+    assert [(state.surface, state.status) for state in state_store.states] == [
+        ("onboarding", "generating"),
+        ("onboarding", "degraded"),
+    ]
 
 
 def test_onboarding_bridge_generation_config_error_is_not_the_only_exception_that_propagates(

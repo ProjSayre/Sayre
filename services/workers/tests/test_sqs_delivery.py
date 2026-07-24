@@ -122,6 +122,54 @@ def test_consume_once_polls_exactly_one_and_completes_before_delete(monkeypatch)
     assert fake.deletes == 1
 
 
+def test_degraded_return_is_acked_but_failed_job_redelivers_and_worker_handles_next(
+    monkeypatch,
+):
+    first = _envelope().model_copy(
+        update={"message_id": "failed-1", "idempotency_key": "failed-1"}
+    )
+    second = _envelope().model_copy(
+        update={"message_id": "degraded-2", "idempotency_key": "degraded-2"}
+    )
+    fake = FakeSQS(first)
+    store = FakeStore()
+    monkeypatch.setattr(sqs_client, "get_queue_url", lambda _name: "queue-url")
+    monkeypatch.setattr(sqs_client, "get_client", lambda: fake)
+    handled: list[str] = []
+
+    def fail_then_degrade(envelope: MessageEnvelope) -> None:
+        handled.append(envelope.message_id)
+        if envelope.message_id == "failed-1":
+            raise RuntimeError("sanitized job failure")
+        # A W3-08 degraded outcome returns normally: consume_once acknowledges it.
+
+    assert (
+        sqs_client.consume_once(
+            sqs_client.ENRICHMENT_DEFAULT_QUEUE,
+            fail_then_degrade,
+            consumer_id="enrichment-worker",
+            delivery_store=store,
+        )
+        == 0
+    )
+    assert store.releases == 1
+    assert fake.deletes == 0
+
+    fake.envelope = second
+    assert (
+        sqs_client.consume_once(
+            sqs_client.ENRICHMENT_DEFAULT_QUEUE,
+            fail_then_degrade,
+            consumer_id="enrichment-worker",
+            delivery_store=store,
+        )
+        == 1
+    )
+    assert handled == ["failed-1", "degraded-2"]
+    assert store.completions == 1
+    assert fake.deletes == 1
+
+
 def test_completed_duplicate_is_deleted_without_handler(monkeypatch):
     fake = FakeSQS(_envelope())
     store = FakeStore(status="completed")

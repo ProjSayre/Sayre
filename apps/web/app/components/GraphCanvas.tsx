@@ -21,9 +21,12 @@ import {
   toReactFlowElements,
 } from '../lib/technicalTree';
 import { SigmaCanvas } from './SigmaCanvas';
+import { ProviderStateStatus } from './ProviderStateBanner';
+import type { ProviderStateSelection } from '../lib/providerState';
 
 interface GraphCanvasProps {
   repoId: string | null;
+  providerStateSelection: ProviderStateSelection | null;
 }
 
 interface ReactFlowCanvasProps {
@@ -101,7 +104,10 @@ function selectedNode(
   return payload.nodes.find((node) => node.id === selectedId) ?? payload.nodes[0];
 }
 
-export function GraphCanvas({ repoId }: GraphCanvasProps) {
+export function GraphCanvas({
+  repoId,
+  providerStateSelection,
+}: GraphCanvasProps) {
   const [requestVersion, setRequestVersion] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [state, setState] = useState<CanvasState>(
@@ -135,6 +141,7 @@ export function GraphCanvas({ repoId }: GraphCanvasProps) {
   if (state.status === 'missing') {
     return (
       <div className="graph-canvas" aria-label="Technical Tree repository graph">
+        <ProviderStateStatus selection={providerStateSelection} />
         <CanvasMessage title="Select a repository">
           Add a registered repository ID with <code>?repoId=&lt;id&gt;</code>.
         </CanvasMessage>
@@ -145,6 +152,7 @@ export function GraphCanvas({ repoId }: GraphCanvasProps) {
   if (state.status === 'loading') {
     return (
       <div className="graph-canvas" aria-label="Technical Tree repository graph" aria-busy="true">
+        <ProviderStateStatus selection={providerStateSelection} />
         <CanvasMessage title="Loading Technical Tree">
           Requesting the authorized repository projection.
         </CanvasMessage>
@@ -155,6 +163,7 @@ export function GraphCanvas({ repoId }: GraphCanvasProps) {
   if (state.status === 'error') {
     return (
       <div className="graph-canvas" aria-label="Technical Tree repository graph">
+        <ProviderStateStatus selection={providerStateSelection} />
         <div className="graph-canvas-state" role="alert">
           <strong>Unable to load Technical Tree</strong>
           <p>{state.message}</p>
@@ -170,6 +179,7 @@ export function GraphCanvas({ repoId }: GraphCanvasProps) {
   if (payload.nodes.length === 0) {
     return (
       <div className="graph-canvas" aria-label="Technical Tree repository graph">
+        <ProviderStateStatus selection={providerStateSelection} />
         <CanvasMessage title="No structural nodes yet">
           The repository is authorized, but its full parse has not produced Folder/File nodes.
         </CanvasMessage>
@@ -181,6 +191,7 @@ export function GraphCanvas({ repoId }: GraphCanvasProps) {
   const selected = selectedNode(payload, selectedId);
   return (
     <div className="graph-canvas" aria-label="Interactive Technical Tree repository graph">
+      <ProviderStateStatus selection={providerStateSelection} />
       <div className="renderer-status" aria-label="Technical Tree renderer">
         {renderer === 'sigma' ? 'Sigma · WebGL' : 'React Flow'} ·{' '}
         {payload.visibleNodeCount.toLocaleString()} authorized nodes

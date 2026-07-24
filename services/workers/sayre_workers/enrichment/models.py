@@ -93,7 +93,7 @@ class EnrichmentWrite:
 
 @dataclass(frozen=True)
 class EnrichmentResult:
-    status: Literal["written", "skipped_no_context", "skipped_stale"]
+    status: Literal["written", "degraded", "skipped_no_context", "skipped_stale"]
     scope: GraphScope
     node_count: int
     edge_count: int

@@ -66,3 +66,6 @@ class FakeModelProvider:
         if not isinstance(value, dict):
             value = {}
         return StructuredGenerationResponse(data=value)
+
+    async def aclose(self) -> None:
+        return None

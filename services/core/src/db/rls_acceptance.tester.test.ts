@@ -12,13 +12,13 @@
 // collides with rls.test.ts's w005_rls_test nor the shared sayre_dev database.
 //
 // Covers:
-//   - AC-1/AC-2/AC-3: schema/DDL shape for all 13 tables (columns incl. the
+//   - AC-1/AC-2/AC-3: schema/DDL shape for all 14 tables (columns incl. the
 //     code_embeddings.embedding USER-DEFINED/vector special case), composite
 //     uniques, org_id FK cascade, RLS ENABLE+FORCE+org_isolation policy,
 //     purpose/graph_version CHECKs, same-org-actor trigger, updated_at
 //     triggers, hnsw cosine index, sayre_app grants.
 //   - AC-4: org A/org B isolation (SELECT + PK) and cross-org write rejection
-//     across all 13 tables under a non-superuser sayre_app session; fail-closed
+//     across all 14 tables under a non-superuser sayre_app session; fail-closed
 //     on unset/empty app.org_id.
 //   - AC-5: mcp_client_keys has no plaintext key/secret column, only
 //     key_prefix/key_hmac; pepper_version NOT NULL; expires_at nullable.
@@ -33,7 +33,7 @@
 //   - AC-9: github_app_installations.installation_id global uniqueness +
 //     independent suspended_at/revoked_at; repository_refs unique(org_id,
 //     repository_id, ref_name) + graph_version >= 0 CHECK; org-delete cascade
-//     across all six new/reshaped tables; code_chunks/code_embeddings cascade
+//     across all seven new/reshaped tables; code_chunks/code_embeddings cascade
 //     on parent (ref_id/chunk_id) delete.
 //   - AC-10: withOrgContext positive RLS-enforcement + UUID validation +
 //     transaction-local reset + cross-org write rejection + the superuser
@@ -41,7 +41,7 @@
 //     suite).
 //   - AC-11/AC-12 are CI/verification-order concerns, not exercised by this
 //     file directly (see test-results.md).
-//   - Migration idempotency: 2nd migrate() run is a no-op (13 org_isolation
+//   - Migration idempotency: 2nd migrate() run is a no-op (14 org_isolation
 //     policies, 1 sayre_app role, 1 vector extension, 1 same_org_actor trigger).
 //   - Documented FK-RI-vs-RLS behavior for the plain (non-triggered) FKs.
 
@@ -67,6 +67,7 @@ const TABLE_NAMES = [
   "github_app_installations",
   "mcp_client_keys",
   "model_provider_configs",
+  "model_provider_job_states",
   "repository_refs",
   "code_chunks",
   "code_embeddings",
@@ -77,6 +78,7 @@ const NEW_OR_RESHAPED_TABLES: TableName[] = [
   "github_app_installations",
   "mcp_client_keys",
   "model_provider_configs",
+  "model_provider_job_states",
   "repository_refs",
   "code_chunks",
   "code_embeddings",
@@ -94,6 +96,7 @@ const POLICY_KEY: Record<TableName, string> = {
   github_app_installations: "org_id",
   mcp_client_keys: "org_id",
   model_provider_configs: "org_id",
+  model_provider_job_states: "org_id",
   repository_refs: "org_id",
   code_chunks: "org_id",
   code_embeddings: "org_id",
@@ -231,6 +234,18 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
     created_at: ["timestamp with time zone", false],
     updated_at: ["timestamp with time zone", false],
   },
+  model_provider_job_states: {
+    id: ["uuid", false],
+    org_id: ["uuid", false],
+    repository_id: ["uuid", false],
+    ref_name: ["text", false],
+    revision_sha: ["text", false],
+    surface: ["text", false],
+    status: ["text", false],
+    reason_code: ["text", true],
+    created_at: ["timestamp with time zone", false],
+    updated_at: ["timestamp with time zone", false],
+  },
   repository_refs: {
     id: ["uuid", false],
     org_id: ["uuid", false],
@@ -328,6 +343,7 @@ interface SeededOrg {
   githubAppInstallationId: string;
   mcpClientKeyId: string;
   modelProviderConfigId: string;
+  modelProviderJobStateId: string;
   repositoryRefId: string;
   codeChunkId: string;
   codeEmbeddingId: string;
@@ -345,13 +361,14 @@ function idsByTable(seed: SeededOrg): Record<TableName, string> {
     github_app_installations: seed.githubAppInstallationId,
     mcp_client_keys: seed.mcpClientKeyId,
     model_provider_configs: seed.modelProviderConfigId,
+    model_provider_job_states: seed.modelProviderJobStateId,
     repository_refs: seed.repositoryRefId,
     code_chunks: seed.codeChunkId,
     code_embeddings: seed.codeEmbeddingId,
   };
 }
 
-/** Seeds one row in every one of the 13 tables for a throwaway org, as admin (bypasses RLS). */
+/** Seeds one row in every one of the 14 tables for a throwaway org, as admin (bypasses RLS). */
 async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
   const orgId = randomUUID();
   const userId = randomUUID();
@@ -363,6 +380,7 @@ async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
   const githubAppInstallationId = randomUUID();
   const mcpClientKeyId = randomUUID();
   const modelProviderConfigId = randomUUID();
+  const modelProviderJobStateId = randomUUID();
   const repositoryRefId = randomUUID();
   const codeChunkId = randomUUID();
   const codeEmbeddingId = randomUUID();
@@ -418,6 +436,19 @@ async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
     [modelProviderConfigId, orgId, "generation", "anthropic", "claude-opus-4"],
   );
   await execPool.query(
+    "INSERT INTO model_provider_job_states (id, org_id, repository_id, ref_name, revision_sha, surface, status, reason_code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    [
+      modelProviderJobStateId,
+      orgId,
+      repoId,
+      "refs/heads/main",
+      shaLike(label),
+      "product",
+      "degraded",
+      "timeout",
+    ],
+  );
+  await execPool.query(
     "INSERT INTO repository_refs (id, org_id, repository_id, ref_name, revision_sha) VALUES ($1, $2, $3, $4, $5)",
     [repositoryRefId, orgId, repoId, "refs/heads/main", shaLike(label)],
   );
@@ -451,6 +482,7 @@ async function seedOrg(execPool: Pool, label: string): Promise<SeededOrg> {
     githubAppInstallationId,
     mcpClientKeyId,
     modelProviderConfigId,
+    modelProviderJobStateId,
     repositoryRefId,
     codeChunkId,
     codeEmbeddingId,
@@ -512,6 +544,29 @@ function buildInsertRow(
       return {
         cols: ["id", "org_id", "purpose", "provider", "model"],
         vals: [randomUUID(), orgId, "embedding", "voyage", "voyage-3"],
+      };
+    case "model_provider_job_states":
+      return {
+        cols: [
+          "id",
+          "org_id",
+          "repository_id",
+          "ref_name",
+          "revision_sha",
+          "surface",
+          "status",
+          "reason_code",
+        ],
+        vals: [
+          randomUUID(),
+          orgId,
+          seed.repoId,
+          `refs/heads/wtest-${uniq}`,
+          shaLike(uniq),
+          "product",
+          "degraded",
+          "timeout",
+        ],
       };
     case "repository_refs":
       return {
@@ -602,7 +657,7 @@ after(async () => {
 // AC-1/AC-2: schema / DDL shape
 // ---------------------------------------------------------------------------
 
-test("[AC-1/AC-2] all 13 tables exist with exactly the spec's columns (type + nullability)", async () => {
+test("[AC-1/AC-2] all 14 tables exist with exactly the spec's columns (type + nullability)", async () => {
   for (const table of TABLE_NAMES) {
     const res = await pool.query(
       `SELECT column_name, data_type, is_nullable, udt_name
@@ -637,7 +692,7 @@ test("[AC-1/AC-2] all 13 tables exist with exactly the spec's columns (type + nu
   }
 });
 
-test("[AC-1/AC-2] composite/global UNIQUE constraints exist on all 13 tables", async () => {
+test("[AC-1/AC-2] composite/global UNIQUE constraints exist on all 14 tables", async () => {
   const res = await pool.query(
     `SELECT tc.table_name, tc.constraint_name,
             string_agg(kcu.column_name, ',' ORDER BY kcu.ordinal_position) AS cols
@@ -662,6 +717,10 @@ test("[AC-1/AC-2] composite/global UNIQUE constraints exist on all 13 tables", a
   assert.ok(
     uniques.has("model_provider_configs:org_id,purpose"),
     "model_provider_configs(org_id,purpose) UNIQUE missing",
+  );
+  assert.ok(
+    uniques.has("model_provider_job_states:org_id,repository_id,ref_name,surface"),
+    "model_provider_job_states(org_id,repository_id,ref_name,surface) UNIQUE missing",
   );
   assert.ok(
     uniques.has("github_app_installations:installation_id"),
@@ -755,7 +814,7 @@ test("[AC-3] each table has an org_isolation policy (cmd ALL, USING + WITH CHECK
   }
 });
 
-test("[AC-3] purpose and graph_version CHECK constraints exist", async () => {
+test("[AC-3] purpose, graph_version, and provider-state CHECK constraints exist", async () => {
   const res = await pool.query(
     `SELECT conname, conrelid::regclass::text AS table_name, pg_get_constraintdef(oid) AS def
        FROM pg_constraint WHERE contype = 'c' AND connamespace = 'public'::regnamespace`,
@@ -771,6 +830,15 @@ test("[AC-3] purpose and graph_version CHECK constraints exist", async () => {
   assert.ok(graphVersionCheck, "repository_refs_graph_version_nonneg missing");
   assert.match(graphVersionCheck!.def, /graph_version/);
   assert.match(graphVersionCheck!.def, />=\s*0/);
+
+  for (const name of [
+    "model_provider_job_states_surface_check",
+    "model_provider_job_states_status_check",
+    "model_provider_job_states_reason_check",
+    "model_provider_job_states_status_reason_check",
+  ]) {
+    assert.ok(byName.has(name), `${name} missing`);
+  }
 });
 
 test("[AC-8] the mcp_client_keys_same_org_actor BEFORE INSERT/UPDATE trigger exists exactly once", async () => {
@@ -781,12 +849,17 @@ test("[AC-8] the mcp_client_keys_same_org_actor BEFORE INSERT/UPDATE trigger exi
   assert.equal(res.rows[0].n, 1, "expected exactly one same_org_actor trigger on mcp_client_keys");
 });
 
-test("[edge] updated_at trigger fires on each of the four new tables", async () => {
+test("[edge] updated_at trigger fires on each new table", async () => {
   const cases: Array<{ table: TableName; id: string; setClause: string }> = [
     { table: "github_app_installations", id: orgA.githubAppInstallationId, setClause: "account_login = 'renamed'" },
     { table: "repository_refs", id: orgA.repositoryRefId, setClause: "revision_sha = revision_sha" },
     { table: "code_chunks", id: orgA.codeChunkId, setClause: "chunk_index = chunk_index" },
     { table: "code_embeddings", id: orgA.codeEmbeddingId, setClause: "model = model" },
+    {
+      table: "model_provider_job_states",
+      id: orgA.modelProviderJobStateId,
+      setClause: "revision_sha = revision_sha",
+    },
   ];
   for (const { table, id, setClause } of cases) {
     await pool.query(`UPDATE ${table} SET ${setClause}, updated_at = '2000-01-01T00:00:00Z' WHERE id = $1`, [id]);
@@ -800,10 +873,10 @@ test("[edge] updated_at trigger fires on each of the four new tables", async () 
 });
 
 // ---------------------------------------------------------------------------
-// AC-4: cross-tenant read isolation across all 13 tables
+// AC-4: cross-tenant read isolation across all 14 tables
 // ---------------------------------------------------------------------------
 
-test("[AC-4] org A tenant session sees only its own row (and zero org B rows) across all 13 tables", async () => {
+test("[AC-4] org A tenant session sees only its own row (and zero org B rows) across all 14 tables", async () => {
   await withTenantSession(pool, orgA.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
@@ -815,7 +888,7 @@ test("[AC-4] org A tenant session sees only its own row (and zero org B rows) ac
   });
 });
 
-test("[AC-4] org B tenant session sees only its own row (and zero org A rows) across all 13 tables", async () => {
+test("[AC-4] org B tenant session sees only its own row (and zero org A rows) across all 14 tables", async () => {
   await withTenantSession(pool, orgB.orgId, async (c) => {
     for (const table of TABLE_NAMES) {
       const own = await c.query(`SELECT id FROM ${table}`);
@@ -828,7 +901,7 @@ test("[AC-4] org B tenant session sees only its own row (and zero org A rows) ac
 });
 
 // ---------------------------------------------------------------------------
-// AC-4: cross-tenant write rejection across all 13 (non-organizations) tables
+// AC-4: cross-tenant write rejection across all 14 (non-organizations) tables
 // ---------------------------------------------------------------------------
 
 test("[AC-4] cross-org INSERT (org_id = B) is rejected under context A, across every non-organizations table", async () => {
@@ -898,7 +971,7 @@ test("[AC-4] empty-string app.org_id -> zero rows on every table, no invalid-uui
   });
 });
 
-test("[edge] a valid-but-unseeded org context returns 0 rows across all 13 tables (fail-closed for unknown org)", async () => {
+test("[edge] a valid-but-unseeded org context returns 0 rows across all 14 tables (fail-closed for unknown org)", async () => {
   const unknownOrg = randomUUID();
   await withTenantSession(pool, unknownOrg, async (c) => {
     for (const table of TABLE_NAMES) {
@@ -954,7 +1027,7 @@ test("[AC-5] sayre_app role exists as non-super, NOBYPASSRLS, NOLOGIN", async ()
   assert.equal(res.rows[0].rolcanlogin, false, "sayre_app must be NOLOGIN (privilege bundle only)");
 });
 
-test("[AC-5] sayre_app has SELECT/INSERT/UPDATE/DELETE on all 13 tables and owns none of them", async () => {
+test("[AC-5] sayre_app has SELECT/INSERT/UPDATE/DELETE on all 14 tables and owns none of them", async () => {
   for (const table of TABLE_NAMES) {
     for (const priv of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
       const res = await pool.query("SELECT has_table_privilege('sayre_app', $1, $2) AS ok", [table, priv]);
@@ -1238,6 +1311,99 @@ test("[AC-6] model_provider_configs.purpose outside {generation, embedding} is r
     ]),
     /model_provider_configs_purpose_check/,
     "purpose='bogus' must violate the CHECK constraint",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// W3-08: model_provider_job_states minimal/sanitized tenant contract
+// ---------------------------------------------------------------------------
+
+test("[W3-08] model_provider_job_states has only scope, closed state, reason, and timestamps", async () => {
+  const cols = await pool.query(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'model_provider_job_states'`,
+  );
+  const colNames = new Set(cols.rows.map((row) => row.column_name as string));
+  for (const forbidden of [
+    "provider",
+    "model",
+    "endpoint",
+    "endpoint_url",
+    "prompt",
+    "response",
+    "error",
+    "error_text",
+    "credential_ref",
+  ]) {
+    assert.ok(!colNames.has(forbidden), `provider job state must not persist ${forbidden}`);
+  }
+  assert.deepEqual(
+    [...colNames].sort(),
+    [
+      "created_at",
+      "id",
+      "org_id",
+      "reason_code",
+      "ref_name",
+      "repository_id",
+      "revision_sha",
+      "status",
+      "surface",
+      "updated_at",
+    ],
+  );
+});
+
+test("[W3-08] provider-state enums and status/reason coherence are database-enforced", async () => {
+  const base = [
+    randomUUID(),
+    orgA.orgId,
+    orgA.repoId,
+    `refs/heads/state-${randomUUID().slice(0, 8)}`,
+    shaLike("state"),
+  ];
+  for (const [surface, status, reason, constraint] of [
+    ["unknown", "degraded", "timeout", "surface_check"],
+    ["product", "unknown", "timeout", "status_check"],
+    ["product", "degraded", "raw provider error", "reason_check"],
+    ["product", "ready", "timeout", "status_reason_check"],
+    ["product", "failed", null, "status_reason_check"],
+  ] as const) {
+    await assert.rejects(
+      pool.query(
+        `INSERT INTO model_provider_job_states
+          (id, org_id, repository_id, ref_name, revision_sha, surface, status, reason_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [randomUUID(), ...base.slice(1), surface, status, reason],
+      ),
+      new RegExp(`model_provider_job_states_.*${constraint}`),
+    );
+  }
+});
+
+test("[W3-08] forged cross-org repository association is rejected by the composite FK", async () => {
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO model_provider_job_states
+        (id, org_id, repository_id, ref_name, revision_sha, surface, status)
+       VALUES ($1, $2, $3, $4, $5, 'product', 'generating')`,
+      [randomUUID(), orgA.orgId, orgB.repoId, "refs/heads/forged", shaLike("forged")],
+    ),
+    /model_provider_job_states_org_repository_fk/,
+  );
+});
+
+test("[W3-08] provider-state scope/update index exists", async () => {
+  const result = await pool.query(
+    `SELECT indexdef FROM pg_indexes
+      WHERE schemaname='public'
+        AND tablename='model_provider_job_states'
+        AND indexname='model_provider_job_states_scope_updated_idx'`,
+  );
+  assert.equal(result.rowCount, 1);
+  assert.match(
+    result.rows[0].indexdef,
+    /\(org_id, repository_id, ref_name, surface, updated_at DESC\)/,
   );
 });
 
@@ -1533,10 +1699,10 @@ test("[AC-7] hnsw vector_cosine_ops index exists on code_embeddings.embedding", 
 });
 
 // ---------------------------------------------------------------------------
-// AC-9: org-delete cascade across all six new/reshaped tables (+ originals)
+// AC-9: org-delete cascade across all seven new/reshaped tables (+ originals)
 // ---------------------------------------------------------------------------
 
-test("[AC-9] deleting an org as admin cascades to all its child rows across all 13 tables", async () => {
+test("[AC-9] deleting an org as admin cascades to all its child rows across all 14 tables", async () => {
   const orgC = await seedOrg(pool, "C");
   const before = await pool.query("SELECT count(*)::int AS n FROM users WHERE org_id = $1", [orgC.orgId]);
   assert.equal(before.rows[0].n, 1, "precondition: org C has a seeded user");
@@ -1549,7 +1715,7 @@ test("[AC-9] deleting an org as admin cascades to all its child rows across all 
   }
 });
 
-test("[AC-9] org-delete cascade specifically verified for the six new/reshaped tables", async () => {
+test("[AC-9] org-delete cascade specifically verified for the seven new/reshaped tables", async () => {
   const orgD = await seedOrg(pool, "D");
   await pool.query("DELETE FROM organizations WHERE id = $1", [orgD.orgId]);
   for (const table of NEW_OR_RESHAPED_TABLES) {
@@ -1600,7 +1766,7 @@ test("[edge][documented] FK RI bypasses RLS: code_chunks.repository_id may refer
 // AC-10: withOrgContext (acceptance-suite side, independently re-verified)
 // ---------------------------------------------------------------------------
 
-test("[AC-10] withOrgContext returns only org A's rows (0 org B rows) across all 13 tables -- proves the RLS-bypass fix through the real app path", async () => {
+test("[AC-10] withOrgContext returns only org A's rows (0 org B rows) across all 14 tables -- proves the RLS-bypass fix through the real app path", async () => {
   for (const table of TABLE_NAMES) {
     const ownRows = await withOrgContext(db, orgA.orgId, async (tx) => {
       const r = await tx.execute(sql.raw(`select id from ${table}`));
@@ -1697,7 +1863,7 @@ test("[AC-12/edge] running migrate() a second time is a no-op (no duplicate poli
   const pol = await pool.query(
     `SELECT count(*)::int AS n FROM pg_policies WHERE schemaname='public' AND policyname='org_isolation'`,
   );
-  assert.equal(pol.rows[0].n, TABLE_NAMES.length, "expected exactly one org_isolation policy per table (13 total)");
+  assert.equal(pol.rows[0].n, TABLE_NAMES.length, "expected exactly one org_isolation policy per table (14 total)");
 
   const role = await pool.query("SELECT count(*)::int AS n FROM pg_roles WHERE rolname='sayre_app'");
   assert.equal(role.rows[0].n, 1, "sayre_app role must not be duplicated");

@@ -12,6 +12,7 @@ from sayre_workers.enrichment import (
     GenerationRequest,
     ModelProvider,
 )
+from sayre_workers.model_provider import ProviderCallScope
 
 from .metrics import TokenUsageRecorder
 from .models import (
@@ -65,7 +66,11 @@ class GenerationConfigStore(Protocol):
 
 
 class GenerationProviderFactory(Protocol):
-    async def create(self, config: GenerationConfig) -> ModelProvider: ...
+    async def create(
+        self,
+        config: GenerationConfig,
+        scope: ProviderCallScope,
+    ) -> ModelProvider: ...
 
 
 def _required_text(value: str, field: str, maximum: int) -> str:
@@ -334,7 +339,10 @@ class RetrievalService:
             raise GenerationConfigNotFoundError(
                 f"no generation model_provider_configs row for org {auth.org_id!r}"
             )
-        provider = await self._provider_factory.create(config)
+        provider = await self._provider_factory.create(
+            config,
+            ProviderCallScope(org_id=auth.org_id, purpose="retrieval"),
+        )
 
         self._token_usage.record(
             org_id=auth.org_id,

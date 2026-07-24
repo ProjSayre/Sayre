@@ -62,6 +62,8 @@ class ModelProvider(Protocol):
         self, request: GenerationRequest, schema: Mapping[str, Any]
     ) -> StructuredGenerationResponse: ...
 
+    async def aclose(self) -> None: ...
+
 
 def validate_generation_request(request: GenerationRequest) -> None:
     if not isinstance(request.system, str) or not request.system.strip():

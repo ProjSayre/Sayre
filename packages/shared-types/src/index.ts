@@ -112,3 +112,29 @@ export type GatewayToClientMessage =
   | { type: 'graph.delta'; repoId: string; graphVersion: number; upserts: CanvasNode[]; removals: string[] }
   | { type: 'graph.resync'; repoId: string; graphVersion: number }
   | { type: 'error'; code: string; message: string };
+
+// --- W3-08: minimal provider-backed semantic-view state ---
+
+export type ProviderJobSurface = 'product' | 'onboarding' | 'chatbot';
+export type ProviderJobStatus = 'generating' | 'ready' | 'degraded' | 'failed';
+export type ProviderJobReason =
+  | 'timeout'
+  | 'circuit_open'
+  | 'provider_error'
+  | 'retry_exhausted'
+  | 'processing_error';
+
+/**
+ * Browser-visible state intentionally omits org/provider/model/endpoint/prompt/error
+ * detail. Tenant identity remains server-derived, and reasonCode is a closed,
+ * sanitized operational category rather than provider text.
+ */
+export interface ProviderJobState {
+  repositoryId: string;
+  refName: string;
+  revisionSha: string;
+  surface: ProviderJobSurface;
+  status: ProviderJobStatus;
+  reasonCode: ProviderJobReason | null;
+  updatedAt: string;
+}
