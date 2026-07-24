@@ -35,11 +35,15 @@ from .models import (
 
 
 class EnrichmentGraphStore(Protocol):
+    async def is_current(self, scope: GraphScope) -> bool: ...
+
     async def load_context(
         self, scope: GraphScope, changed_paths: tuple[str, ...], full_rebuild: bool
     ) -> EnrichmentContext: ...
 
     async def apply(self, write: EnrichmentWrite) -> None: ...
+
+    async def apply_feature_projection(self, write: EnrichmentWrite) -> bool: ...
 
 
 LOAD_ENRICHMENT_FILES_CYPHER = """
@@ -132,6 +136,47 @@ _PROPERTY_PATCH_QUERIES = {
     """,
 }
 
+_CURRENT_SCOPE_QUERY = """
+    MATCH (root:Folder {
+        org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name,
+        revision_sha: $revision_sha, path: ''
+    })
+    RETURN root.uid AS uid
+    LIMIT 1
+"""
+
+_DELETE_FEATURE_MEMBERSHIPS_QUERY = """
+    MATCH (source:File {
+        org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+    })-[edge:PART_OF]->(feature:Feature {
+        org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+    })
+    DELETE edge
+"""
+
+_DELETE_STALE_FEATURES_QUERY = """
+    MATCH (node:Feature {
+        org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+    })
+    WHERE NOT (node.uid IN $feature_uids)
+    DETACH DELETE node
+"""
+
+_FEATURE_EDGE_QUERIES = {
+    "PART_OF": """
+        UNWIND $items AS item
+        MATCH (source:File {
+            org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name,
+            revision_sha: $revision_sha, uid: item.source_uid
+        })
+        MATCH (target:Feature {
+            org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name,
+            revision_sha: $revision_sha, uid: item.target_uid
+        })
+        MERGE (source)-[edge:PART_OF {org_id: $org_id}]->(target)
+    """,
+}
+
 
 def validate_enrichment_write(write: EnrichmentWrite) -> None:
     """Raise InvalidEnrichmentWriteError if any primitive falls outside the closed
@@ -194,6 +239,20 @@ class Neo4jEnrichmentGraphStore:
 
     async def close(self) -> None:
         await self._driver.close()
+
+    async def is_current(self, scope: GraphScope) -> bool:
+        """Check the graph's server-stamped head marker for this exact revision."""
+
+        async with instrument_graph_query(scope.org_id, QUERY_SHAPE_TRAVERSAL) as measurement:
+            records, _summary, _keys = await self._driver.execute_query(
+                _CURRENT_SCOPE_QUERY,
+                org_id=scope.org_id,
+                repo_id=scope.repository_id,
+                ref_name=scope.ref_name,
+                revision_sha=scope.revision_sha,
+            )
+            measurement.set_result_node_count(len(records))
+        return bool(records)
 
     async def load_context(
         self, scope: GraphScope, changed_paths: tuple[str, ...], full_rebuild: bool
@@ -266,3 +325,91 @@ class Neo4jEnrichmentGraphStore:
             async with self._driver.session() as session:
                 await session.execute_write(write_transaction)
             measurement.set_result_node_count(len(write.nodes) + len(write.property_patches))
+
+    async def apply_feature_projection(self, write: EnrichmentWrite) -> bool:
+        """Replace one ref head's Feature membership projection if still current.
+
+        Existing Feature nodes with the same stable uid are updated in place so
+        Ticket -> Feature REFERENCES edges survive. Obsolete Features and all old
+        PART_OF memberships are removed in the same transaction. Locking the current
+        root prevents a superseded model response from mutating the new head.
+        """
+
+        validate_enrichment_write(write)
+        for node in write.nodes:
+            if node.label != "Feature":
+                raise InvalidEnrichmentWriteError(
+                    "Feature projection may contain only Feature nodes"
+                )
+        for edge in write.edges:
+            if edge.relationship not in _FEATURE_EDGE_QUERIES:
+                raise InvalidEnrichmentWriteError(
+                    "Feature projection may contain only PART_OF edges"
+                )
+
+        scope = write.scope
+        feature_nodes = [{"uid": node.uid, **node.properties} for node in write.nodes]
+        edges_by_type: dict[str, list[dict[str, str]]] = defaultdict(list)
+        for edge in write.edges:
+            edges_by_type[edge.relationship].append(
+                {"source_uid": edge.source_uid, "target_uid": edge.target_uid}
+            )
+        patches_by_label: dict[str, list[dict[str, str | None]]] = defaultdict(list)
+        for patch in write.property_patches:
+            patches_by_label[patch.label].append(
+                {"uid": patch.uid, **patch.properties}
+            )
+
+        async def replace_projection(transaction: Any) -> bool:
+            common = {
+                "org_id": scope.org_id,
+                "repo_id": scope.repository_id,
+                "ref_name": scope.ref_name,
+                "revision_sha": scope.revision_sha,
+            }
+            root_result = await transaction.run(
+                """
+                MATCH (root:Folder {
+                    org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name,
+                    revision_sha: $revision_sha, path: ''
+                })
+                SET root.revision_sha = $revision_sha
+                RETURN root.uid AS uid
+                LIMIT 1
+                """,
+                **common,
+            )
+            if await root_result.single(strict=False) is None:
+                return False
+
+            await transaction.run(_DELETE_FEATURE_MEMBERSHIPS_QUERY, **common)
+            await transaction.run(
+                _DELETE_STALE_FEATURES_QUERY,
+                feature_uids=[node["uid"] for node in feature_nodes],
+                **common,
+            )
+            if feature_nodes:
+                await transaction.run(_NODE_QUERIES["Feature"], items=feature_nodes, **common)
+            for relationship, query in _FEATURE_EDGE_QUERIES.items():
+                if edges_by_type[relationship]:
+                    await transaction.run(
+                        query,
+                        items=edges_by_type[relationship],
+                        **common,
+                    )
+            for label, query in _PROPERTY_PATCH_QUERIES.items():
+                if patches_by_label[label]:
+                    await transaction.run(
+                        query,
+                        items=patches_by_label[label],
+                        **common,
+                    )
+            return True
+
+        async with instrument_graph_query(scope.org_id, QUERY_SHAPE_WRITE) as measurement:
+            async with self._driver.session() as session:
+                applied = bool(await session.execute_write(replace_projection))
+            measurement.set_result_node_count(
+                len(write.nodes) + len(write.property_patches) if applied else 0
+            )
+        return applied

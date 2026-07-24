@@ -11,6 +11,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from sayre_workers.ingestion.models import GraphScope
+from sayre_workers.model_provider import GenerationConfig as ProviderGenerationConfig
+
+GenerationConfig = ProviderGenerationConfig
 
 LANE = Literal["default", "priority"]
 
@@ -81,15 +84,6 @@ class EnrichmentJob:
 
 
 @dataclass(frozen=True)
-class GenerationConfig:
-    provider: str  # 'fake_deterministic' (test) | 'anthropic' | 'openai' | 'openai_compatible'
-    model: str
-    endpoint_url: str | None = None
-    credential_ref: str | None = None
-    options: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
 class EnrichmentNode:
     label: str  # must be in ENRICHMENT_NODE_LABELS
     uid: str
@@ -121,7 +115,7 @@ class EnrichmentWrite:
 
 @dataclass(frozen=True)
 class EnrichmentResult:
-    status: Literal["written", "skipped_no_context", "skipped_stale"]
+    status: Literal["written", "degraded", "skipped_no_context", "skipped_stale"]
     scope: GraphScope
     node_count: int
     edge_count: int

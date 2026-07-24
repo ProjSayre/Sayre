@@ -1,10 +1,8 @@
-"""Static-source-scan proving the enrichment package never constructs/imports a vendor
-SDK outside a sanctioned adapter module (PRD_Tickets W2-05 acceptance line).
+"""Static enforcement for the generation SDK and Graphify adapter boundaries.
 
-`anthropic`/`openai` may never appear anywhere under `sayre_workers/enrichment/`.
-`graphifyy` may appear ONLY in `graphify_adapter.py` (reserved for W3-07's real
-adapter). This test is deliberately Neo4j-free, network-free, and broker-free -- it
-only parses source with `ast`.
+The distribution is named ``graphifyy`` but its real import name is ``graphify``.
+The separate W1-05 embedding adapter remains the only non-generation OpenAI SDK
+consumer.  This test is Neo4j-, network-, and broker-free.
 """
 
 from __future__ import annotations
@@ -14,9 +12,23 @@ from pathlib import Path
 
 import pytest
 
-ENRICHMENT_PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "sayre_workers" / "enrichment"
-FORBIDDEN_EVERYWHERE = {"anthropic", "openai"}
-GRAPHIFYY_SANCTIONED_MODULE = "graphify_adapter.py"
+WORKER_PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "sayre_workers"
+ENRICHMENT_PACKAGE_ROOT = WORKER_PACKAGE_ROOT / "enrichment"
+VENDOR_IMPORT_ALLOWLIST = {
+    "anthropic": {"model_provider/anthropic_adapter.py"},
+    "openai": {
+        "model_provider/openai_compatible_adapter.py",
+        "ingestion/embeddings.py",
+    },
+    "graphify": {"enrichment/graphify_adapter.py"},
+}
+SDK_CONSTRUCTORS = {
+    "AsyncAnthropic": {"model_provider/anthropic_adapter.py"},
+    "AsyncOpenAI": {
+        "model_provider/openai_compatible_adapter.py",
+        "ingestion/embeddings.py",
+    },
+}
 
 
 def _imported_top_level_modules(source: str) -> set[str]:
@@ -36,36 +48,56 @@ def _enrichment_source_files() -> list[Path]:
     return sorted(ENRICHMENT_PACKAGE_ROOT.rglob("*.py"))
 
 
-def test_enrichment_package_exists_with_python_modules() -> None:
-    files = _enrichment_source_files()
-    assert files, f"expected python modules under {ENRICHMENT_PACKAGE_ROOT}"
+def _worker_source_files() -> list[Path]:
+    return sorted(WORKER_PACKAGE_ROOT.rglob("*.py"))
 
 
-def test_no_vendor_sdk_import_outside_sanctioned_adapter() -> None:
+def _called_names(source: str) -> set[str]:
+    tree = ast.parse(source)
+    return {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+
+
+def _vendor_violations(path_name: str, source: str) -> list[str]:
     violations: list[str] = []
-    for path in _enrichment_source_files():
-        modules = _imported_top_level_modules(path.read_text(encoding="utf-8"))
+    modules = _imported_top_level_modules(source)
+    for module, allowed_paths in VENDOR_IMPORT_ALLOWLIST.items():
+        if module in modules and path_name not in allowed_paths:
+            violations.append(f"{path_name} imports {module} outside its adapter")
+    if "graphifyy" in modules:
+        violations.append(
+            f"{path_name} imports graphifyy; the pinned distribution exposes graphify"
+        )
+    calls = _called_names(source)
+    for constructor, allowed_paths in SDK_CONSTRUCTORS.items():
+        if constructor in calls and path_name not in allowed_paths:
+            violations.append(f"{path_name} constructs {constructor} outside its adapter")
+    return violations
 
-        forbidden_here = modules & FORBIDDEN_EVERYWHERE
-        if forbidden_here:
-            violations.append(
-                f"{path.name} imports forbidden vendor SDK(s): {sorted(forbidden_here)}"
-            )
 
-        if "graphifyy" in modules and path.name != GRAPHIFYY_SANCTIONED_MODULE:
-            violations.append(
-                f"{path.name} imports graphifyy outside {GRAPHIFYY_SANCTIONED_MODULE}"
-            )
+def test_worker_package_exists_with_python_modules() -> None:
+    assert _worker_source_files(), f"expected python modules under {WORKER_PACKAGE_ROOT}"
+
+
+def test_no_vendor_import_or_sdk_construction_outside_sanctioned_adapters() -> None:
+    violations: list[str] = []
+    for path in _worker_source_files():
+        relative = path.relative_to(WORKER_PACKAGE_ROOT).as_posix()
+        violations.extend(
+            _vendor_violations(relative, path.read_text(encoding="utf-8"))
+        )
 
     assert not violations, "\n".join(violations)
 
 
-def test_sanctioned_adapter_module_does_not_itself_import_graphifyy_in_the_skeleton() -> None:
-    adapter_path = ENRICHMENT_PACKAGE_ROOT / GRAPHIFYY_SANCTIONED_MODULE
+def test_graphify_adapter_imports_the_distribution_actual_module_name() -> None:
+    adapter_path = ENRICHMENT_PACKAGE_ROOT / "graphify_adapter.py"
     assert adapter_path.exists(), f"expected {adapter_path} to exist"
     modules = _imported_top_level_modules(adapter_path.read_text(encoding="utf-8"))
-    # The skeleton's FakeGraphifyAdapter does not construct graphifyy -- that lands
-    # with the real adapter in W3-07. This module is merely the reserved location.
+    assert "graphify" in modules
     assert "graphifyy" not in modules
 
 
@@ -88,8 +120,9 @@ def test_sanctioned_adapter_module_does_not_itself_import_graphifyy_in_the_skele
         ("import openai\n", {"openai"}),
         ("import openai as ai\n", {"openai"}),
         ("from openai import OpenAI\n", {"openai"}),
+        ("import graphify\n", {"graphify"}),
+        ("from graphify import build_from_json\n", {"graphify"}),
         ("import graphifyy\n", {"graphifyy"}),
-        ("from graphifyy import Adapter\n", {"graphifyy"}),
         ("import os\nimport sys\n", set()),
         ("from __future__ import annotations\nfrom typing import Any\n", {"typing"}),
         # Relative imports (level > 0) must not be misread as top-level modules.
@@ -101,53 +134,58 @@ def test_imported_top_level_modules_detects_every_realistic_smuggling_form(
     source: str, expected: set[str]
 ) -> None:
     detected = _imported_top_level_modules(source)
-    assert detected & FORBIDDEN_EVERYWHERE == expected & FORBIDDEN_EVERYWHERE
-    if "graphifyy" in expected:
-        assert "graphifyy" in detected
-    else:
-        assert "graphifyy" not in detected
-
-
-def _violation_for(path_name: str, source: str) -> list[str]:
-    """Replicates the exact violation logic in
-    `test_no_vendor_sdk_import_outside_sanctioned_adapter`, but against synthetic
-    (filename, source) pairs so the detection logic itself can be exercised with a
-    known-bad input -- proving a *future* regression would actually be caught, not
-    just that today's clean tree passes trivially."""
-    violations: list[str] = []
-    modules = _imported_top_level_modules(source)
-    forbidden_here = modules & FORBIDDEN_EVERYWHERE
-    if forbidden_here:
-        violations.append(f"{path_name} imports forbidden vendor SDK(s): {sorted(forbidden_here)}")
-    if "graphifyy" in modules and path_name != GRAPHIFYY_SANCTIONED_MODULE:
-        violations.append(f"{path_name} imports graphifyy outside {GRAPHIFYY_SANCTIONED_MODULE}")
-    return violations
+    tracked = set(VENDOR_IMPORT_ALLOWLIST) | {"graphifyy"}
+    assert detected & tracked == expected & tracked
 
 
 def test_scan_logic_flags_anthropic_import_in_a_non_adapter_module() -> None:
-    violations = _violation_for("service.py", "import anthropic\n")
+    violations = _vendor_violations("enrichment/service.py", "import anthropic\n")
     assert violations, "expected the scan to flag a smuggled anthropic import"
 
 
-def test_scan_logic_flags_openai_import_even_in_the_sanctioned_adapter_module() -> None:
-    # FORBIDDEN_EVERYWHERE has no per-module exemption -- vendor SDKs are banned
-    # from the whole enrichment package, including graphify_adapter.py.
-    violations = _violation_for(GRAPHIFYY_SANCTIONED_MODULE, "import openai\n")
-    assert violations, "expected the scan to flag openai even inside the adapter module"
+def test_scan_logic_flags_openai_construction_outside_adapter() -> None:
+    violations = _vendor_violations(
+        "enrichment/providers.py",
+        "from openai import AsyncOpenAI\nclient = AsyncOpenAI(api_key='x')\n",
+    )
+    assert violations, "expected the scan to flag OpenAI construction"
 
 
-def test_scan_logic_flags_graphifyy_import_outside_the_sanctioned_module() -> None:
-    violations = _violation_for("providers.py", "import graphifyy\n")
-    assert violations, "expected the scan to flag graphifyy imported outside graphify_adapter.py"
+def test_scan_logic_flags_graphify_import_outside_adapter() -> None:
+    violations = _vendor_violations(
+        "model_provider/factory.py", "from graphify import build_from_json\n"
+    )
+    assert violations, "expected the scan to flag Graphify outside its adapter"
 
 
-def test_scan_logic_allows_graphifyy_import_inside_the_sanctioned_module() -> None:
-    violations = _violation_for(GRAPHIFYY_SANCTIONED_MODULE, "import graphifyy\n")
-    assert violations == [], "graphifyy inside the sanctioned module must not be flagged"
+def test_scan_logic_allows_each_sanctioned_import_and_constructor() -> None:
+    assert (
+        _vendor_violations(
+            "model_provider/anthropic_adapter.py",
+            "from anthropic import AsyncAnthropic\nAsyncAnthropic(api_key='x')\n",
+        )
+        == []
+    )
+    assert (
+        _vendor_violations(
+            "model_provider/openai_compatible_adapter.py",
+            "from openai import AsyncOpenAI\nAsyncOpenAI(api_key='x')\n",
+        )
+        == []
+    )
+    assert (
+        _vendor_violations(
+            "enrichment/graphify_adapter.py",
+            "from graphify import build_from_json\n",
+        )
+        == []
+    )
 
 
 def test_scan_logic_allows_unrelated_imports() -> None:
-    violations = _violation_for("models.py", "import dataclasses\nfrom typing import Any\n")
+    violations = _vendor_violations(
+        "enrichment/models.py", "import dataclasses\nfrom typing import Any\n"
+    )
     assert violations == []
 
 

@@ -24,8 +24,13 @@ from sayre_workers.enrichment.models import (
     InvalidStyleClassificationError,
     NodePropertyPatch,
 )
-from sayre_workers.enrichment.providers import GenerationResponse
+from sayre_workers.enrichment.providers import (
+    GenerationResponse,
+    ProviderCallScope,
+    StructuredGenerationResponse,
+)
 from sayre_workers.enrichment.service import EnrichmentService
+from sayre_workers.enrichment.state_store import ProviderJobState
 from sayre_workers.enrichment.style_classifier import (
     MAX_STYLE_PROMPT_CHARS,
     MAX_STYLE_RESPONSE_CHARS,
@@ -82,6 +87,37 @@ class QueueProvider:
     async def generate(self, request: Any) -> GenerationResponse:
         self.requests.append(request)
         return GenerationResponse(text=self._responses.pop(0))
+
+    async def generate_structured(
+        self,
+        request: Any,
+        schema: Any,
+    ) -> StructuredGenerationResponse:
+        self.requests.append(request)
+        assert schema
+        assert self._responses.pop(0) == "graph-shaping-output"
+        return StructuredGenerationResponse(
+            data={
+                "nodes": [
+                    {
+                        "id": "feature-1",
+                        "label": "Feature",
+                        "properties": {
+                            "name": "Checkout",
+                            "description": "Checkout flow.",
+                            "team": None,
+                        },
+                    }
+                ],
+                "edges": [
+                    {
+                        "source": "file-1",
+                        "target": "feature-1",
+                        "relationship": "PART_OF",
+                    }
+                ],
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -422,6 +458,9 @@ class FakeGraphStore:
         self._context = context
         self.applied: list[EnrichmentWrite] = []
 
+    async def is_current(self, scope: GraphScope) -> bool:
+        return scope == self._context.scope
+
     async def load_context(
         self,
         scope: GraphScope,
@@ -436,20 +475,40 @@ class FakeGraphStore:
         validate_enrichment_write(write)
         self.applied.append(write)
 
+    async def apply_feature_projection(self, write: EnrichmentWrite) -> bool:
+        await self.apply(write)
+        return True
+
 
 class StubProviderFactory:
     def __init__(self, provider: QueueProvider) -> None:
         self._provider = provider
 
-    async def create(self, config: GenerationConfig) -> QueueProvider:
+    async def create(
+        self,
+        config: GenerationConfig,
+        scope: ProviderCallScope,
+    ) -> QueueProvider:
         del config
+        assert scope.org_id == ORG_ID
         return self._provider
+
+    async def aclose(self) -> None:
+        return None
 
 
 class StubConfigStore:
     async def load_generation_config(self, org_id: str) -> GenerationConfig | None:
         assert org_id == ORG_ID
         return GenerationConfig(provider="stub", model="style-test")
+
+
+class StubStateStore:
+    def __init__(self) -> None:
+        self.states: list[ProviderJobState] = []
+
+    async def set_state(self, state: ProviderJobState) -> None:
+        self.states.append(state)
 
 
 class ForeignFolderStyleClassifier:
@@ -473,11 +532,13 @@ async def test_enrichment_service_merges_model_style_patches_into_one_graph_writ
     context = _context()
     graph_store = FakeGraphStore(context)
     provider = QueueProvider(["graph-shaping-output", _response()])
+    state_store = StubStateStore()
     service = EnrichmentService(
         graph_store=graph_store,
         model_provider_factory=StubProviderFactory(provider),  # type: ignore[arg-type]
         graphify_factory=GraphifyAdapterFactory(),
         config_store=StubConfigStore(),
+        state_store=state_store,
     )
     job = EnrichmentJob(
         scope=SCOPE,
@@ -505,6 +566,7 @@ async def test_enrichment_service_merges_model_style_patches_into_one_graph_writ
         ),
     )
     assert len(provider.requests) == 2
+    assert [state.status for state in state_store.states] == ["generating", "ready"]
 
 
 @pytest.mark.asyncio
@@ -512,11 +574,13 @@ async def test_enrichment_service_rejects_same_scope_patch_outside_loaded_folder
     context = _context()
     graph_store = FakeGraphStore(context)
     provider = QueueProvider(["graph-shaping-output"])
+    state_store = StubStateStore()
     service = EnrichmentService(
         graph_store=graph_store,
         model_provider_factory=StubProviderFactory(provider),  # type: ignore[arg-type]
         graphify_factory=GraphifyAdapterFactory(),
         config_store=StubConfigStore(),
+        state_store=state_store,
         style_classifier=ForeignFolderStyleClassifier(),
     )
     job = EnrichmentJob(
@@ -533,3 +597,4 @@ async def test_enrichment_service_rejects_same_scope_patch_outside_loaded_folder
     with pytest.raises(InvalidEnrichmentWriteError, match="outside the loaded context"):
         await service.process(job)
     assert graph_store.applied == []
+    assert [state.status for state in state_store.states] == ["generating", "failed"]

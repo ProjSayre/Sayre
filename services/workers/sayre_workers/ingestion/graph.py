@@ -145,6 +145,46 @@ class Neo4jGraphStore:
                 "ref_name": scope.ref_name,
                 "revision_sha": scope.revision_sha,
             }
+            # Enrichment uses this same root-first lock order before touching
+            # Feature state. The current root still carries the prior revision here,
+            # so lock by stable scope/path rather than the incoming revision. A cold
+            # start legitimately matches no root and continues.
+            root_lock = await transaction.run(
+                """
+                MATCH (root:Folder {
+                    org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name, path: ''
+                })
+                SET root.revision_sha = root.revision_sha
+                """,
+                **common,
+            )
+            await root_lock.consume()
+
+            # Feature clusters are derived from one immutable structural head.
+            # Invalidate the prior semantic projection in the same transaction that
+            # advances Folder/File data; asynchronous W3-01 enrichment repopulates it
+            # only after the accepted graph.updated event. Keep stable Feature nodes
+            # so W3-05 Ticket -> Feature REFERENCES links survive head advancement.
+            await transaction.run(
+                """
+                MATCH (source:File {
+                    org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+                })-[edge:PART_OF]->(feature:Feature {
+                    org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+                })
+                DELETE edge
+                """,
+                **common,
+            )
+            await transaction.run(
+                """
+                MATCH (node:Feature {
+                    org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+                })
+                SET node.revision_sha = null
+                """,
+                **common,
+            )
             if projection.full_rebuild:
                 for label in ("Function", "Class", "File", "Folder"):
                     await transaction.run(

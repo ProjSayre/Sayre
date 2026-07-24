@@ -12,7 +12,19 @@ from .enrichment_graph import (
     validate_enrichment_write,
 )
 from .events import parse_enrichment_envelope
-from .graphify_adapter import FakeGraphifyAdapter, GraphifyAdapter, GraphifyAdapterFactory
+from .feature_clustering import (
+    FEATURE_CLUSTERING_SYSTEM_PROMPT,
+    build_feature_clustering_request,
+    canonical_feature_key,
+    canonicalize_feature_clustering_write,
+)
+from .graphify_adapter import (
+    BaseGraphifyAdapter,
+    FakeGraphifyAdapter,
+    GraphifyAdapter,
+    GraphifyAdapterFactory,
+    InvalidGraphifyOutputError,
+)
 from .models import (
     ENRICHMENT_EDGE_TYPES,
     ENRICHMENT_NODE_LABELS,
@@ -47,6 +59,7 @@ from .providers import (
     GenerationResponse,
     ModelProvider,
     ModelProviderFactory,
+    StructuredGenerationResponse,
 )
 from .runtime import build_enrichment_service
 from .service import EnrichmentService, GenerationConfigStore
@@ -65,6 +78,8 @@ __all__ = [
     "EnrichmentResult",
     "EnrichmentService",
     "EnrichmentWrite",
+    "FEATURE_CLUSTERING_SYSTEM_PROMPT",
+    "BaseGraphifyAdapter",
     "FakeGraphifyAdapter",
     "FakeModelProvider",
     "FileContext",
@@ -76,6 +91,7 @@ __all__ = [
     "GenerationResponse",
     "GraphifyAdapter",
     "GraphifyAdapterFactory",
+    "InvalidGraphifyOutputError",
     "InvalidEnrichmentEventError",
     "InvalidEnrichmentWriteError",
     "InvalidStyleClassificationError",
@@ -89,8 +105,12 @@ __all__ = [
     "PostgresGenerationConfigStore",
     "ModelStyleClassifier",
     "StyleClassifier",
+    "StructuredGenerationResponse",
     "build_enrichment_service",
+    "build_feature_clustering_request",
     "build_onboarding_generator",
+    "canonical_feature_key",
+    "canonicalize_feature_clustering_write",
     "parse_enrichment_envelope",
     "parse_onboarding_generate",
     "run_enrichment_consumer",
