@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from sayre_workers.config import get_secret
+from sayre_workers.db import assert_runtime_role_rls_safe
+
 from .chunks import PostgresChunkStore
 from .embeddings import EmbeddingConsumer
 from .events import MessagingPublisher
@@ -12,6 +15,10 @@ from .state import PostgresRefStateStore
 
 
 async def build_ingestion_service() -> IngestionService:
+    # CI/production startup gate (Resolved decision Q2, docs/tenant-isolation.md
+    # "DSN-role provisioning risk"). No-ops outside SAYRE_ENV in {"ci","production"}
+    # -- local dev's login role is intentionally a superuser.
+    await assert_runtime_role_rls_safe(await get_secret("env://DATABASE_RUNTIME_URL"))
     return IngestionService(
         state_store=await PostgresRefStateStore.from_config(),
         repository_source=GitRepositorySource(),
@@ -22,4 +29,5 @@ async def build_ingestion_service() -> IngestionService:
 
 
 async def build_embedding_consumer() -> EmbeddingConsumer:
+    await assert_runtime_role_rls_safe(await get_secret("env://DATABASE_RUNTIME_URL"))
     return EmbeddingConsumer(await PostgresChunkStore.from_config())

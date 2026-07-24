@@ -5,12 +5,10 @@ from __future__ import annotations
 import hashlib
 import math
 from collections.abc import Iterable
-from typing import Any, Protocol
-
-import psycopg
-from psycopg.rows import dict_row
+from typing import Protocol
 
 from sayre_workers.config import get_secret
+from sayre_workers.db import org_scoped_connection
 from sayre_workers.parsing import SourceFile
 
 from .models import (
@@ -94,11 +92,6 @@ class PostgresChunkStore:
     async def from_config(cls) -> "PostgresChunkStore":
         return cls(await get_secret("env://DATABASE_RUNTIME_URL"))
 
-    async def _connect(self, org_id: str) -> psycopg.AsyncConnection[Any]:
-        connection = await psycopg.AsyncConnection.connect(self._dsn, row_factory=dict_row)
-        await connection.execute("SELECT set_config('app.org_id', %s, false)", (org_id,))
-        return connection
-
     async def replace_chunks(
         self,
         *,
@@ -108,9 +101,8 @@ class PostgresChunkStore:
         affected_node_ids: tuple[str, ...],
         chunks: tuple[CodeChunk, ...],
     ) -> tuple[PersistedChunk, ...]:
-        connection = await self._connect(scope.org_id)
         persisted: list[PersistedChunk] = []
-        async with connection:
+        async with org_scoped_connection(self._dsn, scope.org_id) as connection:
             async with connection.transaction():
                 if full_rebuild:
                     await connection.execute(
@@ -177,8 +169,7 @@ class PostgresChunkStore:
         return tuple(persisted)
 
     async def load_embedding_work(self, task: EmbeddingTask) -> EmbeddingWork | None:
-        connection = await self._connect(task.org_id)
-        async with connection:
+        async with org_scoped_connection(self._dsn, task.org_id) as connection:
             cursor = await connection.execute(
                 """
                 SELECT chunk.content, config.provider, config.model, config.dimension,
@@ -221,8 +212,7 @@ class PostgresChunkStore:
     async def store_embedding(self, work: EmbeddingWork, vector: tuple[float, ...]) -> bool:
         task = work.task
         vector_literal = "[" + ",".join(format(value, ".17g") for value in vector) + "]"
-        connection = await self._connect(task.org_id)
-        async with connection:
+        async with org_scoped_connection(self._dsn, task.org_id) as connection:
             async with connection.transaction():
                 cursor = await connection.execute(
                     """
