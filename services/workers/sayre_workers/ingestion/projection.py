@@ -245,38 +245,15 @@ def build_projection(
             "last_run": coverage.last_run.isoformat() if coverage.last_run is not None else None,
         }
 
-    for test in parsed.tests:
-        nodes.append(
-            GraphNode(
-                label="Test",
-                uid=stable_uid(scope, "Test", test.path),
-                properties={
-                    **base_properties,
-                    "path": test.path,
-                    "name": test.name,
-                    "coverage_status": test.coverage_status,
-                },
-            )
-        )
-
     graph_edges = tuple(
         GraphEdge(relationship, source_uid, target_uid, edges[key])  # type: ignore[arg-type]
         for key in sorted(edges)
         for relationship, source_uid, target_uid in (key,)
     )
-    covers_edges = tuple(
-        GraphEdge(
-            "COVERS",
-            stable_uid(scope, "Test", coverage.test_path),
-            stable_uid(scope, "File", coverage.file_path),
-            properties={"status": coverage.status, "last_run": coverage.last_run},
-        )
-        for coverage in sorted(parsed.covers, key=lambda item: (item.test_path, item.file_path))
-    )
     return GraphProjection(
         scope=scope,
         nodes=tuple(nodes),
-        edges=graph_edges + covers_edges,
+        edges=graph_edges,
         current_file_paths=file_paths,
         current_folder_paths=folder_paths,
         affected_file_paths=tuple(sorted(affected_set)),
