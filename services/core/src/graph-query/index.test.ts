@@ -1,3 +1,4 @@
+import neo4j from 'neo4j-driver';
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthContext } from '../auth/context';
 import type { GraphReadExecutor, GraphReadRecord } from './neo4j';
@@ -319,7 +320,7 @@ describe('RbacGraphQueryService', () => {
         org_id: ORG_ID,
         query_terms: ['public', 'a.ts'],
         exact_node_id: null,
-        limit: 8,
+        limit: neo4j.int(8),
       }),
     );
     expect(RESOLVE_RETRIEVAL_ANCHORS_CYPHER).toContain('node.org_id = $org_id');
@@ -362,7 +363,7 @@ describe('RbacGraphQueryService', () => {
         org_id: ORG_ID,
         anchor_id: 'anchor',
         max_hops: 2,
-        limit: 64,
+        limit: neo4j.int(64),
       }),
     );
     expect(TRAVERSE_RETRIEVAL_CONTEXT_CYPHER).toContain('[*0..2]');

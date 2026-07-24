@@ -127,9 +127,14 @@ class PostgresRefStateStore:
             # Serialize the whole graph-write/accept sequence for this scope so
             # concurrent cold-start deliveries cannot project different heads
             # before racing to create the first repository_refs row.
+            # ':' is invalid in both a UUID and a git ref name, so it cannot
+            # cause two distinct (org_id, repository_id, ref_name) tuples to
+            # collide onto the same lock key. NUL was tried first but Postgres
+            # `text` parameters can never contain a NUL byte -- psycopg raises
+            # DataError client-side before the query is even sent.
             await connection.execute(
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                (f"{org_id}\0{repository_id}\0{ref_name}",),
+                (f"{org_id}:{repository_id}:{ref_name}",),
             )
             ref_cursor = await connection.execute(
                 """

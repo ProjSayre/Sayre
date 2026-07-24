@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Background,
   BackgroundVariant,
@@ -19,7 +20,13 @@ import {
   type ProductTreeRecentEdit,
 } from '../lib/productTree';
 import { rendererForVisibleNodeCount } from '../lib/scaleGraph';
-import { SigmaCanvas } from './SigmaCanvas';
+
+// `sigma` touches WebGL2RenderingContext at module-load time, which doesn't
+// exist during Next.js SSR. ssr: false keeps that import out of the server
+// bundle entirely instead of merely deferring its use.
+const SigmaCanvas = dynamic(() => import('./SigmaCanvas').then((m) => m.SigmaCanvas), {
+  ssr: false,
+});
 
 interface ProductTreeCanvasProps {
   repoId: string | null;

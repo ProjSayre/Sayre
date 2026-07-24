@@ -1,5 +1,10 @@
 import type { AuthContext } from '../auth/context';
-import { LazyGraphReadExecutor, type GraphReadExecutor, type GraphReadRecord } from './neo4j';
+import {
+  LazyGraphReadExecutor,
+  toNeo4jInt,
+  type GraphReadExecutor,
+  type GraphReadRecord,
+} from './neo4j';
 import {
   PostgresPermissionStore,
   canReadResource,
@@ -1038,7 +1043,7 @@ export class RbacGraphQueryService
       query_terms: [...terms],
       normalized_query: terms.join(' '),
       exact_node_id: exactNodeId,
-      limit,
+      limit: toNeo4jInt(limit),
       ...scopeParameters(scope),
     });
 
@@ -1076,7 +1081,7 @@ export class RbacGraphQueryService
       anchor_id: anchorId,
       intent_terms: [...intentTerms],
       max_hops: maxHops,
-      limit: maxNodes,
+      limit: toNeo4jInt(maxNodes),
       ...scopeParameters(scope),
     });
 

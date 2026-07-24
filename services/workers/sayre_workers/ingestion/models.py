@@ -72,16 +72,19 @@ class GraphScope:
 
 @dataclass(frozen=True)
 class GraphNode:
-    label: Literal["Folder", "File", "Function", "Class"]
+    label: Literal["Folder", "File", "Function", "Class", "Test"]
     uid: str
     properties: dict[str, Any]
 
 
 @dataclass(frozen=True)
 class GraphEdge:
-    relationship: Literal["CONTAINS", "IMPORTS", "CALLS", "INHERITS"]
+    relationship: Literal["CONTAINS", "IMPORTS", "CALLS", "INHERITS", "COVERS"]
     source_uid: str
     target_uid: str
+    # Only COVERS carries edge properties today (status, last_run) -- the other
+    # relationship types stay bare, matching the graph schema (docs/graph-schema.md).
+    properties: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

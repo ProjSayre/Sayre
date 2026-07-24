@@ -1,10 +1,19 @@
-import neo4j, { type Driver } from 'neo4j-driver';
+import neo4j, { type Driver, type Integer } from 'neo4j-driver';
 import { getConfig, getSecret } from '@sayre/config';
 import {
   instrumentGraphQuery,
   type GraphQueryShape,
 } from '../telemetry/graphMetrics';
 import { assertOrgScopedCypher } from '../security/graphOrgGuard';
+
+// Cypher clauses like LIMIT require a genuine Integer type -- a plain JS number
+// param is serialized as Float by the driver and Neo4j rejects it. This is the
+// only place outside the two allowlisted executor files that may need one, so
+// it's exposed here rather than importing 'neo4j-driver' directly elsewhere
+// (see security/neo4jChokepoint.test.ts's import allowlist).
+export function toNeo4jInt(value: number): Integer {
+  return neo4j.int(value);
+}
 
 export interface GraphReadRecord {
   get(key: string): unknown;
