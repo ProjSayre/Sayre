@@ -78,7 +78,7 @@ class OnboardingPriorityHandler:
     def __call__(self, envelope: MessageEnvelope) -> None:
         job = parse_onboarding_generate(envelope)
         result = self._generator(job)
-        if result is not None and result.status == "degraded":
+        if result is not None and result.status != "written":
             return
         duration_ms = float(max(0, self._clock_ms() - job.cold_start_started_at_ms))
         record_onboarding_ready(job.org_id, job.repository_id, duration_ms)

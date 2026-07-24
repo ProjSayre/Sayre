@@ -56,10 +56,13 @@ export function ProductTreeShell({
               <span className="nav-icon">P</span>
               Product
             </Link>
-            <button className="nav-item" type="button" disabled>
+            <Link
+              className="nav-item"
+              href={treeHref('/onboarding', repoId, refName)}
+            >
               <span className="nav-icon">O</span>
               Onboarding
-            </button>
+            </Link>
           </nav>
 
           <section className="repo-card" aria-labelledby="product-summary">

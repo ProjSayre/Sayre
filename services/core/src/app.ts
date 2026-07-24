@@ -10,6 +10,7 @@ import { providerSettingsRouter } from './routes/providerSettings';
 import { providerJobStateRouter } from './routes/providerJobState';
 import { nodeOverlayRouter } from './routes/nodeOverlay';
 import { repositoryCatalogRouter } from './routes/repositoryCatalog';
+import { onboardingTreeRouter } from './routes/onboardingTree';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -26,6 +27,7 @@ export function createApp(): Express {
   app.use(technicalTreeRouter);
   app.use(providerJobStateRouter);
   app.use(productTreeRouter);
+  app.use(onboardingTreeRouter);
   // Internal-only (services/gateway callers only in a real deployment — see
   // routes/realtimeInternal.ts's header comment for the network-isolation
   // requirement). Mounted here, after express.json(), alongside the other

@@ -32,6 +32,7 @@ from .models import (
     FolderContext,
     InvalidEnrichmentWriteError,
 )
+from .onboarding_plan import canonicalize_onboarding_write
 
 
 class EnrichmentGraphStore(Protocol):
@@ -44,6 +45,8 @@ class EnrichmentGraphStore(Protocol):
     async def apply(self, write: EnrichmentWrite) -> None: ...
 
     async def apply_feature_projection(self, write: EnrichmentWrite) -> bool: ...
+
+    async def apply_onboarding_projection(self, write: EnrichmentWrite) -> bool: ...
 
 
 LOAD_ENRICHMENT_FILES_CYPHER = """
@@ -159,6 +162,13 @@ _DELETE_STALE_FEATURES_QUERY = """
         org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
     })
     WHERE NOT (node.uid IN $feature_uids)
+    DETACH DELETE node
+"""
+
+_DELETE_ONBOARDING_PROJECTION_QUERY = """
+    MATCH (node:EnvStep {
+        org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name
+    })
     DETACH DELETE node
 """
 
@@ -412,4 +422,70 @@ class Neo4jEnrichmentGraphStore:
             measurement.set_result_node_count(
                 len(write.nodes) + len(write.property_patches) if applied else 0
             )
+        return applied
+
+    async def apply_onboarding_projection(self, write: EnrichmentWrite) -> bool:
+        """Atomically replace one current ref head's ordered EnvStep projection."""
+
+        write = canonicalize_onboarding_write(write)
+        validate_enrichment_write(write)
+        for node in write.nodes:
+            if node.label != "EnvStep":
+                raise InvalidEnrichmentWriteError(
+                    "Onboarding projection may contain only EnvStep nodes"
+                )
+        for edge in write.edges:
+            if edge.relationship != "REQUIRES":
+                raise InvalidEnrichmentWriteError(
+                    "Onboarding projection may contain only REQUIRES edges"
+                )
+
+        scope = write.scope
+        step_nodes = [{"uid": node.uid, **node.properties} for node in write.nodes]
+        requires_edges = [
+            {"source_uid": edge.source_uid, "target_uid": edge.target_uid}
+            for edge in write.edges
+        ]
+
+        async def replace_projection(transaction: Any) -> bool:
+            common = {
+                "org_id": scope.org_id,
+                "repo_id": scope.repository_id,
+                "ref_name": scope.ref_name,
+                "revision_sha": scope.revision_sha,
+            }
+            root_result = await transaction.run(
+                """
+                MATCH (root:Folder {
+                    org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name,
+                    revision_sha: $revision_sha, path: ''
+                })
+                SET root.revision_sha = $revision_sha
+                RETURN root.uid AS uid
+                LIMIT 1
+                """,
+                **common,
+            )
+            if await root_result.single(strict=False) is None:
+                return False
+
+            await transaction.run(_DELETE_ONBOARDING_PROJECTION_QUERY, **common)
+            if step_nodes:
+                await transaction.run(
+                    _NODE_QUERIES["EnvStep"], items=step_nodes, **common
+                )
+            if requires_edges:
+                await transaction.run(
+                    _EDGE_QUERIES["REQUIRES"],
+                    items=requires_edges,
+                    org_id=scope.org_id,
+                )
+            return True
+
+        async with instrument_graph_query(
+            scope.org_id, QUERY_SHAPE_WRITE
+        ) as measurement:
+            async with self._driver.session() as session:
+                applied = await session.execute_write(replace_projection)
+            measurement.set_result_node_count(len(write.nodes) if applied else 0)
         return applied

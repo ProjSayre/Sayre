@@ -28,7 +28,6 @@ from typing import Protocol
 from messaging.envelope import MessageEnvelope
 from sayre_workers.model_provider import (
     GenerationConfig,
-    GenerationRequest,
     ModelProviderFactory,
     ProviderCallFailedError,
     ProviderCallScope,
@@ -47,6 +46,10 @@ from .models import (
     EnrichmentResult,
     GenerationConfigNotFoundError,
     InvalidEnrichmentWriteError,
+)
+from .onboarding_plan import (
+    OnboardingGraphifyAdapter,
+    build_onboarding_request,
 )
 from .style_classifier import ModelStyleClassifier, StyleClassifier
 from .state_store import (
@@ -68,6 +71,7 @@ class EnrichmentService:
         graph_store: EnrichmentGraphStore,
         model_provider_factory: ModelProviderFactory,
         graphify_factory: GraphifyAdapterFactory,
+        onboarding_graphify_factory: GraphifyAdapterFactory | None = None,
         config_store: GenerationConfigStore,
         state_store: ProviderJobStateStore,
         style_classifier: StyleClassifier | None = None,
@@ -75,6 +79,9 @@ class EnrichmentService:
         self._graph_store = graph_store
         self._model_provider_factory = model_provider_factory
         self._graphify_factory = graphify_factory
+        self._onboarding_graphify_factory = (
+            onboarding_graphify_factory or GraphifyAdapterFactory()
+        )
         self._config_store = config_store
         self._state_store = state_store
         self._style_classifier = style_classifier or ModelStyleClassifier()
@@ -137,21 +144,20 @@ class EnrichmentService:
             provider = await self._model_provider_factory.create(
                 config, ProviderCallScope(org_id=job.scope.org_id)
             )
-            graphify = self._graphify_factory.create()
+            base_graphify = (
+                self._graphify_factory.create()
+                if job.lane == "default"
+                else self._onboarding_graphify_factory.create()
+            )
+            graphify = (
+                base_graphify
+                if job.lane == "default"
+                else OnboardingGraphifyAdapter(base_graphify)
+            )
             request = (
                 build_feature_clustering_request(context)
                 if job.lane == "default"
-                else GenerationRequest(
-                    system=(
-                        "Emit only schema-constrained semantic graph primitives. "
-                        "Never return free-form prose or structural parser output."
-                    ),
-                    input=(
-                        f"repository={job.scope.repository_id} "
-                        f"ref={job.scope.ref_name} revision={job.scope.revision_sha} "
-                        f"files={[file.path for file in context.files]!r}"
-                    ),
-                )
+                else build_onboarding_request(context)
             )
             generation = await provider.generate_structured(
                 request,
@@ -172,7 +178,11 @@ class EnrichmentService:
             if job.lane == "default":
                 write = canonicalize_feature_clustering_write(context, write)
 
-            style_patches = await self._style_classifier.classify(context, provider)
+            style_patches = (
+                await self._style_classifier.classify(context, provider)
+                if job.lane == "default"
+                else ()
+            )
             if style_patches:
                 write = replace(
                     write,
@@ -196,7 +206,13 @@ class EnrichmentService:
                         edge_count=0,
                     )
             else:
-                await self._graph_store.apply(write)
+                if not await self._graph_store.apply_onboarding_projection(write):
+                    return EnrichmentResult(
+                        status="skipped_stale",
+                        scope=job.scope,
+                        node_count=0,
+                        edge_count=0,
+                    )
         except ProviderCallFailedError as error:
             status: ProviderJobStatus = (
                 "degraded" if error.fallback_mode == "degrade" else "failed"

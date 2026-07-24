@@ -34,6 +34,14 @@ const nextConfig = {
         source: '/api/core/auth/github/login',
         destination: `${coreBaseUrl}/auth/github/login`,
       },
+      {
+        source: '/api/core/repos/:repoId/onboarding-tree',
+        destination: `${coreBaseUrl}/repos/:repoId/onboarding-tree`,
+      },
+      {
+        source: '/api/core/repos/:repoId/onboarding-steps/:stepId/execute',
+        destination: `${coreBaseUrl}/repos/:repoId/onboarding-steps/:stepId/execute`,
+      },
     ];
   },
 };

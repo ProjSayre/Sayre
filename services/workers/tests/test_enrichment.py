@@ -412,6 +412,10 @@ class FakeEnrichmentGraphStore:
         await self.apply(write)
         return True
 
+    async def apply_onboarding_projection(self, write: EnrichmentWrite) -> bool:
+        await self.apply(write)
+        return True
+
 
 class FakeGenerationConfigStore:
     def __init__(self, config: GenerationConfig | None) -> None:
@@ -513,6 +517,7 @@ def _service(
     graph_store: FakeEnrichmentGraphStore,
     config_store: FakeGenerationConfigStore,
     graphify_factory=None,
+    onboarding_graphify_factory=None,
     state_store: FakeProviderJobStateStore | None = None,
     model_provider_factory=None,
 ) -> EnrichmentService:
@@ -521,6 +526,7 @@ def _service(
         model_provider_factory=model_provider_factory or ModelProviderFactory(),
         graphify_factory=graphify_factory
         or StubGraphifyAdapterFactory(FakeGraphifyAdapter()),
+        onboarding_graphify_factory=onboarding_graphify_factory,
         config_store=config_store,
         state_store=state_store or FakeProviderJobStateStore(),
     )
@@ -724,6 +730,9 @@ async def test_handle_rejects_disallowed_primitive_from_graphify_adapter(
         graph_store=graph_store,
         config_store=config_store,
         graphify_factory=StubGraphifyAdapterFactory(DisallowedPrimitiveGraphifyAdapter()),
+        onboarding_graphify_factory=StubGraphifyAdapterFactory(
+            DisallowedPrimitiveGraphifyAdapter()
+        ),
     )
 
     with pytest.raises(InvalidEnrichmentWriteError):
@@ -1014,6 +1023,9 @@ def test_onboarding_bridge_generation_config_error_is_not_the_only_exception_tha
         graph_store=graph_store,
         config_store=config_store,
         graphify_factory=StubGraphifyAdapterFactory(DisallowedPrimitiveGraphifyAdapter()),
+        onboarding_graphify_factory=StubGraphifyAdapterFactory(
+            DisallowedPrimitiveGraphifyAdapter()
+        ),
     )
     generator = build_onboarding_generator(service)
     handler = OnboardingPriorityHandler(generator, clock_ms=lambda: 1_500)
@@ -1049,7 +1061,8 @@ def test_onboarding_bridge_end_to_end_through_priority_handler_writes_once_and_e
     assert len(graph_store.applied) == 1
     write = graph_store.applied[0]
     assert write.scope == scope
-    assert write.nodes[0].label == "Feature"
+    assert write.nodes[0].label == "EnvStep"
+    assert write.nodes[0].properties == {"sequence": 0, "command": "fake"}
 
     [point] = list(_ttfc_metric(reader).data.data_points)
     assert point.count == 1

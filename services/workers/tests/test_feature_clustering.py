@@ -639,6 +639,67 @@ async def test_neo4j_feature_projection_stale_guard_mutates_nothing() -> None:
 
 
 @pytest.mark.asyncio
+async def test_neo4j_onboarding_projection_replaces_only_after_current_revision_lock() -> None:
+    scope = _scope()
+    write = EnrichmentWrite(
+        scope=scope,
+        nodes=(
+            EnrichmentNode(
+                label="EnvStep",
+                uid="step-0",
+                properties={"sequence": 0, "command": "printf ready"},
+            ),
+            EnrichmentNode(
+                label="EnvStep",
+                uid="step-1",
+                properties={"sequence": 1, "command": "node --version"},
+            ),
+        ),
+        edges=(
+            EnrichmentEdge(
+                relationship="REQUIRES",
+                source_uid="step-1",
+                target_uid="step-0",
+            ),
+        ),
+    )
+    driver = _FakeNeo4jDriver(current=True)
+    store = Neo4jEnrichmentGraphStore(driver)  # type: ignore[arg-type]
+
+    assert await store.apply_onboarding_projection(write) is True
+
+    calls = driver.transaction.calls
+    assert "RETURN root.uid AS uid" in calls[0][0]
+    assert any(
+        "MATCH (node:EnvStep" in query and "DETACH DELETE node" in query
+        for query, _ in calls
+    )
+    assert any("MERGE (node:EnvStep" in query for query, _ in calls)
+    assert any("MERGE (source)-[edge:REQUIRES" in query for query, _ in calls)
+    assert all(parameters["org_id"] == "org-a" for _query, parameters in calls)
+
+
+@pytest.mark.asyncio
+async def test_neo4j_onboarding_projection_stale_guard_mutates_nothing() -> None:
+    driver = _FakeNeo4jDriver(current=False)
+    store = Neo4jEnrichmentGraphStore(driver)  # type: ignore[arg-type]
+    write = EnrichmentWrite(
+        scope=_scope(),
+        nodes=(
+            EnrichmentNode(
+                label="EnvStep",
+                uid="step-0",
+                properties={"sequence": 0, "command": "true"},
+            ),
+        ),
+    )
+
+    assert await store.apply_onboarding_projection(write) is False
+    assert len(driver.transaction.calls) == 1
+    assert "RETURN root.uid AS uid" in driver.transaction.calls[0][0]
+
+
+@pytest.mark.asyncio
 async def test_empty_feature_projection_clears_all_current_memberships_and_features() -> None:
     context = _fixture_context()
     driver = _FakeNeo4jDriver(current=True)
