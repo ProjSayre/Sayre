@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getOptionalConfig } from '@sayre/config';
 import {
   DockerOnboardingSandboxRunner,
   buildDockerRunArgs,
@@ -111,7 +112,9 @@ describe('container-only onboarding sandbox', () => {
   });
 });
 
-const integrationImage = process.env.ONBOARDING_SANDBOX_INTEGRATION_IMAGE;
+const integrationImage = getOptionalConfig(
+  'ONBOARDING_SANDBOX_INTEGRATION_IMAGE',
+);
 const containerIt = integrationImage ? it : it.skip;
 
 containerIt(

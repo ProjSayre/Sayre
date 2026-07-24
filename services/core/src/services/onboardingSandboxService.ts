@@ -1,6 +1,10 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { getConfig } from '@sayre/config';
+import {
+  getConfig,
+  getOptionalConfig,
+  type ConfigName,
+} from '@sayre/config';
 
 const IMAGE_DIGEST_RE =
   /^[a-z0-9][a-z0-9._:/-]*@sha256:[a-f0-9]{64}$/u;
@@ -27,6 +31,25 @@ interface HostProcessResult {
   stderr: string;
 }
 
+const HOST_ENVIRONMENT_NAMES = [
+  ['PATH', 'PATH'],
+  ['PATHEXT', 'PATHEXT'],
+  ['SystemRoot', 'SystemRoot'],
+  ['WINDIR', 'WINDIR'],
+  ['DOCKER_HOST', 'DOCKER_HOST'],
+  ['DOCKER_CONTEXT', 'DOCKER_CONTEXT'],
+  ['DOCKER_CONFIG', 'DOCKER_CONFIG'],
+] as const satisfies ReadonlyArray<readonly [string, ConfigName]>;
+
+function hostProcessEnvironment(): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const [childName, configName] of HOST_ENVIRONMENT_NAMES) {
+    const value = getOptionalConfig(configName);
+    if (value !== undefined) environment[childName] = value;
+  }
+  return environment;
+}
+
 export interface HostProcessExecutor {
   run(
     executable: string,
@@ -51,15 +74,7 @@ export class NodeHostProcessExecutor implements HostProcessExecutor {
           maxBuffer: options.maxOutputBytes,
           windowsHide: true,
           shell: false,
-          env: {
-            PATH: process.env.PATH,
-            PATHEXT: process.env.PATHEXT,
-            SystemRoot: process.env.SystemRoot,
-            WINDIR: process.env.WINDIR,
-            DOCKER_HOST: process.env.DOCKER_HOST,
-            DOCKER_CONTEXT: process.env.DOCKER_CONTEXT,
-            DOCKER_CONFIG: process.env.DOCKER_CONFIG,
-          },
+          env: hostProcessEnvironment(),
         },
         (error, stdout, stderr) => {
           const processError = error as
