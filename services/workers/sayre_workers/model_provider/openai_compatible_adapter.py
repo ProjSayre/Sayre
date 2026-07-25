@@ -28,6 +28,8 @@ from .protocol import (
     validate_model,
 )
 
+_REASONING_EFFORTS = frozenset({"none", "minimal", "low", "medium", "high"})
+
 
 def _validated_endpoint(value: str | None) -> str:
     if value is None or not value.strip():
@@ -49,6 +51,17 @@ def _validated_endpoint(value: str | None) -> str:
             "without credentials, query, or fragment"
         )
     return endpoint
+
+
+def _configured_reasoning_effort(options: Mapping[str, Any]) -> str | None:
+    value = options.get("reasoning_effort")
+    if value is None:
+        return None
+    if not isinstance(value, str) or value not in _REASONING_EFFORTS:
+        raise InvalidModelProviderConfigError(
+            "reasoning_effort must be none, minimal, low, medium, or high"
+        )
+    return value
 
 
 class OpenAICompatibleModelProvider:
@@ -118,6 +131,9 @@ class OpenAICompatibleModelProvider:
         temperature = configured_temperature(request, self._options)
         if temperature is not None:
             arguments["temperature"] = temperature
+        reasoning_effort = _configured_reasoning_effort(self._options)
+        if reasoning_effort is not None:
+            arguments["reasoning_effort"] = reasoning_effort
         return arguments
 
     @staticmethod

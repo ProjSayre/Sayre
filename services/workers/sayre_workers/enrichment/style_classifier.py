@@ -128,20 +128,53 @@ def _style_value(value: object, field: str) -> str | None:
     return normalized
 
 
-def _parse_batch_response(
-    response_text: str,
+def _style_schema(folders: Sequence[FolderContext]) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["folders"],
+        "properties": {
+            "folders": {
+                "type": "array",
+                "minItems": len(folders),
+                "maxItems": len(folders),
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["uid", "coding_style", "comment_style"],
+                    "properties": {
+                        "uid": {
+                            "type": "string",
+                            "enum": [folder.uid for folder in folders],
+                        },
+                        "coding_style": {"type": ["string", "null"]},
+                        "comment_style": {"type": ["string", "null"]},
+                    },
+                },
+            },
+        },
+    }
+
+
+def _parse_batch_payload(
+    payload: object,
     folders: Sequence[FolderContext],
 ) -> tuple[NodePropertyPatch, ...]:
-    if len(response_text) > MAX_STYLE_RESPONSE_CHARS:
+    try:
+        encoded = json.dumps(
+            payload,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise InvalidStyleClassificationError(
+            "style classification response must be JSON-compatible"
+        ) from exc
+    if len(encoded) > MAX_STYLE_RESPONSE_CHARS:
         raise InvalidStyleClassificationError(
             "style classification response exceeds the fixed response limit"
         )
-    try:
-        payload = json.loads(response_text)
-    except (json.JSONDecodeError, TypeError) as exc:
-        raise InvalidStyleClassificationError(
-            "style classification response must be valid JSON"
-        ) from exc
 
     if not isinstance(payload, dict) or set(payload) != {"folders"}:
         raise InvalidStyleClassificationError(
@@ -202,12 +235,13 @@ class ModelStyleClassifier:
         patches: list[NodePropertyPatch] = []
         for start in range(0, len(context.folders), STYLE_BATCH_SIZE):
             folders = context.folders[start : start + STYLE_BATCH_SIZE]
-            response = await provider.generate(
+            response = await provider.generate_structured(
                 GenerationRequest(
                     system=_SYSTEM_PROMPT,
                     input=_encode_batch(folders, context),
                     max_output_tokens=MAX_STYLE_OUTPUT_TOKENS,
-                )
+                ),
+                _style_schema(folders),
             )
-            patches.extend(_parse_batch_response(response.text, folders))
+            patches.extend(_parse_batch_payload(response.data, folders))
         return tuple(patches)

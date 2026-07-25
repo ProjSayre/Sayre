@@ -9,6 +9,7 @@ import { WebhookSignatureError } from '../webhooks/githubSignature';
 import { WebhookBadRequestError } from '../services/githubWebhookService';
 import {
   GithubApiError,
+  GithubInstallationAuthorizationError,
   InstallationOrgConflictError,
   InstallCallbackBadRequestError,
 } from '../services/githubAppInstallService';
@@ -81,6 +82,11 @@ export function errorHandler(
 
   if (err instanceof InstallationOrgConflictError) {
     res.status(409).json({ error: 'installation already bound to a different organization' });
+    return;
+  }
+
+  if (err instanceof GithubInstallationAuthorizationError) {
+    res.status(403).json({ error: 'GitHub installation authorization failed' });
     return;
   }
 

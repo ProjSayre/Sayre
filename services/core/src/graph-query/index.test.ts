@@ -7,6 +7,7 @@ import {
   GET_FEATURE_CLUSTERS_CYPHER,
   GET_NODE_OVERLAY_CYPHER,
   GET_NODES_IN_VIEWPORT_CYPHER,
+  GET_STRUCTURAL_EDGES_CYPHER,
   RESOLVE_RETRIEVAL_ANCHORS_CYPHER,
   RbacGraphQueryService,
   TRAVERSE_RETRIEVAL_CONTEXT_CYPHER,
@@ -15,6 +16,7 @@ import {
 const VIEWPORT = { x: 0, y: 0, width: 100, height: 100, zoom: 1 };
 const REPO_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
+const REF_NAME = 'refs/heads/main';
 
 function user(userId: string): AuthContext {
   return { subjectType: 'user', userId, orgId: ORG_ID, roles: ['member'] };
@@ -74,7 +76,7 @@ function traversalRecord(
     anchor_id: 'anchor',
     anchor_label: 'File',
     anchor_name: 'anchor.ts',
-    anchor_path: '/src/public/anchor.ts',
+    anchor_path: 'src/public/anchor.ts',
     anchor_org_id: ORG_ID,
     anchor_repo_id: REPO_ID,
     anchor_ref_name: 'refs/heads/main',
@@ -133,7 +135,7 @@ function overlayRecord(
     target_id: 'public-file',
     target_label: 'File',
     target_name: 'index.ts',
-    target_path: '/src/public/index.ts',
+    target_path: 'src/public/index.ts',
     target_org_id: ORG_ID,
     target_repo_id: REPO_ID,
     target_ref_name: 'refs/heads/main',
@@ -142,7 +144,7 @@ function overlayRecord(
     out_dependency_id: 'public-dependency',
     out_dependency_label: 'File',
     out_dependency_name: 'dependency.ts',
-    out_dependency_path: '/src/public/dependency.ts',
+    out_dependency_path: 'src/public/dependency.ts',
     out_dependency_org_id: ORG_ID,
     out_dependency_repo_id: REPO_ID,
     out_dependency_ref_name: 'refs/heads/main',
@@ -209,21 +211,21 @@ class UserPermissionStore implements PermissionStore {
 }
 
 const publicScope: ReadScope = {
-  allows: [{ repoId: REPO_ID, branch: 'refs/heads/main', pathPrefix: '/src/public' }],
+  allows: [{ repoId: REPO_ID, branch: 'refs/heads/main', pathPrefix: 'src/public' }],
   denies: [],
 };
 const privateScope: ReadScope = {
-  allows: [{ repoId: REPO_ID, branch: 'refs/heads/main', pathPrefix: '/src/private' }],
+  allows: [{ repoId: REPO_ID, branch: 'refs/heads/main', pathPrefix: 'src/private' }],
   denies: [],
 };
 
 describe('RbacGraphQueryService', () => {
   it('never returns a Folder outside either user scope on the same repo (W2-02 acceptance)', async () => {
     const allRecords = [
-      nodeRecord('public-folder', 'Folder', '/src/public', { id: 'src', path: '/src' }),
-      nodeRecord('public-file', 'File', '/src/public/index.ts', { id: 'public-folder', path: '/src/public' }),
-      nodeRecord('private-folder', 'Folder', '/src/private', { id: 'src', path: '/src' }),
-      nodeRecord('private-file', 'File', '/src/private/secret.ts', { id: 'private-folder', path: '/src/private' }),
+      nodeRecord('public-folder', 'Folder', 'src/public', { id: 'src', path: 'src' }),
+      nodeRecord('public-file', 'File', 'src/public/index.ts', { id: 'public-folder', path: 'src/public' }),
+      nodeRecord('private-folder', 'Folder', 'src/private', { id: 'src', path: 'src' }),
+      nodeRecord('private-file', 'File', 'src/private/secret.ts', { id: 'private-folder', path: 'src/private' }),
     ];
     const executor = new QueueExecutor([[...allRecords], [...allRecords]]);
     const service = new RbacGraphQueryService(
@@ -231,8 +233,18 @@ describe('RbacGraphQueryService', () => {
       new UserPermissionStore({ alice: publicScope, bob: privateScope }),
     );
 
-    const aliceNodes = await service.getNodesInViewport(REPO_ID, VIEWPORT, user('alice'));
-    const bobNodes = await service.getNodesInViewport(REPO_ID, VIEWPORT, user('bob'));
+    const aliceNodes = await service.getNodesInViewport(
+      REPO_ID,
+      REF_NAME,
+      VIEWPORT,
+      user('alice'),
+    );
+    const bobNodes = await service.getNodesInViewport(
+      REPO_ID,
+      REF_NAME,
+      VIEWPORT,
+      user('bob'),
+    );
 
     expect(aliceNodes.map((node) => node.id)).toEqual(['public-folder', 'public-file']);
     expect(bobNodes.map((node) => node.id)).toEqual(['private-folder', 'private-file']);
@@ -242,6 +254,89 @@ describe('RbacGraphQueryService', () => {
     expect(aliceNodes[0]?.parentId).toBeNull();
   });
 
+  it('enforces a relative private-path deny beneath a repository-wide allow', async () => {
+    const scope: ReadScope = {
+      allows: [{ repoId: REPO_ID, branch: REF_NAME, pathPrefix: null }],
+      denies: [{ repoId: REPO_ID, branch: REF_NAME, pathPrefix: 'src/private' }],
+    };
+    const executor = new QueueExecutor([[
+      nodeRecord('public-file', 'File', 'src/public/index.ts'),
+      nodeRecord('private-file', 'File', 'src/private/secret.ts'),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: scope }),
+    );
+
+    await expect(
+      service.getNodesInViewport(REPO_ID, REF_NAME, VIEWPORT, user('alice')),
+    ).resolves.toEqual([
+      {
+        id: 'public-file',
+        label: 'File',
+        name: 'index.ts',
+        path: 'src/public/index.ts',
+        parentId: null,
+      },
+    ]);
+    expect(executor.run).toHaveBeenCalledWith(
+      ORG_ID,
+      'viewport_read',
+      GET_NODES_IN_VIEWPORT_CYPHER,
+      expect.objectContaining({
+        allow_rules: [
+          { repo_id: REPO_ID, branch: REF_NAME, path_prefix: null },
+        ],
+        deny_rules: [
+          {
+            repo_id: REPO_ID,
+            branch: REF_NAME,
+            path_prefix: 'src/private',
+          },
+        ],
+      }),
+    );
+  });
+
+  it('maps the canonical empty root path and rejects malformed graph paths', async () => {
+    const scope: ReadScope = {
+      allows: [{ repoId: REPO_ID, branch: REF_NAME, pathPrefix: null }],
+      denies: [],
+    };
+    const executor = new QueueExecutor([[
+      record({
+        id: 'root',
+        label: 'Folder',
+        name: 'repository',
+        path: '',
+        repo_id: REPO_ID,
+        ref_name: REF_NAME,
+        parent_id: null,
+        parent_path: null,
+        parent_repo_id: null,
+        parent_ref_name: null,
+      }),
+      nodeRecord('leading-slash', 'File', '/src/private/secret.ts'),
+      nodeRecord('traversal', 'File', 'src/public/../private/secret.ts'),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: scope }),
+    );
+
+    await expect(
+      service.getNodesInViewport(REPO_ID, REF_NAME, VIEWPORT, user('alice')),
+    ).resolves.toEqual([
+      {
+        id: 'root',
+        label: 'Folder',
+        name: 'repository',
+        path: '',
+        parentId: null,
+      },
+    ]);
+  });
+
   it('injects server auth scope and viewport bounds into a parameterized Cypher query', async () => {
     const executor = new QueueExecutor([[]]);
     const service = new RbacGraphQueryService(
@@ -249,7 +344,12 @@ describe('RbacGraphQueryService', () => {
       new UserPermissionStore({ alice: publicScope }),
     );
 
-    await service.getNodesInViewport(REPO_ID, { ...VIEWPORT, zoom: 2 }, user('alice'));
+    await service.getNodesInViewport(
+      REPO_ID,
+      REF_NAME,
+      { ...VIEWPORT, zoom: 2 },
+      user('alice'),
+    );
 
     expect(executor.run).toHaveBeenCalledWith(
       ORG_ID,
@@ -258,21 +358,77 @@ describe('RbacGraphQueryService', () => {
       expect.objectContaining({
         org_id: ORG_ID,
         repo_id: REPO_ID,
+        ref_name: REF_NAME,
         viewport_max_x: 50,
         viewport_max_y: 50,
         allow_rules: [
-          { repo_id: REPO_ID, branch: 'refs/heads/main', path_prefix: '/src/public' },
+          { repo_id: REPO_ID, branch: 'refs/heads/main', path_prefix: 'src/public' },
         ],
       }),
     );
     expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain('ANY(rule IN $allow_rules');
     expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain('NOT ANY(rule IN $deny_rules');
+    expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain(
+      'node.ref_name = $ref_name',
+    );
+    expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain(
+      'parent.ref_name = $ref_name',
+    );
     expect(GET_NODES_IN_VIEWPORT_CYPHER).not.toContain(ORG_ID);
+  });
+
+  it('drops cross-ref nodes and parents even when a broad permission scope and adapter return them', async () => {
+    const broadScope: ReadScope = {
+      allows: [{ repoId: REPO_ID, branch: null, pathPrefix: 'src/public' }],
+      denies: [],
+    };
+    const executor = new QueueExecutor([[
+      record({
+        id: 'main-file',
+        label: 'File',
+        name: 'main.ts',
+        path: 'src/public/main.ts',
+        repo_id: REPO_ID,
+        ref_name: REF_NAME,
+        parent_id: 'other-ref-parent',
+        parent_path: 'src/public',
+        parent_repo_id: REPO_ID,
+        parent_ref_name: 'refs/heads/other',
+      }),
+      record({
+        id: 'other-file',
+        label: 'File',
+        name: 'other.ts',
+        path: 'src/public/other.ts',
+        repo_id: REPO_ID,
+        ref_name: 'refs/heads/other',
+        parent_id: null,
+        parent_path: null,
+        parent_repo_id: null,
+        parent_ref_name: null,
+      }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: broadScope }),
+    );
+
+    await expect(
+      service.getNodesInViewport(REPO_ID, REF_NAME, VIEWPORT, user('alice')),
+    ).resolves.toEqual([
+      {
+        id: 'main-file',
+        label: 'File',
+        name: 'main.ts',
+        path: 'src/public/main.ts',
+        parentId: null,
+      },
+    ]);
   });
 
   it('drops non-canvas labels even if a graph adapter returns one', async () => {
     const executor = new QueueExecutor([
-      [nodeRecord('function-1', 'Function', '/src/public/index.ts')],
+      [nodeRecord('function-1', 'Function', 'src/public/index.ts')],
     ]);
     const service = new RbacGraphQueryService(
       executor,
@@ -280,7 +436,7 @@ describe('RbacGraphQueryService', () => {
     );
 
     await expect(
-      service.getNodesInViewport(REPO_ID, VIEWPORT, user('alice')),
+      service.getNodesInViewport(REPO_ID, REF_NAME, VIEWPORT, user('alice')),
     ).resolves.toEqual([]);
   });
 
@@ -289,22 +445,22 @@ describe('RbacGraphQueryService', () => {
       record({
         type: 'IMPORTS',
         source_id: 'public-a',
-        source_path: '/src/public/a.ts',
+        source_path: 'src/public/a.ts',
         source_repo_id: REPO_ID,
         source_ref_name: 'refs/heads/main',
         target_id: 'public-b',
-        target_path: '/src/public/b.ts',
+        target_path: 'src/public/b.ts',
         target_repo_id: REPO_ID,
         target_ref_name: 'refs/heads/main',
       }),
       record({
         type: 'IMPORTS',
         source_id: 'public-a',
-        source_path: '/src/public/a.ts',
+        source_path: 'src/public/a.ts',
         source_repo_id: REPO_ID,
         source_ref_name: 'refs/heads/main',
         target_id: 'private-secret',
-        target_path: '/src/private/secret.ts',
+        target_path: 'src/private/secret.ts',
         target_repo_id: REPO_ID,
         target_ref_name: 'refs/heads/main',
       }),
@@ -315,7 +471,12 @@ describe('RbacGraphQueryService', () => {
     );
 
     await expect(
-      service.getStructuralEdges(['public-a', 'public-b', 'private-secret'], user('alice')),
+      service.getStructuralEdges(
+        REPO_ID,
+        REF_NAME,
+        ['public-a', 'public-b', 'private-secret'],
+        user('alice'),
+      ),
     ).resolves.toEqual([
       {
         id: 'IMPORTS:public-a:public-b',
@@ -324,6 +485,21 @@ describe('RbacGraphQueryService', () => {
         target: 'public-b',
       },
     ]);
+    expect(executor.run).toHaveBeenCalledWith(
+      ORG_ID,
+      'traversal',
+      GET_STRUCTURAL_EDGES_CYPHER,
+      expect.objectContaining({
+        repo_id: REPO_ID,
+        ref_name: REF_NAME,
+      }),
+    );
+    expect(GET_STRUCTURAL_EDGES_CYPHER).toContain(
+      'source.ref_name = $ref_name',
+    );
+    expect(GET_STRUCTURAL_EDGES_CYPHER).toContain(
+      'target.ref_name = $ref_name',
+    );
   });
 
   it('fails closed without an allow and does not contact the graph store', async () => {
@@ -331,7 +507,79 @@ describe('RbacGraphQueryService', () => {
     const service = new RbacGraphQueryService(executor, new UserPermissionStore({}));
 
     await expect(
-      service.getNodesInViewport(REPO_ID, VIEWPORT, user('nobody')),
+      service.getNodesInViewport(REPO_ID, REF_NAME, VIEWPORT, user('nobody')),
+    ).resolves.toEqual([]);
+    expect(executor.run).not.toHaveBeenCalled();
+  });
+
+  it('drops cross-ref edges even when broad permissions and an adapter return them', async () => {
+    const broadScope: ReadScope = {
+      allows: [{ repoId: REPO_ID, branch: null, pathPrefix: 'src/public' }],
+      denies: [],
+    };
+    const executor = new QueueExecutor([[
+      record({
+        type: 'IMPORTS',
+        source_id: 'main-a',
+        source_path: 'src/public/a.ts',
+        source_repo_id: REPO_ID,
+        source_ref_name: REF_NAME,
+        target_id: 'main-b',
+        target_path: 'src/public/b.ts',
+        target_repo_id: REPO_ID,
+        target_ref_name: REF_NAME,
+      }),
+      record({
+        type: 'IMPORTS',
+        source_id: 'other-a',
+        source_path: 'src/public/a.ts',
+        source_repo_id: REPO_ID,
+        source_ref_name: 'refs/heads/other',
+        target_id: 'other-b',
+        target_path: 'src/public/b.ts',
+        target_repo_id: REPO_ID,
+        target_ref_name: 'refs/heads/other',
+      }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: broadScope }),
+    );
+
+    await expect(
+      service.getStructuralEdges(
+        REPO_ID,
+        REF_NAME,
+        ['main-a', 'main-b', 'other-a', 'other-b'],
+        user('alice'),
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'IMPORTS:main-a:main-b',
+        type: 'IMPORTS',
+        source: 'main-a',
+        target: 'main-b',
+      },
+    ]);
+  });
+
+  it('fails closed before graph access for a missing or non-canonical ref', async () => {
+    const executor = new QueueExecutor([]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(
+      service.getNodesInViewport(REPO_ID, 'main', VIEWPORT, user('alice')),
+    ).resolves.toEqual([]);
+    await expect(
+      service.getStructuralEdges(
+        REPO_ID,
+        '',
+        ['public-a', 'public-b'],
+        user('alice'),
+      ),
     ).resolves.toEqual([]);
     expect(executor.run).not.toHaveBeenCalled();
   });
@@ -346,7 +594,7 @@ describe('RbacGraphQueryService', () => {
     await expect(
       service.getAffectedNodes(
         REPO_ID,
-        ['/src/public/deleted.ts', '/src/private/secret.ts'],
+        ['src/public/deleted.ts', 'src/private/secret.ts'],
         user('alice'),
       ),
     ).resolves.toEqual({ visible: [], removed: [] });
@@ -354,11 +602,11 @@ describe('RbacGraphQueryService', () => {
 
   it('resolves retrieval anchors through parameterized org/RBAC scope and drops malformed records', async () => {
     const executor = new QueueExecutor([[
-      retrievalRecord('public-a', '/src/public/a.ts'),
-      retrievalRecord('public-a', '/src/public/a.ts'),
-      retrievalRecord('wrong-org', '/src/public/wrong.ts', 0, { org_id: 'org-attacker' }),
-      retrievalRecord('hidden', '/src/private/hidden.ts'),
-      retrievalRecord('function', '/src/public/fn.ts', 0, { label: 'Function' }),
+      retrievalRecord('public-a', 'src/public/a.ts'),
+      retrievalRecord('public-a', 'src/public/a.ts'),
+      retrievalRecord('wrong-org', 'src/public/wrong.ts', 0, { org_id: 'org-attacker' }),
+      retrievalRecord('hidden', 'src/private/hidden.ts'),
+      retrievalRecord('function', 'src/public/fn.ts', 0, { label: 'Function' }),
     ]]);
     const service = new RbacGraphQueryService(
       executor,
@@ -372,7 +620,7 @@ describe('RbacGraphQueryService', () => {
         id: 'public-a',
         label: 'File',
         name: 'a.ts',
-        path: '/src/public/a.ts',
+        path: 'src/public/a.ts',
         repositoryId: REPO_ID,
         refName: 'refs/heads/main',
         revisionSha: 'a'.repeat(40),
@@ -397,13 +645,13 @@ describe('RbacGraphQueryService', () => {
 
   it('returns a same-scope bounded traversal and rejects cross-scope driver records', async () => {
     const executor = new QueueExecutor([[
-      traversalRecord('anchor', '/src/public/anchor.ts', 0),
-      traversalRecord('neighbor', '/src/public/neighbor.ts', 1),
-      traversalRecord('too-far', '/src/public/far.ts', 3),
-      traversalRecord('other-ref', '/src/public/other.ts', 1, {
+      traversalRecord('anchor', 'src/public/anchor.ts', 0),
+      traversalRecord('neighbor', 'src/public/neighbor.ts', 1),
+      traversalRecord('too-far', 'src/public/far.ts', 3),
+      traversalRecord('other-ref', 'src/public/other.ts', 1, {
         ref_name: 'refs/heads/other',
       }),
-      traversalRecord('wrong-org', '/src/public/wrong.ts', 1, {
+      traversalRecord('wrong-org', 'src/public/wrong.ts', 1, {
         org_id: 'org-attacker',
       }),
     ]]);
@@ -460,8 +708,8 @@ describe('RbacGraphQueryService', () => {
 
   it('returns only current-head Feature members authorized for the caller', async () => {
     const executor = new QueueExecutor([[
-      featureRecord('public-file', '/src/public/checkout.ts'),
-      featureRecord('private-file', '/src/private/secret.ts'),
+      featureRecord('public-file', 'src/public/checkout.ts'),
+      featureRecord('private-file', 'src/private/secret.ts'),
     ]]);
     const service = new RbacGraphQueryService(
       executor,
@@ -481,11 +729,11 @@ describe('RbacGraphQueryService', () => {
           id: 'public-file',
           label: 'File',
           name: 'checkout.ts',
-          path: '/src/public/checkout.ts',
+          path: 'src/public/checkout.ts',
           parentId: null,
           recentEdit: {
             fileId: 'public-file',
-            filePath: '/src/public/checkout.ts',
+            filePath: 'src/public/checkout.ts',
             editedAt: '2026-07-22T12:00:00Z',
             editorName: 'Ada',
             editorLogin: 'ada',
@@ -507,7 +755,7 @@ describe('RbacGraphQueryService', () => {
         allow_rules: [{
           repo_id: REPO_ID,
           branch: 'refs/heads/main',
-          path_prefix: '/src/public',
+          path_prefix: 'src/public',
         }],
       }),
     );
@@ -525,16 +773,16 @@ describe('RbacGraphQueryService', () => {
 
   it('defensively drops stale or cross-tenant Feature membership rows', async () => {
     const executor = new QueueExecutor([[
-      featureRecord('stale-feature', '/src/public/stale-feature.ts', {
+      featureRecord('stale-feature', 'src/public/stale-feature.ts', {
         feature_revision_sha: 'b'.repeat(40),
       }),
-      featureRecord('stale-member', '/src/public/stale-member.ts', {
+      featureRecord('stale-member', 'src/public/stale-member.ts', {
         member_revision_sha: 'b'.repeat(40),
       }),
-      featureRecord('foreign-membership', '/src/public/foreign.ts', {
+      featureRecord('foreign-membership', 'src/public/foreign.ts', {
         membership_org_id: '22222222-2222-4222-8222-222222222222',
       }),
-      featureRecord('wrong-ref', '/src/public/wrong-ref.ts', {
+      featureRecord('wrong-ref', 'src/public/wrong-ref.ts', {
         feature_ref_name: 'refs/heads/other',
       }),
     ]]);
@@ -550,7 +798,7 @@ describe('RbacGraphQueryService', () => {
 
   it('keeps a visible Feature with missing optional metadata and discards malformed edit data', async () => {
     const executor = new QueueExecutor([[
-      featureRecord('public-file', '/src/public/checkout.ts', {
+      featureRecord('public-file', 'src/public/checkout.ts', {
         feature_description: null,
         feature_team: ' ',
         member_last_edited_at: 'not-a-date',
@@ -592,7 +840,7 @@ describe('RbacGraphQueryService', () => {
       overlayRecord({
         out_dependency_id: 'private-dependency',
         out_dependency_name: 'secret.ts',
-        out_dependency_path: '/src/private/secret.ts',
+        out_dependency_path: 'src/private/secret.ts',
       }),
       overlayRecord({
         commit_id: 'commit-2',
@@ -612,7 +860,7 @@ describe('RbacGraphQueryService', () => {
       node: {
         id: 'public-file',
         label: 'File',
-        path: '/src/public/index.ts',
+        path: 'src/public/index.ts',
         repositoryId: REPO_ID,
       },
       dependencies: [{ id: 'public-dependency', direction: 'outbound' }],
@@ -637,7 +885,7 @@ describe('RbacGraphQueryService', () => {
         allow_rules: [{
           repo_id: REPO_ID,
           branch: 'refs/heads/main',
-          path_prefix: '/src/public',
+          path_prefix: 'src/public',
         }],
       }),
     );

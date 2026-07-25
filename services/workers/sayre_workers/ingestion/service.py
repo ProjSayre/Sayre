@@ -37,6 +37,25 @@ class IngestionService:
         self._chunk_store = chunk_store
         self._publisher = publisher
 
+    async def aclose(self) -> None:
+        """Close long-lived runtime resources without assuming test doubles own one."""
+
+        close_failed = False
+        for resource in (self._graph_store, self._publisher):
+            close = getattr(resource, "aclose", None)
+            if close is None:
+                close = getattr(resource, "close", None)
+            if not callable(close):
+                continue
+            try:
+                result = close()
+                if result is not None:
+                    await result
+            except Exception:
+                close_failed = True
+        if close_failed:
+            raise RuntimeError("one or more ingestion runtime resources failed to close")
+
     async def handle(self, envelope: MessageEnvelope) -> IngestionResult:
         job = parse_ingestion_envelope(envelope)
         cold_start_started_at_ms = time.time_ns() // 1_000_000

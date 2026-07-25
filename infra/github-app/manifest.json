@@ -5,11 +5,14 @@
     "url": "https://__SAYRE_HOST__/webhooks/github"
   },
   "redirect_url": "https://__SAYRE_HOST__/integrations/github/callback",
-  "setup_url": "https://__SAYRE_HOST__/integrations/github/callback",
-  "setup_on_update": true,
-  "public": false,
+  "callback_urls": [
+    "https://__SAYRE_HOST__/integrations/github/callback"
+  ],
+  "request_oauth_on_install": true,
+  "public": true,
   "default_permissions": {
     "contents": "read",
+    "members": "read",
     "metadata": "read",
     "pull_requests": "read"
   },

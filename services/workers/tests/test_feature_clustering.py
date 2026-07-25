@@ -9,7 +9,9 @@ import pytest
 
 from sayre_workers.enrichment.enrichment_graph import Neo4jEnrichmentGraphStore
 from sayre_workers.enrichment.feature_clustering import (
+    FEATURE_CLUSTERING_MAX_OUTPUT_TOKENS,
     build_feature_clustering_request,
+    build_feature_clustering_schema,
     canonical_feature_key,
     canonicalize_feature_clustering_write,
 )
@@ -162,6 +164,22 @@ def test_feature_clustering_request_is_deterministic_and_omits_tenant_identity()
     )
     assert "File -> Feature PART_OF" in first.system
     assert "folder" in first.system.lower()
+    assert first.max_output_tokens == FEATURE_CLUSTERING_MAX_OUTPUT_TOKENS
+
+
+def test_feature_clustering_schema_constrains_edges_to_exact_file_paths() -> None:
+    context = _fixture_context()
+
+    schema = build_feature_clustering_schema(context)
+    node_schema = schema["properties"]["nodes"]["items"]
+    edge_schema = schema["properties"]["edges"]["items"]
+
+    assert node_schema["properties"]["label"] == {"const": "Feature"}
+    assert edge_schema["properties"]["relationship"] == {"const": "PART_OF"}
+    assert edge_schema["properties"]["source"] == {
+        "type": "string",
+        "enum": sorted(file.path for file in context.files),
+    }
 
 
 def test_feature_clustering_rejects_ticket_owned_references() -> None:

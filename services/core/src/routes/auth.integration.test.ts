@@ -170,6 +170,7 @@ describe('AC2: valid session flows the server-resolved org through', () => {
     expect(res.status).toBe(200);
     expect(getNodesInViewport).toHaveBeenCalledWith(
       'repo-1',
+      'refs/heads/main',
       expect.any(Object),
       expect.objectContaining({ orgId: ORG_A, userId: 'user-1' }),
     );
@@ -191,10 +192,11 @@ describe('AC3: org A cannot reach org B data via client input', () => {
     expect(res.status).toBe(200);
     expect(getNodesInViewport).toHaveBeenCalledWith(
       'repo-1',
+      'refs/heads/main',
       expect.any(Object),
       expect.objectContaining({ orgId: ORG_A, userId: 'user-1', roles: ['member'] }),
     );
-    const context = getNodesInViewport.mock.calls[0]?.[2] as { orgId: string };
+    const context = getNodesInViewport.mock.calls[0]?.[3] as { orgId: string };
     expect(context.orgId).not.toBe(ORG_B);
   });
 
@@ -215,12 +217,14 @@ describe('AC3: org A cannot reach org B data via client input', () => {
     expect(getNodesInViewport).toHaveBeenNthCalledWith(
       1,
       'repo-1',
+      'refs/heads/main',
       expect.any(Object),
       expect.objectContaining({ orgId: ORG_A }),
     );
     expect(getNodesInViewport).toHaveBeenNthCalledWith(
       2,
       'repo-1',
+      'refs/heads/main',
       expect.any(Object),
       expect.objectContaining({ orgId: ORG_B }),
     );

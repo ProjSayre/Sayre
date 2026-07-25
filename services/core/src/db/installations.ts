@@ -1,48 +1,56 @@
-// Privileged installation -> org resolver used ONLY by the GitHub webhook receiver
-// (services/core/src/services/githubWebhookService.ts) to resolve tenant context
-// BEFORE any `app.org_id` session context exists — org_id is the very thing being
-// resolved here, so this intentionally runs outside `withOrgContext`
-// (see db/client.ts). Mirrors the shape of agent-key resolution referenced in the
-// `githubAppInstallations` JSDoc in db/schema.ts.
+// Narrow installation -> org resolver used by GitHub webhook routing, lifecycle
+// handling, and install-conflict checks. org_id is the output of this lookup, so
+// ordinary `withOrgContext` cannot be used. Migration 0011 provides the only
+// exception: a SECURITY DEFINER function owned by a NOLOGIN/NOBYPASSRLS role that
+// can read four columns and returns only org_id + active.
 
-import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { createDb, createPoolFromSecret, type Db } from './client';
-import { githubAppInstallations } from './schema';
+
+export class InstallationResolutionInputError extends Error {
+  constructor() {
+    super('Installation id must be a positive safe integer.');
+    this.name = 'InstallationResolutionInputError';
+  }
+}
 
 /**
- * Privileged, pre-tenant-context lookup: installation id -> org. Runs on the
- * login-role pool WITHOUT `withOrgContext` because org_id is the very thing being
- * resolved. `active` = suspended_at IS NULL AND revoked_at IS NULL. Returns null
- * when no row matches (unknown/never-installed installation id).
+ * Pre-tenant lookup: installation id -> org. The transaction first drops to
+ * `sayre_app` and clears any transaction-local org setting, then invokes the
+ * migration-owned resolver function. Direct table access remains FORCE-RLS
+ * scoped; this call cannot return account metadata or accept an org id.
  *
- * PRODUCTION GAP (documented, not fixed, per spec.md O-4): `github_app_installations`
- * carries org_id RLS. In local dev/test the login role (`sayre_dev`) is a superuser
- * and bypasses RLS, so this plain query works today. Production needs a sanctioned
- * pre-tenant read path for this one bootstrap lookup — either a minimally-privileged
- * read role with a SELECT-only policy on this table, or an explicit owner/service
- * connection — before this code is safe to run against a production database. That
- * role/policy decision is out of scope for W1-02.
+ * `active` = suspended_at IS NULL AND revoked_at IS NULL. Returns null when no
+ * row matches (unknown/never-installed installation id). Missing/unsafe database
+ * provisioning fails closed as a database error; startup validates the same
+ * boundary before the HTTP listener opens.
  */
 export async function resolveInstallationOrg(
   db: Db,
   installationId: number,
 ): Promise<{ orgId: string; active: boolean } | null> {
-  const rows = await db
-    .select({
-      orgId: githubAppInstallations.orgId,
-      suspendedAt: githubAppInstallations.suspendedAt,
-      revokedAt: githubAppInstallations.revokedAt,
-    })
-    .from(githubAppInstallations)
-    .where(eq(githubAppInstallations.installationId, installationId))
-    .limit(1);
+  if (!Number.isSafeInteger(installationId) || installationId <= 0) {
+    throw new InstallationResolutionInputError();
+  }
 
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`set local role sayre_app`);
+    await tx.execute(sql`select set_config('app.org_id', '', true)`);
+    return tx.execute(sql`
+      select org_id, active
+        from public.resolve_github_installation_org(${installationId}::bigint)
+    `);
+  });
+
+  const rows = (result as unknown as {
+    rows: Array<{ org_id: string; active: boolean }>;
+  }).rows;
   const row = rows[0];
   if (!row) return null;
 
   return {
-    orgId: row.orgId,
-    active: row.suspendedAt === null && row.revokedAt === null,
+    orgId: row.org_id,
+    active: row.active,
   };
 }
 

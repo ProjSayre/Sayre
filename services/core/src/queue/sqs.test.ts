@@ -14,6 +14,7 @@ import {
   getSqsClient,
   ingestionGroupId,
   INGESTION_QUEUE,
+  messageDeduplicationId,
   publish,
   publishIngestionEvent,
   publishInitialParseEvent,
@@ -69,6 +70,20 @@ describe('ingestionGroupId', () => {
     expect(() => ingestionGroupId('', '42', 'refs/heads/main')).toThrow();
     expect(() => ingestionGroupId('org_1', '  ', 'refs/heads/main')).toThrow();
     expect(() => ingestionGroupId('org_1', '42', '')).toThrow();
+  });
+});
+
+describe('messageDeduplicationId', () => {
+  it('returns a stable, fixed-width SHA-256 transport identifier', () => {
+    const semanticKey = `github:initial_parse:999:42:refs/heads/${'feature/'.repeat(30)}:${'a'.repeat(40)}`;
+    const expected = createHash('sha256').update(semanticKey, 'utf8').digest('hex');
+
+    expect(messageDeduplicationId(semanticKey)).toBe(expected);
+    expect(messageDeduplicationId(semanticKey)).toHaveLength(64);
+  });
+
+  it('rejects blank semantic keys', () => {
+    expect(() => messageDeduplicationId('   ')).toThrow(/blank/);
   });
 });
 
@@ -181,10 +196,12 @@ describe('publish', () => {
     const sendMessageCall = sendCalls.find((c) => 'MessageBody' in c.input);
     expect(sendMessageCall?.input.MessageBody).toBe(JSON.stringify(envelope));
     expect(sendMessageCall?.input.MessageGroupId).toBe('group-1');
-    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(envelope.idempotency_key);
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(
+      messageDeduplicationId(envelope.idempotency_key),
+    );
   });
 
-  it('defaults MessageDeduplicationId to envelope.idempotency_key when not supplied', async () => {
+  it('defaults MessageDeduplicationId to a hash of envelope.idempotency_key', async () => {
     const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
       if ('QueueName' in (command.input ?? {})) return { QueueUrl: 'https://sqs.example/q.fifo' };
       return { MessageId: 'sqs-msg-2' };
@@ -197,7 +214,9 @@ describe('publish', () => {
     const sendMessageCall = send.mock.calls
       .map(([command]) => command as { input: Record<string, unknown> })
       .find((c) => 'MessageBody' in c.input);
-    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(envelope.idempotency_key);
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(
+      messageDeduplicationId(envelope.idempotency_key),
+    );
   });
 
   it('caches the queue URL across repeated publishes to the same queue', async () => {
@@ -238,7 +257,9 @@ describe('publishIngestionEvent', () => {
     expect(sendMessageCall?.input.MessageGroupId).toBe(
       ingestionGroupId('org_1', '42', 'refs/heads/main'),
     );
-    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(envelope.idempotency_key);
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(
+      messageDeduplicationId(envelope.idempotency_key),
+    );
   });
 
   it('is stable across two deliveries for the same org/repo/ref', async () => {
@@ -267,16 +288,18 @@ describe('publishIngestionEvent', () => {
 function buildInitialParseEnvelope(
   overrides: Partial<RepoInitialParseEvent> = {},
 ): MessageEnvelope<RepoInitialParseEvent> {
+  const revisionSha = 'a'.repeat(40);
   return makeEnvelope<RepoInitialParseEvent>({
     org_id: 'org_1',
     type: 'repo.initial_parse',
     source: 'github-app-install',
-    idempotency_key: 'github:initial_parse:999:42:refs/heads/main',
+    idempotency_key: `github:initial_parse:999:42:refs/heads/main:${revisionSha}`,
     payload: {
       provider: 'github',
       type: 'initial_parse',
       repo: { provider_repo_id: '42', full_name: 'acme/widgets', repo_id: null },
       ref: 'refs/heads/main',
+      revision_sha: revisionSha,
       installation_id: '999',
       reason: 'app_install',
       ...overrides,
@@ -304,7 +327,33 @@ describe('publishInitialParseEvent', () => {
     expect(sendMessageCall?.input.MessageGroupId).toBe(
       ingestionGroupId('org_1', '42', 'refs/heads/main'),
     );
-    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(envelope.idempotency_key);
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(
+      messageDeduplicationId(envelope.idempotency_key),
+    );
+  });
+
+  it('publishes a valid 64-character deduplication ID for a long GitHub branch', async () => {
+    const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
+      if ('QueueName' in (command.input ?? {})) {
+        return { QueueUrl: 'https://sqs.example/ingestion.fifo' };
+      }
+      return { MessageId: 'sqs-msg-long-branch' };
+    });
+    await getSqsClient(() => ({ send }) as never);
+    const branch = `refs/heads/${'feature/very-long-segment-'.repeat(8)}`;
+    const envelope = buildInitialParseEnvelope({ ref: branch });
+    envelope.idempotency_key =
+      `github:initial_parse:999999999:424242424:${branch}:${'a'.repeat(40)}`;
+
+    await publishInitialParseEvent(envelope);
+
+    const sendMessageCall = send.mock.calls
+      .map(([command]) => command as { input: Record<string, unknown> })
+      .find((call) => 'MessageBody' in call.input);
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(
+      messageDeduplicationId(envelope.idempotency_key),
+    );
+    expect(String(sendMessageCall?.input.MessageDeduplicationId)).toHaveLength(64);
   });
 
   it('is stable across two deliveries for the same org/repo/ref', async () => {

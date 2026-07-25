@@ -6,10 +6,12 @@ import hashlib
 from typing import Protocol
 
 from messaging.envelope import MessageEnvelope
+from messaging.sns_client import close_client as close_sns_client
 from messaging.sns_client import publish_graph_updated
 from messaging.sqs_client import (
     EMBEDDING_UPSERTS_QUEUE,
     ENRICHMENT_PRIORITY_QUEUE,
+    close_client as close_sqs_client,
     publish,
 )
 
@@ -46,6 +48,10 @@ def graph_scope_key(scope: GraphScope) -> str:
 
 
 class MessagingPublisher:
+    async def aclose(self) -> None:
+        close_sns_client()
+        close_sqs_client()
+
     async def graph_updated(
         self,
         *,

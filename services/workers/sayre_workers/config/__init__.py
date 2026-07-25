@@ -7,6 +7,7 @@ from .config import (
     MissingConfigError,
     get_config,
     get_bool_config,
+    get_subprocess_environment,
     reset_config_for_tests,
     set_config_override_for_tests,
 )
@@ -37,6 +38,7 @@ __all__ = [
     "UnsupportedSecretSchemeError",
     "get_config",
     "get_bool_config",
+    "get_subprocess_environment",
     "get_secret",
     "reset_config_for_tests",
     "reset_secrets_for_tests",

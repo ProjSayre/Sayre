@@ -4,10 +4,10 @@
 // these functions open their own transaction or set `app.org_id` themselves.
 //
 // Deliberately kept separate from `db/installations.ts`: that module's
-// `resolveInstallationOrg` is the privileged, PRE-tenant-context read (it runs
-// BEFORE org_id is known, on the login role, outside RLS) — a fundamentally
-// different trust boundary from these tenant-scoped writes, which only ever
-// run once `app.org_id` is already set for the current transaction.
+// `resolveInstallationOrg` is the narrow, PRE-tenant-context function call
+// (migration 0011's column-limited SECURITY DEFINER boundary) — a fundamentally
+// different trust boundary from these tenant-scoped writes, which only ever run
+// once `app.org_id` is already set for the current transaction.
 //
 // No schema migration required: `github_app_installations` and `repositories`
 // already exist with every column this ticket needs (see spec.md).

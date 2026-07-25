@@ -104,9 +104,7 @@ def _complete_failed_initialization(
         cancelled = generation != _client_generation or pending.done()
         _remove_pending_if_current(generation, pending)
         if not pending.done():
-            pending.set_exception(
-                SQSClientInitializationCancelledError() if cancelled else error
-            )
+            pending.set_exception(SQSClientInitializationCancelledError() if cancelled else error)
         return cancelled
 
 
@@ -382,6 +380,14 @@ def ingestion_group_id(org_id: str, repo_id: str, ref_name: str) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def message_deduplication_id(idempotency_key: str) -> str:
+    """Hash a semantic key into SQS FIFO's fixed-width transport identifier."""
+
+    if not isinstance(idempotency_key, str) or not idempotency_key.strip():
+        raise ValueError("idempotency_key must not be blank")
+    return hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()
+
+
 def _validated_envelope(
     payload: MessageEnvelope | Mapping[str, object],
 ) -> MessageEnvelope:
@@ -413,7 +419,8 @@ def publish(
     send_args: dict[str, Any] = {"QueueUrl": queue_url, "MessageBody": message.to_body()}
     if is_fifo:
         send_args["MessageGroupId"] = message_group_id
-        send_args["MessageDeduplicationId"] = deduplication_id or message.idempotency_key
+        semantic_deduplication_id = deduplication_id or message.idempotency_key
+        send_args["MessageDeduplicationId"] = message_deduplication_id(semantic_deduplication_id)
     response = client.send_message(**send_args)
     return response["MessageId"]
 
@@ -594,7 +601,9 @@ def consume_once(
         if status == "busy":
             return 0
         if status != "acquired":
-            logger.warning("Delivery store returned an invalid claim status for queue %r.", queue_name)
+            logger.warning(
+                "Delivery store returned an invalid claim status for queue %r.", queue_name
+            )
             return 0
 
     heartbeat = _HeartbeatController(
@@ -631,7 +640,9 @@ def consume_once(
         try:
             completed = delivery_store.complete(consumer_id, idempotency_key, owner_id)
         except Exception:
-            logger.warning("Delivery claim completion failed for queue %r; not deleting.", queue_name)
+            logger.warning(
+                "Delivery claim completion failed for queue %r; not deleting.", queue_name
+            )
             _safe_release(delivery_store, consumer_id, idempotency_key, owner_id)
             return 0
         if not completed:

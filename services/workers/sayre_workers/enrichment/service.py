@@ -38,6 +38,7 @@ from .enrichment_graph import EnrichmentGraphStore
 from .events import parse_enrichment_envelope
 from .feature_clustering import (
     build_feature_clustering_request,
+    build_feature_clustering_schema,
     canonicalize_feature_clustering_write,
 )
 from .graphify_adapter import GraphifyAdapterFactory
@@ -154,7 +155,11 @@ class EnrichmentService:
             )
             generation = await provider.generate_structured(
                 request,
-                graphify.schema(context),
+                (
+                    build_feature_clustering_schema(context)
+                    if job.lane == "default"
+                    else graphify.schema(context)
+                ),
             )
 
             write = await graphify.shape(context, generation)
@@ -234,4 +239,18 @@ class EnrichmentService:
         )
 
     async def aclose(self) -> None:
-        await self._model_provider_factory.aclose()
+        close_failed = False
+        try:
+            await self._model_provider_factory.aclose()
+        except Exception:
+            close_failed = True
+
+        close_graph = getattr(self._graph_store, "close", None)
+        if callable(close_graph):
+            try:
+                await close_graph()
+            except Exception:
+                close_failed = True
+
+        if close_failed:
+            raise RuntimeError("one or more enrichment runtime resources failed to close")

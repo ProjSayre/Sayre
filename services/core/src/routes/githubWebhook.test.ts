@@ -79,6 +79,7 @@ beforeEach(() => {
   });
   resolveInstallationOrg.mockClear();
   resolveInstallationOrg.mockResolvedValue({ orgId: 'org-resolved-1', active: true });
+  getRuntimeDb.mockClear();
   publishIngestionEvent.mockClear();
   publishIngestionEvent.mockResolvedValue('sqs-message-id');
   enqueue.mockClear();
@@ -115,6 +116,8 @@ describe('POST /webhooks/github', () => {
 
     expect(res.status).toBe(202);
     expect(await res.json()).toEqual({ ok: true });
+    expect(getRuntimeDb).toHaveBeenCalledOnce();
+    expect(resolveInstallationOrg).toHaveBeenCalledWith(expect.anything(), 555);
     expect(publishIngestionEvent).toHaveBeenCalledTimes(1);
     expect(enqueue).toHaveBeenCalledTimes(1);
   });
@@ -133,6 +136,7 @@ describe('POST /webhooks/github', () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe('invalid signature');
     expect(JSON.stringify(body)).not.toMatch(/at .*\(.*:\d+:\d+\)/);
+    expect(resolveInstallationOrg).not.toHaveBeenCalled();
     expect(publishIngestionEvent).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
   });

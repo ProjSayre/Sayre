@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 
 import pytest
@@ -89,13 +90,34 @@ def test_fifo_publish_requires_group_and_defaults_deduplication(monkeypatch):
     monkeypatch.setattr(sqs_client, "get_client", lambda: fake)
     with pytest.raises(ValueError):
         sqs_client.publish(sqs_client.INGESTION_QUEUE, _envelope())
-    assert sqs_client.publish(
-        sqs_client.INGESTION_QUEUE, _envelope(), message_group_id="group"
-    ) == "sqs-message-1"
+    assert (
+        sqs_client.publish(sqs_client.INGESTION_QUEUE, _envelope(), message_group_id="group")
+        == "sqs-message-1"
+    )
     assert fake.sent[0]["MessageGroupId"] == "group"
-    assert fake.sent[0]["MessageDeduplicationId"] == "delivery-1"
+    assert fake.sent[0]["MessageDeduplicationId"] == hashlib.sha256(b"delivery-1").hexdigest()
     with pytest.raises(ValueError):
         sqs_client.publish("standard", _envelope(), message_group_id="group")
+
+
+def test_fifo_publish_hashes_long_semantic_deduplication_key(monkeypatch):
+    fake = FakeSQS()
+    monkeypatch.setattr(sqs_client, "get_queue_url", lambda _name: "queue-url")
+    monkeypatch.setattr(sqs_client, "get_client", lambda: fake)
+    branch = "refs/heads/" + ("feature/very-long-segment-" * 8)
+    semantic_key = f"github:initial_parse:999999999:424242424:{branch}:{'a' * 40}"
+    envelope = _envelope().model_copy(update={"idempotency_key": semantic_key})
+
+    sqs_client.publish(
+        sqs_client.INGESTION_QUEUE,
+        envelope,
+        message_group_id="group",
+    )
+
+    transport_id = fake.sent[0]["MessageDeduplicationId"]
+    assert transport_id == hashlib.sha256(semantic_key.encode("utf-8")).hexdigest()
+    assert len(transport_id) == 64
+    assert envelope.idempotency_key == semantic_key
 
 
 def test_consume_once_polls_exactly_one_and_completes_before_delete(monkeypatch):
@@ -125,9 +147,7 @@ def test_consume_once_polls_exactly_one_and_completes_before_delete(monkeypatch)
 def test_degraded_return_is_acked_but_failed_job_redelivers_and_worker_handles_next(
     monkeypatch,
 ):
-    first = _envelope().model_copy(
-        update={"message_id": "failed-1", "idempotency_key": "failed-1"}
-    )
+    first = _envelope().model_copy(update={"message_id": "failed-1", "idempotency_key": "failed-1"})
     second = _envelope().model_copy(
         update={"message_id": "degraded-2", "idempotency_key": "degraded-2"}
     )
@@ -175,15 +195,19 @@ def test_completed_duplicate_is_deleted_without_handler(monkeypatch):
     store = FakeStore(status="completed")
     monkeypatch.setattr(sqs_client, "get_queue_url", lambda _name: "queue-url")
     monkeypatch.setattr(sqs_client, "get_client", lambda: fake)
+
     def handler(_envelope):
         pytest.fail("completed duplicate reached handler")
 
-    assert sqs_client.consume_once(
-        sqs_client.EMBEDDING_UPSERTS_QUEUE,
-        handler,
-        consumer_id="embedding-upserts",
-        delivery_store=store,
-    ) == 1
+    assert (
+        sqs_client.consume_once(
+            sqs_client.EMBEDDING_UPSERTS_QUEUE,
+            handler,
+            consumer_id="embedding-upserts",
+            delivery_store=store,
+        )
+        == 1
+    )
     assert fake.deletes == 1
 
 

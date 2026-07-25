@@ -21,12 +21,13 @@ function buildEnvelope(): MessageEnvelope<RepoInitialParseEvent> {
   const installationId = '555';
   const providerRepoId = '42';
   const ref = 'refs/heads/main';
+  const revisionSha = '0123456789abcdef0123456789abcdef01234567';
   return makeEnvelope<RepoInitialParseEvent>({
     org_id: '22222222-2222-4222-8222-222222222222',
     type: 'repo.initial_parse',
     source: 'github-app-install',
     trace_id: `install:${installationId}`,
-    idempotency_key: `github:initial_parse:${installationId}:${providerRepoId}:${ref}`,
+    idempotency_key: `github:initial_parse:${installationId}:${providerRepoId}:${ref}:${revisionSha}`,
     payload: {
       provider: 'github',
       type: 'initial_parse',
@@ -36,6 +37,7 @@ function buildEnvelope(): MessageEnvelope<RepoInitialParseEvent> {
         repo_id: '11111111-1111-4111-8111-111111111111',
       },
       ref,
+      revision_sha: revisionSha,
       installation_id: installationId,
       reason: 'app_install',
     },
@@ -79,10 +81,12 @@ describe('repo.initial_parse envelope — queue fixture', () => {
     );
   });
 
-  it('idempotency_key is deterministic per (installation, repo, ref)', () => {
+  it('idempotency_key is deterministic per (installation, repo, ref, revision)', () => {
     const a = buildEnvelope();
     const b = buildEnvelope();
     expect(a.idempotency_key).toBe(b.idempotency_key);
-    expect(a.idempotency_key).toBe('github:initial_parse:555:42:refs/heads/main');
+    expect(a.idempotency_key).toBe(
+      'github:initial_parse:555:42:refs/heads/main:0123456789abcdef0123456789abcdef01234567',
+    );
   });
 });

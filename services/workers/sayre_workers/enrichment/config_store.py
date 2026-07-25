@@ -8,12 +8,14 @@ change -- `model_provider_configs` already exists and is keyed by `purpose`, whi
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import psycopg
-from psycopg.rows import dict_row
 
 from sayre_workers.config import get_secret
+from sayre_workers.db import org_scoped_connection
 from sayre_workers.model_provider import (
     GenerationConfig,
     InvalidModelProviderConfigError,
@@ -32,14 +34,16 @@ class PostgresGenerationConfigStore:
     async def from_config(cls) -> "PostgresGenerationConfigStore":
         return cls(await get_secret("env://DATABASE_RUNTIME_URL"))
 
-    async def _connect(self, org_id: str) -> psycopg.AsyncConnection[Any]:
-        connection = await psycopg.AsyncConnection.connect(self._dsn, row_factory=dict_row)
-        await connection.execute("SELECT set_config('app.org_id', %s, false)", (org_id,))
-        return connection
+    @asynccontextmanager
+    async def _connect(
+        self,
+        org_id: str,
+    ) -> AsyncIterator[psycopg.AsyncConnection[Any]]:
+        async with org_scoped_connection(self._dsn, org_id) as connection:
+            yield connection
 
     async def load_generation_config(self, org_id: str) -> GenerationConfig | None:
-        connection = await self._connect(org_id)
-        async with connection:
+        async with self._connect(org_id) as connection:
             cursor = await connection.execute(
                 """
                 SELECT provider, model, endpoint_url, credential_ref, config

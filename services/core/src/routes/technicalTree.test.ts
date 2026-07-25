@@ -56,20 +56,30 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
     activeServer = server;
 
     const res = await fetch(
-      `${baseUrl}/repos/repo-1/technical-tree?x=0&y=0&width=100&height=100`,
+      `${baseUrl}/repos/repo-1/technical-tree?x=0&y=0&width=100&height=100&refName=refs%2Fheads%2Frelease`,
     );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       authorization: string;
+      repoId: string;
+      refName: string;
       visibleNodeCount: number;
       nodes: GraphNode[];
       edges: GraphEdge[];
     };
     expect(body.authorization).toBe('server-filtered');
+    expect(body.repoId).toBe('repo-1');
+    expect(body.refName).toBe('refs/heads/release');
     expect(body.visibleNodeCount).toBe(body.nodes.length);
     expect(body.nodes.length).toBeGreaterThan(0);
     expect(body.edges).toEqual([]);
+    expect(getNodesInViewport).toHaveBeenCalledWith(
+      'repo-1',
+      'refs/heads/release',
+      expect.any(Object),
+      expect.any(Object),
+    );
   });
 
   it('malformed viewport (width=0) returns 400 with a safe { error } body', async () => {
@@ -104,6 +114,31 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
     );
 
     expect(res.status).toBe(200);
+    expect(getNodesInViewport).toHaveBeenCalledWith(
+      'repo-1',
+      'refs/heads/main',
+      expect.objectContaining({ zoom: 1 }),
+      expect.any(Object),
+    );
+  });
+
+  it('rejects non-canonical or repeated refName selectors with a safe 400', async () => {
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+
+    for (const query of [
+      'refName=main',
+      'refName=refs%2Fheads%2Fmain&refName=refs%2Fheads%2Frelease',
+    ]) {
+      const res = await fetch(
+        `${baseUrl}/repos/repo-1/technical-tree?x=0&y=0&width=100&height=100&${query}`,
+      );
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: 'invalid technical tree refName',
+      });
+    }
+    expect(getNodesInViewport).not.toHaveBeenCalled();
   });
 
   it('a client-supplied ?orgId=attacker has no effect: the server-derived auth context reaches the graph-query layer', async () => {
@@ -118,10 +153,11 @@ describe('GET /repos/:repoId/technical-tree (HTTP)', () => {
     expect(res.status).toBe(200);
     expect(getNodesInViewport).toHaveBeenCalledWith(
       'repo-1',
+      'refs/heads/main',
       expect.any(Object),
       expect.objectContaining({ orgId: expectedOrgId, subjectType: 'user' }),
     );
-    const context = getNodesInViewport.mock.calls[0]?.[2] as { orgId: string };
+    const context = getNodesInViewport.mock.calls[0]?.[3] as { orgId: string };
     expect(context.orgId).not.toBe('attacker');
   });
 

@@ -4,6 +4,7 @@ import { getTechnicalTree } from './technicalTreeService';
 import type { GraphEdge, GraphNode, GraphQueryService, Viewport } from '../graph-query/types';
 
 const VIEWPORT: Viewport = { x: 0, y: 0, width: 100, height: 100, zoom: 1 };
+const REF_NAME = 'refs/heads/release';
 const AUTH_CONTEXT: AuthContext = {
   subjectType: 'user',
   userId: 'user-1',
@@ -34,7 +35,13 @@ describe('getTechnicalTree', () => {
       ]),
     });
 
-    const tree = await getTechnicalTree('repo-1', VIEWPORT, AUTH_CONTEXT, graph);
+    const tree = await getTechnicalTree(
+      'repo-1',
+      REF_NAME,
+      VIEWPORT,
+      AUTH_CONTEXT,
+      graph,
+    );
 
     const ids = new Set(tree.nodes.map((node) => node.id));
     expect(tree.authorization).toBe('server-filtered');
@@ -51,15 +58,28 @@ describe('getTechnicalTree', () => {
     const getStructuralEdges = vi.fn(async (): Promise<GraphEdge[]> => []);
     const graph = makeFakeGraph({ getStructuralEdges });
 
-    const tree = await getTechnicalTree('repo-1', VIEWPORT, AUTH_CONTEXT, graph);
+    const tree = await getTechnicalTree(
+      'repo-1',
+      REF_NAME,
+      VIEWPORT,
+      AUTH_CONTEXT,
+      graph,
+    );
 
     expect(tree).toEqual({
       authorization: 'server-filtered',
+      repoId: 'repo-1',
+      refName: REF_NAME,
       visibleNodeCount: 0,
       nodes: [],
       edges: [],
     });
-    expect(getStructuralEdges).toHaveBeenCalledWith([], AUTH_CONTEXT);
+    expect(getStructuralEdges).toHaveBeenCalledWith(
+      'repo-1',
+      REF_NAME,
+      [],
+      AUTH_CONTEXT,
+    );
   });
 
   it('composes the two context-taking graph-query methods', async () => {
@@ -70,26 +90,61 @@ describe('getTechnicalTree', () => {
     const getStructuralEdges = vi.fn(async (): Promise<GraphEdge[]> => []);
     const graph = makeFakeGraph({ getNodesInViewport, getStructuralEdges });
 
-    await getTechnicalTree('repo-9', VIEWPORT, AUTH_CONTEXT, graph);
+    await getTechnicalTree(
+      'repo-9',
+      REF_NAME,
+      VIEWPORT,
+      AUTH_CONTEXT,
+      graph,
+    );
 
-    expect(getNodesInViewport).toHaveBeenCalledWith('repo-9', VIEWPORT, AUTH_CONTEXT);
-    expect(getStructuralEdges).toHaveBeenCalledWith(['f1'], AUTH_CONTEXT);
+    expect(getNodesInViewport).toHaveBeenCalledWith(
+      'repo-9',
+      REF_NAME,
+      VIEWPORT,
+      AUTH_CONTEXT,
+    );
+    expect(getStructuralEdges).toHaveBeenCalledWith(
+      'repo-9',
+      REF_NAME,
+      ['f1'],
+      AUTH_CONTEXT,
+    );
   });
 
   it('is reusable unchanged from a resolver-shaped caller', async () => {
-    type ResolverArgs = { repoId: string; viewport: Viewport };
+    type ResolverArgs = { repoId: string; refName: string; viewport: Viewport };
     type ResolverContext = { auth: AuthContext };
     const graph = makeFakeGraph();
     const resolver = (_parent: unknown, args: ResolverArgs, ctx: ResolverContext) =>
-      getTechnicalTree(args.repoId, args.viewport, ctx.auth, graph);
+      getTechnicalTree(args.repoId, args.refName, args.viewport, ctx.auth, graph);
 
     await expect(
-      resolver({}, { repoId: 'repo-1', viewport: VIEWPORT }, { auth: AUTH_CONTEXT }),
+      resolver(
+        {},
+        { repoId: 'repo-1', refName: REF_NAME, viewport: VIEWPORT },
+        { auth: AUTH_CONTEXT },
+      ),
     ).resolves.toEqual({
       authorization: 'server-filtered',
+      repoId: 'repo-1',
+      refName: REF_NAME,
       visibleNodeCount: 0,
       nodes: [],
       edges: [],
     });
+  });
+
+  it('fails closed before graph access when refName is absent or non-canonical', async () => {
+    const graph = makeFakeGraph();
+
+    await expect(
+      getTechnicalTree('repo-1', 'main', VIEWPORT, AUTH_CONTEXT, graph),
+    ).rejects.toBeInstanceOf(RangeError);
+    await expect(
+      getTechnicalTree('repo-1', '', VIEWPORT, AUTH_CONTEXT, graph),
+    ).rejects.toBeInstanceOf(RangeError);
+    expect(graph.getNodesInViewport).not.toHaveBeenCalled();
+    expect(graph.getStructuralEdges).not.toHaveBeenCalled();
   });
 });

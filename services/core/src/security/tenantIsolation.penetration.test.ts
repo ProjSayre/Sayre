@@ -116,7 +116,7 @@ describe('forged org_id over HTTP: GET /repos/:repoId/technical-tree', () => {
     });
 
     expect(res.status).toBe(200);
-    const context = getNodesInViewport.mock.calls[0]?.[2] as { orgId: string };
+    const context = getNodesInViewport.mock.calls[0]?.[3] as { orgId: string };
     expect(context.orgId).toBe(expectedOrgId);
     expect(context.orgId).not.toBe('attacker-org');
   });
@@ -139,7 +139,7 @@ describe('forged org_id over HTTP: GET /repos/:repoId/technical-tree', () => {
     );
 
     expect(res.status).toBe(200);
-    const context = getNodesInViewport.mock.calls[0]?.[2] as { orgId: string };
+    const context = getNodesInViewport.mock.calls[0]?.[3] as { orgId: string };
     expect(context.orgId).toBe(expectedOrgId);
     expect(context.orgId).not.toBe('attacker-query-org');
     expect(context.orgId).not.toBe('attacker-header-org');

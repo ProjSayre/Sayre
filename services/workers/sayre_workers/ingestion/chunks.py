@@ -25,6 +25,10 @@ MAX_CHUNK_CHARACTERS = 3_000
 MAX_CHUNKS_PER_FILE = 4
 
 
+class EmbeddingConfigNotFoundError(RuntimeError):
+    """Embedding work exists, but its tenant has no configured provider."""
+
+
 class ChunkStore(Protocol):
     async def replace_chunks(
         self,
@@ -172,12 +176,14 @@ class PostgresChunkStore:
         async with org_scoped_connection(self._dsn, task.org_id) as connection:
             cursor = await connection.execute(
                 """
-                SELECT chunk.content, config.provider, config.model, config.dimension,
+                SELECT chunk.content, config.id AS config_id,
+                       config.provider, config.model, config.dimension,
                        config.endpoint_url, config.credential_ref
                 FROM code_chunks AS chunk
                 JOIN repository_refs AS ref ON ref.id = chunk.ref_id
-                JOIN model_provider_configs AS config
-                  ON config.org_id = chunk.org_id AND config.purpose = 'embedding'
+                LEFT JOIN model_provider_configs AS config
+                  ON config.org_id = chunk.org_id
+                 AND config.purpose = 'embedding'
                 WHERE chunk.id = %s AND chunk.org_id = %s AND chunk.repository_id = %s
                   AND chunk.ref_id = %s AND chunk.graph_node_id = %s
                   AND chunk.revision_sha = %s AND ref.ref_name = %s
@@ -197,6 +203,13 @@ class PostgresChunkStore:
             row = await cursor.fetchone()
         if row is None:
             return None
+        if row["config_id"] is None:
+            # This is retryable configuration state, not stale work. Propagating
+            # keeps the delivery unacknowledged so it can succeed after an admin
+            # configures the tenant's embedding provider.
+            raise EmbeddingConfigNotFoundError(
+                "embedding provider configuration is not available"
+            )
         return EmbeddingWork(
             task=task,
             content=str(row["content"]),

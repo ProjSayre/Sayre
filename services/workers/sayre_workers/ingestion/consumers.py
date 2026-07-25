@@ -32,14 +32,17 @@ def run_ingestion_consumer(
         def handle(envelope: MessageEnvelope) -> None:
             runner.run(service.handle(envelope))
 
-        consume(
-            INGESTION_QUEUE,
-            handle,
-            consumer_id="ingestion-worker",
-            delivery_store=delivery_store,
-            stop_event=stop_event,
-            visibility_timeout_seconds=300,
-        )
+        try:
+            consume(
+                INGESTION_QUEUE,
+                handle,
+                consumer_id="ingestion-worker",
+                delivery_store=delivery_store,
+                stop_event=stop_event,
+                visibility_timeout_seconds=300,
+            )
+        finally:
+            runner.run(service.aclose())
 
 
 def run_embedding_consumer(

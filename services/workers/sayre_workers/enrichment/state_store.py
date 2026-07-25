@@ -8,6 +8,7 @@ from typing import Literal, Protocol
 import psycopg
 
 from sayre_workers.config import get_secret
+from sayre_workers.db import org_scoped_connection
 from sayre_workers.ingestion.models import GraphScope
 
 ProviderJobSurface = Literal["product", "onboarding", "chatbot"]
@@ -79,17 +80,12 @@ class PostgresProviderJobStateStore:
 
     async def set_state(self, state: ProviderJobState) -> None:
         try:
-            connection = await psycopg.AsyncConnection.connect(self._dsn)
-            async with connection:
-                async with connection.transaction():
-                    # Transaction-local tenant context prevents a pooled/reused
-                    # connection from retaining another org's identity.
-                    await connection.execute(
-                        "SELECT set_config('app.org_id', %s, true)",
-                        (state.scope.org_id,),
-                    )
-                    await connection.execute(
-                        """
+            async with org_scoped_connection(
+                self._dsn,
+                state.scope.org_id,
+            ) as connection:
+                await connection.execute(
+                    """
                         INSERT INTO model_provider_job_states (
                             org_id,
                             repository_id,
@@ -122,21 +118,21 @@ class PostgresProviderJobStateStore:
                                 AND ref_name = EXCLUDED.ref_name
                                 AND revision_sha = EXCLUDED.revision_sha
                           )
-                        """,
-                        (
-                            state.scope.org_id,
-                            state.scope.repository_id,
-                            state.scope.ref_name,
-                            state.scope.revision_sha,
-                            state.surface,
-                            state.status,
-                            state.reason_code,
-                            state.scope.org_id,
-                            state.scope.repository_id,
-                            state.scope.ref_name,
-                            state.scope.revision_sha,
-                        ),
-                    )
+                    """,
+                    (
+                        state.scope.org_id,
+                        state.scope.repository_id,
+                        state.scope.ref_name,
+                        state.scope.revision_sha,
+                        state.surface,
+                        state.status,
+                        state.reason_code,
+                        state.scope.org_id,
+                        state.scope.repository_id,
+                        state.scope.ref_name,
+                        state.scope.revision_sha,
+                    ),
+                )
         except (psycopg.Error, OSError):
             # Never carry a DSN, SQL text, or driver detail into queue logs.
             raise ProviderJobStateStoreError(
