@@ -43,6 +43,25 @@ export function clearStoredSessionToken(): void {
   }
 }
 
+/** Mirrors the stored bearer token into the BFF's HttpOnly session cookie. */
+export async function persistSessionCookie(): Promise<void> {
+  const response = await coreFetch('/api/session', {
+    method: 'POST',
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('The browser session could not be established.');
+}
+
+/** Clears the BFF cookie. This does not depend on the local bearer token. */
+export async function clearSessionCookie(): Promise<void> {
+  const response = await fetch('/api/session', {
+    method: 'DELETE',
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('The browser session could not be cleared.');
+}
+
 /**
  * `fetch` wrapper: when a session token is stored, merges
  * `Authorization: Bearer <token>` into the request headers WITHOUT clobbering

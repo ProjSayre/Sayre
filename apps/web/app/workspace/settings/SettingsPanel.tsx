@@ -14,6 +14,9 @@ import {
 import { useMock } from '../state';
 import type { InstallationOutcome } from '../types';
 import { Badge, Reserved } from '../components/ui';
+import { settingsSection, settingsSections } from '../settingsRegistry';
+import { providerConfigurationStatus } from '../providerSettingsContract';
+import { McpSettings } from './McpSettings';
 
 const PURPOSES: readonly ProviderPurpose[] = ['generation', 'embedding'];
 
@@ -298,7 +301,15 @@ function ProviderSettings() {
         const draft = drafts[purpose];
         const copy = PURPOSE_COPY[purpose];
         const setting = data.settings[purpose];
+        const configurationStatus = providerConfigurationStatus(setting);
         const selfHosted = draft.provider === 'openai_compatible';
+        const unlistedCredentialConfigured =
+          setting?.credentialConfigured === true &&
+          setting.credentialReferenceId === null;
+        const unlistedEndpointConfigured =
+          selfHosted &&
+          setting?.endpointConfigured === true &&
+          setting.endpointId === null;
         const credentials = data.credentialOptions.filter(
           (option) =>
             option.purpose === purpose &&
@@ -322,8 +333,12 @@ function ProviderSettings() {
                 <h3>{copy.title}</h3>
                 <p>{copy.description}</p>
               </div>
-              <Badge tone={setting === null ? 'warn' : 'ready'}>
-                {setting === null ? 'not configured' : 'configured'}
+              <Badge
+                tone={
+                  configurationStatus === 'configured' ? 'ready' : 'warn'
+                }
+              >
+                {configurationStatus.replace('-', ' ')}
               </Badge>
             </div>
 
@@ -372,7 +387,9 @@ function ProviderSettings() {
                   }
                 >
                   <option value="">
-                    {selfHosted
+                    {unlistedCredentialConfigured
+                      ? 'Existing server-side credential (not editable here)'
+                      : selfHosted
                       ? 'No credential (if the endpoint permits it)'
                       : 'Select a provisioned credential'}
                   </option>
@@ -399,7 +416,11 @@ function ProviderSettings() {
                       })
                     }
                   >
-                    <option value="">Select an operator-approved endpoint</option>
+                    <option value="">
+                      {unlistedEndpointConfigured
+                        ? 'Existing server-side endpoint (not editable here)'
+                        : 'Select an operator-approved endpoint'}
+                    </option>
                     {endpoints.map((option) => (
                       <option value={option.id} key={option.id}>
                         {option.label}
@@ -478,31 +499,26 @@ export function SettingsPanel() {
     <div className="mock-overlay" role="region" aria-label="Settings">
       <nav className="mock-settings-nav" aria-label="Settings sections">
         <p className="mock-settings-nav-label">Settings</p>
-        <button
-          type="button"
-          aria-current={section === 'github' ? 'page' : undefined}
-          onClick={() =>
-            dispatch({ type: 'patch', patch: { settingsSection: 'github' } })
-          }
-        >
-          GitHub Integrations
-        </button>
-        <button
-          type="button"
-          aria-current={section === 'providers' ? 'page' : undefined}
-          onClick={() =>
-            dispatch({ type: 'patch', patch: { settingsSection: 'providers' } })
-          }
-        >
-          Model Providers
-        </button>
+        {settingsSections.map((definition) => (
+          <button
+            type="button"
+            key={definition.id}
+            aria-current={section === definition.id ? 'page' : undefined}
+            onClick={() =>
+              dispatch({
+                type: 'patch',
+                patch: { settingsSection: definition.id },
+              })
+            }
+          >
+            {definition.label}
+          </button>
+        ))}
       </nav>
 
       <div className="mock-settings-main">
         <div className="mock-settings-header">
-          <h2>
-            {section === 'github' ? 'GitHub Integrations' : 'Model Providers'}
-          </h2>
+          <h2>{settingsSection(section).title}</h2>
           <button
             type="button"
             className="mock-btn mock-btn-secondary mock-btn-sm"
@@ -529,8 +545,10 @@ export function SettingsPanel() {
             </section>
           ) : section === 'github' ? (
             <GitHubIntegrations />
-          ) : (
+          ) : section === 'providers' ? (
             <ProviderSettings />
+          ) : (
+            <McpSettings />
           )}
         </div>
       </div>

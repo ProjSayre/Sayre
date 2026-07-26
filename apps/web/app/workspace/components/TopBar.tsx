@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { clearStoredSessionToken } from '../../lib/coreFetch';
+import {
+  clearSessionCookie,
+  clearStoredSessionToken,
+} from '../../lib/coreFetch';
 import { useMock } from '../state';
 import type { RealtimeStatus, RepositoryReadiness, SemanticStatus } from '../types';
 import { Badge } from './ui';
@@ -188,14 +191,17 @@ export function TopBar() {
         </button>
       )}
 
-      {/* Both settings sections are admin-only, so members never see the entry
+      {/* Every settings section is admin-only, so members never see the entry
           point at all — the actions are absent, not disabled. */}
       {isAdmin && (
         <button
           type="button"
           className="mock-btn mock-btn-secondary mock-btn-sm"
           onClick={() =>
-            dispatch({ type: 'patch', patch: { settingsSection: 'github' } })
+            dispatch({
+              type: 'patch',
+              patch: { settingsSection: 'github' },
+            })
           }
         >
           Settings
@@ -251,9 +257,13 @@ function AccountMenu() {
             className="mock-picker-option"
             onClick={() => {
               setOpen(false);
-              if (mode === 'live') clearStoredSessionToken();
               dispatch({ type: 'patch', patch: { session: 'signed-out' } });
-              if (mode === 'live') window.location.assign('/login');
+              if (mode === 'live') {
+                clearStoredSessionToken();
+                void clearSessionCookie()
+                  .catch(() => undefined)
+                  .finally(() => window.location.assign('/login'));
+              }
             }}
           >
             <span className="mock-picker-name">Sign out</span>

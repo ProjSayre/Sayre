@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 const MAX_REQUEST_BYTES = 32_768;
 const MAX_RESPONSE_BYTES = 262_144;
 const REQUEST_TIMEOUT_MS = 5_000;
+const SESSION_COOKIE = 'sayre_session';
+const BEARER_RE = /^Bearer\s+\S+$/iu;
 
 function upstreamUrl(path: readonly string[]): string | null {
   const base = getConfig('CORE_INTERNAL_BASE_URL').replace(/\/+$/, '');
@@ -26,8 +28,13 @@ function upstreamUrl(path: readonly string[]): string | null {
 
 function forwardedHeaders(request: NextRequest, hasBody: boolean): Headers {
   const headers = new Headers({ accept: 'application/json' });
-  const authorization = request.headers.get('authorization');
-  if (authorization) headers.set('authorization', authorization);
+  const explicit = request.headers.get('authorization');
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  if (explicit !== null && BEARER_RE.test(explicit)) {
+    headers.set('authorization', explicit);
+  } else if (session && !/\s/u.test(session)) {
+    headers.set('authorization', `Bearer ${session}`);
+  }
   if (hasBody) headers.set('content-type', 'application/json');
   return headers;
 }

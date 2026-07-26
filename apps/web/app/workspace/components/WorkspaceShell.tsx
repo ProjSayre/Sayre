@@ -222,9 +222,11 @@ function Workspace() {
 
 export function WorkspaceShell() {
   const { mode, state } = useMock();
-  const drawerOpen =
+  const drawerSelected =
     state.drawerOpen &&
     (state.selectedNodeId !== null || state.selectedFeatureId !== null);
+  const drawerVisible =
+    state.settingsSection === null && drawerSelected;
 
   const globallyBlocked =
     state.session !== 'authenticated' ||
@@ -243,13 +245,19 @@ export function WorkspaceShell() {
   return (
     <div className="mock-root" style={themeVariables(warmGraphiteTheme)}>
       <TopBar />
-      <div className={`mock-body${drawerOpen ? ' mock-body-drawer' : ''}`}>
+      <div className={`mock-body${drawerVisible ? ' mock-body-drawer' : ''}`}>
         <ViewRail />
         <ReactFlowProvider>
           <Workspace />
         </ReactFlowProvider>
-        {drawerOpen &&
-          (state.selectedNodeId !== null ? <NodeDrawer /> : <FeatureDrawer />)}
+        {drawerSelected && (
+          <div
+            className="mock-drawer-preserver"
+            hidden={!drawerVisible}
+          >
+            {state.selectedNodeId !== null ? <NodeDrawer /> : <FeatureDrawer />}
+          </div>
+        )}
       </div>
       {mode === 'fixture' && <ControlPanel />}
     </div>

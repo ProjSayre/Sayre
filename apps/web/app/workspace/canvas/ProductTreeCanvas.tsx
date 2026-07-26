@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MiniMap, ReactFlow, useReactFlow, type Node } from '@xyflow/react';
 import type { Feature, GraphNode } from '../types';
 import type { CanvasCommand } from '../rendererRegistry';
@@ -25,7 +25,6 @@ const CELL_H = 38;
 const PAD = 22;
 const GAP_X = 92;
 const GAP_Y = 104;
-const PER_ROW = 2;
 const CHAR_WIDTH = 6.4;
 const LABEL_OFFSET = 22;
 const MIN_WIDTH = 240;
@@ -53,23 +52,59 @@ export function ProductTreeCanvas({
   onSelectNode,
 }: ProductTreeCanvasProps) {
   const flow = useReactFlow();
+  const [columns, setColumns] = useState(4);
+  const fitMinimumZoom = columns === 1 ? 0.65 : 0.2;
 
   useEffect(() => {
-    const timer = setTimeout(
-      () => flow.fitView({ padding: 0.1, maxZoom: 1 }),
-      80,
-    );
+    const update = (): void => {
+      if (window.innerWidth <= 620) setColumns(1);
+      else if (window.innerWidth <= 1_000) setColumns(2);
+      else setColumns(4);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (columns === 1) {
+        // A one-column graph is intentionally taller than the phone viewport.
+        // Start at its first feature at a readable zoom and let users pan.
+        void flow.setViewport(
+          { x: 24, y: 28, zoom: fitMinimumZoom },
+          { duration: 0 },
+        );
+        return;
+      }
+      void flow.fitView({
+        padding: 0.1,
+        minZoom: fitMinimumZoom,
+        maxZoom: 1,
+      });
+    }, 80);
     return () => clearTimeout(timer);
-  }, [fitKey, flow]);
+  }, [columns, fitKey, fitMinimumZoom, flow]);
 
   useEffect(() => {
     if (command === null) return;
     if (command.type === 'zoom-in') void flow.zoomIn();
     if (command.type === 'zoom-out') void flow.zoomOut();
     if (command.type === 'fit') {
-      void flow.fitView({ padding: 0.1, maxZoom: 1 });
+      if (columns === 1) {
+        void flow.setViewport(
+          { x: 24, y: 28, zoom: fitMinimumZoom },
+          { duration: 180 },
+        );
+        return;
+      }
+      void flow.fitView({
+        padding: 0.1,
+        minZoom: fitMinimumZoom,
+        maxZoom: 1,
+      });
     }
-  }, [command, flow]);
+  }, [columns, command, fitMinimumZoom, flow]);
 
   const nodes = useMemo<Node[]>(() => {
     const filesById = new Map(graphNodes.map((node) => [node.id, node]));
@@ -81,7 +116,7 @@ export function ProductTreeCanvas({
     let columnLeft = 0;
 
     features.forEach((feature, index) => {
-      if (index > 0 && index % PER_ROW === 0) {
+      if (index > 0 && index % columns === 0) {
         rowTop += rowHeight + GAP_Y;
         rowHeight = 0;
         columnLeft = 0;
@@ -143,7 +178,14 @@ export function ProductTreeCanvas({
     });
 
     return result;
-  }, [features, graphNodes, search, selectedFeatureId, selectedNodeId]);
+  }, [
+    columns,
+    features,
+    graphNodes,
+    search,
+    selectedFeatureId,
+    selectedNodeId,
+  ]);
 
   return (
     <ReactFlow
@@ -160,7 +202,11 @@ export function ProductTreeCanvas({
         if (fileId !== undefined) onSelectNode(fileId);
       }}
       fitView
-      fitViewOptions={{ padding: 0.1, maxZoom: 1 }}
+      fitViewOptions={{
+        padding: 0.1,
+        minZoom: fitMinimumZoom,
+        maxZoom: 1,
+      }}
       minZoom={0.2}
       maxZoom={2.4}
       nodesDraggable={false}

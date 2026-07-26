@@ -21,6 +21,21 @@ export class ProviderSettingsContractError extends Error {
   }
 }
 
+export type ProviderConfigurationStatus =
+  | 'configured'
+  | 'incomplete'
+  | 'not-configured';
+
+export function providerConfigurationStatus(
+  setting: ProviderSettingView | null,
+): ProviderConfigurationStatus {
+  if (setting === null) return 'not-configured';
+  if (setting.provider === 'openai_compatible') {
+    return setting.endpointConfigured ? 'configured' : 'incomplete';
+  }
+  return setting.credentialConfigured ? 'configured' : 'incomplete';
+}
+
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new ProviderSettingsContractError();

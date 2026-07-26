@@ -29,6 +29,8 @@ interface ViewportBoundary extends SigmaBoundary {
   height: number;
 }
 
+const EMPTY_BOUNDARIES: readonly SigmaBoundary[] = [];
+
 function activateBoundary(
   event: React.KeyboardEvent<SVGGElement>,
   boundaryId: string,
@@ -42,7 +44,7 @@ function activateBoundary(
 export function SigmaCanvas({
   payload,
   onSelect,
-  boundaries = [],
+  boundaries = EMPTY_BOUNDARIES,
   onSelectBoundary,
   command = null,
   search = '',
@@ -50,24 +52,18 @@ export function SigmaCanvas({
 }: SigmaCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<Sigma | null>(null);
+  const onSelectRef = useRef(onSelect);
+  const previousSearchRef = useRef('');
   const [viewportBoundaries, setViewportBoundaries] = useState<ViewportBoundary[]>([]);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   useEffect(() => {
     if (containerRef.current === null) return undefined;
 
     const graph = toPresentationGraph(payload);
-    const normalizedSearch = search.trim().toLowerCase();
-    const matchingNodeIds = new Set(
-      payload.nodes
-        .filter(
-          (node) =>
-            normalizedSearch.length === 0 ||
-            node.label.toLowerCase().includes(normalizedSearch) ||
-            node.path.toLowerCase().includes(normalizedSearch),
-        )
-        .map((node) => node.id),
-    );
-    const edgeById = new Map(payload.edges.map((edge) => [edge.id, edge]));
     const renderer = new Sigma(graph, containerRef.current, {
       allowInvalidContainer: false,
       defaultEdgeColor: '#41423b',
@@ -75,32 +71,19 @@ export function SigmaCanvas({
       labelColor: { color: '#e8e6e1' },
       labelDensity: 0.08,
       labelGridCellSize: 120,
-      labelRenderedSizeThreshold: 8,
+      labelRenderedSizeThreshold: 2.5,
       renderEdgeLabels: false,
       zIndex: true,
       nodeReducer: (node, data) => ({
         ...data,
-        hidden: !matchingNodeIds.has(node),
-        color: node === selectedNodeId ? '#d8c87f' : data.color,
-        size: node === selectedNodeId ? data.size * 1.45 : data.size,
-        zIndex: node === selectedNodeId ? 1 : data.zIndex,
+        label: data.kind === 'Folder' ? data.label : '',
       }),
-      edgeReducer: (edge, data) => {
-        const match = edgeById.get(edge);
-        return {
-          ...data,
-          hidden:
-            match === undefined ||
-            !matchingNodeIds.has(match.source) ||
-            !matchingNodeIds.has(match.target),
-        };
-      },
     });
     rendererRef.current = renderer;
 
     renderer.on('clickNode', ({ node }) => {
       const match = payload.nodes.find((candidate) => candidate.id === node);
-      if (match !== undefined) onSelect(match);
+      if (match !== undefined) onSelectRef.current(match);
     });
 
     const nodeById = new Map(payload.nodes.map((node) => [node.id, node]));
@@ -142,7 +125,71 @@ export function SigmaCanvas({
       renderer.kill();
       rendererRef.current = null;
     };
-  }, [boundaries, onSelect, payload, search, selectedNodeId]);
+  }, [boundaries, payload]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (renderer === null) return;
+
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchingNodes = payload.nodes.filter(
+      (node) =>
+        normalizedSearch.length === 0 ||
+        node.label.toLowerCase().includes(normalizedSearch) ||
+        node.path.toLowerCase().includes(normalizedSearch),
+    );
+    const matchingNodeIds = new Set(matchingNodes.map((node) => node.id));
+    const edgeById = new Map(payload.edges.map((edge) => [edge.id, edge]));
+
+    renderer.setSetting('nodeReducer', (node, data) => ({
+      ...data,
+      hidden: !matchingNodeIds.has(node),
+      label:
+        data.kind === 'Folder' ||
+        node === selectedNodeId ||
+        normalizedSearch.length > 0
+          ? data.label
+          : '',
+      color: node === selectedNodeId ? '#d8c87f' : data.color,
+      size: node === selectedNodeId ? data.size * 1.45 : data.size,
+      zIndex: node === selectedNodeId ? 1 : data.zIndex,
+    }));
+    renderer.setSetting('edgeReducer', (edge, data) => {
+      const match = edgeById.get(edge);
+      return {
+        ...data,
+        hidden:
+          match === undefined ||
+          !matchingNodeIds.has(match.source) ||
+          !matchingNodeIds.has(match.target),
+      };
+    });
+    renderer.refresh();
+
+    if (
+      normalizedSearch !== previousSearchRef.current &&
+      normalizedSearch.length > 0 &&
+      matchingNodes.length > 0
+    ) {
+      const firstMatch = renderer.getNodeDisplayData(matchingNodes[0].id);
+      if (firstMatch !== undefined) {
+        renderer.getCamera().animate(
+          {
+            x: firstMatch.x,
+            y: firstMatch.y,
+            ratio: matchingNodes.length <= 5 ? 0.12 : 0.35,
+          },
+          { duration: 220 },
+        );
+      }
+    } else if (
+      normalizedSearch.length === 0 &&
+      previousSearchRef.current.length > 0
+    ) {
+      void renderer.getCamera().animatedReset({ duration: 220 });
+    }
+    previousSearchRef.current = normalizedSearch;
+  }, [payload, search, selectedNodeId]);
 
   useEffect(() => {
     const camera = rendererRef.current?.getCamera();

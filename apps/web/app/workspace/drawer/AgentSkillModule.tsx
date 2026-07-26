@@ -4,24 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMock } from '../state';
 import type { AgentSkillVersion, NodeOverlay } from '../types';
 import { EmptyState, Module, formatTimestamp } from '../components/ui';
-
-const REQUIRED_SECTIONS = ['Allowed Tools', 'Required Context', 'Guardrails'];
-
-const TEMPLATE = `# <node>
-
-## Allowed Tools
-
-## Required Context
-
-## Guardrails
-`;
-
-/** The three sections are a contract, so the client checks before it ever saves. */
-function missingSections(content: string): string[] {
-  return REQUIRED_SECTIONS.filter(
-    (section) => !new RegExp(`^##\\s+${section}\\s*$`, 'im').test(content),
-  );
-}
+import {
+  agentSkillDraftIssues,
+  starterAgentSkillContent,
+} from '../agentSkillContract';
 
 interface AgentSkillModuleProps {
   overlay: NodeOverlay | null;
@@ -34,7 +20,7 @@ interface AgentSkillModuleProps {
 type SaveState =
   | { kind: 'idle' }
   | { kind: 'saving' }
-  | { kind: 'invalid'; missing: string[] }
+  | { kind: 'invalid'; issues: string[] }
   | { kind: 'conflict' }
   | { kind: 'error'; message: string }
   | { kind: 'saved'; version: number };
@@ -69,7 +55,9 @@ export function AgentSkillModule({
   const history = overlay?.agentSkillHistory ?? [];
 
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(current?.content ?? TEMPLATE);
+  const [draft, setDraft] = useState(
+    current?.content ?? starterAgentSkillContent(nodeName),
+  );
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' });
   const [preview, setPreview] = useState<AgentSkillVersion | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -79,15 +67,15 @@ export function AgentSkillModule({
   // from one document onto another.
   useEffect(() => {
     setEditing(false);
-    setDraft(current?.content ?? TEMPLATE);
+    setDraft(current?.content ?? starterAgentSkillContent(nodeName));
     setSaveState({ kind: 'idle' });
     setPreview(null);
     setShowHistory(false);
     setSaved(null);
-  }, [overlay?.nodeId, current?.content]);
+  }, [overlay?.nodeId, current?.content, nodeName]);
 
   const document = saved ?? current;
-  const dirty = editing && draft !== (document?.content ?? TEMPLATE);
+  const dirty = editing && draft !== (document?.content ?? '');
 
   const versionLabel = useMemo(() => {
     if (document === null) return 'no document';
@@ -97,9 +85,9 @@ export function AgentSkillModule({
   }, [document]);
 
   const onSave = async () => {
-    const missing = missingSections(draft);
-    if (missing.length > 0) {
-      setSaveState({ kind: 'invalid', missing });
+    const issues = agentSkillDraftIssues(draft);
+    if (issues.length > 0) {
+      setSaveState({ kind: 'invalid', issues });
       return;
     }
     setSaveState({ kind: 'saving' });
@@ -163,7 +151,7 @@ export function AgentSkillModule({
                 type="button"
                 className="mock-btn mock-btn-secondary mock-btn-sm"
                 onClick={() => {
-                  setDraft(TEMPLATE);
+                  setDraft(starterAgentSkillContent(nodeName));
                   setEditing(true);
                 }}
               >
@@ -188,7 +176,7 @@ export function AgentSkillModule({
             <button
               type="button"
               className="mock-btn mock-btn-primary mock-btn-sm"
-              disabled={saveState.kind === 'saving'}
+              disabled={!dirty || saveState.kind === 'saving'}
               onClick={() => void onSave()}
             >
               {saveState.kind === 'saving' ? 'Saving…' : 'Save'}
@@ -197,7 +185,9 @@ export function AgentSkillModule({
               type="button"
               className="mock-btn mock-btn-secondary mock-btn-sm"
               onClick={() => {
-                setDraft(document?.content ?? TEMPLATE);
+                setDraft(
+                  document?.content ?? starterAgentSkillContent(nodeName),
+                );
                 setEditing(false);
                 setSaveState({ kind: 'idle' });
               }}
@@ -249,12 +239,11 @@ export function AgentSkillModule({
 
       {saveState.kind === 'invalid' && (
         <div className="mock-alert" role="alert">
-          <strong>Missing required sections</strong>
-          An Agent/Skill MD must declare all three sections before it can be
-          saved:
+          <strong>Fix the document contract</strong>
+          Agent/Skill MD uses the same validation here and in the service:
           <ul>
-            {saveState.missing.map((section) => (
-              <li key={section}>## {section}</li>
+            {saveState.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
             ))}
           </ul>
         </div>

@@ -17,10 +17,11 @@ export const metadata: Metadata = {
  * client is wired to the service layer.
  *
  * It includes a deterministic Onboarding Tree workflow so its layout and
- * execution states can be reviewed without running a sandbox. MCP key
- * management, organization administration, custom LLM views, raw credential
- * entry, and force-sync controls remain out of scope because no MVP browser
- * contract backs them.
+ * execution states can be reviewed without running a sandbox. It also includes
+ * deterministic provider and MCP administration data. Organization
+ * administration, custom LLM views, raw provider credential entry, and
+ * force-sync controls remain out of scope because no MVP browser contract
+ * backs them.
  */
 export default function MockPage() {
   return (

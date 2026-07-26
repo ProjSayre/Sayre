@@ -7,6 +7,7 @@ import type {
   ProviderJobStatus,
   ProviderJobSurface,
 } from '@sayre/shared-types';
+import { coreFetch } from './coreFetch';
 
 const STATUSES = new Set<ProviderJobStatus>(['generating', 'ready', 'degraded', 'failed']);
 const SURFACES = new Set<ProviderJobSurface>(['product', 'onboarding', 'chatbot']);
@@ -76,7 +77,7 @@ function isProviderJobState(
 export async function fetchProviderState(
   selection: ProviderStateSelection,
   signal: AbortSignal,
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch = coreFetch,
 ): Promise<ProviderJobState | null> {
   if (!SURFACES.has(selection.surface)) return null;
   const query = new URLSearchParams({

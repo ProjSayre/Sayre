@@ -1,6 +1,6 @@
 // Unit tests for AuthCard (AUTH-01): both `login`/`signup` modes render a
 // single "Continue with GitHub" link and NO password/email/name form
-// remains. Mirrors ProviderStateBanner.test.tsx's renderToStaticMarkup
+// remains. Uses renderToStaticMarkup so the server component can be tested
 // pattern for a non-interactive component (no hooks, no fetch — no
 // react-test-renderer/act needed).
 //
@@ -13,7 +13,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-// AuthCard.tsx (unlike ProviderStateBanner.tsx) does not itself `import React
+// AuthCard.tsx does not itself import React
 // from 'react'` — it relies on Next.js's automatic JSX runtime, which never
 // needs a local `React` binding. Vitest's default esbuild transform here
 // compiles JSX with the classic runtime (React.createElement), so a module

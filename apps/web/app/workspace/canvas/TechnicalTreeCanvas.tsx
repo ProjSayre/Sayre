@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   MiniMap,
@@ -16,7 +16,12 @@ import {
 import type { GraphEdge, GraphNode } from '../types';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
 import { NODE_TYPES } from './nodes';
-import { NODE_BOX, layoutTree, toBoxOrigin } from './layout';
+import {
+  NODE_BOX,
+  layoutRadialTree,
+  layoutTree,
+  toBoxOrigin,
+} from './layout';
 
 interface TechnicalTreeCanvasProps {
   graphNodes: GraphNode[];
@@ -64,6 +69,15 @@ export function TechnicalTreeCanvas({
   onSelect,
 }: TechnicalTreeCanvasProps) {
   const flow = useReactFlow();
+  const [compactLayout, setCompactLayout] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 760px)');
+    const update = () => setCompactLayout(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   // Opening the drawer narrows the canvas; without this the graph stays where
   // it was and slides under the drawer.
@@ -73,7 +87,7 @@ export function TechnicalTreeCanvas({
       80,
     );
     return () => clearTimeout(timer);
-  }, [fitKey, flow]);
+  }, [compactLayout, fitKey, flow]);
 
   useEffect(() => {
     if (renderer !== 'react-flow' || command === null) return;
@@ -85,7 +99,10 @@ export function TechnicalTreeCanvas({
   }, [command, flow, renderer]);
 
   const { nodes, edges } = useMemo(() => {
-    const positions = layoutTree(graphNodes);
+    const positions = layoutTree(
+      graphNodes,
+      compactLayout ? 'left-right' : 'top-down',
+    );
     const ancestry = ancestryOf(graphNodes, selectedId);
     const query = search.trim().toLowerCase();
 
@@ -143,10 +160,13 @@ export function TechnicalTreeCanvas({
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [graphEdges, graphNodes, search, selectedId]);
+  }, [compactLayout, graphEdges, graphNodes, search, selectedId]);
 
   const sigmaPayload = useMemo<AuthorizedCanvasPayload>(() => {
-    const positions = layoutTree(graphNodes);
+    const positions = layoutRadialTree(
+      graphNodes,
+      compactLayout ? 'portrait' : 'landscape',
+    );
     return {
       authorization: 'server-filtered',
       visibleNodeCount: graphNodes.length,
@@ -171,7 +191,7 @@ export function TechnicalTreeCanvas({
         relationship: edge.type,
       })),
     };
-  }, [graphEdges, graphNodes]);
+  }, [compactLayout, graphEdges, graphNodes]);
 
   if (renderer === 'sigma') {
     return (

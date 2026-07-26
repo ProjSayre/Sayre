@@ -1,4 +1,8 @@
 import type {
+  McpClientKeyCreateRequest,
+  McpClientKeyIssued,
+  McpClientKeyView,
+  McpKeySettingsResponse,
   ProviderJobState,
   ProviderPurpose,
   ProviderSettingsResponse,
@@ -6,6 +10,7 @@ import type {
   ProviderSettingView,
 } from '@sayre/shared-types';
 import {
+  DEFAULT_REPOSITORY_ID,
   FEATURES,
   GRAPH_EDGES,
   GRAPH_NODES,
@@ -45,6 +50,12 @@ import type {
   OnboardingWorkflow,
   Repository,
 } from './types';
+import {
+  parseMcpClientKey,
+  parseMcpIssuedKey,
+  parseMcpRateLimit,
+  parseMcpSettingsResponse,
+} from './mcpSettingsContract';
 import {
   parseProviderSettingsResponse,
   parseProviderSettingView,
@@ -93,6 +104,14 @@ export interface WorkspaceDataSource {
     purpose: ProviderPurpose,
     update: ProviderSettingsUpdateRequest,
   ): Promise<ProviderSettingView>;
+  mcpSettings(signal: AbortSignal): Promise<McpKeySettingsResponse>;
+  issueMcpKey(
+    request: McpClientKeyCreateRequest,
+  ): Promise<McpClientKeyIssued>;
+  revokeMcpKey(keyId: string): Promise<McpClientKeyView>;
+  saveMcpRateLimit(
+    rateLimitPerMinute: number,
+  ): Promise<{ rateLimitPerMinute: number }>;
   readonly githubInstallUrl: string;
   readonly installationSummary: {
     accountName: string;
@@ -269,7 +288,7 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
   async nodeOverlay(nodeId, signal) {
     const [response, history] = await Promise.all([
       fetchNodeOverlay(nodeId, { signal }),
-      fetchAgentSkillMdHistory(nodeId, fetch, signal).catch(() => []),
+      fetchAgentSkillMdHistory(nodeId, coreFetch, signal).catch(() => []),
     ]);
     return overlay(response, history);
   },
@@ -295,6 +314,42 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
       },
       'Provider settings could not be saved.',
     ).then(parseProviderSettingView);
+  },
+  mcpSettings(signal) {
+    return jsonRequest<unknown>(
+      '/api/mcp-settings',
+      { method: 'GET', signal, cache: 'no-store' },
+      'MCP settings could not be loaded.',
+    ).then(parseMcpSettingsResponse);
+  },
+  issueMcpKey(request) {
+    return jsonRequest<unknown>(
+      '/api/mcp-settings/keys',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(request),
+      },
+      'The MCP credential could not be issued.',
+    ).then(parseMcpIssuedKey);
+  },
+  revokeMcpKey(keyId) {
+    return jsonRequest<unknown>(
+      `/api/mcp-settings/keys/${encodeURIComponent(keyId)}`,
+      { method: 'DELETE' },
+      'The MCP credential could not be revoked.',
+    ).then(parseMcpClientKey);
+  },
+  saveMcpRateLimit(rateLimitPerMinute) {
+    return jsonRequest<unknown>(
+      '/api/mcp-settings/rate-limit',
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rateLimitPerMinute }),
+      },
+      'The MCP rate limit could not be saved.',
+    ).then(parseMcpRateLimit);
   },
 };
 
@@ -341,6 +396,29 @@ function fixtureOverlay(nodeId: string): NodeOverlay {
     standards: null,
   };
 }
+
+const FIXTURE_MCP_KEY: McpClientKeyView = {
+  id: '77777777-7777-4777-8777-777777777777',
+  name: 'Local planning agent',
+  keyPrefix: 'mcp_live_0123456789abcdef',
+  grants: [
+    {
+      repoId: DEFAULT_REPOSITORY_ID,
+      branch: 'refs/heads/main',
+      pathPrefix: null,
+    },
+  ],
+  expiresAt: null,
+  createdAt: '2026-07-24T17:20:00.000Z',
+  createdByLabel: 'Alex Kwon',
+  revokedAt: null,
+  revokedByLabel: null,
+  lastUsedAt: '2026-07-25T14:10:00.000Z',
+};
+
+const fixtureMcpKeys = new Map<string, McpClientKeyView>([
+  [FIXTURE_MCP_KEY.id, FIXTURE_MCP_KEY],
+]);
 
 export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
   id: 'fixture',
@@ -482,5 +560,47 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
       endpointConfigured: update.endpointId !== null,
       updatedAt: new Date().toISOString(),
     };
+  },
+  async mcpSettings() {
+    return {
+      keys: [...fixtureMcpKeys.values()],
+      rateLimitPerMinute: 60,
+    };
+  },
+  async issueMcpKey(request) {
+    const id = crypto.randomUUID();
+    const keyPrefix = `mcp_live_${id.replaceAll('-', '').slice(0, 16)}`;
+    const issued: McpClientKeyIssued = {
+      id,
+      name: request.name,
+      keyPrefix,
+      grants: request.grants,
+      expiresAt: request.expiresAt,
+      createdAt: new Date().toISOString(),
+      createdByLabel: 'Alex Kwon',
+      revokedAt: null,
+      revokedByLabel: null,
+      lastUsedAt: null,
+      token: `${keyPrefix}.${'A'.repeat(43)}`,
+    };
+    const { token: _token, ...view } = issued;
+    fixtureMcpKeys.set(view.id, view);
+    return issued;
+  },
+  async revokeMcpKey(keyId) {
+    const key = fixtureMcpKeys.get(keyId);
+    if (key === undefined) {
+      throw new WorkspaceRequestError('Fixture MCP credential not found.', 404);
+    }
+    const revoked: McpClientKeyView = {
+      ...key,
+      revokedAt: new Date().toISOString(),
+      revokedByLabel: 'Alex Kwon',
+    };
+    fixtureMcpKeys.set(keyId, revoked);
+    return revoked;
+  },
+  async saveMcpRateLimit(rateLimitPerMinute) {
+    return { rateLimitPerMinute };
   },
 };

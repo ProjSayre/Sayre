@@ -3,6 +3,7 @@ import type {
   AuthorizedCanvasNode,
   AuthorizedCanvasPayload,
 } from './scaleGraph';
+import { coreFetch } from './coreFetch';
 
 export interface ProductTreeNode {
   id: string;
@@ -310,7 +311,7 @@ export async function fetchProductTree(
   if (!normalizedRepoId || !normalizedRefName) {
     throw new RangeError('A repository ID and ref are required.');
   }
-  const response = await (options.fetchImpl ?? fetch)(
+  const response = await (options.fetchImpl ?? coreFetch)(
     `/api/core/repos/${encodeURIComponent(normalizedRepoId)}/product-tree?ref=${encodeURIComponent(normalizedRefName)}`,
     {
       method: 'GET',

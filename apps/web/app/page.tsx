@@ -28,7 +28,9 @@ function initialSettings(
   value: string | string[] | undefined,
 ): SettingsSection | null {
   const normalized = singleParam(value);
-  return normalized === 'github' || normalized === 'providers'
+  return normalized === 'github' ||
+    normalized === 'providers' ||
+    normalized === 'mcp'
     ? normalized
     : null;
 }

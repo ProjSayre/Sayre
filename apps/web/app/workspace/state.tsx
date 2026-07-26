@@ -40,6 +40,10 @@ import type {
 import { workspaceView } from './viewRegistry';
 import { browserRealtimeUrl, parseGatewayMessage } from './realtime';
 import type {
+  McpClientKeyCreateRequest,
+  McpClientKeyIssued,
+  McpClientKeyView,
+  McpKeySettingsResponse,
   ProviderPurpose,
   ProviderSettingsResponse,
   ProviderSettingsUpdateRequest,
@@ -167,6 +171,14 @@ interface WorkspaceContextValue {
     purpose: ProviderPurpose,
     update: ProviderSettingsUpdateRequest,
   ) => Promise<ProviderSettingView>;
+  loadMcpSettings: (signal: AbortSignal) => Promise<McpKeySettingsResponse>;
+  issueMcpKey: (
+    request: McpClientKeyCreateRequest,
+  ) => Promise<McpClientKeyIssued>;
+  revokeMcpKey: (keyId: string) => Promise<McpClientKeyView>;
+  saveMcpRateLimit: (
+    rateLimitPerMinute: number,
+  ) => Promise<{ rateLimitPerMinute: number }>;
   githubInstallUrl: string;
   installationSummary: WorkspaceDataSource['installationSummary'];
   viewer: WorkspaceDataSource['viewer'];
@@ -831,6 +843,10 @@ export function WorkspaceProvider({
       runOnboardingStep,
       loadProviderSettings: source.providerSettings,
       saveProviderSetting: source.saveProviderSetting,
+      loadMcpSettings: source.mcpSettings,
+      issueMcpKey: source.issueMcpKey,
+      revokeMcpKey: source.revokeMcpKey,
+      saveMcpRateLimit: source.saveMcpRateLimit,
       githubInstallUrl: source.githubInstallUrl,
       installationSummary: source.installationSummary,
       viewer: source.viewer,
@@ -854,7 +870,11 @@ export function WorkspaceProvider({
       semanticState,
       source.id,
       source.githubInstallUrl,
+      source.issueMcpKey,
       source.installationSummary,
+      source.mcpSettings,
+      source.revokeMcpKey,
+      source.saveMcpRateLimit,
       source.viewer,
       source.providerSettings,
       source.saveProviderSetting,
