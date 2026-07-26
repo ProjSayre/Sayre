@@ -95,6 +95,33 @@ describe('signSessionToken / verifySessionToken', () => {
     await expect(verifySessionToken(installStateToken)).rejects.toBeInstanceOf(SessionTokenError);
   });
 
+  // AUTH-01 (spec.md AC-6): the login-state token family must be equally
+  // non-cross-usable as a session token — this is the reverse direction of
+  // loginState.test.ts's "rejects a session-purpose token presented as login
+  // state" (that test only proved session-as-login-state fails; this proves
+  // login-state-as-session also fails). All three families share
+  // JWT_SIGNING_KEY, so `purpose` is the only thing stopping this.
+  it('rejects a login_oauth-purpose (login-state) token replayed as a session token', async () => {
+    const loginStateToken = jwt.sign(
+      { nonce: 'x', purpose: 'login_oauth' },
+      SIGNING_KEY,
+      { algorithm: 'HS256', expiresIn: '10m' },
+    );
+    await expect(verifySessionToken(loginStateToken)).rejects.toBeInstanceOf(SessionTokenError);
+  });
+
+  it('rejects a login_oauth-purpose token that even carries a well-formed sub/org_id/roles shape', async () => {
+    // Guards against a verifier that only checks purpose loosely (e.g. string
+    // includes) or that infers "session-shaped" from the presence of the
+    // other claims rather than requiring purpose === 'session' exactly.
+    const forged = jwt.sign(
+      { sub: 'user-1', org_id: ORG_ID, roles: ['owner'], nonce: 'x', purpose: 'login_oauth' },
+      SIGNING_KEY,
+      { algorithm: 'HS256', expiresIn: '10m' },
+    );
+    await expect(verifySessionToken(forged)).rejects.toBeInstanceOf(SessionTokenError);
+  });
+
   it('rejects a missing/empty sub claim', async () => {
     const missingSub = jwt.sign({ org_id: ORG_ID, roles: ['owner'], purpose: 'session' }, SIGNING_KEY, {
       algorithm: 'HS256',

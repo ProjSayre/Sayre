@@ -9,6 +9,7 @@ import type {
   AuthorizedCanvasNode,
   AuthorizedCanvasPayload,
 } from './scaleGraph';
+import { coreFetch } from './coreFetch';
 
 export interface Viewport {
   x: number;
@@ -286,7 +287,7 @@ export async function fetchTechnicalTree(
     zoom: String(viewport.zoom),
   });
 
-  const response = await (options.fetchImpl ?? fetch)(
+  const response = await (options.fetchImpl ?? coreFetch)(
     `/api/core/repos/${encodeURIComponent(normalizedRepoId)}/technical-tree?${params}`,
     {
       method: 'GET',

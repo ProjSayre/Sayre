@@ -5,6 +5,7 @@ import { productTreeRouter } from './routes/productTree';
 import { realtimeInternalRouter } from './routes/realtimeInternal';
 import { githubWebhookRouter } from './routes/githubWebhook';
 import { githubInstallRouter } from './routes/githubInstall';
+import { loginRouter } from './routes/login';
 import { providerSettingsRouter } from './routes/providerSettings';
 import { providerJobStateRouter } from './routes/providerJobState';
 import { nodeOverlayRouter } from './routes/nodeOverlay';
@@ -36,6 +37,12 @@ export function createApp(): Express {
   // start only; the callback route resolves org from the signed `state` JWT
   // and stays exempt — it can't rely on a session surviving the GitHub redirect).
   app.use(githubInstallRouter);
+  // Real "Sign in with GitHub" login/signup (AUTH-01) — the only production
+  // path that mints a session besides the dev-only devSessionContext(). Both
+  // routes are unauthenticated: the login-start route IS the entry point, and
+  // the callback route's trust anchor is the signed login-state `state` JWT,
+  // not a session (see routes/login.ts / auth/loginState.ts).
+  app.use(loginRouter);
   app.use(providerSettingsRouter);
   app.use(nodeOverlayRouter);
   app.use(repositoryCatalogRouter);

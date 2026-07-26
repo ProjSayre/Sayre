@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { NextFunction, Request, Response } from 'express';
 import { asyncHandler, errorHandler, NotImplementedError } from './express';
 import { ViewportParseError } from './viewport';
+import { LoginCallbackBadRequestError } from '../services/loginService';
+import {
+  GithubOAuthApiError,
+  GithubOAuthCodeError,
+  NoVerifiedEmailError,
+} from '../github/oauthClient';
 
 function makeRes(): Response {
   const res = {} as Response;
@@ -82,5 +88,56 @@ describe('errorHandler', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'Internal server error' });
+  });
+
+  // AUTH-01 ("Sign in with GitHub"): spec.md's errorHandler mapping table for
+  // the four new error types had no direct test anywhere — loginService.test.ts
+  // only asserts the SERVICE throws the right error class, never that
+  // errorHandler.ts actually maps it to the documented status code/body. Added
+  // here, mirroring this file's existing per-error-type unit style.
+  describe('AUTH-01 error mappings', () => {
+    it('maps LoginCallbackBadRequestError to 400 with a generic body (no message leakage)', () => {
+      const res = makeRes();
+      const err = new LoginCallbackBadRequestError('Invalid or expired state: nonce mismatch xyz');
+
+      errorHandler(err, {} as Request, res, (() => {}) as NextFunction);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'bad request' });
+    });
+
+    it('maps GithubOAuthCodeError to 400 with a generic body', () => {
+      const res = makeRes();
+      const err = new GithubOAuthCodeError();
+
+      errorHandler(err, {} as Request, res, (() => {}) as NextFunction);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'bad request' });
+    });
+
+    it('maps NoVerifiedEmailError to 422 with its documented body', () => {
+      const res = makeRes();
+      const err = new NoVerifiedEmailError();
+
+      errorHandler(err, {} as Request, res, (() => {}) as NextFunction);
+
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'no usable verified email on the GitHub account',
+      });
+    });
+
+    it('maps GithubOAuthApiError to 502 with a generic body (never the transport detail)', () => {
+      const res = makeRes();
+      const err = new GithubOAuthApiError('ECONNREFUSED talking to 10.0.0.5:443 (internal)');
+
+      errorHandler(err, {} as Request, res, (() => {}) as NextFunction);
+
+      expect(res.status).toHaveBeenCalledWith(502);
+      expect(res.json).toHaveBeenCalledWith({ error: 'GitHub authentication request failed' });
+      const jsonArg = (res.json as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0];
+      expect(JSON.stringify(jsonArg)).not.toContain('10.0.0.5');
+    });
   });
 });

@@ -13,6 +13,12 @@ import {
   InstallationOrgConflictError,
   InstallCallbackBadRequestError,
 } from '../services/githubAppInstallService';
+import { LoginCallbackBadRequestError } from '../services/loginService';
+import {
+  GithubOAuthApiError,
+  GithubOAuthCodeError,
+  NoVerifiedEmailError,
+} from '../github/oauthClient';
 import { AuthenticationError } from './authenticate';
 import { AuthorizationError } from './authorize';
 import {
@@ -92,6 +98,27 @@ export function errorHandler(
 
   if (err instanceof GithubApiError) {
     res.status(502).json({ error: 'GitHub API request failed' });
+    return;
+  }
+
+  // AUTH-01 "Sign in with GitHub" — generic bodies only, no message leakage.
+  if (err instanceof LoginCallbackBadRequestError) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
+  if (err instanceof GithubOAuthCodeError) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
+  if (err instanceof NoVerifiedEmailError) {
+    res.status(422).json({ error: 'no usable verified email on the GitHub account' });
+    return;
+  }
+
+  if (err instanceof GithubOAuthApiError) {
+    res.status(502).json({ error: 'GitHub authentication request failed' });
     return;
   }
 

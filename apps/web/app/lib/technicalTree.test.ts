@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { rendererForVisibleNodeCount, toPresentationGraph } from './scaleGraph';
+import { clearStoredSessionToken, setStoredSessionToken } from './coreFetch';
 import {
   TechnicalTreeRequestError,
   TechnicalTreeResponseError,
@@ -259,5 +260,65 @@ describe('fetchTechnicalTree', () => {
       }),
     ).rejects.toBeInstanceOf(RangeError);
     expect(invalidJson).toHaveBeenCalledTimes(1);
+  });
+});
+
+// AUTH-01: every existing 'fetchTechnicalTree' test above supplies an
+// explicit `fetchImpl`, so none of them actually exercise the spec'd default
+// ("options.fetchImpl ?? coreFetch") — a real gap, since AC-12 requires
+// fetchTechnicalTree to send `Authorization: Bearer <token>` when one is
+// stored and omit it when not, via THIS call site's default wiring, not just
+// coreFetch.test.ts's standalone coverage of coreFetch itself.
+describe('fetchTechnicalTree — default fetchImpl is coreFetch (AUTH-01)', () => {
+  function makeFakeWindow() {
+    const store = new Map<string, string>();
+    return {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    };
+  }
+
+  const originalWindow = (globalThis as { window?: unknown }).window;
+
+  beforeEach(() => {
+    (globalThis as { window?: unknown }).window = makeFakeWindow();
+  });
+
+  afterEach(() => {
+    clearStoredSessionToken();
+    (globalThis as { window?: unknown }).window = originalWindow;
+    vi.unstubAllGlobals();
+  });
+
+  it('attaches Authorization: Bearer <token> on the real request when a session token is stored', async () => {
+    setStoredSessionToken('my-technical-tree-token');
+    const fetchMock = vi.fn(async () => jsonResponse(FULL_PARSE_RESPONSE));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchTechnicalTree('repo-1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const headers = new Headers(init.headers);
+    expect(headers.get('Authorization')).toBe('Bearer my-technical-tree-token');
+  });
+
+  it('omits Authorization on the real request when no session token is stored (dev/devSessionContext path)', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(FULL_PARSE_RESPONSE));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchTechnicalTree('repo-1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const headers = new Headers(init.headers);
+    expect(headers.has('Authorization')).toBe(false);
   });
 });
