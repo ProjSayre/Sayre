@@ -60,13 +60,15 @@ realtime_dlq_url=$(create_standard_queue graph-updated-realtime-dlq)
 enrichment_default_dlq_url=$(create_standard_queue enrichment-default-dlq)
 enrichment_priority_dlq_url=$(create_standard_queue enrichment-onboarding-priority-dlq)
 embedding_dlq_url=$(create_standard_queue embedding-upserts-dlq)
+dynamic_coverage_dlq_url=$(create_standard_queue dynamic-coverage-refresh-dlq)
 
 for dlq_url in \
   "$ingestion_dlq_url" \
   "$realtime_dlq_url" \
   "$enrichment_default_dlq_url" \
   "$enrichment_priority_dlq_url" \
-  "$embedding_dlq_url"; do
+  "$embedding_dlq_url" \
+  "$dynamic_coverage_dlq_url"; do
   configure_dlq "$dlq_url"
 done
 
@@ -75,6 +77,7 @@ realtime_url=$(create_standard_queue graph-updated-realtime)
 enrichment_default_url=$(create_standard_queue enrichment-default)
 enrichment_priority_url=$(create_standard_queue enrichment-onboarding-priority)
 embedding_url=$(create_standard_queue embedding-upserts)
+dynamic_coverage_url=$(create_standard_queue dynamic-coverage-refresh)
 create_standard_queue w0-04-selftest >/dev/null
 
 configure_source "$ingestion_url" "$(queue_arn "$ingestion_dlq_url")"
@@ -82,6 +85,7 @@ configure_source "$realtime_url" "$(queue_arn "$realtime_dlq_url")"
 configure_source "$enrichment_default_url" "$(queue_arn "$enrichment_default_dlq_url")"
 configure_source "$enrichment_priority_url" "$(queue_arn "$enrichment_priority_dlq_url")"
 configure_source "$embedding_url" "$(queue_arn "$embedding_dlq_url")"
+configure_source "$dynamic_coverage_url" "$(queue_arn "$dynamic_coverage_dlq_url")"
 
 topic_arn=$(awslocal sns create-topic --name graph-updated --query TopicArn --output text)
 

@@ -825,9 +825,74 @@ a {
   content: "D";
 }
 
+.react-flow__node.graph-node-file::after {
+  float: right;
+  margin-left: 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.react-flow__node.graph-coverage-pass::after {
+  color: #78dba9;
+  content: "PASS";
+}
+
+.react-flow__node.graph-coverage-fail::after {
+  color: #ff6b78;
+  content: "FAIL";
+}
+
+.react-flow__node.graph-coverage-stale::after {
+  color: #f7c66c;
+  content: "STALE";
+}
+
+.react-flow__node.graph-coverage-unknown::after {
+  color: #8795a5;
+  content: "UNMEASURED";
+}
+
 .react-flow__node.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(184, 245, 66, 0.13), 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
+.coverage-summary {
+  display: grid;
+  gap: 3px;
+  margin-top: 10px;
+  border-left: 2px solid currentColor;
+  padding-left: 8px;
+  color: #8795a5;
+}
+
+.coverage-summary strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.coverage-summary span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.coverage-summary-pass {
+  color: #78dba9;
+}
+
+.coverage-summary-fail {
+  color: #ff6b78;
+}
+
+.coverage-summary-stale {
+  color: #f7c66c;
 }
 
 .react-flow__handle {

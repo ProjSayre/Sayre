@@ -23,6 +23,7 @@ from workers.messaging.envelope import MessageEnvelope
 from workers.messaging.idempotency import SqliteDeliveryStore
 from workers.messaging.sns_client import publish_graph_updated
 from workers.messaging.sqs_client import (
+    DYNAMIC_COVERAGE_QUEUE,
     EMBEDDING_UPSERTS_QUEUE,
     ENRICHMENT_DEFAULT_QUEUE,
     ENRICHMENT_PRIORITY_QUEUE,
@@ -270,6 +271,44 @@ def test_embedding_queue_roundtrip_is_physically_independent(tmp_path: Path):
         get_queue_url(INGESTION_QUEUE),
         get_queue_url(ENRICHMENT_DEFAULT_QUEUE),
         get_queue_url(ENRICHMENT_PRIORITY_QUEUE),
+    }
+
+
+def test_dynamic_coverage_queue_roundtrip_is_physically_independent(tmp_path: Path):
+    """W4-03's nightly scheduler (scripts/schedule_dynamic_coverage.py) publishes here;
+    sayre_workers.dynamic_coverage.consumers.run_coverage_consumer drains it. A
+    separate physical queue from every other lane, same as embedding-upserts."""
+    _drain(DYNAMIC_COVERAGE_QUEUE)
+    envelope = _envelope(
+        type="coverage.nightly",
+        idempotency_key=f"coverage-nightly-{time.time_ns()}",
+        graph_scope_key="org/repo/ref",
+        graph_version=0,
+        payload={
+            "repository_id": "repo-1",
+            "ref_name": "refs/heads/main",
+            "revision_sha": "a" * 40,
+            "changed_paths": ["src/app.py"],
+            "parse_complete": True,
+            "triggered_at": "2026-07-24T00:00:00+00:00",
+        },
+    )
+    publish(DYNAMIC_COVERAGE_QUEUE, envelope)
+    received: list[MessageEnvelope] = []
+    with SqliteDeliveryStore(tmp_path / "dynamic-coverage.sqlite3") as store:
+        _poll(
+            DYNAMIC_COVERAGE_QUEUE,
+            received.append,
+            store,
+            1,
+            consumer_id="dynamic-coverage-worker",
+        )
+    assert received == [envelope]
+    assert get_queue_url(DYNAMIC_COVERAGE_QUEUE) not in {
+        get_queue_url(INGESTION_QUEUE),
+        get_queue_url(ENRICHMENT_DEFAULT_QUEUE),
+        get_queue_url(ENRICHMENT_PRIORITY_QUEUE),
+        get_queue_url(EMBEDDING_UPSERTS_QUEUE),
     }
 
 

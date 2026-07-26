@@ -33,6 +33,7 @@ function nodeRecord(
   label: string,
   path: string,
   parent?: { id: string; path: string },
+  overrides: Record<string, unknown> = {},
 ): GraphReadRecord {
   return record({
     id,
@@ -45,6 +46,12 @@ function nodeRecord(
     parent_path: parent?.path ?? null,
     parent_repo_id: parent ? REPO_ID : null,
     parent_ref_name: parent ? 'refs/heads/main' : null,
+    node_last_edited_at: null,
+    node_last_structural_change_at: null,
+    coverage_test_status: null,
+    coverage_edge_status: null,
+    coverage_last_run: null,
+    ...overrides,
   });
 }
 
@@ -283,6 +290,11 @@ describe('RbacGraphQueryService', () => {
         name: 'index.ts',
         path: 'src/public/index.ts',
         parentId: null,
+        coverage: {
+          status: 'unknown',
+          lastRun: null,
+          coveringTests: 0,
+        },
       },
     ]);
     expect(executor.run).toHaveBeenCalledWith(
@@ -380,6 +392,8 @@ describe('RbacGraphQueryService', () => {
     expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain(
       'parent.ref_name = $ref_name',
     );
+    expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain('coverage:COVERS');
+    expect(GET_NODES_IN_VIEWPORT_CYPHER).toContain('test.org_id = $org_id');
     expect(GET_NODES_IN_VIEWPORT_CYPHER).not.toContain(ORG_ID);
   });
 
@@ -428,8 +442,90 @@ describe('RbacGraphQueryService', () => {
         name: 'main.ts',
         path: 'src/public/main.ts',
         parentId: null,
+        coverage: {
+          status: 'unknown',
+          lastRun: null,
+          coveringTests: 0,
+        },
       },
     ]);
+  });
+
+  it('returns pass, stale-after-code-edit, and fail coverage badges without Test nodes', async () => {
+    const parent = { id: 'public-folder', path: 'src/public' };
+    const executor = new QueueExecutor([[
+      nodeRecord('fresh-file', 'File', 'src/public/fresh.ts', parent, {
+        node_last_edited_at: '2026-07-23T10:00:00Z',
+        coverage_test_status: 'pass',
+        coverage_edge_status: 'measured',
+        coverage_last_run: '2026-07-23T11:00:00Z',
+      }),
+      nodeRecord('stale-file', 'File', 'src/public/stale.ts', parent, {
+        node_last_structural_change_at: '2026-07-23T11:30:00Z',
+        coverage_test_status: 'pass',
+        coverage_edge_status: 'measured',
+        coverage_last_run: '2026-07-23T11:00:00Z',
+      }),
+      nodeRecord('failing-file', 'File', 'src/public/failing.ts', parent, {
+        node_last_edited_at: '2026-07-23T10:00:00Z',
+        coverage_test_status: 'fail',
+        coverage_edge_status: 'measured',
+        coverage_last_run: '2026-07-23T11:00:00Z',
+      }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+      () => Date.parse('2026-07-23T12:00:00Z'),
+    );
+
+    const nodes = await service.getNodesInViewport(
+      REPO_ID,
+      REF_NAME,
+      VIEWPORT,
+      user('alice'),
+    );
+
+    expect(nodes.map(({ id, coverage }) => [id, coverage?.status])).toEqual([
+      ['fresh-file', 'pass'],
+      ['stale-file', 'stale'],
+      ['failing-file', 'fail'],
+    ]);
+    expect(nodes.every((node) => node.label === 'File')).toBe(true);
+  });
+
+  it('merges multiple covering tests with failure precedence and a stable count', async () => {
+    const parent = { id: 'public-folder', path: 'src/public' };
+    const executor = new QueueExecutor([[
+      nodeRecord('shared-file', 'File', 'src/public/shared.ts', parent, {
+        coverage_test_status: 'pass',
+        coverage_edge_status: 'measured',
+        coverage_last_run: '2026-07-23T11:00:00Z',
+      }),
+      nodeRecord('shared-file', 'File', 'src/public/shared.ts', parent, {
+        coverage_test_status: 'fail',
+        coverage_edge_status: 'measured',
+        coverage_last_run: '2026-07-23T11:30:00Z',
+      }),
+    ]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+      () => Date.parse('2026-07-23T12:00:00Z'),
+    );
+
+    const [node] = await service.getNodesInViewport(
+      REPO_ID,
+      REF_NAME,
+      VIEWPORT,
+      user('alice'),
+    );
+
+    expect(node?.coverage).toEqual({
+      status: 'fail',
+      lastRun: '2026-07-23T11:30:00.000Z',
+      coveringTests: 2,
+    });
   });
 
   it('drops non-canvas labels even if a graph adapter returns one', async () => {

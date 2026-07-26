@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
 from pathlib import PurePosixPath
 
 from sayre_workers.parsing import ParseResult, language_for_path
@@ -79,9 +80,11 @@ def build_projection(
     existing_symbols: tuple[SymbolRef, ...] = (),
     affected_paths: tuple[str, ...],
     full_rebuild: bool,
+    changed_at: datetime | None = None,
 ) -> GraphProjection:
     file_paths = tuple(sorted(set(tracked_paths)))
     file_set = set(file_paths)
+    affected_set = set(affected_paths)
     folder_paths = _folder_paths(file_paths)
     base_properties = {
         "org_id": scope.org_id,
@@ -108,6 +111,25 @@ def build_projection(
                     "path": path,
                     "name": PurePosixPath(path).name,
                     "language": language_for_path(path) or "unknown",
+                    **(
+                        {"last_structural_change_at": changed_at.isoformat()}
+                        if changed_at is not None and path in affected_set
+                        else {}
+                    ),
+                },
+            )
+        )
+
+    for test in parsed.tests:
+        nodes.append(
+            GraphNode(
+                label="Test",
+                uid=stable_uid(scope, "Test", test.path),
+                properties={
+                    **base_properties,
+                    "path": test.path,
+                    "name": test.name,
+                    "coverage_status": test.coverage_status,
                 },
             )
         )
@@ -153,7 +175,6 @@ def build_projection(
             SymbolRef("Class", uid, parsed_class.file_path, parsed_class.name, parsed_class.qualified_name)
         )
 
-    affected_set = set(affected_paths)
     symbols = tuple(
         sorted(
             [symbol for symbol in existing_symbols if symbol.file_path not in affected_set]
@@ -164,39 +185,36 @@ def build_projection(
     symbol_by_identity = {
         (symbol.label, symbol.file_path, symbol.qualified_name): symbol for symbol in symbols
     }
-    edges: set[tuple[str, str, str]] = set()
+    edges: dict[tuple[str, str, str], dict[str, object]] = {}
     for folder_path in folder_paths:
         if not folder_path:
             continue
         parent = PurePosixPath(folder_path).parent.as_posix()
-        edges.add(
-            (
-                "CONTAINS",
-                stable_uid(scope, "Folder", "" if parent == "." else parent),
-                stable_uid(scope, "Folder", folder_path),
-            )
+        key = (
+            "CONTAINS",
+            stable_uid(scope, "Folder", "" if parent == "." else parent),
+            stable_uid(scope, "Folder", folder_path),
         )
+        edges[key] = {}
     for file_path in file_paths:
         parent = PurePosixPath(file_path).parent.as_posix()
-        edges.add(
-            (
-                "CONTAINS",
-                stable_uid(scope, "Folder", "" if parent == "." else parent),
-                stable_uid(scope, "File", file_path),
-            )
+        key = (
+            "CONTAINS",
+            stable_uid(scope, "Folder", "" if parent == "." else parent),
+            stable_uid(scope, "File", file_path),
         )
+        edges[key] = {}
     for parsed_import in parsed.imports:
         target_path = _resolve_import(
             parsed_import.file_path, parsed_import.module, parsed_import.is_relative, file_set
         )
         if target_path is not None and target_path != parsed_import.file_path:
-            edges.add(
-                (
-                    "IMPORTS",
-                    stable_uid(scope, "File", parsed_import.file_path),
-                    stable_uid(scope, "File", target_path),
-                )
+            key = (
+                "IMPORTS",
+                stable_uid(scope, "File", parsed_import.file_path),
+                stable_uid(scope, "File", target_path),
             )
+            edges[key] = {}
     for call in parsed.calls:
         if call.caller_qualified_name is None:
             continue
@@ -205,46 +223,37 @@ def build_projection(
         )
         target_uid = _symbol_target(call.callee_name, symbols, "Function")
         if caller is not None and target_uid is not None:
-            edges.add(("CALLS", caller.uid, target_uid))
+            edges[("CALLS", caller.uid, target_uid)] = {}
     for inheritance in parsed.inherits:
         subclass = symbol_by_identity.get(
             ("Class", inheritance.file_path, inheritance.subclass_qualified_name)
         )
         target_uid = _symbol_target(inheritance.base_name, symbols, "Class")
         if subclass is not None and target_uid is not None and subclass.uid != target_uid:
-            edges.add(("INHERITS", subclass.uid, target_uid))
+            edges[("INHERITS", subclass.uid, target_uid)] = {}
 
-    for test in parsed.tests:
-        nodes.append(
-            GraphNode(
-                label="Test",
-                uid=stable_uid(scope, "Test", test.path),
-                properties={
-                    **base_properties,
-                    "path": test.path,
-                    "name": test.name,
-                    "coverage_status": test.coverage_status,
-                },
-            )
-        )
-
-    graph_edges = tuple(
-        GraphEdge(relationship, source_uid, target_uid)  # type: ignore[arg-type]
-        for relationship, source_uid, target_uid in sorted(edges)
-    )
-    covers_edges = tuple(
-        GraphEdge(
+    for coverage in parsed.covers:
+        if coverage.test_path not in file_set or coverage.file_path not in file_set:
+            continue
+        key = (
             "COVERS",
             stable_uid(scope, "Test", coverage.test_path),
             stable_uid(scope, "File", coverage.file_path),
-            properties={"status": coverage.status, "last_run": coverage.last_run},
         )
-        for coverage in sorted(parsed.covers, key=lambda item: (item.test_path, item.file_path))
+        edges[key] = {
+            "status": coverage.status,
+            "last_run": coverage.last_run.isoformat() if coverage.last_run is not None else None,
+        }
+
+    graph_edges = tuple(
+        GraphEdge(relationship, source_uid, target_uid, edges[key])  # type: ignore[arg-type]
+        for key in sorted(edges)
+        for relationship, source_uid, target_uid in (key,)
     )
     return GraphProjection(
         scope=scope,
         nodes=tuple(nodes),
-        edges=graph_edges + covers_edges,
+        edges=graph_edges,
         current_file_paths=file_paths,
         current_folder_paths=folder_paths,
         affected_file_paths=tuple(sorted(affected_set)),

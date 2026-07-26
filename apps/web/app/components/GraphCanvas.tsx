@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react';
 import {
   rendererForVisibleNodeCount,
+  coverageColor,
   type AuthorizedCanvasNode,
   type AuthorizedCanvasPayload,
 } from '../lib/scaleGraph';
@@ -20,6 +21,7 @@ import {
   TechnicalTreeRequestError,
   fetchTechnicalTree,
   toReactFlowElements,
+  type GraphNodeData,
 } from '../lib/technicalTree';
 import { ProviderStateStatus } from './ProviderStateBanner';
 import type { ProviderStateSelection } from '../lib/providerState';
@@ -79,7 +81,11 @@ function ReactFlowCanvas({ payload, onSelect }: ReactFlowCanvasProps) {
         zoomable
         position="bottom-right"
         maskColor="rgba(5, 8, 12, 0.72)"
-        nodeColor={(node) => (node.data.kind === 'Folder' ? '#f7c66c' : '#77a7ff')}
+        nodeColor={(node) =>
+          node.data.kind === 'Folder'
+            ? '#f7c66c'
+            : coverageColor((node.data as GraphNodeData).coverage?.status)
+        }
       />
     </ReactFlow>
   );
@@ -211,6 +217,21 @@ export function GraphCanvas({
         <ReactFlowCanvas payload={payload} onSelect={setSelectedId} />
       )}
 
+      {selected.kind === 'File' && selected.coverage !== undefined && (
+        <div
+          className={`coverage-summary coverage-summary-${selected.coverage.status}`}
+          aria-label={`Coverage ${selected.coverage.status}`}
+        >
+          <strong>{selected.coverage.status}</strong>
+          <span>
+            {selected.coverage.coveringTests.toLocaleString()}{' '}
+            {selected.coverage.coveringTests === 1 ? 'test' : 'tests'}
+            {selected.coverage.lastRun === null
+              ? ' · never measured'
+              : ` · ${new Date(selected.coverage.lastRun).toLocaleString()}`}
+          </span>
+        </div>
+      )}
       <NodeOverlayPanel nodeId={selected.id} />
     </div>
   );
