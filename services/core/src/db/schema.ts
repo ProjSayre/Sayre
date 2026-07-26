@@ -78,6 +78,13 @@ export const users = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
     name: text("name"),
+    // Global (cross-tenant) partial-unique index lives in hand-authored raw SQL
+    // (drizzle/0013_users_external_auth_id_unique.sql), NOT expressed here —
+    // same "physical DDL stays hand-authored" convention as this file's header
+    // comment. Deliberately cross-tenant (see AUTH-01 spec.md OQ-1): it race-
+    // guards concurrent first-sign-ins for the SAME GitHub identity, which
+    // requires uniqueness across rows the runtime role's RLS would otherwise
+    // filter out entirely.
     externalAuthId: text("external_auth_id"),
     // Coarse org role ('owner'/'admin'/'member') — NON-authoritative for
     // node-level RBAC (that is the `permissions` table).

@@ -87,4 +87,40 @@ describe('signInstallState / verifyInstallState', () => {
     });
     await expect(verifyInstallState(missingOrg)).rejects.toBeInstanceOf(InstallStateError);
   });
+
+  // AUTH-01 (spec.md AC-6): "conversely a login_oauth token is rejected by
+  // verifySessionToken and by verifyInstallState" — this file had NO
+  // cross-family coverage at all before AUTH-01 added a third token family
+  // sharing the same JWT_SIGNING_KEY. Added here rather than assumed, since
+  // loginState.test.ts/sessionToken.test.ts only prove the OTHER two
+  // directions (session/install-state rejected as login-state, and
+  // install-state/login-state rejected as session).
+  describe('cross-family rejection (purpose confusion, AUTH-01)', () => {
+    it('rejects a login_oauth-purpose (login-state) token presented as install state', async () => {
+      const loginStateToken = jwt.sign(
+        { nonce: 'x', purpose: 'login_oauth' },
+        SIGNING_KEY,
+        { algorithm: 'HS256', expiresIn: '10m' },
+      );
+      await expect(verifyInstallState(loginStateToken)).rejects.toBeInstanceOf(InstallStateError);
+    });
+
+    it('rejects a login_oauth-purpose token even when it forges an org_id claim', async () => {
+      const forged = jwt.sign(
+        { org_id: 'attacker-org', nonce: 'x', purpose: 'login_oauth' },
+        SIGNING_KEY,
+        { algorithm: 'HS256', expiresIn: '10m' },
+      );
+      await expect(verifyInstallState(forged)).rejects.toBeInstanceOf(InstallStateError);
+    });
+
+    it('rejects a session-purpose token presented as install state', async () => {
+      const sessionToken = jwt.sign(
+        { sub: 'user-1', org_id: 'org-1', roles: ['owner'], purpose: 'session' },
+        SIGNING_KEY,
+        { algorithm: 'HS256', expiresIn: '12h' },
+      );
+      await expect(verifyInstallState(sessionToken)).rejects.toBeInstanceOf(InstallStateError);
+    });
+  });
 });

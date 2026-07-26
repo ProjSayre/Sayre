@@ -23,6 +23,7 @@ export const CONFIG_NAMES = [
   'GITHUB_API_BASE_URL',
   'GITHUB_WEB_BASE_URL',
   'GITHUB_POST_INSTALL_REDIRECT_URL',
+  'GITHUB_LOGIN_COMPLETE_REDIRECT_URL',
   'GATEWAY_PORT',
   'SQS_GRAPH_UPDATED_REALTIME_QUEUE',
   'GATEWAY_REDIS_CHANNEL',
@@ -58,6 +59,9 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   GITHUB_API_BASE_URL: 'https://api.github.com',
   GITHUB_WEB_BASE_URL: 'https://github.com',
   GITHUB_POST_INSTALL_REDIRECT_URL: '/settings/integrations',
+  // AUTH-01: web completion page that reads the fragment-delivered session
+  // token (see apps/web/app/auth/complete/page.tsx).
+  GITHUB_LOGIN_COMPLETE_REDIRECT_URL: '/auth/complete',
   // GITHUB_APP_SLUG / GITHUB_APP_ID / GITHUB_APP_CLIENT_ID intentionally have NO
   // default: they identify the specific per-environment GitHub App (see
   // infra/github-app/README.md) and must be provisioned explicitly.

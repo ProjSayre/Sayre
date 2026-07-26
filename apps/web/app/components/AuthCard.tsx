@@ -20,30 +20,15 @@ export function AuthCard({ mode }: AuthCardProps) {
             ? 'Sign in to continue exploring your engineering memory graph.'
             : 'Connect your team to a shared, queryable map of the codebase.'}
         </p>
-        <form className="auth-form">
-          {!login ? (
-            <label className="auth-field">
-              Name
-              <input name="name" autoComplete="name" placeholder="Ada Lovelace" />
-            </label>
-          ) : null}
-          <label className="auth-field">
-            Work email
-            <input name="email" type="email" autoComplete="email" placeholder="you@company.com" />
-          </label>
-          <label className="auth-field">
-            Password
-            <input
-              name="password"
-              type="password"
-              autoComplete={login ? 'current-password' : 'new-password'}
-              placeholder="••••••••••••"
-            />
-          </label>
-          <Link className="auth-primary" href="/">
-            {login ? 'Sign in to demo' : 'Create demo workspace'}
-          </Link>
-        </form>
+        {/*
+          AUTH-01: real "Sign in with GitHub" is the only login/signup path —
+          no password/email/name form. Plain <a>, not next/link: a full
+          browser navigation is required to follow the 302 redirect chain to
+          GitHub (client-side routing would not).
+        */}
+        <a className="auth-primary" href="/api/core/auth/github/login">
+          Continue with GitHub
+        </a>
         <div className="auth-switch">
           {login ? 'New to Sayre? ' : 'Already have an account? '}
           <Link href={login ? '/signup' : '/login'}>{login ? 'Create an account' : 'Sign in'}</Link>

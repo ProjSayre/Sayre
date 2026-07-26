@@ -92,6 +92,13 @@
       "when": 1785038400000,
       "tag": "0012_github_initial_parse_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785124800000,
+      "tag": "0013_users_external_auth_id_unique",
+      "breakpoints": true
     }
   ]
 }
