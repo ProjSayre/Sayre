@@ -24,6 +24,7 @@ export const CONFIG_NAMES = [
   'GITHUB_WEB_BASE_URL',
   'GITHUB_POST_INSTALL_REDIRECT_URL',
   'GITHUB_LOGIN_COMPLETE_REDIRECT_URL',
+  'GITHUB_LOGIN_CALLBACK_URL',
   'GATEWAY_PORT',
   'SQS_GRAPH_UPDATED_REALTIME_QUEUE',
   'GATEWAY_REDIS_CHANNEL',
@@ -76,9 +77,14 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // AUTH-01: web completion page that reads the fragment-delivered session
   // token (see apps/web/app/auth/complete/page.tsx).
   GITHUB_LOGIN_COMPLETE_REDIRECT_URL: '/auth/complete',
-  // GITHUB_APP_SLUG / GITHUB_APP_ID / GITHUB_APP_CLIENT_ID intentionally have NO
-  // default: they identify the specific per-environment GitHub App (see
-  // infra/github-app/README.md) and must be provisioned explicitly.
+  // GITHUB_APP_SLUG / GITHUB_APP_ID / GITHUB_APP_CLIENT_ID / GITHUB_LOGIN_CALLBACK_URL
+  // intentionally have NO default: they identify the specific per-environment
+  // GitHub App and its registered callback (see infra/github-app/README.md) and
+  // must be provisioned explicitly. GITHUB_LOGIN_CALLBACK_URL must exactly match
+  // one of the App's registered callback URLs -- when a GitHub App has more than
+  // one callback URL configured (e.g. the install flow's alongside the login
+  // flow's), GitHub does not infer which one to use; the `redirect_uri` param
+  // sent in the authorize URL is what disambiguates it.
   GATEWAY_PORT: '4100',
   SQS_GRAPH_UPDATED_REALTIME_QUEUE: 'graph-updated-realtime',
   GATEWAY_REDIS_CHANNEL: 'sayre:graph.updated',

@@ -47,8 +47,12 @@ const defaultStartDeps: LoginStartDeps = {
 
 /**
  * Signs login state (optionally binding a validated redirect_to) and builds
- * the GitHub authorize URL. Relies on the GitHub App's configured "User
- * authorization callback URL" — no `redirect_uri` param needed.
+ * the GitHub authorize URL. Sends an explicit `redirect_uri` pinned to
+ * `GITHUB_LOGIN_CALLBACK_URL` — a GitHub App with more than one registered
+ * callback URL (e.g. the install flow's alongside this login flow's) does not
+ * infer which one a given authorize request should use, and silently falls
+ * back to the first URL in the app's list. Without this param, login redirects
+ * would land on the install flow's callback instead of this one.
  */
 export async function startGithubLogin(
   input?: { redirectTo?: string },
@@ -58,10 +62,12 @@ export async function startGithubLogin(
   const state = await resolvedDeps.signState(input);
   const webBaseUrl = getConfig('GITHUB_WEB_BASE_URL');
   const clientId = getConfig('GITHUB_APP_CLIENT_ID');
+  const redirectUri = getConfig('GITHUB_LOGIN_CALLBACK_URL');
   return {
     redirectTo:
       `${webBaseUrl}/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}` +
-      `&state=${encodeURIComponent(state)}&scope=${encodeURIComponent('user:email')}`,
+      `&state=${encodeURIComponent(state)}&scope=${encodeURIComponent('user:email')}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`,
   };
 }
 

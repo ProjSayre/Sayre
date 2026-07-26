@@ -46,7 +46,7 @@ GRAPHIFY_OUTPUT_SCHEMA: dict[str, Any] = {
                         "required": ["id", "label", "properties"],
                         "properties": {
                             "id": {"type": "string", "minLength": 1},
-                            "label": {"const": "Feature"},
+                            "label": {"type": "string", "const": "Feature"},
                             "properties": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -65,7 +65,7 @@ GRAPHIFY_OUTPUT_SCHEMA: dict[str, Any] = {
                         "required": ["id", "label", "properties"],
                         "properties": {
                             "id": {"type": "string", "minLength": 1},
-                            "label": {"const": "EnvStep"},
+                            "label": {"type": "string", "const": "EnvStep"},
                             "properties": {
                                 "type": "object",
                                 "additionalProperties": False,

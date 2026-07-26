@@ -17,6 +17,7 @@ beforeEach(() => {
   setConfigOverrideForTests('GITHUB_WEB_BASE_URL', 'https://github.test');
   setConfigOverrideForTests('GITHUB_APP_CLIENT_ID', 'client-id-123');
   setConfigOverrideForTests('GITHUB_LOGIN_COMPLETE_REDIRECT_URL', '/auth/complete');
+  setConfigOverrideForTests('GITHUB_LOGIN_CALLBACK_URL', 'https://core.test/auth/github/callback');
 });
 
 afterEach(() => {
@@ -28,7 +29,9 @@ describe('startGithubLogin', () => {
     const signState = vi.fn(async () => 'signed-login-state');
     const result = await startGithubLogin(undefined, { signState });
     expect(result.redirectTo).toBe(
-      'https://github.test/login/oauth/authorize?client_id=client-id-123&state=signed-login-state&scope=user%3Aemail',
+      'https://github.test/login/oauth/authorize?client_id=client-id-123&state=signed-login-state' +
+        '&scope=user%3Aemail&redirect_uri=' +
+        encodeURIComponent('https://core.test/auth/github/callback'),
     );
     expect(signState).toHaveBeenCalledWith(undefined);
   });

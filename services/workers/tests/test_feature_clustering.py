@@ -174,8 +174,8 @@ def test_feature_clustering_schema_constrains_edges_to_exact_file_paths() -> Non
     node_schema = schema["properties"]["nodes"]["items"]
     edge_schema = schema["properties"]["edges"]["items"]
 
-    assert node_schema["properties"]["label"] == {"const": "Feature"}
-    assert edge_schema["properties"]["relationship"] == {"const": "PART_OF"}
+    assert node_schema["properties"]["label"] == {"type": "string", "const": "Feature"}
+    assert edge_schema["properties"]["relationship"] == {"type": "string", "const": "PART_OF"}
     assert edge_schema["properties"]["source"] == {
         "type": "string",
         "enum": sorted(file.path for file in context.files),
