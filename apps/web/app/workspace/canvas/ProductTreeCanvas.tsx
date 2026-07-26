@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo } from 'react';
 import { MiniMap, ReactFlow, useReactFlow, type Node } from '@xyflow/react';
-import { FEATURES, GRAPH_NODES } from '../fixtures';
+import type { Feature, GraphNode } from '../types';
+import type { CanvasCommand } from '../rendererRegistry';
 import { NODE_TYPES } from './nodes';
 import { NODE_BOX } from './layout';
 
 interface ProductTreeCanvasProps {
+  graphNodes: GraphNode[];
+  features: Feature[];
+  command: CanvasCommand | null;
   selectedFeatureId: string | null;
   selectedNodeId: string | null;
   search: string;
@@ -37,6 +41,9 @@ function boundaryWidth(paths: string[]): number {
  * different directories — that crossing is the whole point of this view.
  */
 export function ProductTreeCanvas({
+  graphNodes,
+  features,
+  command,
   selectedFeatureId,
   selectedNodeId,
   search,
@@ -55,8 +62,17 @@ export function ProductTreeCanvas({
     return () => clearTimeout(timer);
   }, [fitKey, flow]);
 
+  useEffect(() => {
+    if (command === null) return;
+    if (command.type === 'zoom-in') void flow.zoomIn();
+    if (command.type === 'zoom-out') void flow.zoomOut();
+    if (command.type === 'fit') {
+      void flow.fitView({ padding: 0.1, maxZoom: 1 });
+    }
+  }, [command, flow]);
+
   const nodes = useMemo<Node[]>(() => {
-    const filesById = new Map(GRAPH_NODES.map((node) => [node.id, node]));
+    const filesById = new Map(graphNodes.map((node) => [node.id, node]));
     const query = search.trim().toLowerCase();
     const result: Node[] = [];
 
@@ -64,14 +80,14 @@ export function ProductTreeCanvas({
     let rowHeight = 0;
     let columnLeft = 0;
 
-    FEATURES.forEach((feature, index) => {
+    features.forEach((feature, index) => {
       if (index > 0 && index % PER_ROW === 0) {
         rowTop += rowHeight + GAP_Y;
         rowHeight = 0;
         columnLeft = 0;
       }
 
-      const files = feature.fileIds
+      const files = feature.memberIds
         .map((fileId) => filesById.get(fileId))
         .filter((file): file is NonNullable<typeof file> => file !== undefined);
       const width = boundaryWidth(files.map((file) => file.path));
@@ -88,7 +104,7 @@ export function ProductTreeCanvas({
         zIndex: 0,
         data: {
           name: feature.name,
-          fileCount: feature.fileIds.length,
+          fileCount: feature.memberIds.length,
           selected: feature.id === selectedFeatureId,
         },
       });
@@ -127,7 +143,7 @@ export function ProductTreeCanvas({
     });
 
     return result;
-  }, [search, selectedFeatureId, selectedNodeId]);
+  }, [features, graphNodes, search, selectedFeatureId, selectedNodeId]);
 
   return (
     <ReactFlow

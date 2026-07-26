@@ -84,7 +84,7 @@ export async function fetchProviderState(
     surface: selection.surface,
   });
   const response = await fetcher(
-    `/api/provider-state/${encodeURIComponent(selection.repositoryId)}?${query.toString()}`,
+    `/api/core/repos/${encodeURIComponent(selection.repositoryId)}/provider-state?${query.toString()}`,
     {
       credentials: 'same-origin',
       headers: { accept: 'application/json' },

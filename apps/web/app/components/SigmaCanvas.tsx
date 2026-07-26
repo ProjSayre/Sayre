@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Sigma from 'sigma';
 import type { AuthorizedCanvasNode, AuthorizedCanvasPayload } from '../lib/scaleGraph';
 import { toPresentationGraph } from '../lib/scaleGraph';
+import type { CanvasCommand } from '../workspace/rendererRegistry';
 
 export interface SigmaBoundary {
   id: string;
@@ -16,6 +17,9 @@ interface SigmaCanvasProps {
   onSelect: (node: AuthorizedCanvasNode) => void;
   boundaries?: readonly SigmaBoundary[];
   onSelectBoundary?: (boundaryId: string) => void;
+  command?: CanvasCommand | null;
+  search?: string;
+  selectedNodeId?: string | null;
 }
 
 interface ViewportBoundary extends SigmaBoundary {
@@ -40,25 +44,59 @@ export function SigmaCanvas({
   onSelect,
   boundaries = [],
   onSelectBoundary,
+  command = null,
+  search = '',
+  selectedNodeId = null,
 }: SigmaCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<Sigma | null>(null);
   const [viewportBoundaries, setViewportBoundaries] = useState<ViewportBoundary[]>([]);
 
   useEffect(() => {
     if (containerRef.current === null) return undefined;
 
     const graph = toPresentationGraph(payload);
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchingNodeIds = new Set(
+      payload.nodes
+        .filter(
+          (node) =>
+            normalizedSearch.length === 0 ||
+            node.label.toLowerCase().includes(normalizedSearch) ||
+            node.path.toLowerCase().includes(normalizedSearch),
+        )
+        .map((node) => node.id),
+    );
+    const edgeById = new Map(payload.edges.map((edge) => [edge.id, edge]));
     const renderer = new Sigma(graph, containerRef.current, {
       allowInvalidContainer: false,
-      defaultEdgeColor: '#303b47',
-      defaultNodeColor: '#77a7ff',
-      labelColor: { color: '#dce5ef' },
+      defaultEdgeColor: '#41423b',
+      defaultNodeColor: '#7fb18e',
+      labelColor: { color: '#e8e6e1' },
       labelDensity: 0.08,
       labelGridCellSize: 120,
       labelRenderedSizeThreshold: 8,
       renderEdgeLabels: false,
       zIndex: true,
+      nodeReducer: (node, data) => ({
+        ...data,
+        hidden: !matchingNodeIds.has(node),
+        color: node === selectedNodeId ? '#d8c87f' : data.color,
+        size: node === selectedNodeId ? data.size * 1.45 : data.size,
+        zIndex: node === selectedNodeId ? 1 : data.zIndex,
+      }),
+      edgeReducer: (edge, data) => {
+        const match = edgeById.get(edge);
+        return {
+          ...data,
+          hidden:
+            match === undefined ||
+            !matchingNodeIds.has(match.source) ||
+            !matchingNodeIds.has(match.target),
+        };
+      },
     });
+    rendererRef.current = renderer;
 
     renderer.on('clickNode', ({ node }) => {
       const match = payload.nodes.find((candidate) => candidate.id === node);
@@ -102,8 +140,17 @@ export function SigmaCanvas({
       camera.off('updated', updateBoundaries);
       renderer.off('resize', updateBoundaries);
       renderer.kill();
+      rendererRef.current = null;
     };
-  }, [boundaries, onSelect, payload]);
+  }, [boundaries, onSelect, payload, search, selectedNodeId]);
+
+  useEffect(() => {
+    const camera = rendererRef.current?.getCamera();
+    if (camera === undefined || command === null) return;
+    if (command.type === 'zoom-in') void camera.animatedZoom({ duration: 180 });
+    if (command.type === 'zoom-out') void camera.animatedUnzoom({ duration: 180 });
+    if (command.type === 'fit') void camera.animatedReset({ duration: 220 });
+  }, [command]);
 
   return (
     <div className="sigma-canvas-wrap">

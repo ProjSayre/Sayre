@@ -54,9 +54,11 @@ export function StatusBanner() {
         <strong>{headline}</strong>
         {detail !== null && <p>{detail}</p>}
       </div>
-      <span className="mock-banner-time">
-        updated {formatTimestamp(semanticState.updatedAt)}
-      </span>
+      {semanticState.updatedAt !== null && (
+        <span className="mock-banner-time">
+          updated {formatTimestamp(semanticState.updatedAt)}
+        </span>
+      )}
     </div>
   );
 }

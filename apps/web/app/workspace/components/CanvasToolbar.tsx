@@ -1,33 +1,34 @@
 'use client';
 
-import { useReactFlow } from '@xyflow/react';
 import { useMock } from '../state';
+import type {
+  CanvasCommandType,
+  RendererDefinition,
+} from '../rendererRegistry';
 
 interface CanvasToolbarProps {
   title: string;
   visibleNodeCount: number;
   edgeCount: number | null;
+  renderer: RendererDefinition;
   /** Controls are inert whenever no graph is on screen. */
   interactive: boolean;
   showMinimap: boolean;
   onToggleMinimap: () => void;
-}
-
-/** Renderer choice is a scale decision, surfaced so the reviewer can see it. */
-function rendererFor(visibleNodeCount: number): string {
-  return visibleNodeCount > 500 ? 'sigma · webgl' : 'react flow';
+  onCommand: (command: CanvasCommandType) => void;
 }
 
 export function CanvasToolbar({
   title,
   visibleNodeCount,
   edgeCount,
+  renderer,
   interactive,
   showMinimap,
   onToggleMinimap,
+  onCommand,
 }: CanvasToolbarProps) {
   const { state, dispatch } = useMock();
-  const flow = useReactFlow();
 
   return (
     <div className="mock-toolbar">
@@ -36,7 +37,7 @@ export function CanvasToolbar({
         <span className="mock-toolbar-count">
           {visibleNodeCount} nodes
           {edgeCount === null ? '' : ` · ${edgeCount} edges`} ·{' '}
-          {rendererFor(visibleNodeCount)}
+          {renderer.label}
         </span>
       </span>
 
@@ -46,8 +47,8 @@ export function CanvasToolbar({
         className="mock-search"
         type="search"
         value={state.search}
-        placeholder="filter loaded nodes…"
-        aria-label="Filter the nodes already loaded on this canvas"
+        placeholder="find loaded nodes…"
+        aria-label="Find nodes already loaded on this canvas"
         disabled={!interactive}
         onChange={(event) =>
           dispatch({ type: 'patch', patch: { search: event.target.value } })
@@ -61,7 +62,7 @@ export function CanvasToolbar({
           aria-label="Zoom out"
           title="Zoom out"
           disabled={!interactive}
-          onClick={() => flow.zoomOut()}
+          onClick={() => onCommand('zoom-out')}
         >
           −
         </button>
@@ -71,7 +72,7 @@ export function CanvasToolbar({
           aria-label="Zoom in"
           title="Zoom in"
           disabled={!interactive}
-          onClick={() => flow.zoomIn()}
+          onClick={() => onCommand('zoom-in')}
         >
           +
         </button>
@@ -81,7 +82,7 @@ export function CanvasToolbar({
           aria-label="Fit graph to view"
           title="Fit to view"
           disabled={!interactive}
-          onClick={() => flow.fitView({ padding: 0.1, maxZoom: 1 })}
+          onClick={() => onCommand('fit')}
         >
           ⤢
         </button>
@@ -91,7 +92,7 @@ export function CanvasToolbar({
           aria-label="Toggle minimap"
           title="Minimap"
           aria-pressed={showMinimap}
-          disabled={!interactive}
+          disabled={!interactive || !renderer.supportsMinimap}
           onClick={onToggleMinimap}
         >
           ▦

@@ -13,48 +13,40 @@ import type {
   NodeOverlay,
   ProviderSetting,
   Repository,
-} from './types';
+} from '../workspace/types';
 
 export const REPOSITORIES: Repository[] = [
   {
     id: 'repo_atlas',
     provider: 'github',
-    owner: 'acme',
-    name: 'atlas',
+    name: 'acme/atlas',
     defaultBranch: 'main',
-    currentRef: 'main',
-    readiness: 'graph-ready',
-    fileCount: 1204,
+    currentRef: 'refs/heads/main',
+    readiness: 'graph_ready',
   },
   {
     id: 'repo_ledger',
     provider: 'github',
-    owner: 'acme',
-    name: 'ledger-service',
+    name: 'acme/ledger-service',
     defaultBranch: 'main',
-    currentRef: 'main',
-    readiness: 'technical-ready',
-    fileCount: 312,
+    currentRef: 'refs/heads/main',
+    readiness: 'graph_ready',
   },
   {
     id: 'repo_pilot',
     provider: 'github',
-    owner: 'acme',
-    name: 'pilot-web',
+    name: 'acme/pilot-web',
     defaultBranch: 'develop',
-    currentRef: 'develop',
+    currentRef: null,
     readiness: 'registered',
-    fileCount: 88,
   },
   {
     id: 'repo_vault',
     provider: 'github',
-    owner: 'acme',
-    name: 'vault-infra',
+    name: 'acme/vault-infra',
     defaultBranch: 'main',
-    currentRef: 'main',
-    readiness: 'graph-ready',
-    fileCount: 640,
+    currentRef: 'refs/heads/main',
+    readiness: 'graph_ready',
     restricted: true,
   },
 ];
@@ -272,7 +264,7 @@ export const FEATURES: Feature[] = [
     description:
       'Cart-to-confirmation flow: card capture, payment intent creation, and the confirmation receipt.',
     team: 'Payments',
-    fileIds: [
+    memberIds: [
       'n_checkout_page',
       'n_payment_form',
       'n_use_cart',
@@ -281,15 +273,19 @@ export const FEATURES: Feature[] = [
     ],
     recentEdits: [
       {
+        fileId: 'n_payment_form',
         filePath: 'apps/web/checkout/PaymentForm.tsx',
         editorName: 'Dana Whitfield',
+        editorLogin: 'dana-whitfield',
         editedAt: '2026-07-23T15:42:00Z',
         pullRequestTitle: 'Split card capture from payment intent creation',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2184',
       },
       {
+        fileId: 'n_stripe_client',
         filePath: 'services/billing/stripeClient.ts',
         editorName: 'Marco Reyes',
+        editorLogin: 'marco-reyes',
         editedAt: '2026-07-21T09:05:00Z',
         pullRequestTitle: 'Retry idempotency keys on gateway timeout',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2171',
@@ -302,11 +298,13 @@ export const FEATURES: Feature[] = [
     description:
       'Partial and full refunds, dispute intake, and the ledger entries each one writes.',
     team: 'Payments',
-    fileIds: ['n_invoice', 'n_refunds'],
+    memberIds: ['n_invoice', 'n_refunds'],
     recentEdits: [
       {
+        fileId: 'n_refunds',
         filePath: 'services/billing/refunds.ts',
         editorName: 'Priya Nair',
+        editorLogin: 'priya-nair',
         editedAt: '2026-07-24T11:18:00Z',
         pullRequestTitle: 'Reject refunds above the original capture amount',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2190',
@@ -319,11 +317,13 @@ export const FEATURES: Feature[] = [
     description:
       'Sign-in surface, session lifetime, and the role checks that gate every authenticated screen.',
     team: 'Identity',
-    fileIds: ['n_profile_page', 'n_session_banner', 'n_session', 'n_rbac'],
+    memberIds: ['n_profile_page', 'n_session_banner', 'n_session', 'n_rbac'],
     recentEdits: [
       {
+        fileId: 'n_rbac',
         filePath: 'services/identity/rbac.ts',
         editorName: 'Alex Kwon',
+        editorLogin: 'alex-kwon',
         editedAt: '2026-07-22T17:33:00Z',
         pullRequestTitle: 'Deny-by-default on unknown permission strings',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2179',
@@ -336,11 +336,13 @@ export const FEATURES: Feature[] = [
     description:
       'Shared primitives every product surface composes from — buttons, modals, and their tokens.',
     team: 'Platform UI',
-    fileIds: ['n_button', 'n_modal'],
+    memberIds: ['n_button', 'n_modal'],
     recentEdits: [
       {
+        fileId: 'n_modal',
         filePath: 'packages/ui/Modal.tsx',
         editorName: 'Jules Fontaine',
+        editorLogin: 'jules-fontaine',
         editedAt: '2026-07-19T08:47:00Z',
         pullRequestTitle: 'Trap focus inside modal on open',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2160',
@@ -385,13 +387,15 @@ const SESSION_SKILL_MD = `# session.ts
 export const NODE_OVERLAYS: Record<string, NodeOverlay> = {
   n_payment_form: {
     nodeId: 'n_payment_form',
+    dependencies: [],
+    specificFeatures: [],
     description:
       'Renders the card capture form and hands a tokenized payment method to the billing service. Owns validation and submit-state, not the payment intent lifecycle.',
     agentSkillMd: {
       version: 7,
       content: PAYMENT_FORM_SKILL_MD,
       editorLabel: 'Dana Whitfield',
-      updatedAt: '2026-07-23T15:48:00Z',
+      createdAt: '2026-07-23T15:48:00Z',
     },
     agentSkillHistory: [
       {
@@ -401,125 +405,132 @@ export const NODE_OVERLAYS: Record<string, NodeOverlay> = {
           '',
         ),
         editorLabel: 'Marco Reyes',
-        updatedAt: '2026-07-11T13:02:00Z',
+        createdAt: '2026-07-11T13:02:00Z',
       },
       {
         version: 5,
         content: '# PaymentForm.tsx\n\n## Allowed Tools\n- read_file\n',
         editorLabel: 'Dana Whitfield',
-        updatedAt: '2026-06-28T10:26:00Z',
+        createdAt: '2026-06-28T10:26:00Z',
       },
     ],
     recentChanges: [
       {
+        commitId: 'commit_9f3c2ab',
         sha: '9f3c2ab',
         message: 'Split card capture from payment intent creation',
         authorName: 'Dana Whitfield',
+        authorLogin: 'dana-whitfield',
         timestamp: '2026-07-23T15:42:00Z',
         pullRequestTitle: 'Split card capture from payment intent creation',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2184',
       },
       {
+        commitId: 'commit_41d80e6',
         sha: '41d80e6',
         message: 'Disable submit while a prior attempt is in flight',
         authorName: 'Marco Reyes',
+        authorLogin: 'marco-reyes',
         timestamp: '2026-07-18T12:11:00Z',
         pullRequestTitle: 'Guard double-submit on slow networks',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2158',
       },
       {
+        commitId: 'commit_c7b1904',
         sha: 'c7b1904',
         message: 'Move currency formatting to shared money helper',
         authorName: 'Priya Nair',
+        authorLogin: 'priya-nair',
         timestamp: '2026-07-09T16:54:00Z',
         pullRequestTitle: null,
         pullRequestUrl: null,
       },
     ],
-    tickets: [
+    specificTickets: [
       {
+        id: 'ticket_atl_482',
         externalId: 'ATL-482',
-        provider: 'jira',
+        system: 'jira',
         title: 'Card errors should keep the entered amount',
         status: 'In Progress',
         url: 'https://acme.atlassian.net/browse/ATL-482',
       },
       {
+        id: 'ticket_pay_119',
         externalId: 'PAY-119',
-        provider: 'linear',
+        system: 'linear',
         title: '3DS challenge returns the user to an empty cart',
         status: 'Triage',
         url: 'https://linear.app/acme/issue/PAY-119',
       },
     ],
-    standards: {
-      codingStyle: 'TypeScript strict · named exports · no default exports',
-      commentStyle: 'JSDoc on exported symbols only; no inline narration',
-      inheritedFrom: 'apps/web',
-      overridden: false,
-    },
+    standards: null,
   },
   n_session: {
     nodeId: 'n_session',
+    dependencies: [],
+    specificFeatures: [],
     description:
       'Loads and validates the caller session, then stamps org scope on the request context for every downstream check.',
     agentSkillMd: {
       version: 3,
       content: SESSION_SKILL_MD,
       editorLabel: 'Alex Kwon',
-      updatedAt: '2026-07-22T17:40:00Z',
+      createdAt: '2026-07-22T17:40:00Z',
     },
     agentSkillHistory: [
       {
         version: 2,
         content: '# session.ts\n\n## Allowed Tools\n- read_file\n\n## Required Context\n- rbac.ts\n',
         editorLabel: 'Alex Kwon',
-        updatedAt: '2026-06-30T09:12:00Z',
+        createdAt: '2026-06-30T09:12:00Z',
       },
     ],
     recentChanges: [
       {
+        commitId: 'commit_b20fe51',
         sha: 'b20fe51',
         message: 'Deny-by-default on unknown permission strings',
         authorName: 'Alex Kwon',
+        authorLogin: 'alex-kwon',
         timestamp: '2026-07-22T17:33:00Z',
         pullRequestTitle: 'Deny-by-default on unknown permission strings',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2179',
       },
     ],
-    tickets: [
+    specificTickets: [
       {
+        id: 'ticket_atl_455',
         externalId: 'ATL-455',
-        provider: 'jira',
+        system: 'jira',
         title: 'Session expiry banner shows the wrong remaining time',
         status: 'Done',
         url: 'https://acme.atlassian.net/browse/ATL-455',
       },
     ],
-    standards: {
-      codingStyle: 'TypeScript strict · service layer owns all data access',
-      commentStyle: 'Explain why, not what; security invariants always commented',
-      inheritedFrom: 'services',
-      overridden: true,
-    },
+    standards: null,
   },
   n_checkout: {
     nodeId: 'n_checkout',
+    dependencies: [],
+    specificFeatures: [],
     description:
       'Everything the buyer touches between cart review and the confirmation screen.',
     agentSkillMd: null,
     agentSkillHistory: [],
     recentChanges: [
       {
+        commitId: 'commit_9f3c2ab',
         sha: '9f3c2ab',
         message: 'Split card capture from payment intent creation',
         authorName: 'Dana Whitfield',
+        authorLogin: 'dana-whitfield',
         timestamp: '2026-07-23T15:42:00Z',
         pullRequestTitle: 'Split card capture from payment intent creation',
         pullRequestUrl: 'https://github.com/acme/atlas/pull/2184',
       },
     ],
-    tickets: [],
+    specificTickets: [],
     standards: null,
   },
 };
@@ -527,33 +538,23 @@ export const NODE_OVERLAYS: Record<string, NodeOverlay> = {
 export const PROVIDER_SETTINGS: ProviderSetting[] = [
   {
     purpose: 'generation',
-    provider: 'Anthropic',
+    provider: 'anthropic',
     model: 'claude-sonnet-4-5',
-    credentialReference: 'sayre/generation/anthropic#v3',
-    endpoint: 'https://api.anthropic.com',
-    hosting: 'hosted',
-    status: 'configured',
+    credentialReferenceId: 'generation-anthropic-primary',
+    endpointId: null,
+    credentialConfigured: true,
+    endpointConfigured: true,
+    updatedAt: '2026-07-23T15:48:00Z',
   },
   {
     purpose: 'embedding',
-    provider: 'Self-hosted (OpenAI-compatible)',
+    provider: 'openai_compatible',
     model: 'bge-large-en-v1.5',
-    credentialReference: 'sayre/embedding/internal#v1',
-    endpoint: 'https://embeddings.internal.acme.dev/v1',
-    hosting: 'self-hosted',
-    status: 'configured',
+    credentialReferenceId: 'embedding-internal-primary',
+    endpointId: 'embedding-internal-v1',
+    credentialConfigured: true,
+    endpointConfigured: true,
+    updatedAt: '2026-07-23T15:48:00Z',
   },
 ];
 
-export const GITHUB_INSTALLATION = {
-  accountName: 'acme',
-  repositoriesSynced: 3,
-  repositoriesTotal: 4,
-};
-
-export const CURRENT_USER = {
-  name: 'Alex Kwon',
-  initials: 'AK',
-  email: 'alex.kwon@acme.dev',
-  org: 'Acme Engineering',
-};

@@ -2,8 +2,13 @@
 
 import { useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { FEATURES, GRAPH_EDGES, GRAPH_NODES } from '../fixtures';
 import { useMock } from '../state';
+import {
+  rendererFor,
+  type CanvasCommand,
+  type CanvasCommandType,
+} from '../rendererRegistry';
+import { themeVariables, warmGraphiteTheme } from '../theme';
 import { ProductTreeCanvas } from '../canvas/ProductTreeCanvas';
 import { TechnicalTreeCanvas } from '../canvas/TechnicalTreeCanvas';
 import { FeatureDrawer } from '../drawer/FeatureDrawer';
@@ -17,9 +22,10 @@ import {
   NoRepositoryState,
   PreparingState,
   ProductUnavailableState,
+  UnavailableState,
 } from './CanvasStates';
 import { CanvasToolbar } from './CanvasToolbar';
-import { ControlPanel } from './ControlPanel';
+import { ControlPanel } from '../../mock/components/ControlPanel';
 import { GlobalStates } from './GlobalStates';
 import { StatusBanner } from './StatusBanner';
 import { TopBar } from './TopBar';
@@ -31,11 +37,9 @@ type CanvasStatus =
   | 'preparing'
   | 'loading'
   | 'empty'
+  | 'unavailable'
   | 'product-unavailable'
   | 'ready';
-
-const PRODUCT_FILE_COUNT = new Set(FEATURES.flatMap((feature) => feature.fileIds))
-  .size;
 
 function Workspace() {
   const {
@@ -45,43 +49,63 @@ function Workspace() {
     authorizedForRepository,
     readiness,
     semanticState,
+    graph,
+    graphStatus,
+    graphErrorStatus,
   } = useMock();
   const [showMinimap, setShowMinimap] = useState(true);
+  const [canvasCommand, setCanvasCommand] = useState<CanvasCommand | null>(null);
+
+  function commandCanvas(type: CanvasCommandType): void {
+    setCanvasCommand((current) => ({ id: (current?.id ?? 0) + 1, type }));
+  }
 
   const status: CanvasStatus = ((): CanvasStatus => {
     if (repository === null) return 'no-repository';
     if (!authorizedForRepository) return 'forbidden';
     if (readiness === 'registered') return 'preparing';
-    if (state.canvasData === 'loading') return 'loading';
-    if (state.canvasData === 'empty') return 'empty';
+    if (
+      state.canvasData === 'loading' ||
+      graphStatus === 'idle' ||
+      graphStatus === 'loading'
+    ) {
+      return 'loading';
+    }
+    if (graphStatus === 'error') {
+      return graphErrorStatus === 403 ? 'forbidden' : 'unavailable';
+    }
     if (
       state.view === 'product' &&
       (semanticState.status === 'generating' || semanticState.status === 'failed')
     ) {
       return 'product-unavailable';
     }
+    if (state.canvasData === 'empty' || graph.nodes.length === 0) return 'empty';
     return 'ready';
   })();
 
   const isTechnical = state.view === 'technical';
   const ready = status === 'ready';
-  const visibleNodeCount = isTechnical ? GRAPH_NODES.length : PRODUCT_FILE_COUNT;
+  const visibleNodeCount = graph.nodes.length;
+  const renderer = rendererFor(state.view, visibleNodeCount);
   const scopeLabel =
     state.selectedNodeId !== null
       ? 'selected node'
       : repository === null
         ? 'no repository'
-        : `${repository.owner}/${repository.name}`;
+        : repository.name;
 
   return (
     <main className="mock-main">
       <CanvasToolbar
         title={isTechnical ? 'Technical Tree' : 'Product Tree'}
         visibleNodeCount={ready ? visibleNodeCount : 0}
-        edgeCount={ready && isTechnical ? GRAPH_EDGES.length : null}
+        edgeCount={ready && isTechnical ? graph.edges.length : null}
+        renderer={renderer}
         interactive={ready}
         showMinimap={showMinimap}
         onToggleMinimap={() => setShowMinimap((value) => !value)}
+        onCommand={commandCanvas}
       />
 
       {/* Same reason as the top-bar badges: no processing state for a
@@ -95,13 +119,12 @@ function Workspace() {
           />
         )}
         {status === 'preparing' && repository !== null && (
-          <PreparingState
-            repositoryLabel={`${repository.owner}/${repository.name}`}
-          />
+          <PreparingState repositoryLabel={repository.name} />
         )}
         {status === 'forbidden' && <ForbiddenState />}
         {status === 'loading' && <LoadingState />}
         {status === 'empty' && <EmptyGraphState />}
+        {status === 'unavailable' && <UnavailableState />}
         {status === 'product-unavailable' && (
           <ProductUnavailableState
             reason={semanticState.status === 'failed' ? 'failed' : 'generating'}
@@ -111,6 +134,10 @@ function Workspace() {
         {ready &&
           (isTechnical ? (
             <TechnicalTreeCanvas
+              graphNodes={graph.nodes}
+              graphEdges={graph.edges}
+              renderer={renderer.id}
+              command={canvasCommand}
               selectedId={state.selectedNodeId}
               search={state.search}
               showMinimap={showMinimap}
@@ -119,6 +146,9 @@ function Workspace() {
             />
           ) : (
             <ProductTreeCanvas
+              graphNodes={graph.nodes}
+              features={graph.features}
+              command={canvasCommand}
               selectedFeatureId={state.selectedFeatureId}
               selectedNodeId={state.selectedNodeId}
               search={state.search}
@@ -135,7 +165,7 @@ function Workspace() {
           <span className="mock-statusline">
             {isTechnical
               ? 'tree layout · contains + imports'
-              : `feature layout · ${FEATURES.length} features`}{' '}
+              : `feature layout · ${graph.features.length} features`}{' '}
             · showing only nodes you are authorized to see
           </span>
         )}
@@ -148,14 +178,28 @@ function Workspace() {
   );
 }
 
-export function MockShell() {
-  const { state } = useMock();
+export function WorkspaceShell() {
+  const { mode, state } = useMock();
   const drawerOpen =
     state.drawerOpen &&
     (state.selectedNodeId !== null || state.selectedFeatureId !== null);
 
+  const globallyBlocked =
+    state.session !== 'authenticated' ||
+    state.backend === 'unavailable' ||
+    state.access === 'forbidden';
+
+  if (globallyBlocked) {
+    return (
+      <div className="mock-root" style={themeVariables(warmGraphiteTheme)}>
+        <GlobalStates />
+        {mode === 'fixture' && <ControlPanel />}
+      </div>
+    );
+  }
+
   return (
-    <div className="mock-root">
+    <div className="mock-root" style={themeVariables(warmGraphiteTheme)}>
       <TopBar />
       <div className={`mock-body${drawerOpen ? ' mock-body-drawer' : ''}`}>
         <ViewRail />
@@ -165,8 +209,7 @@ export function MockShell() {
         {drawerOpen &&
           (state.selectedNodeId !== null ? <NodeDrawer /> : <FeatureDrawer />)}
       </div>
-      <GlobalStates />
-      <ControlPanel />
+      {mode === 'fixture' && <ControlPanel />}
     </div>
   );
 }

@@ -1,14 +1,13 @@
 'use client';
 
-import { FEATURES, GRAPH_NODES } from '../fixtures';
 import { useMock } from '../state';
 import { EmptyState, Module, formatTimestamp } from '../components/ui';
 
-const NODES_BY_ID = new Map(GRAPH_NODES.map((node) => [node.id, node]));
-
 export function FeatureDrawer() {
-  const { state, dispatch } = useMock();
-  const feature = FEATURES.find((item) => item.id === state.selectedFeatureId);
+  const { state, dispatch, graph } = useMock();
+  const feature = graph.features.find(
+    (item) => item.id === state.selectedFeatureId,
+  );
   if (feature === undefined) return null;
 
   return (
@@ -17,7 +16,7 @@ export function FeatureDrawer() {
         <div className="mock-drawer-heading">
           <span className="mock-drawer-kind">Feature</span>
           <h2>{feature.name}</h2>
-          <p className="mock-drawer-path">{feature.team}</p>
+          <p className="mock-drawer-path">{feature.team ?? 'Unassigned team'}</p>
         </div>
         <button
           type="button"
@@ -31,17 +30,19 @@ export function FeatureDrawer() {
 
       <div className="mock-drawer-scroll">
         <Module title="Description">
-          <p className="mock-prose">{feature.description}</p>
+          <p className="mock-prose">
+            {feature.description ?? 'No feature description is available yet.'}
+          </p>
         </Module>
 
         <Module title="Owning team">
-          <p className="mock-prose">{feature.team}</p>
+          <p className="mock-prose">{feature.team ?? 'No team assigned.'}</p>
         </Module>
 
-        <Module title="Files included" count={feature.fileIds.length}>
+        <Module title="Files included" count={feature.memberIds.length}>
           <ul className="mock-list">
-            {feature.fileIds.map((fileId) => {
-              const file = NODES_BY_ID.get(fileId);
+            {feature.memberIds.map((fileId) => {
+              const file = graph.nodes.find((node) => node.id === fileId);
               if (file === undefined) return null;
               return (
                 <li key={fileId}>
@@ -73,7 +74,8 @@ export function FeatureDrawer() {
                     <span className="mock-row-title">{edit.filePath}</span>
                   </span>
                   <span className="mock-row-meta">
-                    {edit.editorName} · {formatTimestamp(edit.editedAt)}
+                    {edit.editorName ?? edit.editorLogin ?? 'Unknown editor'} ·{' '}
+                    {formatTimestamp(edit.editedAt)}
                   </span>
                   {edit.pullRequestUrl !== null && (
                     <span className="mock-row-sub mock-row-wrap">

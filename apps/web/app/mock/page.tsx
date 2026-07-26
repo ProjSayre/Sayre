@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
-import { MockShell } from './components/MockShell';
-import { MockProvider } from './state';
-import './mock.css';
+import { WorkspaceShell } from '../workspace/components/WorkspaceShell';
+import { MockProvider } from '../workspace/state';
 
 export const metadata: Metadata = {
-  title: 'Sayre — MVP UI mock',
+  title: 'Sayre — workspace fixture lab',
   description:
-    'Non-functional wireframe of the Sayre MVP workspace. Every value is fixture data.',
+    'Interactive fixture lab for reviewing Sayre workspace states without a backend.',
 };
 
 /**
@@ -25,7 +24,7 @@ export const metadata: Metadata = {
 export default function MockPage() {
   return (
     <MockProvider>
-      <MockShell />
+      <WorkspaceShell />
     </MockProvider>
   );
 }

@@ -290,6 +290,7 @@ export async function saveAgentSkillMd(
 export async function fetchAgentSkillMdHistory(
   nodeId: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<AgentSkillMdVersion[]> {
   const response = await fetchImpl(
     `/api/core/nodes/${encodeURIComponent(nodeId)}/agent-skill-md/history`,
@@ -297,6 +298,7 @@ export async function fetchAgentSkillMdHistory(
       method: 'GET',
       headers: { accept: 'application/json' },
       credentials: 'same-origin',
+      signal,
     },
   );
   if (!response.ok) throw requestError(response.status);

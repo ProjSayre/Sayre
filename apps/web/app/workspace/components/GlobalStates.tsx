@@ -7,7 +7,15 @@ import { useMock } from '../state';
  * dialog over data the viewer may no longer be entitled to see.
  */
 export function GlobalStates() {
-  const { state, dispatch } = useMock();
+  const { mode, state, dispatch, reloadCatalog } = useMock();
+
+  const startSignIn = (): void => {
+    if (mode === 'fixture') {
+      dispatch({ type: 'patch', patch: { session: 'authenticated' } });
+      return;
+    }
+    window.location.assign('/login');
+  };
 
   if (state.session === 'signed-out') {
     return (
@@ -23,9 +31,7 @@ export function GlobalStates() {
             <button
               type="button"
               className="mock-btn mock-btn-primary"
-              onClick={() =>
-                dispatch({ type: 'patch', patch: { session: 'authenticated' } })
-              }
+              onClick={startSignIn}
             >
               Sign in with GitHub
             </button>
@@ -49,9 +55,7 @@ export function GlobalStates() {
             <button
               type="button"
               className="mock-btn mock-btn-primary"
-              onClick={() =>
-                dispatch({ type: 'patch', patch: { session: 'authenticated' } })
-              }
+              onClick={startSignIn}
             >
               Sign in again
             </button>
@@ -75,9 +79,7 @@ export function GlobalStates() {
             <button
               type="button"
               className="mock-btn mock-btn-secondary"
-              onClick={() =>
-                dispatch({ type: 'patch', patch: { backend: 'available' } })
-              }
+              onClick={reloadCatalog}
             >
               Reload
             </button>

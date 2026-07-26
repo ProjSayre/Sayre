@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CURRENT_USER } from '../fixtures';
 import { useMock } from '../state';
 import type { RealtimeStatus, RepositoryReadiness, SemanticStatus } from '../types';
 import { Badge } from './ui';
 
 const READINESS_LABEL: Record<RepositoryReadiness, string> = {
   registered: 'preparing repository',
-  'technical-ready': 'technical tree ready',
-  'graph-ready': 'graph ready',
+  graph_ready: 'graph ready',
 };
 
 const SEMANTIC_LABEL: Record<SemanticStatus, string> = {
@@ -24,6 +22,7 @@ const REALTIME_LABEL: Record<RealtimeStatus, string> = {
   reconnecting: 'reconnecting to live updates',
   updated: 'graph updated',
   'resync-required': 'resync required',
+  'not-connected': 'live updates offline',
 };
 
 function RepositoryPicker() {
@@ -40,10 +39,7 @@ function RepositoryPicker() {
     return () => document.removeEventListener('mousedown', onDocumentClick);
   }, [open]);
 
-  const label =
-    repository === null
-      ? 'no repository'
-      : `${repository.owner}/${repository.name}`;
+  const label = repository?.name ?? 'no repository';
 
   return (
     <div className="mock-picker" ref={container}>
@@ -82,6 +78,11 @@ function RepositoryPicker() {
                     type: 'patch',
                     patch: {
                       repositoryId: repo.id,
+                      refName:
+                        repo.currentRef ??
+                        (repo.defaultBranch
+                          ? `refs/heads/${repo.defaultBranch}`
+                          : null),
                       selectedNodeId: null,
                       selectedFeatureId: null,
                       drawerOpen: false,
@@ -91,10 +92,10 @@ function RepositoryPicker() {
                 }}
               >
                 <span className="mock-picker-name">
-                  {repo.owner}/{repo.name}
+                  {repo.name}
                 </span>
                 <span className="mock-picker-meta">
-                  github · default {repo.defaultBranch} ·{' '}
+                  {repo.provider} · default {repo.defaultBranch ?? 'unknown'} ·{' '}
                   {READINESS_LABEL[repo.readiness]}
                 </span>
               </button>
@@ -113,22 +114,26 @@ function RepositoryPicker() {
 }
 
 export function TopBar() {
-  const { state, dispatch, repository, authorizedForRepository, readiness, isAdmin } =
-    useMock();
+  const {
+    mode,
+    state,
+    dispatch,
+    repository,
+    authorizedForRepository,
+    readiness,
+    semanticState,
+    isAdmin,
+  } = useMock();
 
   const readinessTone =
-    readiness === 'graph-ready'
-      ? 'ready'
-      : readiness === 'technical-ready'
-        ? 'neutral'
-        : 'working';
+    readiness === 'graph_ready' ? 'ready' : 'working';
 
   const semanticTone =
-    state.semantic === 'ready'
+    semanticState.status === 'ready'
       ? 'ready'
-      : state.semantic === 'generating'
+      : semanticState.status === 'generating'
         ? 'working'
-        : state.semantic === 'degraded'
+        : semanticState.status === 'degraded'
           ? 'warn'
           : 'danger';
 
@@ -155,9 +160,13 @@ export function TopBar() {
           {/* Read-only on purpose: the catalogue returns the current authorized
               ref, not a selectable list, so there is nothing to switch between
               until a refs API exists. */}
-          <Badge dot={false}>ref {repository.currentRef}</Badge>
+          <Badge dot={false}>
+            ref {repository.currentRef?.replace(/^refs\/heads\//u, '') ?? 'pending'}
+          </Badge>
           <Badge tone={readinessTone}>{READINESS_LABEL[readiness]}</Badge>
-          <Badge tone={semanticTone}>{SEMANTIC_LABEL[state.semantic]}</Badge>
+          <Badge tone={semanticTone}>
+            {SEMANTIC_LABEL[semanticState.status]}
+          </Badge>
           {/* Reserved sync indicator — the gateway exists, the client does not
               consume it yet, so this reports state and controls nothing. */}
           <Badge tone={realtimeTone}>{REALTIME_LABEL[state.realtime]}</Badge>
@@ -166,13 +175,17 @@ export function TopBar() {
 
       <span className="mock-topbar-spacer" />
 
-      <button
-        type="button"
-        className="mock-btn mock-btn-ghost"
-        onClick={() => dispatch({ type: 'patch', patch: { controlsOpen: true } })}
-      >
-        Mock controls
-      </button>
+      {mode === 'fixture' && (
+        <button
+          type="button"
+          className="mock-btn mock-btn-ghost"
+          onClick={() =>
+            dispatch({ type: 'patch', patch: { controlsOpen: true } })
+          }
+        >
+          Mock controls
+        </button>
+      )}
 
       {/* Both settings sections are admin-only, so members never see the entry
           point at all — the actions are absent, not disabled. */}
@@ -194,7 +207,7 @@ export function TopBar() {
 }
 
 function AccountMenu() {
-  const { state, dispatch } = useMock();
+  const { mode, state, dispatch, viewer } = useMock();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
 
@@ -207,6 +220,8 @@ function AccountMenu() {
     return () => document.removeEventListener('mousedown', onDocumentClick);
   }, [open]);
 
+  const currentUser = viewer;
+
   return (
     <div className="mock-picker" ref={container}>
       <button
@@ -214,32 +229,34 @@ function AccountMenu() {
         className="mock-avatar"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account: ${CURRENT_USER.name}`}
+        aria-label={`Account: ${currentUser.name}`}
         onClick={() => setOpen((value) => !value)}
       >
-        {CURRENT_USER.initials}
+        {currentUser.initials}
       </button>
 
       {open && (
         <div className="mock-picker-menu" role="menu" style={{ left: 'auto', right: 0, width: 250 }}>
           <div className="mock-picker-empty">
-            <strong>{CURRENT_USER.name}</strong>
-            {CURRENT_USER.email}
+            <strong>{currentUser.name}</strong>
+            {currentUser.email}
             <span className="mock-picker-meta">
-              {CURRENT_USER.org} · {state.role}
+              {currentUser.org} · {state.role}
             </span>
           </div>
-          <button
-            type="button"
-            role="menuitem"
-            className="mock-picker-option"
-            onClick={() => {
-              setOpen(false);
-              dispatch({ type: 'patch', patch: { session: 'signed-out' } });
-            }}
-          >
-            <span className="mock-picker-name">Sign out</span>
-          </button>
+          {mode === 'fixture' && (
+            <button
+              type="button"
+              role="menuitem"
+              className="mock-picker-option"
+              onClick={() => {
+                setOpen(false);
+                dispatch({ type: 'patch', patch: { session: 'signed-out' } });
+              }}
+            >
+              <span className="mock-picker-name">Sign out</span>
+            </button>
+          )}
         </div>
       )}
     </div>

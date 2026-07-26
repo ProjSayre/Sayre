@@ -25,7 +25,10 @@ function missingSections(content: string): string[] {
 
 interface AgentSkillModuleProps {
   overlay: NodeOverlay | null;
+  nodeId: string;
   nodeName: string;
+  title?: string;
+  defaultOpen?: boolean;
 }
 
 type SaveState =
@@ -33,10 +36,35 @@ type SaveState =
   | { kind: 'saving' }
   | { kind: 'invalid'; missing: string[] }
   | { kind: 'conflict' }
+  | { kind: 'error'; message: string }
   | { kind: 'saved'; version: number };
 
-export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
-  const { state, dispatch, isAdmin } = useMock();
+function requestStatus(error: unknown): number | null {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof error.status === 'number'
+  ) {
+    return error.status;
+  }
+  return null;
+}
+
+export function AgentSkillModule({
+  overlay,
+  nodeId,
+  nodeName,
+  title = 'Agent / Skill MD',
+  defaultOpen = true,
+}: AgentSkillModuleProps) {
+  const {
+    dispatch,
+    isAdmin,
+    reloadOverlay,
+    saveAgentSkillMd,
+    state,
+  } = useMock();
   const current = overlay?.agentSkillMd ?? null;
   const history = overlay?.agentSkillHistory ?? [];
 
@@ -64,34 +92,57 @@ export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
   const versionLabel = useMemo(() => {
     if (document === null) return 'no document';
     return `v${document.version} · ${document.editorLabel} · ${formatTimestamp(
-      document.updatedAt,
+      document.createdAt,
     )}`;
   }, [document]);
 
-  const onSave = () => {
+  const onSave = async () => {
     const missing = missingSections(draft);
     if (missing.length > 0) {
       setSaveState({ kind: 'invalid', missing });
       return;
     }
-    if (state.agentSkillConflict) {
-      setSaveState({ kind: 'conflict' });
-      return;
-    }
-    const nextVersion = (document?.version ?? 0) + 1;
     setSaveState({ kind: 'saving' });
-    setSaved({
-      version: nextVersion,
-      content: draft,
-      editorLabel: 'You',
-      updatedAt: new Date().toISOString(),
-    });
-    setEditing(false);
-    setSaveState({ kind: 'saved', version: nextVersion });
+    try {
+      const result = await saveAgentSkillMd(
+        nodeId,
+        draft,
+        document?.version ?? 0,
+      );
+      setSaved(result);
+      setEditing(false);
+      setSaveState({ kind: 'saved', version: result.version });
+    } catch (error) {
+      const status = requestStatus(error);
+      if (status === 409 || state.agentSkillConflict) {
+        setSaveState({ kind: 'conflict' });
+      } else if (status === 400) {
+        setSaveState({
+          kind: 'error',
+          message:
+            'The service rejected this contract. Check the required section headings and try again.',
+        });
+      } else if (status === 401 || status === 403) {
+        setSaveState({
+          kind: 'error',
+          message: 'Your session cannot edit this document.',
+        });
+      } else {
+        setSaveState({
+          kind: 'error',
+          message:
+            'The document could not be saved. Your draft is still open and nothing was overwritten.',
+        });
+      }
+    }
   };
 
   return (
-    <Module title="Agent / Skill MD" count={document === null ? '—' : `v${document.version}`}>
+    <Module
+      title={title}
+      count={document === null ? '—' : `v${document.version}`}
+      defaultOpen={defaultOpen}
+    >
       <div className="mock-md-meta">
         <span>{versionLabel}</span>
         {!isAdmin && <span>· read-only</span>}
@@ -138,9 +189,9 @@ export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
               type="button"
               className="mock-btn mock-btn-primary mock-btn-sm"
               disabled={saveState.kind === 'saving'}
-              onClick={onSave}
+              onClick={() => void onSave()}
             >
-              Save
+              {saveState.kind === 'saving' ? 'Saving…' : 'Save'}
             </button>
             <button
               type="button"
@@ -163,7 +214,7 @@ export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
           {preview !== null && (
             <div className="mock-alert">
               <strong>Viewing version {preview.version}</strong>
-              Saved by {preview.editorLabel} on {formatTimestamp(preview.updatedAt)}.
+              Saved by {preview.editorLabel} on {formatTimestamp(preview.createdAt)}.
               This is a past version — the current document is v{document?.version}.
               <div className="mock-alert-actions">
                 <button
@@ -223,6 +274,7 @@ export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
                   type: 'patch',
                   patch: { agentSkillConflict: false },
                 });
+                reloadOverlay();
                 setSaveState({ kind: 'idle' });
               }}
             >
@@ -236,6 +288,13 @@ export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
               Keep my draft open
             </button>
           </div>
+        </div>
+      )}
+
+      {saveState.kind === 'error' && (
+        <div className="mock-alert mock-alert-danger" role="alert">
+          <strong>Save failed</strong>
+          {saveState.message}
         </div>
       )}
 
@@ -266,7 +325,7 @@ export function AgentSkillModule({ overlay, nodeName }: AgentSkillModuleProps) {
                       <span className="mock-chip">{version.editorLabel}</span>
                     </span>
                     <span className="mock-row-meta">
-                      {formatTimestamp(version.updatedAt)}
+                      {formatTimestamp(version.createdAt)}
                     </span>
                   </button>
                 </li>

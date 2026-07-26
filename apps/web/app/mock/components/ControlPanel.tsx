@@ -1,6 +1,6 @@
 'use client';
 
-import { useMock, type MockState } from '../state';
+import { useMock, type MockState } from '../../workspace/state';
 
 interface ControlSpec {
   key: keyof MockState;
