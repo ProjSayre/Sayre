@@ -419,7 +419,13 @@ def publish(
     send_args: dict[str, Any] = {"QueueUrl": queue_url, "MessageBody": message.to_body()}
     if is_fifo:
         send_args["MessageGroupId"] = message_group_id
-        semantic_deduplication_id = deduplication_id or message.idempotency_key
+        # MessageEnvelope's post-validator always supplies idempotency_key, but
+        # its public field remains Optional so wire validation can distinguish
+        # an omitted value. Keep the message id as an explicit final fallback
+        # for both the type checker and construction paths that bypass Pydantic.
+        semantic_deduplication_id = (
+            deduplication_id or message.idempotency_key or message.message_id
+        )
         send_args["MessageDeduplicationId"] = message_deduplication_id(semantic_deduplication_id)
     response = client.send_message(**send_args)
     return response["MessageId"]

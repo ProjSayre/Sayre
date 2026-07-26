@@ -789,7 +789,9 @@ test("[AC-3] each table has an org_isolation policy (cmd ALL, USING + WITH CHECK
   const res = await pool.query(
     `SELECT tablename, policyname, cmd, qual, with_check
        FROM pg_policies
-      WHERE schemaname='public' AND tablename = ANY($1)`,
+      WHERE schemaname='public'
+        AND policyname='org_isolation'
+        AND tablename = ANY($1)`,
     [TABLE_NAMES],
   );
   const byTable = new Map(res.rows.map((r) => [r.tablename, r]));

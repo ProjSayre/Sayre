@@ -32,6 +32,7 @@ _GIT_PROCESS_EXIT_GRACE_SECONDS = 0.25
 _GIT_READER_JOIN_GRACE_SECONDS = 0.25
 _WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
 _WINDOWS_JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+_WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 _WINDOWS_GIT_LAUNCHER = (
     "import subprocess,sys;"
     "sys.stdin.buffer.read(1);"
@@ -170,7 +171,12 @@ class _WindowsJob:
                 ("PeakJobMemoryUsed", ctypes.c_size_t),
             ]
 
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # WinDLL is intentionally absent from ctypes' non-Windows type surface.
+        # This path is reached only after the os.name guard in
+        # _start_contained_process, so resolve it dynamically without weakening
+        # the Windows Job Object boundary.
+        win_dll = getattr(ctypes, "WinDLL")
+        kernel32 = win_dll("kernel32", use_last_error=True)
         kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
         kernel32.CreateJobObjectW.restype = wintypes.HANDLE
         kernel32.SetInformationJobObject.argtypes = [
@@ -270,7 +276,7 @@ def _start_contained_process(
         stderr=subprocess.DEVNULL,
         env=resolved_environment,
         shell=False,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        creationflags=_WINDOWS_CREATE_NEW_PROCESS_GROUP,
     )
     containment: _WindowsJob | None = None
     try:
