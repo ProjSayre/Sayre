@@ -116,6 +116,7 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
     id: ["uuid", false],
     name: ["text", false],
     slug: ["text", false],
+    mcp_rate_limit_per_minute: ["integer", false],
     created_at: ["timestamp with time zone", false],
     updated_at: ["timestamp with time zone", false],
   },
@@ -816,7 +817,7 @@ test("[AC-3] each table has an org_isolation policy (cmd ALL, USING + WITH CHECK
   }
 });
 
-test("[AC-3] purpose, graph_version, and provider-state CHECK constraints exist", async () => {
+test("[AC-3] purpose, graph_version, provider-state, and MCP rate CHECK constraints exist", async () => {
   const res = await pool.query(
     `SELECT conname, conrelid::regclass::text AS table_name, pg_get_constraintdef(oid) AS def
        FROM pg_constraint WHERE contype = 'c' AND connamespace = 'public'::regnamespace`,
@@ -841,6 +842,12 @@ test("[AC-3] purpose, graph_version, and provider-state CHECK constraints exist"
   ]) {
     assert.ok(byName.has(name), `${name} missing`);
   }
+
+  const mcpRateCheck = byName.get("organizations_mcp_rate_limit_check");
+  assert.ok(mcpRateCheck, "organizations_mcp_rate_limit_check missing");
+  assert.match(mcpRateCheck!.def, /mcp_rate_limit_per_minute/);
+  assert.match(mcpRateCheck!.def, />=\s*1/);
+  assert.match(mcpRateCheck!.def, /<=\s*10000/);
 });
 
 test("[AC-8] the mcp_client_keys_same_org_actor BEFORE INSERT/UPDATE trigger exists exactly once", async () => {
@@ -1057,6 +1064,68 @@ test("[AC-5] mcp_client_keys has no plaintext key/secret column (only key_prefix
   }
   assert.ok(colNames.has("key_prefix"), "mcp_client_keys must have key_prefix");
   assert.ok(colNames.has("key_hmac"), "mcp_client_keys must have key_hmac (renamed from key_hash)");
+});
+
+test("[W4-06] pre-tenant key bootstrap exposes one exact prefix through sayre_app only", async () => {
+  const prefixResult = await pool.query(
+    "SELECT key_prefix FROM mcp_client_keys WHERE id = $1",
+    [orgA.mcpClientKeyId],
+  );
+  const prefix = prefixResult.rows[0].key_prefix as string;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL ROLE sayre_app");
+    const resolved = await client.query(
+      "SELECT * FROM resolve_mcp_client_key($1)",
+      [prefix],
+    );
+    assert.equal(resolved.rowCount, 1);
+    assert.equal(resolved.rows[0].org_id, orgA.orgId);
+    assert.equal(resolved.rows[0].key_prefix, prefix);
+    assert.equal(resolved.rows[0].rate_limit_per_minute, 60);
+    const unknown = await client.query(
+      "SELECT * FROM resolve_mcp_client_key($1)",
+      ["mcp_live_unknown_00000000"],
+    );
+    assert.equal(unknown.rowCount, 0);
+    await client.query("ROLLBACK");
+  } finally {
+    client.release();
+  }
+
+  const privileges = await pool.query(
+    `SELECT has_function_privilege('sayre_app', 'resolve_mcp_client_key(text)', 'EXECUTE') AS app_can,
+            has_function_privilege('public', 'resolve_mcp_client_key(text)', 'EXECUTE') AS public_can`,
+  );
+  assert.equal(privileges.rows[0].app_can, true);
+  assert.equal(privileges.rows[0].public_can, false);
+});
+
+test("[W4-06] MCP rate policy is tenant-scoped and database-bounded", async () => {
+  await withTenantSession(pool, orgA.orgId, async (c) => {
+    const updated = await c.query(
+      "UPDATE organizations SET mcp_rate_limit_per_minute = 75 WHERE id = $1 RETURNING mcp_rate_limit_per_minute",
+      [orgA.orgId],
+    );
+    assert.equal(updated.rows[0].mcp_rate_limit_per_minute, 75);
+    const cross = await c.query(
+      "UPDATE organizations SET mcp_rate_limit_per_minute = 80 WHERE id = $1",
+      [orgB.orgId],
+    );
+    assert.equal(cross.rowCount, 0);
+    await assert.rejects(
+      c.query(
+        "UPDATE organizations SET mcp_rate_limit_per_minute = 0 WHERE id = $1",
+        [orgA.orgId],
+      ),
+      /organizations_mcp_rate_limit_check/,
+    );
+  });
+  await pool.query(
+    "UPDATE organizations SET mcp_rate_limit_per_minute = 60 WHERE id = $1",
+    [orgA.orgId],
+  );
 });
 
 test("[AC-5] mcp_client_keys.pepper_version is NOT NULL: an insert omitting it fails", async () => {

@@ -99,6 +99,13 @@
       "when": 1785124800000,
       "tag": "0013_users_external_auth_id_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785211200000,
+      "tag": "0014_w4_06_mcp_gateway",
+      "breakpoints": true
     }
   ]
 }

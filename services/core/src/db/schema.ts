@@ -64,6 +64,11 @@ export const organizations = pgTable("organizations", {
     .default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  // W4-06 MCP call budget. It is an org setting rather than a process-only
+  // value so administrators can tighten it without redeploying the gateway.
+  mcpRateLimitPerMinute: integer("mcp_rate_limit_per_minute")
+    .notNull()
+    .default(60),
   ...timestamps,
 });
 

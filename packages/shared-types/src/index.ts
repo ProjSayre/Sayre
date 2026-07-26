@@ -82,6 +82,47 @@ export interface ProviderSettingsUpdateRequest {
   endpointId: string | null;
 }
 
+// --- W4-06: read-only MCP Gateway administration ---
+
+export interface McpReadGrant {
+  repoId: string | null;
+  branch: string | null;
+  pathPrefix: string | null;
+}
+
+export interface McpClientKeyView {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  grants: McpReadGrant[];
+  expiresAt: string | null;
+  createdAt: string;
+  createdByLabel: string;
+  revokedAt: string | null;
+  revokedByLabel: string | null;
+  lastUsedAt: string | null;
+}
+
+export interface McpKeySettingsResponse {
+  keys: McpClientKeyView[];
+  rateLimitPerMinute: number;
+}
+
+/** The raw key appears in this response exactly once and is never persisted. */
+export interface McpClientKeyIssued extends McpClientKeyView {
+  token: string;
+}
+
+export interface McpClientKeyCreateRequest {
+  name: string;
+  expiresAt: string | null;
+  grants: McpReadGrant[];
+}
+
+export interface McpRateLimitUpdateRequest {
+  rateLimitPerMinute: number;
+}
+
 export type RepoEventType = 'push' | 'pull_request' | 'branch';
 
 export interface RepoRef {

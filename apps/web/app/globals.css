@@ -1396,6 +1396,97 @@ a {
   color: #ffb9c3;
 }
 
+.mcp-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(240px, 0.8fr);
+  gap: 18px;
+  margin-top: 36px;
+}
+
+.mcp-token-panel,
+.mcp-key-list {
+  grid-column: 1 / -1;
+}
+
+.mcp-token-panel {
+  border: 1px solid #58742e;
+  border-radius: 16px;
+  background: rgba(184, 245, 66, 0.08);
+  padding: 22px;
+}
+
+.mcp-token-panel code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 12px;
+  color: #d9ff92;
+  font-size: 13px;
+}
+
+.mcp-token-panel p,
+.mcp-empty {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.mcp-issue-card,
+.mcp-rate-card,
+.mcp-key-list {
+  margin-top: 0;
+}
+
+.mcp-key-rows {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.mcp-key-rows article {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+  background: #090d12;
+  padding: 15px;
+}
+
+.mcp-key-rows article > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.mcp-key-rows strong {
+  font-size: 12px;
+}
+
+.mcp-key-rows code,
+.mcp-key-rows small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.mcp-key-state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #c9f577;
+  font-size: 10px;
+}
+
+.mcp-key-state button {
+  border: 1px solid #653c43;
+  border-radius: 7px;
+  background: transparent;
+  padding: 6px 8px;
+  color: #ffb9c3;
+  cursor: pointer;
+  font-size: 10px;
+}
+
 @media (max-width: 800px) {
   .topbar {
     grid-template-columns: 1fr auto;
@@ -1430,7 +1521,8 @@ a {
   }
 
   .provider-card-grid,
-  .tradeoff-grid {
+  .tradeoff-grid,
+  .mcp-settings-grid {
     grid-template-columns: 1fr;
   }
 
