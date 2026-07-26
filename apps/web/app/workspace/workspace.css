@@ -1886,10 +1886,7 @@ button.mock-list-row:hover {
 }
 
 .mock-root .sigma-canvas {
-  background:
-    radial-gradient(circle at 25% 20%, rgba(127, 177, 142, 0.06), transparent 32%),
-    radial-gradient(circle at 75% 70%, rgba(216, 200, 127, 0.05), transparent 34%),
-    var(--bg);
+  background: var(--bg);
 }
 
 /* Keep the WebGL stack opaque at its lowest layer. Besides avoiding a white

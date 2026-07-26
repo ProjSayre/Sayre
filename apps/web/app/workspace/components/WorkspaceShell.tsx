@@ -111,6 +111,10 @@ function Workspace() {
       : repository === null
         ? 'no repository'
         : repository.name;
+  const graphRootLabel =
+    repository === null
+      ? '/'
+      : `${repository.name.split('/').pop() ?? repository.name}/`;
 
   return (
     <main className="mock-main">
@@ -159,6 +163,7 @@ function Workspace() {
           <TechnicalTreeCanvas
             graphNodes={graph.nodes}
             graphEdges={graph.edges}
+            rootLabel={graphRootLabel}
             renderer={renderer.id}
             command={canvasCommand}
             selectedId={state.selectedNodeId}
@@ -190,6 +195,7 @@ function Workspace() {
           <OnboardingTreeCanvas
             graphNodes={graph.nodes}
             graphEdges={graph.edges}
+            rootLabel={graphRootLabel}
             workflow={graph.onboarding}
             renderer={renderer.id}
             command={canvasCommand}

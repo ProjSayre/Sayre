@@ -18,7 +18,7 @@ import type { CanvasCommand, RendererId } from '../rendererRegistry';
 import { NODE_TYPES } from './nodes';
 import {
   NODE_BOX,
-  layoutRadialTree,
+  layoutScalableTree,
   layoutTree,
   toBoxOrigin,
 } from './layout';
@@ -26,6 +26,7 @@ import {
 interface TechnicalTreeCanvasProps {
   graphNodes: GraphNode[];
   graphEdges: GraphEdge[];
+  rootLabel: string;
   renderer: RendererId;
   command: CanvasCommand | null;
   selectedId: string | null;
@@ -60,6 +61,7 @@ function ancestryOf(
 export function TechnicalTreeCanvas({
   graphNodes,
   graphEdges,
+  rootLabel,
   renderer,
   command,
   selectedId,
@@ -114,6 +116,7 @@ export function TechnicalTreeCanvas({
     const flowNodes: Node[] = graphNodes.map((node) => {
       const point = positions.get(node.id) ?? { x: 0, y: 0 };
       const matched = matches(node);
+      const displayName = node.parentId === null ? rootLabel : node.name;
       return {
         id: node.id,
         type: 'graphNode',
@@ -124,7 +127,7 @@ export function TechnicalTreeCanvas({
         draggable: false,
         connectable: false,
         data: {
-          name: node.name,
+          name: displayName,
           kind: node.kind,
           isRoot: node.parentId === null,
           selected: node.id === selectedId,
@@ -160,10 +163,17 @@ export function TechnicalTreeCanvas({
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [compactLayout, graphEdges, graphNodes, search, selectedId]);
+  }, [
+    compactLayout,
+    graphEdges,
+    graphNodes,
+    rootLabel,
+    search,
+    selectedId,
+  ]);
 
   const sigmaPayload = useMemo<AuthorizedCanvasPayload>(() => {
-    const positions = layoutRadialTree(
+    const positions = layoutScalableTree(
       graphNodes,
       compactLayout ? 'portrait' : 'landscape',
     );
@@ -175,7 +185,7 @@ export function TechnicalTreeCanvas({
         return {
           id: node.id,
           kind: node.kind,
-          label: node.name,
+          label: node.parentId === null ? rootLabel : node.name,
           path: node.path,
           x: point.x,
           y: point.y,
@@ -191,7 +201,7 @@ export function TechnicalTreeCanvas({
         relationship: edge.type,
       })),
     };
-  }, [compactLayout, graphEdges, graphNodes]);
+  }, [compactLayout, graphEdges, graphNodes, rootLabel]);
 
   if (renderer === 'sigma') {
     return (

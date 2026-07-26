@@ -63,6 +63,22 @@ export function coverageColor(status: CoverageBadgeStatus | undefined): string {
   }
 }
 
+function presentationFileColor(
+  status: CoverageBadgeStatus | undefined,
+): string {
+  switch (status) {
+    case 'pass':
+      return '#7fb18e';
+    case 'fail':
+      return '#b87b70';
+    case 'stale':
+      return '#b09a69';
+    case 'unknown':
+    default:
+      return '#77776e';
+  }
+}
+
 export function rendererForVisibleNodeCount(visibleNodeCount: number): GraphRenderer {
   if (!Number.isSafeInteger(visibleNodeCount) || visibleNodeCount < 0) {
     throw new RangeError('visibleNodeCount must be a non-negative safe integer');
@@ -133,19 +149,26 @@ export function toPresentationGraph(payload: AuthorizedCanvasPayload): Graph {
   }
 
   const graph = new Graph({ type: 'directed', multi: false });
+  const containedNodeIds = new Set(
+    payload.edges
+      .filter((edge) => edge.relationship === 'CONTAINS')
+      .map((edge) => edge.target),
+  );
   for (const node of payload.nodes) {
+    const fileColor = presentationFileColor(node.coverage?.status);
+    const isFolder = node.kind === 'Folder';
+    const isRoot = isFolder && !containedNodeIds.has(node.id);
     graph.addNode(node.id, {
       x: node.x,
       y: node.y,
-      size: node.kind === 'Folder' ? 5 : 2.6,
-      color:
-        node.kind === 'Folder'
-          ? '#f7c66c'
-          : coverageColor(node.coverage?.status),
-      label:
-        node.kind === 'File' && node.coverage?.status !== undefined
-          ? `${node.label} · ${node.coverage.status.toUpperCase()}`
-          : node.label,
+      type: 'border',
+      size: isFolder ? 4.8 : 1.55,
+      // Claude's graph language uses open circles for containers and quiet
+      // filled dots for leaves. The border node program reads both colors.
+      borderColor: isFolder ? '#77776e' : fileColor,
+      color: isFolder ? '#131412' : fileColor,
+      label: node.label,
+      forceLabel: isRoot,
       kind: node.kind,
       path: node.path,
       coverageStatus: node.coverage?.status,
@@ -156,8 +179,8 @@ export function toPresentationGraph(payload: AuthorizedCanvasPayload): Graph {
       throw new Error(`edge ${edge.id} references a node outside the authorized payload`);
     }
     graph.addDirectedEdgeWithKey(edge.id, edge.source, edge.target, {
-      color: edge.relationship === 'IMPORTS' ? '#688bc0' : '#303b47',
-      size: edge.relationship === 'IMPORTS' ? 0.7 : 0.45,
+      color: edge.relationship === 'IMPORTS' ? '#2b332d' : '#41423b',
+      size: edge.relationship === 'IMPORTS' ? 0.18 : 0.46,
       relationship: edge.relationship,
     });
   }

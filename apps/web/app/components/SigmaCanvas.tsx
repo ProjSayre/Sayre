@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createNodeBorderProgram } from '@sigma/node-border';
 import Sigma from 'sigma';
 import type { AuthorizedCanvasNode, AuthorizedCanvasPayload } from '../lib/scaleGraph';
 import { toPresentationGraph } from '../lib/scaleGraph';
@@ -30,6 +31,15 @@ interface ViewportBoundary extends SigmaBoundary {
 }
 
 const EMPTY_BOUNDARIES: readonly SigmaBoundary[] = [];
+const SayreNodeProgram = createNodeBorderProgram({
+  borders: [
+    {
+      size: { value: 1.35, mode: 'pixels' },
+      color: { attribute: 'borderColor', defaultValue: '#77776e' },
+    },
+    { size: { fill: true }, color: { attribute: 'color' } },
+  ],
+});
 
 function activateBoundary(
   event: React.KeyboardEvent<SVGGElement>,
@@ -66,18 +76,22 @@ export function SigmaCanvas({
     const graph = toPresentationGraph(payload);
     const renderer = new Sigma(graph, containerRef.current, {
       allowInvalidContainer: false,
+      defaultNodeType: 'border',
+      nodeProgramClasses: { border: SayreNodeProgram },
       defaultEdgeColor: '#41423b',
-      defaultNodeColor: '#7fb18e',
-      labelColor: { color: '#e8e6e1' },
-      labelDensity: 0.08,
-      labelGridCellSize: 120,
-      labelRenderedSizeThreshold: 2.5,
+      defaultNodeColor: '#77776e',
+      labelColor: { color: '#b9b9af' },
+      labelDensity: 0.14,
+      labelFont:
+        '"Fragment Mono", ui-monospace, SFMono-Regular, Consolas, monospace',
+      labelGridCellSize: 96,
+      labelRenderedSizeThreshold: 3.4,
+      labelSize: 11,
+      labelWeight: '400',
+      minEdgeThickness: 0.65,
       renderEdgeLabels: false,
+      stagePadding: 42,
       zIndex: true,
-      nodeReducer: (node, data) => ({
-        ...data,
-        label: data.kind === 'Folder' ? data.label : '',
-      }),
     });
     rendererRef.current = renderer;
 
@@ -140,30 +154,95 @@ export function SigmaCanvas({
     );
     const matchingNodeIds = new Set(matchingNodes.map((node) => node.id));
     const edgeById = new Map(payload.edges.map((edge) => [edge.id, edge]));
+    const containsParent = new Map(
+      payload.edges
+        .filter((edge) => edge.relationship === 'CONTAINS')
+        .map((edge) => [edge.target, edge] as const),
+    );
+    const selectedPathNodes = new Set<string>();
+    const selectedPathEdges = new Set<string>();
+    let pathCursor = selectedNodeId;
+    while (
+      pathCursor !== null &&
+      !selectedPathNodes.has(pathCursor)
+    ) {
+      selectedPathNodes.add(pathCursor);
+      const parentEdge = containsParent.get(pathCursor);
+      if (parentEdge === undefined) break;
+      selectedPathEdges.add(parentEdge.id);
+      pathCursor = parentEdge.source;
+    }
+    const camera = renderer.getCamera();
+    let importsVisible =
+      normalizedSearch.length > 0 || camera.ratio < 0.62;
 
     renderer.setSetting('nodeReducer', (node, data) => ({
       ...data,
       hidden: !matchingNodeIds.has(node),
-      label:
-        data.kind === 'Folder' ||
-        node === selectedNodeId ||
-        normalizedSearch.length > 0
-          ? data.label
-          : '',
-      color: node === selectedNodeId ? '#d8c87f' : data.color,
-      size: node === selectedNodeId ? data.size * 1.45 : data.size,
-      zIndex: node === selectedNodeId ? 1 : data.zIndex,
+      label: data.label,
+      borderColor:
+        node === selectedNodeId
+          ? '#7fb18e'
+          : selectedPathNodes.has(node)
+            ? '#4f7f5d'
+            : data.borderColor,
+      color:
+        node === selectedNodeId
+          ? data.kind === 'Folder'
+            ? '#131412'
+            : '#7fb18e'
+          : data.color,
+      size:
+        node === selectedNodeId
+          ? data.size * 1.45
+          : selectedPathNodes.has(node)
+            ? data.size * 1.12
+            : data.kind === 'File' && !importsVisible
+              ? data.size * 0.52
+              : data.size,
+      zIndex:
+        node === selectedNodeId || selectedPathNodes.has(node)
+          ? 1
+          : data.zIndex,
     }));
     renderer.setSetting('edgeReducer', (edge, data) => {
       const match = edgeById.get(edge);
+      const activeHierarchy = selectedPathEdges.has(edge);
+      const activeImport =
+        match?.relationship === 'IMPORTS' &&
+        selectedNodeId !== null &&
+        (match.source === selectedNodeId || match.target === selectedNodeId);
+      const hiddenAtOverview =
+        match?.relationship === 'IMPORTS' &&
+        !importsVisible &&
+        !activeImport;
       return {
         ...data,
         hidden:
           match === undefined ||
           !matchingNodeIds.has(match.source) ||
-          !matchingNodeIds.has(match.target),
+          !matchingNodeIds.has(match.target) ||
+          hiddenAtOverview,
+        color: activeHierarchy
+          ? '#4f7f5d'
+          : activeImport
+            ? '#476551'
+            : data.color,
+        size:
+          activeHierarchy || activeImport
+            ? Math.max(data.size, 0.8)
+            : data.size,
+        zIndex: activeHierarchy || activeImport ? 1 : data.zIndex,
       };
     });
+    const updateImportDetail = () => {
+      const next =
+        normalizedSearch.length > 0 || camera.ratio < 0.62;
+      if (next === importsVisible) return;
+      importsVisible = next;
+      renderer.refresh();
+    };
+    camera.on('updated', updateImportDetail);
     renderer.refresh();
 
     if (
@@ -189,6 +268,9 @@ export function SigmaCanvas({
       void renderer.getCamera().animatedReset({ duration: 220 });
     }
     previousSearchRef.current = normalizedSearch;
+    return () => {
+      camera.off('updated', updateImportDetail);
+    };
   }, [payload, search, selectedNodeId]);
 
   useEffect(() => {

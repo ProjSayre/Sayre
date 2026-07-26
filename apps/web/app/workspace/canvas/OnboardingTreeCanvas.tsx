@@ -10,6 +10,7 @@ import { TechnicalTreeCanvas } from './TechnicalTreeCanvas';
 interface OnboardingTreeCanvasProps {
   graphNodes: GraphNode[];
   graphEdges: GraphEdge[];
+  rootLabel: string;
   workflow: OnboardingWorkflow;
   renderer: RendererId;
   command: CanvasCommand | null;
@@ -56,6 +57,7 @@ function resultSummary(result: StepResult): string {
 export function OnboardingTreeCanvas({
   graphNodes,
   graphEdges,
+  rootLabel,
   workflow,
   renderer,
   command,
@@ -88,6 +90,7 @@ export function OnboardingTreeCanvas({
         <TechnicalTreeCanvas
           graphNodes={graphNodes}
           graphEdges={graphEdges}
+          rootLabel={rootLabel}
           renderer={renderer}
           command={command}
           selectedId={selectedId}

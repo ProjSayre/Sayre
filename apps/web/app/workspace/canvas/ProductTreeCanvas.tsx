@@ -54,6 +54,8 @@ export function ProductTreeCanvas({
   const flow = useReactFlow();
   const [columns, setColumns] = useState(4);
   const fitMinimumZoom = columns === 1 ? 0.65 : 0.2;
+  const presentationZoom =
+    columns === 1 ? 0.65 : columns === 2 ? 0.78 : 0.72;
 
   useEffect(() => {
     const update = (): void => {
@@ -68,11 +70,17 @@ export function ProductTreeCanvas({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (columns === 1) {
-        // A one-column graph is intentionally taller than the phone viewport.
-        // Start at its first feature at a readable zoom and let users pan.
+      if (columns === 1 || features.length > columns) {
+        // A real repository often has more features than one viewport can
+        // legibly hold. Match the approved card scale, start at the first row,
+        // and use the minimap for the full overview instead of shrinking every
+        // filename into a miniature.
         void flow.setViewport(
-          { x: 24, y: 28, zoom: fitMinimumZoom },
+          {
+            x: columns === 1 ? 24 : columns === 2 ? 32 : 34,
+            y: columns === 1 ? 28 : 52,
+            zoom: presentationZoom,
+          },
           { duration: 0 },
         );
         return;
@@ -84,7 +92,14 @@ export function ProductTreeCanvas({
       });
     }, 80);
     return () => clearTimeout(timer);
-  }, [columns, fitKey, fitMinimumZoom, flow]);
+  }, [
+    columns,
+    features.length,
+    fitKey,
+    fitMinimumZoom,
+    flow,
+    presentationZoom,
+  ]);
 
   useEffect(() => {
     if (command === null) return;

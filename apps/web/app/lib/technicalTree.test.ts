@@ -111,8 +111,12 @@ describe('Technical Tree full-parse-to-render contract', () => {
     expect(reactFlow.edges.find((edge) => edge.id.startsWith('IMPORTS'))?.animated).toBe(true);
     expect(sigma.order).toBe(4);
     expect(sigma.size).toBe(4);
-    expect(sigma.getNodeAttribute('file-app', 'color')).toBe('#f7c66c');
-    expect(sigma.getNodeAttribute('file-util', 'label')).toContain('PASS');
+    expect(sigma.getNodeAttribute('folder-root', 'type')).toBe('border');
+    expect(sigma.getNodeAttribute('folder-root', 'color')).toBe('#131412');
+    expect(sigma.getNodeAttribute('folder-root', 'borderColor')).toBe('#77776e');
+    expect(sigma.getNodeAttribute('folder-root', 'forceLabel')).toBe(true);
+    expect(sigma.getNodeAttribute('file-app', 'color')).toBe('#b09a69');
+    expect(sigma.getNodeAttribute('file-util', 'label')).toBe('util.ts');
     expect(rendererForVisibleNodeCount(payload.visibleNodeCount)).toBe('react-flow');
   });
 

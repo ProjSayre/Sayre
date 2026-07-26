@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GraphNode } from '../types';
-import { layoutRadialTree, layoutTree } from './layout';
+import { layoutScalableTree, layoutTree } from './layout';
 
 const nodes: GraphNode[] = [
   {
@@ -52,15 +52,43 @@ describe('workspace graph layouts', () => {
     );
   });
 
-  it('fans a large-renderer hierarchy around the root instead of one stripe', () => {
-    const positions = layoutRadialTree(nodes, 'landscape');
+  it('keeps the large renderer in the approved top-down hierarchy', () => {
+    const positions = layoutScalableTree(nodes, 'landscape');
     const root = positions.get('root');
     const leafPoints = ['web', 'core'].map((id) => positions.get(id));
 
     expect(positions).toHaveLength(nodes.length);
-    expect(root).toEqual({ x: 0, y: 0 });
+    expect(root?.y).toBe(0);
     expect(new Set(leafPoints.map((point) => point?.x))).toHaveLength(2);
-    expect(new Set(leafPoints.map((point) => point?.y))).toHaveLength(2);
+    expect(new Set(leafPoints.map((point) => point?.y))).toHaveLength(1);
+    expect(leafPoints[0]?.y).toBeLessThan(
+      positions.get('apps')?.y ?? 0,
+    );
+  });
+
+  it('scales row spacing with a wide repository instead of flattening it', () => {
+    const wideNodes: GraphNode[] = [
+      nodes[0],
+      nodes[1],
+      ...Array.from({ length: 120 }, (_, index): GraphNode => ({
+        id: `leaf-${index}`,
+        kind: 'File',
+        name: `file-${index}.ts`,
+        path: `apps/file-${index}.ts`,
+        parentId: 'apps',
+      })),
+    ];
+    const positions = layoutScalableTree(wideNodes, 'landscape');
+    const points = [...positions.values()];
+    const width =
+      Math.max(...points.map(({ x }) => x)) -
+      Math.min(...points.map(({ x }) => x));
+    const height =
+      Math.max(...points.map(({ y }) => y)) -
+      Math.min(...points.map(({ y }) => y));
+
+    expect(width / height).toBeGreaterThan(1.65);
+    expect(width / height).toBeLessThan(1.85);
   });
 
   it('places orphaned authorized nodes as additional roots', () => {
@@ -72,6 +100,6 @@ describe('workspace graph layouts', () => {
       parentId: 'not-authorized',
     };
 
-    expect(layoutRadialTree([...nodes, orphan]).has(orphan.id)).toBe(true);
+    expect(layoutScalableTree([...nodes, orphan]).has(orphan.id)).toBe(true);
   });
 });
