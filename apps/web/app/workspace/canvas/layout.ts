@@ -22,7 +22,13 @@ const CHAR_WIDTH = 6.4;
  * filenames get room, which is what the approved mock does.
  */
 function slotWidth(node: GraphNode): number {
-  return node.name.length * CHAR_WIDTH + LABEL_GAP;
+  const metadataWidth =
+    node.kind === 'Folder'
+      ? 46
+      : node.coverage === undefined || node.coverage.status === 'unknown'
+        ? 0
+        : 62;
+  return node.name.length * CHAR_WIDTH + LABEL_GAP + metadataWidth;
 }
 
 /**
@@ -34,12 +40,13 @@ export function layoutTree(
   nodes: GraphNode[],
   orientation: TreeOrientation = 'top-down',
 ): Map<string, Point> {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
   const childrenOf = new Map<string, GraphNode[]>();
-  let root: GraphNode | null = null;
+  const roots: GraphNode[] = [];
 
   for (const node of nodes) {
-    if (node.parentId === null) {
-      root = root ?? node;
+    if (node.parentId === null || !byId.has(node.parentId)) {
+      roots.push(node);
       continue;
     }
     const siblings = childrenOf.get(node.parentId);
@@ -48,18 +55,39 @@ export function layoutTree(
   }
 
   const positions = new Map<string, Point>();
-  if (root === null) return positions;
-
+  if (nodes.length === 0) return positions;
+  const compareNodes = (left: GraphNode, right: GraphNode): number =>
+    Number(left.kind === 'File') - Number(right.kind === 'File') ||
+    left.path.localeCompare(right.path, undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    }) ||
+    left.id.localeCompare(right.id);
+  roots.sort(compareNodes);
+  for (const children of childrenOf.values()) children.sort(compareNodes);
   let leafCursor = 0;
+  const visiting = new Set<string>();
 
   const place = (node: GraphNode, depth: number): number => {
-    const children = childrenOf.get(node.id) ?? [];
+    const existing = positions.get(node.id);
+    if (existing !== undefined) return existing.x;
     const y = depth * Y_GAP;
+    if (visiting.has(node.id)) {
+      const cycleX = leafCursor;
+      leafCursor += slotWidth(node);
+      positions.set(node.id, { x: cycleX, y });
+      return cycleX;
+    }
 
+    visiting.add(node.id);
+    const children = (childrenOf.get(node.id) ?? []).filter(
+      (child) => !visiting.has(child.id),
+    );
     if (children.length === 0) {
       const x = leafCursor;
       leafCursor += slotWidth(node);
       positions.set(node.id, { x, y });
+      visiting.delete(node.id);
       return x;
     }
 
@@ -67,10 +95,21 @@ export function layoutTree(
     const x =
       (childCentres[0] + childCentres[childCentres.length - 1]) / 2;
     positions.set(node.id, { x, y });
+    visiting.delete(node.id);
     return x;
   };
 
-  place(root, 0);
+  for (const root of roots) {
+    place(root, 0);
+    leafCursor += LABEL_GAP;
+  }
+  // Preserve malformed but authorized cyclic components without hanging or
+  // stacking them at the origin.
+  for (const node of [...nodes].sort(compareNodes)) {
+    if (positions.has(node.id)) continue;
+    place(node, 0);
+    leafCursor += LABEL_GAP;
+  }
   if (orientation === 'left-right') {
     return new Map(
       [...positions].map(([id, point]) => [

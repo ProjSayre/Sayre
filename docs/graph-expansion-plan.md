@@ -1,7 +1,8 @@
 # Technical Tree expansion plan
 
-Status: proposal only. No graph visibility or expansion behavior is implemented
-by this document. Implementation requires explicit product approval.
+Status: implemented after product approval. The renderer-independent projection
+is in `apps/web/app/workspace/technicalExpansion.ts`; scoped session intent and
+transient deep-link/agent reveals are in `technicalExpansionState.tsx`.
 
 ## Problem
 
@@ -180,7 +181,7 @@ appropriately.
 - Deep links and agent actions use transient reveal so the user's manual state
   is restored afterward.
 
-## Proposed implementation sequence after approval
+## Implemented sequence
 
 1. **Projection engine:** expansion intent types, deterministic visibility
    planner, authorized folded counts, and unit tests.
@@ -206,7 +207,7 @@ appropriately.
 - Layout transitions retain the selected node's screen position.
 - Keyboard and reduced-motion behavior follow the WAI-ARIA tree guidance.
 
-## Approval decisions
+## Approved decisions
 
 Recommended defaults for product approval:
 
@@ -216,4 +217,4 @@ Recommended defaults for product approval:
 4. Pinning is explicit and shared between Explorer and graph.
 5. Session-only persistence ships first.
 
-No code for this plan should be implemented until these defaults are approved.
+These defaults were approved and are now the Technical Tree behavior.

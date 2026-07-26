@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useMock } from '../state';
 import {
@@ -32,6 +32,14 @@ import { GlobalStates } from './GlobalStates';
 import { StatusBanner } from './StatusBanner';
 import { TopBar } from './TopBar';
 import { ViewRail } from './ViewRail';
+import {
+  projectTechnicalExpansion,
+  viewportTechnicalNodeBudget,
+} from '../technicalExpansion';
+import {
+  TechnicalExpansionProvider,
+  useTechnicalExpansion,
+} from '../technicalExpansionState';
 
 type CanvasStatus =
   | 'no-repository'
@@ -55,8 +63,39 @@ function Workspace() {
     graphStatus,
     graphErrorStatus,
   } = useMock();
+  const technicalExpansion = useTechnicalExpansion();
   const [showMinimap, setShowMinimap] = useState(true);
   const [canvasCommand, setCanvasCommand] = useState<CanvasCommand | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [canvasSize, setCanvasSize] = useState({
+    width: 880,
+    height: 600,
+  });
+
+  useEffect(() => {
+    const element = canvasRef.current;
+    if (element === null) return undefined;
+    const update = (): void => {
+      const bounds = element.getBoundingClientRect();
+      const next = {
+        width: Math.round(bounds.width),
+        height: Math.round(bounds.height),
+      };
+      setCanvasSize((current) =>
+        current.width === next.width && current.height === next.height
+          ? current
+          : next,
+      );
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   function commandCanvas(type: CanvasCommandType): void {
     setCanvasCommand((current) => ({ id: (current?.id ?? 0) + 1, type }));
@@ -92,7 +131,69 @@ function Workspace() {
   })();
 
   const ready = status === 'ready';
-  const visibleNodeCount = graph.nodes.length;
+  const canvasBudget = viewportTechnicalNodeBudget(
+    canvasSize.width,
+    canvasSize.height,
+  );
+  const normalizedSearch = state.search.trim().toLowerCase();
+  const searchMatchIds = useMemo(
+    () =>
+      normalizedSearch.length === 0
+        ? new Set<string>()
+        : new Set(
+            graph.nodes
+              .filter(
+                (node) =>
+                  node.name.toLowerCase().includes(normalizedSearch) ||
+                  node.path.toLowerCase().includes(normalizedSearch),
+              )
+              .map((node) => node.id),
+          ),
+    [graph.nodes, normalizedSearch],
+  );
+  const effectiveTransientReveal = useMemo(
+    () =>
+      normalizedSearch.length === 0
+        ? technicalExpansion.transientReveal
+        : { source: 'search' as const, nodeIds: searchMatchIds },
+    [
+      normalizedSearch,
+      searchMatchIds,
+      technicalExpansion.transientReveal,
+    ],
+  );
+  const technicalProjection = useMemo(
+    () =>
+      projectTechnicalExpansion(
+        graph.nodes,
+        graph.edges,
+        {
+          ...technicalExpansion.preferences,
+          focusNodeId: state.selectedNodeId,
+          transientReveal: effectiveTransientReveal,
+        },
+        canvasBudget,
+      ),
+    [
+      canvasBudget,
+      graph.edges,
+      graph.nodes,
+      effectiveTransientReveal,
+      state.selectedNodeId,
+      technicalExpansion.preferences,
+    ],
+  );
+  const uniqueTransientFocusId =
+    effectiveTransientReveal !== null &&
+    effectiveTransientReveal.nodeIds.size === 1
+      ? effectiveTransientReveal.nodeIds.values().next().value ?? null
+      : null;
+  const visibleNodeCount = isTechnical
+    ? technicalProjection.nodes.length
+    : graph.nodes.length;
+  const visibleEdgeCount = isTechnical
+    ? technicalProjection.edges.length
+    : graph.edges.length;
   const renderer = rendererFor(state.view, visibleNodeCount);
   const coverageSummary =
     ready && isTechnical
@@ -128,9 +229,28 @@ function Workspace() {
               : 'Onboarding Tree'
         }
         visibleNodeCount={ready ? visibleNodeCount : 0}
-        edgeCount={ready && !isProduct ? graph.edges.length : null}
+        edgeCount={ready && !isProduct ? visibleEdgeCount : null}
         renderer={renderer}
         coverageSummary={coverageSummary}
+        technicalExpansion={
+          isTechnical
+            ? {
+                mode: technicalExpansion.preferences.mode,
+                totalNodeCount: graph.nodes.length,
+                budget: technicalProjection.budget,
+                foldedBranchCount: technicalProjection.foldedBranchCount,
+                transientMatchCount:
+                  technicalProjection.transientMatchCount,
+                visibleTransientMatchCount:
+                  technicalProjection.visibleTransientMatchCount,
+                transientSource:
+                  effectiveTransientReveal?.source ?? null,
+                overBudgetBy: technicalProjection.overBudgetBy,
+                onModeChange: technicalExpansion.setMode,
+                onReset: technicalExpansion.reset,
+              }
+            : null
+        }
         interactive={ready}
         showMinimap={showMinimap}
         onToggleMinimap={() => setShowMinimap((value) => !value)}
@@ -141,7 +261,7 @@ function Workspace() {
           repository the viewer cannot read. */}
       {repository !== null && authorizedForRepository && <StatusBanner />}
 
-      <div className="mock-canvas">
+      <div className="mock-canvas" ref={canvasRef}>
         {status === 'no-repository' && (
           <NoRepositoryState
             reason={state.access === 'no-repositories' ? 'none' : 'restricted'}
@@ -162,16 +282,22 @@ function Workspace() {
 
         {ready && isTechnical && (
           <TechnicalTreeCanvas
-            graphNodes={graph.nodes}
-            graphEdges={graph.edges}
+            graphNodes={technicalProjection.nodes}
+            graphEdges={technicalProjection.edges}
             rootLabel={graphRootLabel}
             renderer={renderer.id}
             command={canvasCommand}
             selectedId={state.selectedNodeId}
+            cameraFocusId={state.selectedNodeId ?? uniqueTransientFocusId}
             search={state.search}
             showMinimap={showMinimap}
             fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
+            layoutKey={technicalProjection.key}
+            expansion={technicalProjection}
             onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+            onSetFolderExpanded={technicalExpansion.setFolderExpanded}
+            onTogglePinned={technicalExpansion.togglePinned}
+            onRequestFullGraph={() => technicalExpansion.setMode('full')}
           />
         )}
 
@@ -211,7 +337,7 @@ function Workspace() {
         {ready && (
           <span className="mock-statusline">
             {isTechnical
-              ? 'tree layout · contains + imports'
+              ? `${technicalExpansion.preferences.mode} · ${visibleNodeCount} of ${graph.nodes.length} visible · ${technicalProjection.foldedBranchCount} folded branches`
               : isProduct
                 ? `feature layout · ${graph.features.length} features`
                 : `ordered setup · ${graph.onboarding?.steps.length ?? 0} sandbox steps`}{' '}
@@ -227,16 +353,16 @@ function Workspace() {
   );
 }
 
-export function WorkspaceShell() {
+function WorkspaceBody() {
   const {
     dispatch,
     graph,
     graphStatus,
-    mode,
     repository,
     scope,
     state,
   } = useMock();
+  const technicalExpansion = useTechnicalExpansion();
   const drawerSelected =
     state.drawerOpen &&
     (state.selectedNodeId !== null || state.selectedFeatureId !== null);
@@ -248,6 +374,55 @@ export function WorkspaceShell() {
     graph.nodes[0]?.id ??
     'empty';
 
+  return (
+    <div
+      className={[
+        'mock-body',
+        fileTreeVisible ? 'mock-body-explorer' : '',
+        drawerVisible ? 'mock-body-drawer' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <ViewRail />
+      {state.view === 'technical' && (
+        <FileTreePane
+          hidden={!fileTreeVisible}
+          nodes={graph.nodes}
+          status={graphStatus}
+          repositoryLabel={
+            repository === null
+              ? '/'
+              : `${repository.name.split('/').pop() ?? repository.name}/`
+          }
+          treeKey={
+            scope === null
+              ? 'no-repository'
+              : `${scope.repositoryId}:${scope.refName}:${fileTreeRootId}`
+          }
+          selectedNodeId={state.selectedNodeId}
+          pinnedNodeIds={technicalExpansion.preferences.pinnedBranches}
+          onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+          onTogglePin={technicalExpansion.togglePinned}
+          onClose={() =>
+            dispatch({ type: 'patch', patch: { fileTreeOpen: false } })
+          }
+        />
+      )}
+      <ReactFlowProvider>
+        <Workspace />
+      </ReactFlowProvider>
+      {drawerSelected && (
+        <div className="mock-drawer-preserver" hidden={!drawerVisible}>
+          {state.selectedNodeId !== null ? <NodeDrawer /> : <FeatureDrawer />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function WorkspaceShell() {
+  const { graph, graphStatus, mode, scope, state } = useMock();
   const globallyBlocked =
     state.session !== 'authenticated' ||
     state.backend === 'unavailable' ||
@@ -262,53 +437,24 @@ export function WorkspaceShell() {
     );
   }
 
+  const expansionScopeKey =
+    scope === null
+      ? 'no-repository'
+      : `${scope.repositoryId}:${scope.refName}`;
+
   return (
     <div className="mock-root" style={themeVariables(warmGraphiteTheme)}>
       <TopBar />
-      <div
-        className={[
-          'mock-body',
-          fileTreeVisible ? 'mock-body-explorer' : '',
-          drawerVisible ? 'mock-body-drawer' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
+      <TechnicalExpansionProvider
+        scopeKey={expansionScopeKey}
+        nodes={
+          state.view === 'technical' && graphStatus === 'ready'
+            ? graph.nodes
+            : null
+        }
       >
-        <ViewRail />
-        {state.view === 'technical' && (
-          <FileTreePane
-            hidden={!fileTreeVisible}
-            nodes={graph.nodes}
-            status={graphStatus}
-            repositoryLabel={
-              repository === null
-                ? '/'
-                : `${repository.name.split('/').pop() ?? repository.name}/`
-            }
-            treeKey={
-              scope === null
-                ? 'no-repository'
-                : `${scope.repositoryId}:${scope.refName}:${fileTreeRootId}`
-            }
-            selectedNodeId={state.selectedNodeId}
-            onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
-            onClose={() =>
-              dispatch({ type: 'patch', patch: { fileTreeOpen: false } })
-            }
-          />
-        )}
-        <ReactFlowProvider>
-          <Workspace />
-        </ReactFlowProvider>
-        {drawerSelected && (
-          <div
-            className="mock-drawer-preserver"
-            hidden={!drawerVisible}
-          >
-            {state.selectedNodeId !== null ? <NodeDrawer /> : <FeatureDrawer />}
-          </div>
-        )}
-      </div>
+        <WorkspaceBody />
+      </TechnicalExpansionProvider>
       {mode === 'fixture' && <ControlPanel />}
     </div>
   );

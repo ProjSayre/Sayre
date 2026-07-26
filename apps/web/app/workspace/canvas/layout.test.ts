@@ -100,6 +100,7 @@ describe('workspace graph layouts', () => {
       parentId: 'not-authorized',
     };
 
+    expect(layoutTree([...nodes, orphan]).has(orphan.id)).toBe(true);
     expect(layoutScalableTree([...nodes, orphan]).has(orphan.id)).toBe(true);
   });
 });

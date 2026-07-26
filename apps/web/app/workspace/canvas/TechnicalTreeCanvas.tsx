@@ -15,6 +15,7 @@ import {
 } from '../../lib/scaleGraph';
 import type { GraphEdge, GraphNode } from '../types';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
+import type { TechnicalExpansionProjection } from '../technicalExpansion';
 import { NODE_TYPES } from './nodes';
 import {
   NODE_BOX,
@@ -30,16 +31,26 @@ interface TechnicalTreeCanvasProps {
   renderer: RendererId;
   command: CanvasCommand | null;
   selectedId: string | null;
+  cameraFocusId?: string | null;
   search: string;
   showMinimap: boolean;
   /** Changes whenever the canvas column resizes, so the graph refits. */
   fitKey: string;
+  /** Changes only when the deterministic visible projection changes. */
+  layoutKey?: string;
+  expansion?: TechnicalExpansionProjection;
   onSelect: (nodeId: string) => void;
+  onSetFolderExpanded?: (nodeId: string, expanded: boolean) => void;
+  onTogglePinned?: (nodeId: string) => void;
+  onRequestFullGraph?: () => void;
 }
 
 /** Root → node path, so the whole ancestry lights up rather than one edge. */
 const SigmaCanvas = dynamic(
-  () => import('../../components/SigmaCanvas').then((module) => module.SigmaCanvas),
+  () =>
+    import('../../components/SigmaCanvas').then(
+      (module) => module.SigmaCanvas,
+    ),
   { ssr: false },
 );
 
@@ -65,17 +76,32 @@ export function TechnicalTreeCanvas({
   renderer,
   command,
   selectedId,
+  cameraFocusId = selectedId,
   search,
   showMinimap,
   fitKey,
+  layoutKey = fitKey,
+  expansion,
   onSelect,
+  onSetFolderExpanded,
+  onTogglePinned,
+  onRequestFullGraph,
 }: TechnicalTreeCanvasProps) {
   const flow = useReactFlow();
   const [compactLayout, setCompactLayout] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 760px)');
     const update = () => setCompactLayout(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(media.matches);
     update();
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
@@ -101,22 +127,37 @@ export function TechnicalTreeCanvas({
   }, [command, flow, renderer]);
 
   useEffect(() => {
-    if (renderer !== 'react-flow' || selectedId === null) return undefined;
+    if (renderer !== 'react-flow') return undefined;
     const timer = window.setTimeout(() => {
-      const selected = flow.getNode(selectedId);
+      if (cameraFocusId === null) {
+        void flow.fitView({
+          padding: 0.1,
+          maxZoom: 1,
+          duration: reducedMotion ? 0 : 220,
+        });
+        return;
+      }
+      const selected = flow.getNode(cameraFocusId);
       if (selected === undefined) return;
       const position = selected.position;
       void flow.setCenter(
         position.x + NODE_BOX / 2,
         position.y + NODE_BOX / 2,
         {
-          duration: 220,
+          duration: reducedMotion ? 0 : 220,
           zoom: Math.min(1.4, Math.max(0.9, flow.getZoom())),
         },
       );
     }, 125);
     return () => window.clearTimeout(timer);
-  }, [flow, renderer, selectedId]);
+  }, [
+    fitKey,
+    cameraFocusId,
+    flow,
+    layoutKey,
+    reducedMotion,
+    renderer,
+  ]);
 
   const { nodes, edges } = useMemo(() => {
     const positions = layoutTree(
@@ -135,6 +176,9 @@ export function TechnicalTreeCanvas({
       const point = positions.get(node.id) ?? { x: 0, y: 0 };
       const matched = matches(node);
       const displayName = node.parentId === null ? rootLabel : node.name;
+      const folderState = expansion?.folderStateById.get(node.id);
+      const folderExpanded =
+        folderState === 'expanded' || folderState === 'contextual';
       return {
         id: node.id,
         type: 'graphNode',
@@ -151,6 +195,31 @@ export function TechnicalTreeCanvas({
           selected: node.id === selectedId,
           dimmed: query.length > 0 && !matched,
           matched,
+          ...(node.kind === 'Folder' && expansion !== undefined
+            ? {
+                folderState,
+                visibleChildCount:
+                  expansion.visibleChildCount.get(node.id) ?? 0,
+                totalChildCount:
+                  expansion.totalChildCount.get(node.id) ?? 0,
+                foldedDescendantCount:
+                  expansion.foldedDescendantCount.get(node.id) ?? 0,
+                hiddenImportCount:
+                  expansion.hiddenImportCount.get(node.id) ?? 0,
+                pinned: expansion.pinnedBranchIds.has(node.id),
+                onToggleFolder: (recursive: boolean) => {
+                  if (recursive) {
+                    onRequestFullGraph?.();
+                    return;
+                  }
+                  onSetFolderExpanded?.(node.id, !folderExpanded);
+                },
+                ...(onTogglePinned === undefined ||
+                (expansion.totalChildCount.get(node.id) ?? 0) === 0
+                  ? {}
+                  : { onTogglePinned: () => onTogglePinned(node.id) }),
+              }
+            : {}),
           ...(node.coverage === undefined
             ? {}
             : { coverage: node.coverage }),
@@ -185,6 +254,10 @@ export function TechnicalTreeCanvas({
     compactLayout,
     graphEdges,
     graphNodes,
+    expansion,
+    onRequestFullGraph,
+    onSetFolderExpanded,
+    onTogglePinned,
     rootLabel,
     search,
     selectedId,
@@ -226,7 +299,7 @@ export function TechnicalTreeCanvas({
       <SigmaCanvas
         payload={sigmaPayload}
         command={command}
-        fitKey={fitKey}
+        fitKey={`${fitKey}:${layoutKey}`}
         search={search}
         selectedNodeId={selectedId}
         onSelect={(node) => onSelect(node.id)}
@@ -258,7 +331,9 @@ export function TechnicalTreeCanvas({
           maskColor="rgba(19, 20, 18, 0.72)"
           nodeStrokeWidth={14}
           nodeStrokeColor={(node) =>
-            (node.data as { kind?: string }).kind === 'Folder' ? '#8b8b82' : '#55554e'
+            (node.data as { kind?: string }).kind === 'Folder'
+              ? '#8b8b82'
+              : '#55554e'
           }
           nodeColor={(node) =>
             (node.data as { kind?: string }).kind === 'Folder'

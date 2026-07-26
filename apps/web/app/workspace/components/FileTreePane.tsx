@@ -24,7 +24,9 @@ interface FileTreePaneProps {
   repositoryLabel: string;
   treeKey: string;
   selectedNodeId: string | null;
+  pinnedNodeIds: ReadonlySet<string>;
   onSelect: (nodeId: string) => void;
+  onTogglePin: (nodeId: string) => void;
   onClose: () => void;
 }
 
@@ -52,7 +54,9 @@ export function FileTreePane({
   repositoryLabel,
   treeKey,
   selectedNodeId,
+  pinnedNodeIds,
   onSelect,
+  onTogglePin,
   onClose,
 }: FileTreePaneProps) {
   const model = useMemo(() => buildFileTreeModel(nodes), [nodes]);
@@ -180,6 +184,15 @@ export function FileTreePane({
       : selectedNodeId !== null && rowIndex.has(selectedNodeId)
         ? selectedNodeId
         : rows[0]?.node.id ?? null;
+  const selectedNode =
+    selectedNodeId === null ? undefined : model.byId.get(selectedNodeId);
+  const selectedFolder =
+    selectedNode?.kind === 'Folder' &&
+    (model.childrenById.get(selectedNode.id)?.length ?? 0) > 0
+      ? selectedNode
+      : undefined;
+  const selectedFolderPinned =
+    selectedFolder !== undefined && pinnedNodeIds.has(selectedFolder.id);
 
   return (
     <aside
@@ -192,6 +205,27 @@ export function FileTreePane({
           <span>Explorer</span>
           <strong title={repositoryLabel}>{repositoryLabel}</strong>
         </div>
+        <button
+          type="button"
+          className="mock-filetree-action"
+          aria-label={
+            selectedFolderPinned
+              ? 'Unpin selected branch from graph'
+              : 'Pin selected branch open in graph'
+          }
+          title={
+            selectedFolderPinned
+              ? 'Unpin selected branch from graph'
+              : 'Pin selected branch open in graph'
+          }
+          aria-pressed={selectedFolderPinned}
+          disabled={selectedFolder === undefined}
+          onClick={() => {
+            if (selectedFolder !== undefined) onTogglePin(selectedFolder.id);
+          }}
+        >
+          {selectedFolderPinned ? '◆' : '◇'}
+        </button>
         <button
           type="button"
           className="mock-filetree-action"
