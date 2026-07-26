@@ -76,7 +76,11 @@ export interface WorkspaceDataSource {
   productTree(
     scope: WorkspaceScope,
     signal: AbortSignal,
-  ): Promise<{ nodes: GraphNode[]; features: Feature[] }>;
+  ): Promise<{
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+    features: Feature[];
+  }>;
   onboardingTree(
     scope: WorkspaceScope,
     signal: AbortSignal,
@@ -241,11 +245,30 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
     };
   },
   async productTree(scope, signal) {
-    const response = (
-      await fetchProductTree(scope.repositoryId, scope.refName, { signal })
-    ).response;
+    const [presentation, technicalTree] = await Promise.all([
+      fetchProductTree(scope.repositoryId, scope.refName, { signal }),
+      fetchTechnicalTreeResponse(scope.repositoryId, {
+        refName: scope.refName,
+        signal,
+      }).catch((error: unknown) => {
+        // Product data is the required contract. Technical Tree imports are an
+        // optional, already-authorized enrichment for feature-to-feature links.
+        // Do not make the Product Tree unavailable if that secondary view fails.
+        if (signal.aborted) throw error;
+        return null;
+      }),
+    ]);
+    const response = presentation.response;
+    const productNodeIds = new Set(response.nodes.map(({ id }) => id));
     return {
       nodes: graphNodes(response.nodes),
+      edges:
+        technicalTree?.edges.filter(
+          (edge) =>
+            edge.type === 'IMPORTS' &&
+            productNodeIds.has(edge.source) &&
+            productNodeIds.has(edge.target),
+        ) ?? [],
       features: features(response),
     };
   },
@@ -441,7 +464,19 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
     return { nodes: GRAPH_NODES, edges: GRAPH_EDGES };
   },
   async productTree() {
-    return { nodes: GRAPH_NODES, features: FEATURES };
+    const featureMemberIds = new Set(
+      FEATURES.flatMap((feature) => feature.memberIds),
+    );
+    return {
+      nodes: GRAPH_NODES,
+      edges: GRAPH_EDGES.filter(
+        (edge) =>
+          edge.type === 'IMPORTS' &&
+          featureMemberIds.has(edge.source) &&
+          featureMemberIds.has(edge.target),
+      ),
+      features: FEATURES,
+    };
   },
   async onboardingTree() {
     return {

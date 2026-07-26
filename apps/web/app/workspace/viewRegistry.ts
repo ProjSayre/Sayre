@@ -37,7 +37,7 @@ const definitions: WorkspaceViewDefinition[] = [
     semantic: true,
     async load(source, scope, signal) {
       const graph = await source.productTree(scope, signal);
-      return { ...graph, edges: [], onboarding: null };
+      return { ...graph, onboarding: null };
     },
   },
   {

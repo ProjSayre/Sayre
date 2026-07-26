@@ -12,9 +12,12 @@
 .mock-root {
   --bg: #131412;
   --bg-raised: #1b1c19;
+  --bg-hover: #22231f;
   --border: #262723;
+  --border-bright: #353630;
   --edge: #2b2b27;
   --node-stroke: #55554e;
+  --node-fill: #77776f;
   --text-faint: #64645c;
   --text-muted: #8b8b82;
   --text: #a9a9a0;
@@ -1463,8 +1466,7 @@
 
 .mock-node,
 .mock-node-glyph,
-.mock-node-label,
-.mock-feature-boundary {
+.mock-node-label {
   transition:
     border-color 150ms ease,
     background-color 150ms ease,
@@ -1491,43 +1493,381 @@
   font-weight: 600;
 }
 
-/* feature boundaries (Product Tree) */
+/* -------------------------------------------- Product Tree feature graph */
 
-.mock-feature-boundary {
+.mock-product-flow .react-flow__node-productFeature {
+  overflow: visible;
+}
+
+.mock-feature-cluster {
+  position: relative;
+  isolation: isolate;
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+
+.mock-feature-ring,
+.mock-feature-cluster-label,
+.mock-feature-directory,
+.mock-feature-file {
+  appearance: none;
+  border: 0;
+  font: inherit;
+}
+
+.mock-feature-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   border: 1px dashed var(--node-stroke);
-  border-radius: 8px;
-  background: rgba(79, 127, 93, 0.04);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      rgba(79, 127, 93, 0.055),
+      rgba(79, 127, 93, 0.018) 68%,
+      transparent 69%
+    );
+  cursor: pointer;
+  transition:
+    border-color 170ms ease,
+    border-width 170ms ease,
+    background-color 170ms ease,
+    filter 170ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.mock-feature-boundary:hover,
-.mock-feature-selected {
+.mock-feature-cluster:hover .mock-feature-ring,
+.mock-feature-cluster.has-open-directory .mock-feature-ring {
+  border-color: var(--text-muted);
+  filter: drop-shadow(0 0 9px rgba(138, 174, 146, 0.08));
+  transform: scale(1.018);
+}
+
+.mock-feature-cluster.is-selected .mock-feature-ring {
+  border: 1.5px dashed var(--accent);
+  background-color: rgba(79, 127, 93, 0.08);
+  filter: drop-shadow(0 0 12px rgba(138, 174, 146, 0.13));
+  transform: scale(1.025);
+}
+
+.mock-feature-cluster.has-selected-file:not(.is-selected) .mock-feature-ring {
+  border-color: color-mix(in srgb, var(--accent) 68%, var(--node-stroke));
+}
+
+.mock-feature-cluster.is-matched .mock-feature-ring {
   border-color: var(--accent);
-  background: rgba(79, 127, 93, 0.09);
 }
 
-.mock-feature-label {
+.mock-feature-cluster.is-dimmed {
+  opacity: 0.2;
+}
+
+.mock-feature-cluster-label {
   position: absolute;
-  top: -20px;
-  left: 0;
+  z-index: 4;
   display: flex;
-  gap: 8px;
-  align-items: baseline;
-  white-space: nowrap;
+  width: 160px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 4px 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.mock-feature-label b {
+.mock-feature-cluster-label strong {
+  max-width: 160px;
+  overflow: hidden;
   color: var(--text-bright);
   font-family: var(--ui);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 520;
+  line-height: 1.25;
+  text-overflow: ellipsis;
 }
 
-.mock-feature-label span {
+.mock-feature-cluster-label span,
+.mock-feature-cluster-label em {
+  max-width: 160px;
+  overflow: hidden;
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 10.5px;
+  font-size: 9.5px;
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mock-feature-cluster-label em {
+  color: var(--text-muted);
+}
+
+.mock-feature-cluster.is-selected .mock-feature-cluster-label strong,
+.mock-feature-cluster.has-selected-file .mock-feature-cluster-label strong,
+.mock-feature-cluster.is-matched .mock-feature-cluster-label strong {
+  color: var(--accent-text);
+}
+
+.mock-feature-directory {
+  position: absolute;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.mock-feature-directory-ring {
+  position: absolute;
+  inset: 2px;
+  border: 1.25px solid var(--node-stroke);
+  border-radius: 50%;
+  background: var(--bg);
+  transition:
+    border-color 150ms ease,
+    transform 170ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mock-feature-directory:hover .mock-feature-directory-ring,
+.mock-feature-directory:focus-visible .mock-feature-directory-ring,
+.mock-feature-directory.is-open .mock-feature-directory-ring {
+  border-color: var(--accent);
+  transform: scale(1.25);
+}
+
+.mock-feature-directory-label {
+  position: absolute;
+  top: 1px;
+  left: 20px;
+  width: max-content;
+  max-width: 116px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 14px;
+  opacity: 0;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  transform: translateX(-3px);
+  transition:
+    color 150ms ease,
+    opacity 150ms ease,
+    transform 170ms ease;
+  white-space: nowrap;
+}
+
+.mock-feature-cluster.is-selected .mock-feature-directory-label,
+.mock-feature-directory:hover .mock-feature-directory-label,
+.mock-feature-directory:focus-visible .mock-feature-directory-label,
+.mock-feature-directory.is-open .mock-feature-directory-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.mock-feature-file {
+  position: absolute;
+  z-index: 2;
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--node-fill);
+  box-shadow: 0 0 0 1px rgba(7, 8, 7, 0.45);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 170ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mock-feature-file:hover,
+.mock-feature-file:focus-visible {
+  background: var(--text-bright);
+  transform: translate(-50%, -50%) scale(1.45);
+}
+
+.mock-feature-file.is-selected,
+.mock-feature-file.is-matched {
+  background: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 3px var(--accent);
+  transform: translate(-50%, -50%) scale(1.25);
+}
+
+.mock-product-flow .mock-feature-connection .react-flow__edge-path {
+  stroke: var(--edge);
+  stroke-width: 1.15;
+  transition:
+    stroke 150ms ease,
+    stroke-width 150ms ease,
+    opacity 150ms ease;
+}
+
+.mock-product-flow
+  .mock-feature-connection-dependency
+  .react-flow__edge-path {
+  stroke-dasharray: 5 4;
+}
+
+.mock-product-flow .mock-feature-connection.mock-edge-active .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 1.7;
+}
+
+.mock-feature-flyout {
+  position: absolute;
+  z-index: 12;
+  width: 236px;
+  overflow: hidden;
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-raised) 96%, transparent);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+  cursor: default;
+}
+
+.mock-feature-flyout-path {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 9px 7px 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+}
+
+.mock-feature-flyout-path span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mock-feature-flyout-path button {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mock-feature-flyout-path button:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+}
+
+.mock-feature-flyout-files {
+  max-height: 126px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.mock-feature-flyout-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 3px;
+  padding: 6px 7px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mock-feature-flyout-row:hover,
+.mock-feature-flyout-row.is-selected {
+  background: var(--bg-hover);
+  color: var(--accent-text);
+}
+
+.mock-feature-flyout-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--node-fill);
+}
+
+.mock-feature-flyout-row.is-selected .mock-feature-flyout-dot {
+  background: var(--accent);
+}
+
+.mock-flow .react-flow__panel.mock-product-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 5px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  box-shadow: none;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.mock-product-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.mock-product-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  font-style: normal;
+}
+
+.mock-product-legend .is-feature {
+  width: 13px;
+  height: 13px;
+  border: 1px dashed var(--node-stroke);
+}
+
+.mock-product-legend .is-directory {
+  border: 1px solid var(--node-stroke);
+}
+
+.mock-product-legend .is-file {
+  width: 6px;
+  height: 6px;
+  background: var(--node-fill);
+}
+
+.mock-product-legend .mock-product-link-count {
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
+  color: var(--text-muted);
 }
 
 /* ------------------------------------------------- reserved "Ask Sayre" */

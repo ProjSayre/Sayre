@@ -334,6 +334,7 @@ function Workspace() {
         {ready && isProduct && (
           <ProductTreeCanvas
             graphNodes={graph.nodes}
+            graphEdges={graph.edges}
             features={graph.features}
             command={canvasCommand}
             selectedFeatureId={state.selectedFeatureId}
@@ -370,7 +371,7 @@ function Workspace() {
             {isTechnical
               ? `${technicalExpansion.preferences.mode} · ${visibleNodeCount} of ${graph.nodes.length} visible · ${technicalProjection.foldedBranchCount} folded branches`
               : isProduct
-                ? `feature layout · ${graph.features.length} features`
+                ? `feature graph · ${graph.features.length} features`
                 : `ordered setup · ${graph.onboarding?.steps.length ?? 0} sandbox steps`}{' '}
             · showing only nodes you are authorized to see
           </span>

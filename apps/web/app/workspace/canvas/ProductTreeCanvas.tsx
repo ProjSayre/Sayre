@@ -1,14 +1,31 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { MiniMap, ReactFlow, useReactFlow, type Node } from '@xyflow/react';
-import type { Feature, GraphNode } from '../types';
+import {
+  MiniMap,
+  Panel,
+  ReactFlow,
+  useReactFlow,
+  type Edge,
+  type Node,
+} from '@xyflow/react';
+import type { Feature, GraphEdge, GraphNode } from '../types';
 import type { CanvasCommand } from '../rendererRegistry';
-import { NODE_TYPES } from './nodes';
-import { NODE_BOX } from './layout';
+import {
+  ProductFeatureNode,
+  type ProductFeatureNodeData,
+} from './ProductFeatureNode';
+import {
+  FEATURE_LABEL_WIDTH,
+  buildProductFeatureClusters,
+  buildProductFeatureConnections,
+  layoutProductFeatureClusters,
+  type ProductFeatureConnection,
+} from './productGraph';
 
 interface ProductTreeCanvasProps {
   graphNodes: GraphNode[];
+  graphEdges: GraphEdge[];
   features: Feature[];
   command: CanvasCommand | null;
   selectedFeatureId: string | null;
@@ -21,26 +38,42 @@ interface ProductTreeCanvasProps {
   onSelectNode: (nodeId: string) => void;
 }
 
-const CELL_H = 38;
-const PAD = 22;
-const GAP_X = 92;
-const GAP_Y = 104;
-const CHAR_WIDTH = 6.4;
-const LABEL_OFFSET = 22;
-const MIN_WIDTH = 240;
+interface OpenDirectory {
+  featureId: string;
+  directoryId: string;
+}
 
-/** A boundary has to be wide enough for its longest file path. */
-function boundaryWidth(paths: string[]): number {
-  const longest = paths.reduce((max, path) => Math.max(max, path.length), 0);
-  return Math.max(MIN_WIDTH, longest * CHAR_WIDTH + LABEL_OFFSET + PAD * 2);
+const PRODUCT_NODE_TYPES = {
+  productFeature: ProductFeatureNode,
+};
+
+function connectionLabel(connection: ProductFeatureConnection): string {
+  const parts: string[] = [];
+  if (connection.sharedFileIds.length > 0) {
+    parts.push(
+      `${connection.sharedFileIds.length} shared ${
+        connection.sharedFileIds.length === 1 ? 'file' : 'files'
+      }`,
+    );
+  }
+  if (connection.dependencyCount > 0) {
+    parts.push(
+      `${connection.dependencyCount} code ${
+        connection.dependencyCount === 1 ? 'dependency' : 'dependencies'
+      }`,
+    );
+  }
+  return parts.join(' · ');
 }
 
 /**
- * Feature boundaries, not folders. A feature's files routinely live in
- * different directories — that crossing is the whole point of this view.
+ * Product Tree renders features as the primary graph grammar. Each dashed ring
+ * owns directory and file glyphs, while feature-to-feature links summarize
+ * shared membership and authorized import relationships.
  */
 export function ProductTreeCanvas({
   graphNodes,
+  graphEdges,
   features,
   command,
   selectedFeatureId,
@@ -52,16 +85,15 @@ export function ProductTreeCanvas({
   onSelectNode,
 }: ProductTreeCanvasProps) {
   const flow = useReactFlow();
-  const [columns, setColumns] = useState(4);
-  const fitMinimumZoom = columns === 1 ? 0.65 : 0.2;
-  const presentationZoom =
-    columns === 1 ? 0.65 : columns === 2 ? 0.78 : 0.72;
+  const [maximumColumns, setMaximumColumns] = useState(4);
+  const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
+  const [openDirectory, setOpenDirectory] = useState<OpenDirectory | null>(null);
 
   useEffect(() => {
     const update = (): void => {
-      if (window.innerWidth <= 620) setColumns(1);
-      else if (window.innerWidth <= 1_000) setColumns(2);
-      else setColumns(4);
+      if (window.innerWidth <= 620) setMaximumColumns(1);
+      else if (window.innerWidth <= 1_000) setMaximumColumns(2);
+      else setMaximumColumns(4);
     };
     update();
     window.addEventListener('resize', update);
@@ -69,174 +101,247 @@ export function ProductTreeCanvas({
   }, []);
 
   useEffect(() => {
+    if (openDirectory === null) return;
+    const onEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpenDirectory(null);
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [openDirectory]);
+
+  const clusters = useMemo(
+    () => buildProductFeatureClusters(graphNodes, features),
+    [features, graphNodes],
+  );
+  const connections = useMemo(
+    () => buildProductFeatureConnections(features, graphEdges),
+    [features, graphEdges],
+  );
+  const placements = useMemo(
+    () =>
+      layoutProductFeatureClusters(clusters, connections, maximumColumns),
+    [clusters, connections, maximumColumns],
+  );
+  const clusterById = useMemo(
+    () => new Map(clusters.map((cluster) => [cluster.id, cluster])),
+    [clusters],
+  );
+  const query = search.trim().toLowerCase();
+
+  const nodes = useMemo<Node<ProductFeatureNodeData>[]>(() => {
+    return placements.map(({ cluster, x, y }) => {
+      const featureMatched =
+        query.length > 0 &&
+        [cluster.name, cluster.description ?? '', cluster.team ?? ''].some(
+          (value) => value.toLowerCase().includes(query),
+        );
+      const matchedFileIds =
+        query.length === 0
+          ? []
+          : cluster.directories.flatMap(({ files }) =>
+              files
+                .filter(
+                  (file) =>
+                    file.name.toLowerCase().includes(query) ||
+                    file.path.toLowerCase().includes(query),
+                )
+                .map(({ id }) => id),
+            );
+      const selected = cluster.id === selectedFeatureId;
+      const containsSelectedFile =
+        selectedNodeId !== null && cluster.memberIds.includes(selectedNodeId);
+      const directoryOpen =
+        openDirectory?.featureId === cluster.id
+          ? openDirectory.directoryId
+          : null;
+
+      return {
+        id: `feature:${cluster.id}`,
+        type: 'productFeature',
+        position: { x, y },
+        style: {
+          width: cluster.diameter + FEATURE_LABEL_WIDTH,
+          height: cluster.diameter,
+        },
+        draggable: false,
+        connectable: false,
+        selectable: false,
+        zIndex:
+          selected || containsSelectedFile || directoryOpen !== null ? 4 : 1,
+        data: {
+          cluster,
+          selected,
+          containsSelectedFile,
+          dimmed:
+            query.length > 0 &&
+            !featureMatched &&
+            matchedFileIds.length === 0,
+          matched: featureMatched,
+          selectedNodeId,
+          matchedFileIds,
+          openDirectoryId: directoryOpen,
+          onSelectFeature: () => onSelectFeature(cluster.id),
+          onSelectFile: onSelectNode,
+          onToggleDirectory: (directoryId) =>
+            setOpenDirectory((current) =>
+              current?.featureId === cluster.id &&
+              current.directoryId === directoryId
+                ? null
+                : { featureId: cluster.id, directoryId },
+            ),
+          onCloseDirectory: () => setOpenDirectory(null),
+        },
+      };
+    });
+  }, [
+    onSelectFeature,
+    onSelectNode,
+    openDirectory,
+    placements,
+    query,
+    selectedFeatureId,
+    selectedNodeId,
+  ]);
+
+  const edges = useMemo<Edge[]>(() => {
+    return connections.map((connection) => {
+      const active =
+        connection.sourceFeatureId === selectedFeatureId ||
+        connection.targetFeatureId === selectedFeatureId ||
+        connection.sourceFeatureId === hoveredFeatureId ||
+        connection.targetFeatureId === hoveredFeatureId ||
+        (selectedNodeId !== null &&
+          (clusterById
+            .get(connection.sourceFeatureId)
+            ?.memberIds.includes(selectedNodeId) === true ||
+            clusterById
+              .get(connection.targetFeatureId)
+              ?.memberIds.includes(selectedNodeId) === true));
+      const relation = connectionLabel(connection);
+      return {
+        id: connection.id,
+        source: `feature:${connection.sourceFeatureId}`,
+        target: `feature:${connection.targetFeatureId}`,
+        type: 'straight',
+        className: [
+          'mock-feature-connection',
+          connection.sharedFileIds.length > 0
+            ? 'mock-feature-connection-shared'
+            : 'mock-feature-connection-dependency',
+          active ? 'mock-edge-active' : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+        label: active ? relation : undefined,
+        labelStyle: {
+          fill: '#d8d7cf',
+          fontFamily: 'var(--mono)',
+          fontSize: 10,
+        },
+        labelBgStyle: {
+          fill: '#181916',
+          fillOpacity: 0.94,
+        },
+        labelBgPadding: [5, 4],
+        labelBgBorderRadius: 3,
+        ariaLabel: `${clusterById.get(connection.sourceFeatureId)?.name ?? 'Feature'} to ${
+          clusterById.get(connection.targetFeatureId)?.name ?? 'feature'
+        }: ${relation}`,
+        zIndex: 0,
+      };
+    });
+  }, [
+    clusterById,
+    connections,
+    hoveredFeatureId,
+    selectedFeatureId,
+    selectedNodeId,
+  ]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
-      if (columns === 1 || features.length > columns) {
-        // A real repository often has more features than one viewport can
-        // legibly hold. Match the approved card scale, start at the first row,
-        // and use the minimap for the full overview instead of shrinking every
-        // filename into a miniature.
+      if (maximumColumns < 4 && features.length > maximumColumns * 2) {
         void flow.setViewport(
           {
-            x: columns === 1 ? 24 : columns === 2 ? 32 : 34,
-            y: columns === 1 ? 28 : 52,
-            zoom: presentationZoom,
+            x: maximumColumns === 1 ? 28 : 36,
+            y: maximumColumns === 1 ? 32 : 44,
+            zoom: maximumColumns === 1 ? 0.74 : 0.7,
           },
           { duration: 0 },
         );
         return;
       }
       void flow.fitView({
-        padding: 0.1,
-        minZoom: fitMinimumZoom,
-        maxZoom: 1,
+        padding: 0.12,
+        minZoom: 0.32,
+        maxZoom: 1.08,
       });
     }, 80);
     return () => clearTimeout(timer);
-  }, [
-    columns,
-    features.length,
-    fitKey,
-    fitMinimumZoom,
-    flow,
-    presentationZoom,
-  ]);
+  }, [features.length, fitKey, flow, maximumColumns, placements]);
 
   useEffect(() => {
     if (command === null) return;
     if (command.type === 'zoom-in') void flow.zoomIn();
     if (command.type === 'zoom-out') void flow.zoomOut();
     if (command.type === 'fit') {
-      if (columns === 1) {
-        void flow.setViewport(
-          { x: 24, y: 28, zoom: fitMinimumZoom },
-          { duration: 180 },
-        );
-        return;
-      }
       void flow.fitView({
-        padding: 0.1,
-        minZoom: fitMinimumZoom,
-        maxZoom: 1,
+        padding: 0.12,
+        minZoom: 0.18,
+        maxZoom: 1.08,
+        duration: 220,
       });
     }
-  }, [columns, command, fitMinimumZoom, flow]);
-
-  const nodes = useMemo<Node[]>(() => {
-    const filesById = new Map(graphNodes.map((node) => [node.id, node]));
-    const query = search.trim().toLowerCase();
-    const result: Node[] = [];
-
-    let rowTop = 0;
-    let rowHeight = 0;
-    let columnLeft = 0;
-
-    features.forEach((feature, index) => {
-      if (index > 0 && index % columns === 0) {
-        rowTop += rowHeight + GAP_Y;
-        rowHeight = 0;
-        columnLeft = 0;
-      }
-
-      const files = feature.memberIds
-        .map((fileId) => filesById.get(fileId))
-        .filter((file): file is NonNullable<typeof file> => file !== undefined);
-      const width = boundaryWidth(files.map((file) => file.path));
-      const height = files.length * CELL_H + PAD * 2;
-      rowHeight = Math.max(rowHeight, height);
-
-      result.push({
-        id: `boundary:${feature.id}`,
-        type: 'featureBoundary',
-        position: { x: columnLeft, y: rowTop },
-        style: { width, height },
-        draggable: false,
-        connectable: false,
-        zIndex: 0,
-        data: {
-          name: feature.name,
-          fileCount: feature.memberIds.length,
-          selected: feature.id === selectedFeatureId,
-        },
-      });
-
-      files.forEach((file, fileIndex) => {
-        const matched =
-          query.length > 0 &&
-          (file.name.toLowerCase().includes(query) ||
-            file.path.toLowerCase().includes(query));
-
-        result.push({
-          // A file can belong to more than one feature, so the id is scoped.
-          id: `${feature.id}:${file.id}`,
-          type: 'graphNode',
-          position: {
-            x: columnLeft + PAD,
-            y: rowTop + PAD + fileIndex * CELL_H,
-          },
-          width: NODE_BOX,
-          height: NODE_BOX,
-          draggable: false,
-          connectable: false,
-          zIndex: 1,
-          data: {
-            name: file.path,
-            kind: file.kind,
-            isRoot: false,
-            selected: file.id === selectedNodeId,
-            dimmed: query.length > 0 && !matched,
-            matched,
-          },
-        });
-      });
-
-      columnLeft += width + GAP_X;
-    });
-
-    return result;
-  }, [
-    columns,
-    features,
-    graphNodes,
-    search,
-    selectedFeatureId,
-    selectedNodeId,
-  ]);
+  }, [command, flow]);
 
   return (
     <ReactFlow
-      className="mock-flow"
+      className="mock-flow mock-product-flow"
       nodes={nodes}
-      edges={[]}
-      nodeTypes={NODE_TYPES}
-      onNodeClick={(_event, node) => {
-        if (node.id.startsWith('boundary:')) {
-          onSelectFeature(node.id.slice('boundary:'.length));
-          return;
-        }
-        const [, fileId] = node.id.split(':');
-        if (fileId !== undefined) onSelectNode(fileId);
-      }}
+      edges={edges}
+      nodeTypes={PRODUCT_NODE_TYPES}
+      onNodeMouseEnter={(_event, node) =>
+        setHoveredFeatureId(node.id.slice('feature:'.length))
+      }
+      onNodeMouseLeave={() => setHoveredFeatureId(null)}
+      onPaneClick={() => setOpenDirectory(null)}
       fitView
       fitViewOptions={{
-        padding: 0.1,
-        minZoom: fitMinimumZoom,
-        maxZoom: 1,
+        padding: 0.12,
+        minZoom: 0.32,
+        maxZoom: 1.08,
       }}
-      minZoom={0.2}
+      minZoom={0.18}
       maxZoom={2.4}
       nodesDraggable={false}
       nodesConnectable={false}
+      elementsSelectable={false}
       proOptions={{ hideAttribution: true }}
     >
+      <Panel position="top-left" className="mock-product-legend">
+        <span>
+          <i className="is-feature" /> feature
+        </span>
+        <span>
+          <i className="is-directory" /> directory
+        </span>
+        <span>
+          <i className="is-file" /> file
+        </span>
+        <span className="mock-product-link-count">
+          {connections.length}{' '}
+          {connections.length === 1 ? 'feature link' : 'feature links'}
+        </span>
+      </Panel>
       {showMinimap && (
         <MiniMap
           pannable
           zoomable
           position="bottom-right"
           maskColor="rgba(19, 20, 18, 0.72)"
-          nodeStrokeWidth={14}
+          nodeStrokeWidth={12}
           nodeStrokeColor="#55554e"
-          nodeColor="#55554e"
+          nodeColor="#30322e"
         />
       )}
     </ReactFlow>

@@ -22,12 +22,6 @@ export interface GraphNodeData extends Record<string, unknown> {
   onTogglePinned?: () => void;
 }
 
-export interface FeatureBoundaryData extends Record<string, unknown> {
-  name: string;
-  fileCount: number;
-  selected: boolean;
-}
-
 /**
  * Design system §3: open circle = container, closed dot = leaf, label outside
  * to the right. Handles sit at the node centre so edges run centre-to-centre.
@@ -156,26 +150,6 @@ export function GraphNodeView({ data }: NodeProps) {
   );
 }
 
-/** Product Tree only: a dashed boundary drawn behind the files it spans. */
-export function FeatureBoundaryView({ data }: NodeProps) {
-  const boundary = data as FeatureBoundaryData;
-  return (
-    <div
-      className={`mock-feature-boundary${
-        boundary.selected ? ' mock-feature-selected' : ''
-      }`}
-    >
-      <span className="mock-feature-label">
-        <b>{boundary.name}</b>
-        <span>
-          {boundary.fileCount} {boundary.fileCount === 1 ? 'file' : 'files'}
-        </span>
-      </span>
-    </div>
-  );
-}
-
 export const NODE_TYPES = {
   graphNode: GraphNodeView,
-  featureBoundary: FeatureBoundaryView,
 };
