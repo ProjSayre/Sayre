@@ -26,6 +26,7 @@ interface TechnicalExpansionControl {
 interface CanvasToolbarProps {
   title: string;
   visibleNodeCount: number;
+  countLabel?: string;
   edgeCount: number | null;
   renderer: RendererDefinition;
   coverageSummary?: {
@@ -34,6 +35,7 @@ interface CanvasToolbarProps {
     stale: number;
     unknown: number;
   } | null;
+  searchResultCount: number | null;
   technicalExpansion?: TechnicalExpansionControl | null;
   /** Controls are inert whenever no graph is on screen. */
   interactive: boolean;
@@ -45,9 +47,11 @@ interface CanvasToolbarProps {
 export function CanvasToolbar({
   title,
   visibleNodeCount,
+  countLabel,
   edgeCount,
   renderer,
   coverageSummary = null,
+  searchResultCount,
   technicalExpansion = null,
   interactive,
   showMinimap,
@@ -62,10 +66,9 @@ export function CanvasToolbar({
         <h1>{title}</h1>
         <span className="mock-toolbar-count">
           {technicalExpansion === null
-            ? `${visibleNodeCount} nodes`
+            ? (countLabel ?? `${visibleNodeCount} nodes`)
             : `${visibleNodeCount} / ${technicalExpansion.totalNodeCount} nodes`}
-          {edgeCount === null ? '' : ` · ${edgeCount} edges`} ·{' '}
-          {renderer.label}
+          {edgeCount === null ? '' : ` · ${edgeCount} relationships`}
         </span>
       </span>
 
@@ -112,9 +115,9 @@ export function CanvasToolbar({
               )
             }
           >
-            <option value="balanced">Balanced</option>
+            <option value="balanced">Overview</option>
             <option value="focus">Focus</option>
-            <option value="full">Full graph</option>
+            <option value="full">Everything</option>
           </select>
           <button
             type="button"
@@ -127,28 +130,67 @@ export function CanvasToolbar({
             ↺
           </button>
           <span className="mock-expansion-summary" aria-live="polite">
-            {technicalExpansion.transientMatchCount > 0
-              ? technicalExpansion.transientSource === 'search'
-                ? `${technicalExpansion.visibleTransientMatchCount}/${technicalExpansion.transientMatchCount} matches`
-                : technicalExpansion.transientSource === 'agent'
+            {technicalExpansion.transientSource === 'search'
+              ? `${technicalExpansion.visibleTransientMatchCount}/${technicalExpansion.transientMatchCount} matches`
+              : technicalExpansion.transientMatchCount > 0
+                ? technicalExpansion.transientSource === 'agent'
                   ? 'agent reveal'
-                  : 'deep link'
+                  : technicalExpansion.transientSource === 'onboarding'
+                    ? 'setup landmarks'
+                    : technicalExpansion.transientSource === 'selection'
+                      ? `${technicalExpansion.visibleTransientMatchCount}/${technicalExpansion.transientMatchCount} direct links`
+                      : 'deep link'
               : `${technicalExpansion.foldedBranchCount} folded`}
           </span>
         </span>
       )}
 
-      <input
-        className="mock-search"
-        type="search"
-        value={state.search}
-        placeholder="find authorized nodes…"
-        aria-label="Find authorized repository nodes"
-        disabled={!interactive}
-        onChange={(event) =>
-          dispatch({ type: 'patch', patch: { search: event.target.value } })
-        }
-      />
+      <span className="mock-search-control">
+        <input
+          className="mock-search"
+          type="search"
+          value={state.search}
+          placeholder={
+            state.view === 'product'
+              ? 'search features, teams, files…'
+              : state.view === 'onboarding'
+                ? 'search setup landmarks…'
+                : 'search files and folders…'
+          }
+          aria-label={`Search ${title}`}
+          disabled={!interactive}
+          onChange={(event) =>
+            dispatch({ type: 'patch', patch: { search: event.target.value } })
+          }
+        />
+        {searchResultCount !== null && (
+          <span
+            className={`mock-search-results${
+              searchResultCount === 0 ? ' mock-search-results-empty' : ''
+            }`}
+            aria-live="polite"
+          >
+            {searchResultCount === 0
+              ? 'No matches'
+              : `${searchResultCount} ${
+                  searchResultCount === 1 ? 'match' : 'matches'
+                }`}
+          </span>
+        )}
+        {state.search.length > 0 && (
+          <button
+            type="button"
+            className="mock-search-clear"
+            aria-label="Clear search"
+            title="Clear search"
+            onClick={() =>
+              dispatch({ type: 'patch', patch: { search: '' } })
+            }
+          >
+            ×
+          </button>
+        )}
+      </span>
 
       <span className="mock-toolbar-group">
         <button

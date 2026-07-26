@@ -25,8 +25,8 @@ function fileCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'file' : 'files'}`;
 }
 
-function workspaceCountLabel(count: number): string {
-  return `${count} ${count === 1 ? 'workspace' : 'workspaces'}`;
+function codeAreaCountLabel(count: number): string {
+  return `${count} code ${count === 1 ? 'area' : 'areas'}`;
 }
 
 function DirectoryFlyout({
@@ -204,7 +204,7 @@ export function ProductFeatureNode({ data }: NodeProps) {
         <strong>{cluster.name}</strong>
         <span>
           {fileCountLabel(cluster.fileCount)} ·{' '}
-          {workspaceCountLabel(cluster.workspaceCount)}
+          {codeAreaCountLabel(cluster.workspaceCount)}
         </span>
         {cluster.team !== null && <em>{cluster.team}</em>}
       </button>

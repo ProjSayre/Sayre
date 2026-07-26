@@ -4,6 +4,7 @@ import type {
   McpClientKeyView,
   McpKeySettingsResponse,
   ProviderJobState,
+  ProviderJobSurface,
   ProviderPurpose,
   ProviderSettingsResponse,
   ProviderSettingsUpdateRequest,
@@ -48,6 +49,7 @@ import type {
   GraphNode,
   NodeOverlay,
   OnboardingWorkflow,
+  ProductCoverage,
   Repository,
 } from './types';
 import {
@@ -80,6 +82,7 @@ export interface WorkspaceDataSource {
     nodes: GraphNode[];
     edges: GraphEdge[];
     features: Feature[];
+    productCoverage: ProductCoverage | null;
   }>;
   onboardingTree(
     scope: WorkspaceScope,
@@ -95,6 +98,7 @@ export interface WorkspaceDataSource {
   ): Promise<OnboardingExecutionResponse>;
   providerState(
     scope: WorkspaceScope,
+    surface: ProviderJobSurface,
     signal: AbortSignal,
   ): Promise<ProviderJobState | null>;
   nodeOverlay(nodeId: string, signal: AbortSignal): Promise<NodeOverlay>;
@@ -188,6 +192,34 @@ function features(response: ProductTreeResponse): Feature[] {
   }));
 }
 
+function summarizeProductCoverage(
+  productResponse: ProductTreeResponse,
+  technicalResponse: TechnicalTreeResponse | null,
+): ProductCoverage | null {
+  if (technicalResponse === null) return null;
+  const authorizedFileIds = new Set(
+    technicalResponse.nodes
+      .filter((node) => node.label === 'File')
+      .map((node) => node.id),
+  );
+  const mappedFileIds = new Set(
+    productResponse.features.flatMap((feature) =>
+      feature.memberIds.filter((memberId) => authorizedFileIds.has(memberId)),
+    ),
+  );
+  const totalFileCount = authorizedFileIds.size;
+  const mappedFileCount = mappedFileIds.size;
+  return {
+    totalFileCount,
+    mappedFileCount,
+    unmappedFileCount: Math.max(0, totalFileCount - mappedFileCount),
+    mappedPercent:
+      totalFileCount === 0
+        ? 0
+        : Math.round((mappedFileCount / totalFileCount) * 100),
+  };
+}
+
 function agentSkill(version: AgentSkillMdVersion): AgentSkillVersion {
   return {
     version: version.version,
@@ -270,6 +302,7 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
             productNodeIds.has(edge.target),
         ) ?? [],
       features: features(response),
+      productCoverage: summarizeProductCoverage(response, technicalTree),
     };
   },
   async onboardingTree(scope, signal) {
@@ -298,12 +331,12 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
   runOnboardingStep(scope, stepId) {
     return runOnboardingStep(scope.repositoryId, scope.refName, stepId, coreFetch);
   },
-  providerState(scope, signal) {
+  providerState(scope, surface, signal) {
     return fetchProviderState(
       {
         repositoryId: scope.repositoryId,
         refName: scope.refName,
-        surface: 'product',
+        surface,
       },
       signal,
     );
@@ -467,6 +500,14 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
     const featureMemberIds = new Set(
       FEATURES.flatMap((feature) => feature.memberIds),
     );
+    const totalFileCount = GRAPH_NODES.filter(
+      (node) => node.kind === 'File',
+    ).length;
+    const mappedFileCount = [...featureMemberIds].filter((memberId) =>
+      GRAPH_NODES.some(
+        (node) => node.id === memberId && node.kind === 'File',
+      ),
+    ).length;
     return {
       nodes: GRAPH_NODES,
       edges: GRAPH_EDGES.filter(
@@ -476,6 +517,15 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
           featureMemberIds.has(edge.target),
       ),
       features: FEATURES,
+      productCoverage: {
+        totalFileCount,
+        mappedFileCount,
+        unmappedFileCount: Math.max(0, totalFileCount - mappedFileCount),
+        mappedPercent:
+          totalFileCount === 0
+            ? 0
+            : Math.round((mappedFileCount / totalFileCount) * 100),
+      },
     };
   },
   async onboardingTree() {
@@ -515,12 +565,12 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
       revisionSha: 'f'.repeat(40),
     };
   },
-  async providerState(scope) {
+  async providerState(scope, surface) {
     return {
       repositoryId: scope.repositoryId,
       refName: scope.refName,
       revisionSha: 'f'.repeat(40),
-      surface: 'product',
+      surface,
       status: 'ready',
       reasonCode: null,
       updatedAt: '2026-07-25T14:12:00Z',

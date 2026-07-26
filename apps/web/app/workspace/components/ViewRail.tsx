@@ -6,6 +6,30 @@ import { workspaceViews } from '../viewRegistry';
 export function ViewRail() {
   const { state, dispatch } = useMock();
 
+  const switchView = (viewId: typeof state.view): void => {
+    if (viewId === state.view) return;
+    dispatch({
+      type: 'patch',
+      patch:
+        viewId === 'technical'
+          ? {
+              view: viewId,
+              selectedFeatureId: null,
+              drawerOpen:
+                state.selectedNodeId !== null && state.drawerOpen,
+              search: '',
+            }
+          : {
+              view: viewId,
+              selectedNodeId: null,
+              selectedFeatureId: null,
+              returnFeatureId: null,
+              drawerOpen: false,
+              search: '',
+            },
+    });
+  };
+
   return (
     <nav className="mock-rail" aria-label="Workspace navigation">
       <button
@@ -24,12 +48,15 @@ export function ViewRail() {
                     view: 'technical',
                     fileTreeOpen: true,
                     selectedFeatureId: null,
-                    drawerOpen: false,
+                    drawerOpen:
+                      state.selectedNodeId !== null && state.drawerOpen,
+                    search: '',
                   },
           })
         }
       >
-        F
+        <span className="mock-rail-glyph">F</span>
+        <span className="mock-rail-label">Files</span>
       </button>
 
       <span className="mock-rail-divider" />
@@ -43,28 +70,18 @@ export function ViewRail() {
           aria-label={view.label}
           aria-current={state.view === view.id ? 'page' : undefined}
           disabled={!view.enabled}
-          onClick={() =>
-            dispatch({
-              type: 'patch',
-              patch: { view: view.id, selectedFeatureId: null, drawerOpen: false },
-            })
-          }
+          onClick={() => switchView(view.id)}
         >
-          {view.glyph}
+          <span className="mock-rail-glyph">{view.glyph}</span>
+          <span className="mock-rail-label">
+            {view.id === 'technical'
+              ? 'Tech'
+              : view.id === 'onboarding'
+                ? 'Start'
+                : view.label}
+          </span>
         </button>
       ))}
-
-      <span className="mock-rail-divider" />
-
-      {/* Slot kept open for views this shell can host later without a
-          user-facing view builder in the MVP. */}
-      <span
-        className="mock-rail-slot"
-        title="Reserved for additional views"
-        aria-hidden="true"
-      >
-        +
-      </span>
 
       <span className="mock-rail-spacer" />
     </nav>

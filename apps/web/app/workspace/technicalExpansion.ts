@@ -27,7 +27,12 @@ export interface TechnicalExpansionPreferences {
 }
 
 export interface TechnicalTransientReveal {
-  source: 'search' | 'deep-link' | 'agent';
+  source:
+    | 'search'
+    | 'deep-link'
+    | 'agent'
+    | 'onboarding'
+    | 'selection';
   nodeIds: ReadonlySet<string>;
 }
 
@@ -328,6 +333,24 @@ export function projectTechnicalExpansion(
     if (child) addNode(child.id, reason);
   };
 
+  const addRootLandmarks = (
+    rootId: string,
+    reason: TechnicalExpansionReason,
+  ): void => {
+    if (intent.manuallyCollapsed.has(rootId)) return;
+    const children = model.childrenById.get(rootId) ?? [];
+    const folders = children.filter((child) => child.kind === 'Folder');
+    // Root-level loose files turn a repository tree into an unreadable
+    // starburst. Show folder landmarks by default, but keep a flat repository
+    // usable by falling back to its files. Search, focus, and manual expansion
+    // still reveal any root file on demand.
+    const landmarks = folders.length > 0 ? folders : children;
+    for (const child of landmarks) {
+      if (visibleNodeIds.size >= budget) break;
+      addNode(child.id, reason);
+    }
+  };
+
   if (intent.mode === 'full') {
     for (const node of graphNodes) {
       addNode(
@@ -350,10 +373,14 @@ export function projectTechnicalExpansion(
           .sort((left, right) => compareNodeIds(left, right, model.byId))
       : [];
     transientIds.forEach((nodeId, index) => {
+      const transientSource = intent.transientReveal?.source;
       addPath(
         nodeId,
         'transient',
-        intent.transientReveal?.source !== 'search' || index === 0,
+        transientSource === 'deep-link' ||
+          transientSource === 'agent' ||
+          transientSource === 'onboarding' ||
+          index === 0,
       );
     });
 
@@ -398,16 +425,10 @@ export function projectTechnicalExpansion(
     }
 
     if (intent.mode === 'balanced') {
-      for (const root of model.roots) addChildren(root.id, 'context');
+      for (const root of model.roots) addRootLandmarks(root.id, 'context');
     } else if (!intent.focusNodeId) {
       // Focus mode without a focus still retains high-level folder landmarks.
-      for (const root of model.roots) {
-        if (intent.manuallyCollapsed.has(root.id)) continue;
-        for (const child of model.childrenById.get(root.id) ?? []) {
-          if (child.kind !== 'Folder' || visibleNodeIds.size >= budget) continue;
-          addNode(child.id, 'context');
-        }
-      }
+      for (const root of model.roots) addRootLandmarks(root.id, 'context');
     }
   }
 

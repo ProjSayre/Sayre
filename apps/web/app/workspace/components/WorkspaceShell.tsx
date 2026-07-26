@@ -15,7 +15,6 @@ import { OnboardingTreeCanvas } from '../canvas/OnboardingTreeCanvas';
 import { FeatureDrawer } from '../drawer/FeatureDrawer';
 import { NodeDrawer } from '../drawer/NodeDrawer';
 import { SettingsPanel } from '../settings/SettingsPanel';
-import { AskSayreDock } from './AskSayrePanel';
 import {
   EmptyGraphState,
   ForbiddenState,
@@ -64,6 +63,8 @@ function Workspace() {
     graphErrorStatus,
   } = useMock();
   const technicalExpansion = useTechnicalExpansion();
+  const clearTechnicalTransientReveal =
+    technicalExpansion.clearTransientReveal;
   const [showMinimap, setShowMinimap] = useState(true);
   const [canvasCommand, setCanvasCommand] = useState<CanvasCommand | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -71,6 +72,16 @@ function Workspace() {
     width: 880,
     height: 600,
   });
+
+  useEffect(() => {
+    if (state.view === 'technical' && state.selectedNodeId === null) {
+      clearTechnicalTransientReveal('deep-link');
+    }
+  }, [
+    state.selectedNodeId,
+    state.view,
+    clearTechnicalTransientReveal,
+  ]);
 
   useEffect(() => {
     const element = canvasRef.current;
@@ -151,14 +162,53 @@ function Workspace() {
           ),
     [graph.nodes, normalizedSearch],
   );
+  const searchResultCount = useMemo(() => {
+    if (normalizedSearch.length === 0) return 0;
+    const nodeMatches = searchMatchIds.size;
+    if (!isProduct) return nodeMatches;
+    const featureMatches = graph.features.filter((feature) =>
+      [
+        feature.name,
+        feature.description ?? '',
+        feature.team ?? '',
+      ].some((value) => value.toLowerCase().includes(normalizedSearch)),
+    ).length;
+    return nodeMatches + featureMatches;
+  }, [
+    graph.features,
+    isProduct,
+    normalizedSearch,
+    searchMatchIds,
+  ]);
+  const selectedDependencyIds = useMemo(() => {
+    if (!isTechnical || state.selectedNodeId === null) return new Set<string>();
+    const ids = new Set<string>();
+    for (const edge of graph.edges) {
+      if (edge.type !== 'IMPORTS') continue;
+      if (edge.source === state.selectedNodeId) ids.add(edge.target);
+      if (edge.target === state.selectedNodeId) ids.add(edge.source);
+    }
+    return ids;
+  }, [graph.edges, isTechnical, state.selectedNodeId]);
   const effectiveTransientReveal = useMemo(
-    () =>
-      normalizedSearch.length === 0
-        ? technicalExpansion.transientReveal
-        : { source: 'search' as const, nodeIds: searchMatchIds },
+    () => {
+      if (normalizedSearch.length > 0) {
+        return { source: 'search' as const, nodeIds: searchMatchIds };
+      }
+      if (technicalExpansion.transientReveal !== null) {
+        return technicalExpansion.transientReveal;
+      }
+      return selectedDependencyIds.size > 0
+        ? {
+            source: 'selection' as const,
+            nodeIds: selectedDependencyIds,
+          }
+        : null;
+    },
     [
       normalizedSearch,
       searchMatchIds,
+      selectedDependencyIds,
       technicalExpansion.transientReveal,
     ],
   );
@@ -183,6 +233,46 @@ function Workspace() {
       technicalExpansion.preferences,
     ],
   );
+  const onboardingLandmarkIds = useMemo(() => {
+    const landmarkNames = new Set([
+      'readme.md',
+      'agents.md',
+      'contributing.md',
+      'package.json',
+      'pnpm-workspace.yaml',
+      '.env.example',
+      'docker-compose.yml',
+      'docker-compose.yaml',
+      'compose.yml',
+      'compose.yaml',
+    ]);
+    const rootIds = new Set(
+      graph.nodes
+        .filter((node) => node.parentId === null)
+        .map((node) => node.id),
+    );
+    return new Set(
+      graph.nodes
+        .filter(
+          (node) =>
+            node.kind === 'File' &&
+            node.parentId !== null &&
+            rootIds.has(node.parentId) &&
+            landmarkNames.has(node.name.toLowerCase()),
+        )
+        .map((node) => node.id),
+    );
+  }, [graph.nodes]);
+  const onboardingTransientReveal = useMemo(
+    () =>
+      normalizedSearch.length > 0
+        ? { source: 'search' as const, nodeIds: searchMatchIds }
+        : {
+            source: 'onboarding' as const,
+            nodeIds: onboardingLandmarkIds,
+          },
+    [normalizedSearch, onboardingLandmarkIds, searchMatchIds],
+  );
   const onboardingProjection = useMemo(
     () =>
       projectTechnicalExpansion(
@@ -195,15 +285,15 @@ function Workspace() {
           pinnedBranches: new Set(),
           manualOrder: [],
           focusNodeId: state.selectedNodeId,
-          transientReveal: effectiveTransientReveal,
+          transientReveal: onboardingTransientReveal,
         },
         Math.min(canvasBudget, 18),
       ),
     [
       canvasBudget,
-      effectiveTransientReveal,
       graph.edges,
       graph.nodes,
+      onboardingTransientReveal,
       state.selectedNodeId,
     ],
   );
@@ -223,7 +313,7 @@ function Workspace() {
       ? onboardingProjection.edges.length
       : graph.edges.length;
   const renderer = rendererFor(state.view, visibleNodeCount);
-  const coverageSummary =
+  const rawCoverageSummary =
     ready && isTechnical
       ? graph.nodes.reduce(
           (summary, node) => {
@@ -235,12 +325,14 @@ function Workspace() {
           { pass: 0, fail: 0, stale: 0, unknown: 0 },
         )
       : null;
-  const scopeLabel =
-    state.selectedNodeId !== null
-      ? 'selected node'
-      : repository === null
-        ? 'no repository'
-        : repository.name;
+  const coverageSummary =
+    rawCoverageSummary !== null &&
+    rawCoverageSummary.pass +
+      rawCoverageSummary.fail +
+      rawCoverageSummary.stale >
+      0
+      ? rawCoverageSummary
+      : null;
   const graphRootLabel =
     repository === null
       ? '/'
@@ -257,9 +349,21 @@ function Workspace() {
               : 'Onboarding Tree'
         }
         visibleNodeCount={ready ? visibleNodeCount : 0}
+        countLabel={
+          !ready
+            ? undefined
+            : isProduct
+              ? `${graph.features.length} features · ${graph.productCoverage?.mappedFileCount ?? graph.nodes.length} mapped files`
+              : isOnboarding
+                ? `${visibleNodeCount} context nodes`
+                : undefined
+        }
         edgeCount={ready && !isProduct ? visibleEdgeCount : null}
         renderer={renderer}
         coverageSummary={coverageSummary}
+        searchResultCount={
+          normalizedSearch.length === 0 ? null : searchResultCount
+        }
         technicalExpansion={
           isTechnical
             ? {
@@ -287,7 +391,7 @@ function Workspace() {
 
       {/* Same reason as the top-bar badges: no processing state for a
           repository the viewer cannot read. */}
-      {repository !== null && authorizedForRepository && !isOnboarding && (
+      {repository !== null && authorizedForRepository && (
         <StatusBanner />
       )}
 
@@ -301,7 +405,17 @@ function Workspace() {
           <PreparingState repositoryLabel={repository.name} />
         )}
         {status === 'forbidden' && <ForbiddenState />}
-        {status === 'loading' && <LoadingState />}
+        {status === 'loading' && (
+          <LoadingState
+            label={
+              isTechnical
+                ? 'Technical Tree'
+                : isProduct
+                  ? 'Product Tree'
+                  : 'Onboarding'
+            }
+          />
+        )}
         {status === 'empty' && <EmptyGraphState />}
         {status === 'unavailable' && <UnavailableState />}
         {status === 'product-unavailable' && (
@@ -351,6 +465,7 @@ function Workspace() {
 
         {ready && isOnboarding && graph.onboarding !== null && (
           <OnboardingTreeCanvas
+            key={graph.onboarding.revisionSha}
             graphNodes={onboardingProjection.nodes}
             graphEdges={onboardingProjection.edges}
             totalNodeCount={graph.nodes.length}
@@ -369,16 +484,23 @@ function Workspace() {
         {ready && (
           <span className="mock-statusline">
             {isTechnical
-              ? `${technicalExpansion.preferences.mode} · ${visibleNodeCount} of ${graph.nodes.length} visible · ${technicalProjection.foldedBranchCount} folded branches`
+              ? `${
+                  technicalExpansion.preferences.mode === 'balanced'
+                    ? 'overview'
+                    : technicalExpansion.preferences.mode === 'full'
+                      ? 'everything'
+                      : 'focus'
+                } · ${visibleNodeCount} of ${graph.nodes.length} shown · ${technicalProjection.foldedBranchCount} collapsed branches`
               : isProduct
-                ? `feature graph · ${graph.features.length} features`
-                : `ordered setup · ${graph.onboarding?.steps.length ?? 0} sandbox steps`}{' '}
-            · showing only nodes you are authorized to see
+                ? `feature map · ${graph.features.length} features${
+                    graph.productCoverage === null
+                      ? ''
+                      : ` · ${graph.productCoverage.mappedFileCount}/${graph.productCoverage.totalFileCount} files mapped`
+                  }`
+                : `ordered setup · ${graph.onboarding?.steps.length ?? 0} suggested steps`}
           </span>
         )}
       </div>
-
-      <AskSayreDock scopeLabel={scopeLabel} />
 
       <SettingsPanel />
     </main>

@@ -70,6 +70,8 @@ export interface WorkspaceState {
   view: ViewId;
   selectedNodeId: string | null;
   selectedFeatureId: string | null;
+  /** Feature context retained while its implementation is inspected. */
+  returnFeatureId: string | null;
   drawerOpen: boolean;
   settingsSection: SettingsSection | null;
   controlsOpen: boolean;
@@ -96,6 +98,7 @@ const FIXTURE_INITIAL_STATE: WorkspaceState = {
   view: 'technical',
   selectedNodeId: null,
   selectedFeatureId: null,
+  returnFeatureId: null,
   drawerOpen: false,
   settingsSection: null,
   controlsOpen: false,
@@ -124,6 +127,10 @@ function reducer(
       return {
         ...state,
         selectedNodeId: action.nodeId,
+        returnFeatureId:
+          state.view === 'product'
+            ? state.selectedFeatureId
+            : state.returnFeatureId,
         selectedFeatureId: null,
         drawerOpen: true,
       };
@@ -132,6 +139,7 @@ function reducer(
         ...state,
         selectedFeatureId: action.featureId,
         selectedNodeId: null,
+        returnFeatureId: null,
         drawerOpen: true,
       };
     case 'closeDrawer':
@@ -193,6 +201,7 @@ const EMPTY_GRAPH: WorkspaceGraph = {
   edges: [],
   features: [],
   onboarding: null,
+  productCoverage: null,
 };
 
 const SEMANTIC_REASONS: Record<SemanticStatus, string | null> = {
@@ -222,8 +231,14 @@ function initialState(options: {
   refName?: string | null;
   view?: ViewId;
   settingsSection?: SettingsSection | null;
+  selectedNodeId?: string | null;
+  selectedFeatureId?: string | null;
 }): WorkspaceState {
   if (options.mode === 'fixture') return FIXTURE_INITIAL_STATE;
+  const selectedFeatureId =
+    options.view === 'product' ? options.selectedFeatureId ?? null : null;
+  const selectedNodeId =
+    selectedFeatureId === null ? options.selectedNodeId ?? null : null;
   return {
     ...FIXTURE_INITIAL_STATE,
     // Fail closed until an admin-only capability probe succeeds. Core remains
@@ -235,6 +250,10 @@ function initialState(options: {
     refName: options.refName ?? null,
     view: options.view ?? 'technical',
     settingsSection: options.settingsSection ?? null,
+    selectedNodeId,
+    selectedFeatureId,
+    returnFeatureId: null,
+    drawerOpen: selectedNodeId !== null || selectedFeatureId !== null,
   };
 }
 
@@ -259,6 +278,8 @@ export interface WorkspaceProviderProps {
   initialRefName?: string | null;
   initialView?: ViewId;
   initialSettingsSection?: SettingsSection | null;
+  initialNodeId?: string | null;
+  initialFeatureId?: string | null;
 }
 
 export function WorkspaceProvider({
@@ -270,6 +291,8 @@ export function WorkspaceProvider({
   initialRefName,
   initialView,
   initialSettingsSection,
+  initialNodeId,
+  initialFeatureId,
 }: WorkspaceProviderProps) {
   const initial = useMemo(
     () =>
@@ -279,11 +302,15 @@ export function WorkspaceProvider({
         refName: initialRefName,
         view: initialView,
         settingsSection: initialSettingsSection,
+        selectedNodeId: initialNodeId,
+        selectedFeatureId: initialFeatureId,
       }),
     [
       initialRefName,
       initialRepositoryId,
       initialSettingsSection,
+      initialFeatureId,
+      initialNodeId,
       initialView,
       source.id,
     ],
@@ -435,7 +462,15 @@ export function WorkspaceProvider({
     };
   }, [source, state.session]);
 
+  const previousSelectionScopeKey = useRef<string | null>(null);
   useEffect(() => {
+    if (scope === null) return;
+    const scopeKey = `${scope.repositoryId}:${scope.refName}`;
+    const previousScopeKey = previousSelectionScopeKey.current;
+    previousSelectionScopeKey.current = scopeKey;
+    // Preserve a server-validated deep link on the initial scope load. A real
+    // repository/ref change clears the old selection.
+    if (previousScopeKey === null || previousScopeKey === scopeKey) return;
     setNodeOverlay(null);
     setOverlayStatus('idle');
     dispatch({
@@ -443,10 +478,11 @@ export function WorkspaceProvider({
       patch: {
         selectedNodeId: null,
         selectedFeatureId: null,
+        returnFeatureId: null,
         drawerOpen: false,
       },
     });
-  }, [scope, state.view]);
+  }, [scope]);
 
   const selectionRef = useRef({
     nodeId: state.selectedNodeId,
@@ -532,15 +568,24 @@ export function WorkspaceProvider({
     let controller: AbortController | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
+    const providerSurface =
+      state.view === 'onboarding' ? 'onboarding' : 'product';
+
     const refresh = (): void => {
       controller = new AbortController();
       void source
-        .providerState(scope, controller.signal)
+        .providerState(scope, providerSurface, controller.signal)
         .then((providerState) => {
           if (!active) return;
           const status =
             providerState?.status ??
-            (graph.features.length > 0 ? 'ready' : 'generating');
+            (providerSurface === 'onboarding'
+              ? graph.onboarding !== null
+                ? 'ready'
+                : 'generating'
+              : graph.features.length > 0
+                ? 'ready'
+                : 'generating');
           setProviderSemantic({
             status,
             reasonCode: providerState?.reasonCode ?? null,
@@ -560,7 +605,14 @@ export function WorkspaceProvider({
               });
             }
             setProviderSemantic({
-              status: graph.features.length > 0 ? 'ready' : 'generating',
+              status:
+                providerSurface === 'onboarding'
+                  ? graph.onboarding !== null
+                    ? 'ready'
+                    : 'generating'
+                  : graph.features.length > 0
+                    ? 'ready'
+                    : 'generating',
               reasonCode: null,
               reason: null,
               updatedAt: null,
@@ -580,9 +632,11 @@ export function WorkspaceProvider({
     };
   }, [
     graph.features.length,
+    graph.onboarding,
     readiness,
     scope,
     source,
+    state.view,
   ]);
 
   useEffect(() => {
@@ -627,8 +681,26 @@ export function WorkspaceProvider({
     } else {
       params.set('settings', state.settingsSection);
     }
+    if (state.selectedNodeId === null) {
+      params.delete('nodeId');
+    } else {
+      params.set('nodeId', state.selectedNodeId);
+    }
+    if (state.selectedFeatureId === null) {
+      params.delete('featureId');
+    } else {
+      params.set('featureId', state.selectedFeatureId);
+    }
     window.history.replaceState(null, '', `/?${params.toString()}`);
-  }, [repository, scope, source.id, state.settingsSection, state.view]);
+  }, [
+    repository,
+    scope,
+    source.id,
+    state.selectedFeatureId,
+    state.selectedNodeId,
+    state.settingsSection,
+    state.view,
+  ]);
 
   const reloadCatalog = useCallback(
     () => setCatalogVersion((version) => version + 1),

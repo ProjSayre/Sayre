@@ -25,7 +25,12 @@ const definitions: WorkspaceViewDefinition[] = [
     semantic: false,
     async load(source, scope, signal) {
       const graph = await source.technicalTree(scope, signal);
-      return { ...graph, features: [], onboarding: null };
+      return {
+        ...graph,
+        features: [],
+        onboarding: null,
+        productCoverage: null,
+      };
     },
   },
   {
@@ -49,7 +54,7 @@ const definitions: WorkspaceViewDefinition[] = [
     semantic: false,
     async load(source, scope, signal) {
       const graph = await source.onboardingTree(scope, signal);
-      return { ...graph, features: [] };
+      return { ...graph, features: [], productCoverage: null };
     },
   },
 ];

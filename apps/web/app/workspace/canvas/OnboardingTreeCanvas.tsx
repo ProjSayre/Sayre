@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { OnboardingExecutionResponse } from '../../lib/onboardingTree';
 import { useMock } from '../state';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
@@ -11,6 +11,7 @@ import type {
   OnboardingWorkflow,
 } from '../types';
 import { TechnicalTreeCanvas } from './TechnicalTreeCanvas';
+import { copyText } from '../components/ui';
 
 interface OnboardingTreeCanvasProps {
   graphNodes: GraphNode[];
@@ -28,6 +29,90 @@ interface OnboardingTreeCanvasProps {
 }
 
 type StepResult = OnboardingExecutionResponse | { error: string };
+
+const SETUP_LANDMARKS = new Set([
+  'readme.md',
+  'agents.md',
+  'contributing.md',
+  'package.json',
+  'pnpm-workspace.yaml',
+  '.env.example',
+  'docker-compose.yml',
+  'docker-compose.yaml',
+  'compose.yml',
+  'compose.yaml',
+]);
+
+function stepGuidance(command: string): {
+  purpose: string;
+  expected: string;
+} {
+  const normalized = command.trim().toLowerCase();
+  if (
+    /^(npm|pnpm|yarn|bun)\s+(install|i)(\s|$)/u.test(normalized)
+  ) {
+    return {
+      purpose: 'Install the dependencies declared by this repository.',
+      expected: 'The package manager finishes without dependency errors.',
+    };
+  }
+  if (
+    normalized.includes('migrate') ||
+    normalized.includes('db:push') ||
+    normalized.includes('prisma')
+  ) {
+    return {
+      purpose: 'Prepare the local database schema required by the application.',
+      expected: 'Schema or migration checks finish successfully.',
+    };
+  }
+  if (normalized.includes('build')) {
+    return {
+      purpose: 'Compile the repository and catch production build errors.',
+      expected: 'The build exits successfully with no compile failures.',
+    };
+  }
+  if (
+    normalized.includes('test') ||
+    normalized.includes('check') ||
+    normalized.includes('lint')
+  ) {
+    return {
+      purpose: 'Run the repository checks associated with setup.',
+      expected: 'The selected checks complete without failures.',
+    };
+  }
+  if (
+    normalized.includes(' dev') ||
+    normalized.endsWith(' dev') ||
+    normalized.includes(' start')
+  ) {
+    return {
+      purpose: 'Start the local development application or services.',
+      expected: 'The process starts and reports its local address or readiness.',
+    };
+  }
+  return {
+    purpose: 'Run a command inferred as part of this repository setup.',
+    expected: 'The command exits successfully; verify its output locally.',
+  };
+}
+
+function storedResults(revisionSha: string): Record<string, StepResult> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const value: unknown = JSON.parse(
+      window.sessionStorage.getItem(
+        `sayre:onboarding-results:${revisionSha}`,
+      ) ?? '{}',
+    );
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, StepResult>)
+      : {};
+  } catch {
+    return {};
+  }
+}
 
 function messageForExecutionError(error: unknown): string {
   if (
@@ -87,9 +172,33 @@ export function OnboardingTreeCanvas({
   fitKey,
   onSelect,
 }: OnboardingTreeCanvasProps) {
-  const { dispatch, isAdmin, reloadGraph, runOnboardingStep } = useMock();
+  const {
+    dispatch,
+    isAdmin,
+    reloadGraph,
+    runOnboardingStep,
+    semanticState,
+    state,
+  } = useMock();
   const [runningStepId, setRunningStepId] = useState<string | null>(null);
-  const [results, setResults] = useState<Record<string, StepResult>>({});
+  const [results, setResults] = useState<Record<string, StepResult>>(() =>
+    storedResults(workflow.revisionSha),
+  );
+  const [copiedStepId, setCopiedStepId] = useState<string | null>(null);
+  const [copyFailedStepId, setCopyFailedStepId] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        `sayre:onboarding-results:${workflow.revisionSha}`,
+        JSON.stringify(results),
+      );
+    } catch {
+      // Session persistence is a convenience; setup remains usable without it.
+    }
+  }, [results, workflow.revisionSha]);
 
   const completed = useMemo(
     () =>
@@ -117,6 +226,10 @@ export function OnboardingTreeCanvas({
     workflow.steps.length === 0
       ? 0
       : Math.round((completed.size / workflow.steps.length) * 100);
+  const setupLandmarks = graphNodes.filter(
+    (node) =>
+      node.kind === 'File' && SETUP_LANDMARKS.has(node.name.toLowerCase()),
+  );
 
   const openTechnicalTree = (): void => {
     dispatch({
@@ -124,7 +237,8 @@ export function OnboardingTreeCanvas({
       patch: {
         view: 'technical',
         selectedFeatureId: null,
-        drawerOpen: false,
+        drawerOpen: state.selectedNodeId !== null,
+        search: '',
       },
     });
   };
@@ -136,10 +250,10 @@ export function OnboardingTreeCanvas({
           <span className="mock-drawer-kind">guided repository setup</span>
           <div className="mock-workflow-title-row">
             <div>
-              <h2>Get {rootLabel} running</h2>
+              <h2>Review setup for {rootLabel}</h2>
               <p>
-                Follow the generated setup plan in order. Sayre unlocks each
-                command when its prerequisites succeed.
+                Sayre proposes an ordered plan. Review and copy each command;
+                prerequisites unlock as earlier checks succeed.
               </p>
             </div>
             {workflow.steps.length > 0 && (
@@ -163,8 +277,10 @@ export function OnboardingTreeCanvas({
           <div className="mock-workflow-safety">
             <span aria-hidden="true">◇</span>
             <p>
-              Safe to try: commands run in a disposable, networkless container
-              with no host mounts or repository secrets.
+              Constrained check: the sandbox has no checkout, network, host
+              mounts, or repository secrets. Its result is not proof the
+              repository runs; copy commands into your local checkout to finish
+              setup.
             </p>
           </div>
           <span className="mock-workflow-revision">
@@ -177,11 +293,40 @@ export function OnboardingTreeCanvas({
             <span className="mock-workflow-empty-mark" aria-hidden="true">
               —
             </span>
-            <h3>No setup plan for this revision</h3>
+            <h3>
+              {semanticState.status === 'generating'
+                ? 'Setup analysis is still running'
+                : semanticState.status === 'failed'
+                  ? 'Automated setup plan unavailable'
+                  : 'No verified setup steps detected'}
+            </h3>
             <p>
-              Nothing is waiting on you. Sayre did not infer any safe setup
-              commands for this repository revision.
+              {semanticState.status === 'generating'
+                ? 'Repository structure is ready now, but suggested setup steps may still appear.'
+                : semanticState.status === 'failed'
+                  ? 'Sayre could not generate a plan for this revision. Continue with the repository documentation and structure.'
+                  : 'This does not confirm the repository is ready. Start with the repository setup landmarks below and verify the documentation.'}
             </p>
+            {setupLandmarks.length > 0 && (
+              <div
+                className="mock-workflow-landmarks"
+                aria-label="Repository setup landmarks"
+              >
+                <strong>Repository essentials</strong>
+                <div>
+                  {setupLandmarks.map((landmark) => (
+                    <button
+                      key={landmark.id}
+                      type="button"
+                      className="mock-btn mock-btn-ghost mock-btn-sm"
+                      onClick={() => onSelect(landmark.id)}
+                    >
+                      {landmark.name} →
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               type="button"
               className="mock-btn mock-btn-secondary"
@@ -191,7 +336,15 @@ export function OnboardingTreeCanvas({
             </button>
           </div>
         ) : (
-          <ol className="mock-workflow-steps">
+          <>
+            {!isAdmin && (
+              <div className="mock-workflow-member-note" role="note">
+                <strong>Run locally</strong>
+                You can copy every command into your checkout. Sandbox
+                execution is admin-only and is not required to use this plan.
+              </div>
+            )}
+            <ol className="mock-workflow-steps">
             {workflow.steps.map((step) => {
               const blocked = step.requires.some(
                 (requiredId) => !completed.has(requiredId),
@@ -207,6 +360,7 @@ export function OnboardingTreeCanvas({
                 ('error' in result || result.status !== 'succeeded');
               const isNext = step.id === nextStepId;
               const requirement = requirementLabel(step, stepById);
+              const guidance = stepGuidance(step.command);
               const statusLabel = succeeded
                 ? 'Complete'
                 : running
@@ -257,7 +411,44 @@ export function OnboardingTreeCanvas({
                     </span>
                   </div>
                   <code>{step.command}</code>
+                  <div className="mock-workflow-guidance">
+                    <p>
+                      <strong>Why</strong>
+                      {guidance.purpose}
+                    </p>
+                    <p>
+                      <strong>Expected</strong>
+                      {guidance.expected}
+                    </p>
+                  </div>
                   <div className="mock-workflow-step-actions">
+                    <button
+                      type="button"
+                      className="mock-btn mock-btn-ghost"
+                      onClick={() => {
+                        void copyText(step.command).then((copied) => {
+                          if (copied) {
+                            setCopyFailedStepId(null);
+                            setCopiedStepId(step.id);
+                            window.setTimeout(
+                              () =>
+                                setCopiedStepId((current) =>
+                                  current === step.id ? null : current,
+                                ),
+                              1_500,
+                            );
+                          } else {
+                            setCopyFailedStepId(step.id);
+                          }
+                        });
+                      }}
+                    >
+                      {copiedStepId === step.id
+                        ? 'Copied'
+                        : copyFailedStepId === step.id
+                          ? 'Select command to copy'
+                          : 'Copy command'}
+                    </button>
                     <button
                       type="button"
                       className={`mock-btn ${
@@ -305,7 +496,7 @@ export function OnboardingTreeCanvas({
                       {succeeded
                         ? 'Completed'
                         : !isAdmin
-                          ? 'Admin access required'
+                          ? 'Admin sandbox only'
                           : running
                             ? 'Running in sandbox…'
                             : blocked
@@ -330,7 +521,8 @@ export function OnboardingTreeCanvas({
                 </li>
               );
             })}
-          </ol>
+            </ol>
+          </>
         )}
       </section>
 
@@ -343,9 +535,9 @@ export function OnboardingTreeCanvas({
             <span className="mock-drawer-kind">repository context</span>
             <h3>{rootLabel}</h3>
             <p>
-              Compact top-down structure used to orient this setup plan.
-              Showing {graphNodes.length.toLocaleString()} of{' '}
-              {totalNodeCount.toLocaleString()} authorized nodes.
+              Setup landmarks and top-level structure for orientation. Showing{' '}
+              {graphNodes.length.toLocaleString()} of{' '}
+              {totalNodeCount.toLocaleString()} repository nodes you can view.
             </p>
           </div>
           <button

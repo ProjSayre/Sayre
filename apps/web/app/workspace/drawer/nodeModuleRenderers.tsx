@@ -4,7 +4,7 @@ import type {
   NodeModuleId,
 } from '../moduleRegistry';
 import type { WorkspaceAction } from '../state';
-import type { GraphNode, NodeOverlay } from '../types';
+import type { GraphNode, NodeOverlay, ViewId } from '../types';
 import {
   EmptyState,
   Module,
@@ -18,23 +18,74 @@ export interface NodeModuleRendererProps {
   node: GraphNode;
   overlay: NodeOverlay | null;
   semanticsUsable: boolean;
+  currentView: ViewId;
   dispatch: Dispatch<WorkspaceAction>;
 }
 
 function DependenciesModule({
   definition,
   dispatch,
+  currentView,
   node,
   overlay,
 }: NodeModuleRendererProps) {
   const dependencies = overlay?.dependencies ?? [];
-  const sorted = [...dependencies].sort((left, right) =>
-    left.direction === right.direction
-      ? left.path.localeCompare(right.path)
-      : left.direction === 'outbound'
-        ? -1
-        : 1,
-  );
+  const outbound = dependencies
+    .filter((dependency) => dependency.direction === 'outbound')
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const inbound = dependencies
+    .filter((dependency) => dependency.direction === 'inbound')
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const openDependency = (nodeId: string): void => {
+    if (currentView === 'technical') {
+      dispatch({ type: 'selectNode', nodeId });
+      return;
+    }
+    dispatch({
+      type: 'patch',
+      patch: {
+        view: 'technical',
+        selectedNodeId: nodeId,
+        selectedFeatureId: null,
+        drawerOpen: true,
+        fileTreeOpen: true,
+        search: '',
+      },
+    });
+  };
+  const renderGroup = (
+    title: string,
+    items: typeof dependencies,
+  ) =>
+    items.length === 0 ? null : (
+      <section className="mock-dependency-group">
+        <h4>
+          {title} <span>{items.length}</span>
+        </h4>
+        <ul className="mock-list">
+          {items.map((dependency) => (
+            <li key={`${dependency.direction}:${dependency.nodeId}`}>
+              <button
+                type="button"
+                className="mock-list-row"
+                onClick={() => openDependency(dependency.nodeId)}
+              >
+                <span className="mock-row-top">
+                  <span className="mock-row-title">{dependency.name}</span>
+                  <span className="mock-chip">{dependency.kind}</span>
+                </span>
+                <span className="mock-row-sub">{dependency.path}</span>
+                {currentView !== 'technical' && (
+                  <span className="mock-row-meta">
+                    Open in Technical Tree →
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   return (
     <Module
       title={definition.title}
@@ -46,34 +97,16 @@ function DependenciesModule({
           No imports cross this {node.kind.toLowerCase()} in either direction.
         </EmptyState>
       ) : (
-        <ul className="mock-list">
-          {sorted.map((dependency) => (
-            <li key={`${dependency.direction}:${dependency.nodeId}`}>
-              <button
-                type="button"
-                className="mock-list-row"
-                onClick={() =>
-                  dispatch({ type: 'selectNode', nodeId: dependency.nodeId })
-                }
-              >
-                <span className="mock-row-top">
-                  <span className="mock-row-title">{dependency.name}</span>
-                  <span
-                    className={`mock-chip mock-chip-${
-                      dependency.direction === 'outbound' ? 'out' : 'in'
-                    }`}
-                  >
-                    {dependency.direction === 'outbound'
-                      ? 'imports'
-                      : 'imported by'}
-                  </span>
-                </span>
-                <span className="mock-row-sub">{dependency.path}</span>
-                <span className="mock-row-meta">{dependency.kind}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="mock-dependency-groups">
+          {renderGroup(
+            `This ${node.kind.toLowerCase()} imports`,
+            outbound,
+          )}
+          {renderGroup(
+            `Other ${inbound.length === 1 ? 'file imports' : 'files import'} this ${node.kind.toLowerCase()}`,
+            inbound,
+          )}
+        </div>
       )}
     </Module>
   );
@@ -127,6 +160,7 @@ function RecentChangesModule({
 
 function SpecificFeaturesModule({
   definition,
+  dispatch,
   overlay,
   semanticsUsable,
 }: NodeModuleRendererProps) {
@@ -148,7 +182,23 @@ function SpecificFeaturesModule({
         <ul className="mock-list">
           {features.map((feature) => (
             <li key={feature.id}>
-              <div className="mock-list-row">
+              <button
+                type="button"
+                className="mock-list-row"
+                onClick={() =>
+                  dispatch({
+                    type: 'patch',
+                    patch: {
+                      view: 'product',
+                      selectedFeatureId: feature.id,
+                      selectedNodeId: null,
+                      returnFeatureId: null,
+                      drawerOpen: true,
+                      search: '',
+                    },
+                  })
+                }
+              >
                 <span className="mock-row-top">
                   <span className="mock-row-title">{feature.name}</span>
                   <span className="mock-chip">
@@ -158,7 +208,8 @@ function SpecificFeaturesModule({
                 <span className="mock-row-sub mock-row-wrap">
                   {feature.description ?? 'No feature description available.'}
                 </span>
-              </div>
+                <span className="mock-row-meta">Open feature map →</span>
+              </button>
             </li>
           ))}
         </ul>

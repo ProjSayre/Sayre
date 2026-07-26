@@ -9,6 +9,8 @@ interface HomeProps {
     refName?: string | string[];
     view?: string | string[];
     settings?: string | string[];
+    nodeId?: string | string[];
+    featureId?: string | string[];
   };
 }
 
@@ -47,6 +49,8 @@ export default function Home({ searchParams }: HomeProps) {
       initialRefName={singleParam(searchParams?.refName)}
       initialView={initialView(searchParams?.view)}
       initialSettingsSection={initialSettings(searchParams?.settings)}
+      initialNodeId={singleParam(searchParams?.nodeId)}
+      initialFeatureId={singleParam(searchParams?.featureId)}
     >
       <WorkspaceShell />
     </WorkspaceProvider>

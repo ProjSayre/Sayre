@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   MiniMap,
+  MarkerType,
   Panel,
   ReactFlow,
   useReactFlow,
@@ -21,6 +22,7 @@ import {
   buildProductFeatureConnections,
   layoutProductFeatureClusters,
   type ProductFeatureConnection,
+  type ProductFeatureCluster,
 } from './productGraph';
 
 interface ProductTreeCanvasProps {
@@ -47,7 +49,10 @@ const PRODUCT_NODE_TYPES = {
   productFeature: ProductFeatureNode,
 };
 
-function connectionLabel(connection: ProductFeatureConnection): string {
+function connectionLabel(
+  connection: ProductFeatureConnection,
+  clusterById: ReadonlyMap<string, ProductFeatureCluster>,
+): string {
   const parts: string[] = [];
   if (connection.sharedFileIds.length > 0) {
     parts.push(
@@ -56,11 +61,18 @@ function connectionLabel(connection: ProductFeatureConnection): string {
       }`,
     );
   }
-  if (connection.dependencyCount > 0) {
+  const sourceName =
+    clusterById.get(connection.sourceFeatureId)?.name ?? 'Feature';
+  const targetName =
+    clusterById.get(connection.targetFeatureId)?.name ?? 'feature';
+  if (connection.sourceToTargetDependencyCount > 0) {
     parts.push(
-      `${connection.dependencyCount} code ${
-        connection.dependencyCount === 1 ? 'dependency' : 'dependencies'
-      }`,
+      `${sourceName} imports ${targetName} (${connection.sourceToTargetDependencyCount})`,
+    );
+  }
+  if (connection.targetToSourceDependencyCount > 0) {
+    parts.push(
+      `${targetName} imports ${sourceName} (${connection.targetToSourceDependencyCount})`,
     );
   }
   return parts.join(' · ');
@@ -88,6 +100,7 @@ export function ProductTreeCanvas({
   const [maximumColumns, setMaximumColumns] = useState(4);
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
   const [openDirectory, setOpenDirectory] = useState<OpenDirectory | null>(null);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   useEffect(() => {
     const update = (): void => {
@@ -217,7 +230,7 @@ export function ProductTreeCanvas({
             clusterById
               .get(connection.targetFeatureId)
               ?.memberIds.includes(selectedNodeId) === true));
-      const relation = connectionLabel(connection);
+      const relation = connectionLabel(connection, clusterById);
       return {
         id: connection.id,
         source: `feature:${connection.sourceFeatureId}`,
@@ -244,6 +257,26 @@ export function ProductTreeCanvas({
         },
         labelBgPadding: [5, 4],
         labelBgBorderRadius: 3,
+        ...(connection.sourceToTargetDependencyCount > 0
+          ? {
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 14,
+                height: 14,
+                color: '#687066',
+              },
+            }
+          : {}),
+        ...(connection.targetToSourceDependencyCount > 0
+          ? {
+              markerStart: {
+                type: MarkerType.ArrowClosed,
+                width: 14,
+                height: 14,
+                color: '#687066',
+              },
+            }
+          : {}),
         ariaLabel: `${clusterById.get(connection.sourceFeatureId)?.name ?? 'Feature'} to ${
           clusterById.get(connection.targetFeatureId)?.name ?? 'feature'
         }: ${relation}`,
@@ -328,10 +361,55 @@ export function ProductTreeCanvas({
         <span>
           <i className="is-file" /> file
         </span>
+        <span>
+          <i className="is-import" /> imports →
+        </span>
         <span className="mock-product-link-count">
           {connections.length}{' '}
           {connections.length === 1 ? 'feature link' : 'feature links'}
         </span>
+      </Panel>
+      <Panel position="top-right" className="mock-feature-index">
+        <button
+          type="button"
+          className="mock-feature-index-trigger"
+          aria-expanded={inventoryOpen}
+          onClick={() => setInventoryOpen((open) => !open)}
+        >
+          <span>Feature inventory</span>
+          <strong>{clusters.length}</strong>
+          <span aria-hidden="true">{inventoryOpen ? '▴' : '▾'}</span>
+        </button>
+        {inventoryOpen && (
+          <div className="mock-feature-index-list">
+            {[...clusters]
+              .sort(
+                (left, right) =>
+                  (left.team ?? '').localeCompare(right.team ?? '') ||
+                  left.name.localeCompare(right.name),
+              )
+              .map((cluster) => (
+                <button
+                  key={cluster.id}
+                  type="button"
+                  className="mock-feature-index-row"
+                  aria-current={
+                    cluster.id === selectedFeatureId ? 'true' : undefined
+                  }
+                  onClick={() => onSelectFeature(cluster.id)}
+                >
+                  <span>
+                    <strong>{cluster.name}</strong>
+                    <small>{cluster.team ?? 'Unassigned team'}</small>
+                  </span>
+                  <em>
+                    {cluster.fileCount}{' '}
+                    {cluster.fileCount === 1 ? 'file' : 'files'}
+                  </em>
+                </button>
+              ))}
+          </div>
+        )}
       </Panel>
       {showMinimap && (
         <MiniMap

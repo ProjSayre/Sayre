@@ -11,6 +11,7 @@ export interface GraphNodeData extends Record<string, unknown> {
   selected: boolean;
   dimmed: boolean;
   matched: boolean;
+  related?: boolean;
   coverage?: GraphCoverage;
   folderState?: TechnicalFolderState;
   visibleChildCount?: number;
@@ -35,6 +36,7 @@ export function GraphNodeView({ data }: NodeProps) {
     node.selected ? 'mock-node-selected' : '',
     node.dimmed ? 'mock-node-dimmed' : '',
     node.matched ? 'mock-node-match' : '',
+    node.related ? 'mock-node-related' : '',
   ]
     .filter(Boolean)
     .join(' ');

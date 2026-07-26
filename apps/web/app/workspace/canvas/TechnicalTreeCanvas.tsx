@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   MiniMap,
+  MarkerType,
+  Panel,
   ReactFlow,
   useReactFlow,
   type Edge,
@@ -16,7 +18,7 @@ import {
 import type { GraphEdge, GraphNode } from '../types';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
 import type { TechnicalExpansionProjection } from '../technicalExpansion';
-import { NODE_TYPES } from './nodes';
+import { NODE_TYPES, type GraphNodeData } from './nodes';
 import {
   NODE_BOX,
   layoutScalableTree,
@@ -172,6 +174,17 @@ export function TechnicalTreeCanvas({
         )
       : basePositions;
     const ancestry = ancestryOf(graphNodes, selectedId);
+    const dependencyNeighbors = new Set<string>();
+    if (selectedId !== null) {
+      for (const edge of graphEdges) {
+        if (edge.type !== 'IMPORTS') continue;
+        if (edge.source === selectedId) {
+          dependencyNeighbors.add(edge.target);
+        } else if (edge.target === selectedId) {
+          dependencyNeighbors.add(edge.source);
+        }
+      }
+    }
     const query = search.trim().toLowerCase();
 
     const matches = (node: GraphNode): boolean =>
@@ -202,6 +215,7 @@ export function TechnicalTreeCanvas({
           selected: node.id === selectedId,
           dimmed: query.length > 0 && !matched,
           matched,
+          related: dependencyNeighbors.has(node.id),
           ...(node.kind === 'Folder' && expansion !== undefined
             ? {
                 folderState,
@@ -236,8 +250,10 @@ export function TechnicalTreeCanvas({
 
     const flowEdges: Edge[] = graphEdges.map((edge) => {
       const isContains = edge.type === 'CONTAINS';
-      const active =
-        isContains && ancestry.has(edge.source) && ancestry.has(edge.target);
+      const active = isContains
+        ? ancestry.has(edge.source) && ancestry.has(edge.target)
+        : selectedId !== null &&
+          (edge.source === selectedId || edge.target === selectedId);
       return {
         id: edge.id,
         source: edge.source,
@@ -253,6 +269,16 @@ export function TechnicalTreeCanvas({
           .join(' '),
         selectable: false,
         focusable: false,
+        ...(isContains
+          ? {}
+          : {
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 12,
+                height: 12,
+                color: '#3a4038',
+              },
+            }),
       };
     });
 
@@ -320,7 +346,18 @@ export function TechnicalTreeCanvas({
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}
-      onNodeClick={(_event, node) => onSelect(node.id)}
+      onNodeClick={(_event, flowNode) => {
+        const node = flowNode.data as GraphNodeData;
+        if (
+          node.kind === 'Folder' &&
+          node.folderState !== undefined &&
+          node.folderState !== 'leaf'
+        ) {
+          node.onToggleFolder?.(false);
+          return;
+        }
+        onSelect(flowNode.id);
+      }}
       fitView
       fitViewOptions={{ padding: fitPadding, maxZoom: 1 }}
       minZoom={0.2}
@@ -330,6 +367,16 @@ export function TechnicalTreeCanvas({
       elementsSelectable
       proOptions={{ hideAttribution: true }}
     >
+      {expansion !== undefined && (
+        <Panel position="top-left" className="mock-technical-legend">
+          <span>
+            <i className="is-containment" /> folder structure
+          </span>
+          <span>
+            <i className="is-import" /> imports →
+          </span>
+        </Panel>
+      )}
       {showMinimap && (
         <MiniMap
           pannable

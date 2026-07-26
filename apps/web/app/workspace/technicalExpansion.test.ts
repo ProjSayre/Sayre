@@ -75,6 +75,85 @@ describe('technical expansion projection', () => {
     expect(projection.foldedBranchCount).toBeGreaterThan(0);
   });
 
+  it('keeps loose root files folded behind folder landmarks by default', () => {
+    const nodes: GraphNode[] = [
+      {
+        id: 'root',
+        kind: 'Folder',
+        name: 'repository',
+        path: '',
+        parentId: null,
+      },
+      {
+        id: 'apps',
+        kind: 'Folder',
+        name: 'apps',
+        path: 'apps',
+        parentId: 'root',
+      },
+      {
+        id: 'readme',
+        kind: 'File',
+        name: 'README.md',
+        path: 'README.md',
+        parentId: 'root',
+      },
+      {
+        id: 'package',
+        kind: 'File',
+        name: 'package.json',
+        path: 'package.json',
+        parentId: 'root',
+      },
+    ];
+
+    const projection = projectTechnicalExpansion(nodes, [], intent(), 24);
+
+    expect(projection.nodes.map((node) => node.id)).toEqual(['root', 'apps']);
+    expect(projection.foldedDescendantCount.get('root')).toBe(2);
+  });
+
+  it('reveals a searched root file and its root corridor', () => {
+    const nodes: GraphNode[] = [
+      {
+        id: 'root',
+        kind: 'Folder',
+        name: 'repository',
+        path: '',
+        parentId: null,
+      },
+      {
+        id: 'apps',
+        kind: 'Folder',
+        name: 'apps',
+        path: 'apps',
+        parentId: 'root',
+      },
+      {
+        id: 'readme',
+        kind: 'File',
+        name: 'README.md',
+        path: 'README.md',
+        parentId: 'root',
+      },
+    ];
+
+    const projection = projectTechnicalExpansion(
+      nodes,
+      [],
+      intent({
+        transientReveal: {
+          source: 'search',
+          nodeIds: new Set(['readme']),
+        },
+      }),
+      24,
+    );
+
+    expect(projection.visibleNodeIds.has('readme')).toBe(true);
+    expect(projection.reasonByNodeId.get('readme')).toBe('transient');
+  });
+
   it('forces the focused file and every authorized ancestor into view', () => {
     const nodes = largeGraph();
     const focusedId = 'folder-18-file-39';

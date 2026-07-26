@@ -74,6 +74,44 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="mock-empty">{children}</p>;
 }
 
+export async function copyText(text: string): Promise<boolean> {
+  if (navigator.clipboard !== undefined) {
+    let timeout: number | undefined;
+    try {
+      await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise<never>((_resolve, reject) => {
+          timeout = window.setTimeout(
+            () => reject(new Error('Clipboard request timed out.')),
+            250,
+          );
+        }),
+      ]);
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      return true;
+    } catch {
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      // Some embedded/automated browsers deny or stall the async clipboard
+      // even on a secure page. Keep the ordinary select-and-copy fallback.
+    }
+  }
+
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    textarea.remove();
+    return copied;
+  } catch {
+    return false;
+  }
+}
+
 const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
   day: '2-digit',
   month: 'short',

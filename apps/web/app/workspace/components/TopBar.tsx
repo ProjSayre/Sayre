@@ -21,6 +21,13 @@ const SEMANTIC_LABEL: Record<SemanticStatus, string> = {
   failed: 'semantics unavailable',
 };
 
+const ONBOARDING_LABEL: Record<SemanticStatus, string> = {
+  generating: 'generating setup plan',
+  ready: 'setup analysis ready',
+  degraded: 'setup analysis incomplete',
+  failed: 'setup analysis unavailable',
+};
+
 const REALTIME_LABEL: Record<RealtimeStatus, string> = {
   connected: 'live',
   reconnecting: 'reconnecting to live updates',
@@ -131,9 +138,13 @@ export function TopBar() {
 
   const readinessTone =
     readiness === 'graph_ready' ? 'ready' : 'working';
+  const onboardingStateUnknown =
+    state.view === 'onboarding' && semanticState.updatedAt === null;
 
   const semanticTone =
-    semanticState.status === 'ready'
+    onboardingStateUnknown
+      ? 'warn'
+      : semanticState.status === 'ready'
       ? 'ready'
       : semanticState.status === 'generating'
         ? 'working'
@@ -169,7 +180,11 @@ export function TopBar() {
           </Badge>
           <Badge tone={readinessTone}>{READINESS_LABEL[readiness]}</Badge>
           <Badge tone={semanticTone}>
-            {SEMANTIC_LABEL[semanticState.status]}
+            {state.view === 'onboarding'
+              ? onboardingStateUnknown
+                ? 'setup status unknown'
+                : ONBOARDING_LABEL[semanticState.status]
+              : SEMANTIC_LABEL[semanticState.status]}
           </Badge>
           {/* The gateway re-authorizes every pushed delta before this client
               refreshes its currently selected graph projection. */}

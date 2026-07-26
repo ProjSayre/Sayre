@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useMock } from '../state';
 
 function CanvasState({
   title,
@@ -54,10 +55,10 @@ export function PreparingState({ repositoryLabel }: { repositoryLabel: string })
   );
 }
 
-export function LoadingState() {
+export function LoadingState({ label }: { label: string }) {
   return (
-    <CanvasState title="Loading Technical Tree">
-      <p>Requesting the authorized Folder and File projection for this ref.</p>
+    <CanvasState title={`Loading ${label}`}>
+      <p>Requesting the repository context for this ref.</p>
     </CanvasState>
   );
 }
@@ -85,12 +86,20 @@ export function ForbiddenState() {
 }
 
 export function UnavailableState() {
+  const { reloadGraph } = useMock();
   return (
     <CanvasState title="Sayre is unavailable right now" role="alert">
       <p>
         The graph could not be reached. Nothing has been lost — reload the page
         once the service is back.
       </p>
+      <button
+        type="button"
+        className="mock-btn mock-btn-secondary"
+        onClick={reloadGraph}
+      >
+        Try again
+      </button>
     </CanvasState>
   );
 }
@@ -100,6 +109,7 @@ export function ProductUnavailableState({
 }: {
   reason: 'generating' | 'failed';
 }) {
+  const { dispatch } = useMock();
   return (
     <CanvasState title={reason === 'generating' ? 'Generating Product Tree' : 'Product Tree unavailable'}>
       <p>
@@ -107,6 +117,24 @@ export function ProductUnavailableState({
           ? 'Feature boundaries for this ref are still being generated. They appear here as they land.'
           : 'Feature boundaries could not be generated for this ref. The Technical Tree is unaffected and still shows the full repository structure.'}
       </p>
+      <button
+        type="button"
+        className="mock-btn mock-btn-secondary"
+        onClick={() =>
+          dispatch({
+            type: 'patch',
+            patch: {
+              view: 'technical',
+              selectedFeatureId: null,
+              drawerOpen: false,
+              search: '',
+              fileTreeOpen: true,
+            },
+          })
+        }
+      >
+        Open Technical Tree
+      </button>
     </CanvasState>
   );
 }

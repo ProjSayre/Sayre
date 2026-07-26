@@ -36,6 +36,9 @@ export interface ProductFeatureConnection {
   targetFeatureId: string;
   sharedFileIds: string[];
   dependencyCount: number;
+  /** Counts use the stable source/target ordering above. */
+  sourceToTargetDependencyCount: number;
+  targetToSourceDependencyCount: number;
 }
 
 export interface ProductFeaturePlacement {
@@ -186,6 +189,8 @@ interface MutableConnection {
   targetFeatureId: string;
   sharedFileIds: Set<string>;
   dependencyIds: Set<string>;
+  sourceToTargetDependencyIds: Set<string>;
+  targetToSourceDependencyIds: Set<string>;
 }
 
 function connectionKey(leftId: string, rightId: string): string {
@@ -223,6 +228,8 @@ export function buildProductFeatureConnections(
       targetFeatureId,
       sharedFileIds: new Set(),
       dependencyIds: new Set(),
+      sourceToTargetDependencyIds: new Set(),
+      targetToSourceDependencyIds: new Set(),
     };
     mutable.set(key, created);
     return created;
@@ -270,9 +277,16 @@ export function buildProductFeatureConnections(
         ) {
           continue;
         }
-        ensureConnection(sourceFeatureId, targetFeatureId).dependencyIds.add(
-          edge.id,
+        const connection = ensureConnection(
+          sourceFeatureId,
+          targetFeatureId,
         );
+        connection.dependencyIds.add(edge.id);
+        if (connection.sourceFeatureId === sourceFeatureId) {
+          connection.sourceToTargetDependencyIds.add(edge.id);
+        } else {
+          connection.targetToSourceDependencyIds.add(edge.id);
+        }
       }
     }
   }
@@ -284,6 +298,10 @@ export function buildProductFeatureConnections(
       targetFeatureId: connection.targetFeatureId,
       sharedFileIds: [...connection.sharedFileIds].sort(),
       dependencyCount: connection.dependencyIds.size,
+      sourceToTargetDependencyCount:
+        connection.sourceToTargetDependencyIds.size,
+      targetToSourceDependencyCount:
+        connection.targetToSourceDependencyIds.size,
     }))
     .sort(
       (left, right) =>

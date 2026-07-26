@@ -93,6 +93,8 @@ describe('Product feature graph', () => {
         targetFeatureId: 'design-system',
         sharedFileIds: ['price'],
         dependencyCount: 1,
+        sourceToTargetDependencyCount: 1,
+        targetToSourceDependencyCount: 0,
       },
     ]);
   });

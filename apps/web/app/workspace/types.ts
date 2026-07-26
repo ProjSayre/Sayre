@@ -85,6 +85,13 @@ export interface OnboardingWorkflow {
   steps: OnboardingStep[];
 }
 
+export interface ProductCoverage {
+  totalFileCount: number;
+  mappedFileCount: number;
+  unmappedFileCount: number;
+  mappedPercent: number;
+}
+
 export interface AgentSkillVersion {
   version: number;
   content: string;
@@ -158,4 +165,9 @@ export interface WorkspaceGraph {
   edges: GraphEdge[];
   features: Feature[];
   onboarding: OnboardingWorkflow | null;
+  /**
+   * Product Tree completeness is computed from the already-authorized
+   * Technical Tree response. Null means the comparison was unavailable.
+   */
+  productCoverage: ProductCoverage | null;
 }
