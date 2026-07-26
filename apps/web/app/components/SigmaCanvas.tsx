@@ -19,6 +19,7 @@ interface SigmaCanvasProps {
   boundaries?: readonly SigmaBoundary[];
   onSelectBoundary?: (boundaryId: string) => void;
   command?: CanvasCommand | null;
+  fitKey?: string;
   search?: string;
   selectedNodeId?: string | null;
 }
@@ -57,6 +58,7 @@ export function SigmaCanvas({
   boundaries = EMPTY_BOUNDARIES,
   onSelectBoundary,
   command = null,
+  fitKey = '',
   search = '',
   selectedNodeId = null,
 }: SigmaCanvasProps) {
@@ -280,6 +282,37 @@ export function SigmaCanvas({
     if (command.type === 'zoom-out') void camera.animatedUnzoom({ duration: 180 });
     if (command.type === 'fit') void camera.animatedReset({ duration: 220 });
   }, [command]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const camera = rendererRef.current?.getCamera();
+      if (camera !== undefined) {
+        void camera.animatedReset({ duration: 180 });
+      }
+    }, 90);
+    return () => window.clearTimeout(timer);
+  }, [fitKey]);
+
+  useEffect(() => {
+    if (selectedNodeId === null) return undefined;
+    const timer = window.setTimeout(() => {
+      const renderer = rendererRef.current;
+      const node = renderer?.getNodeDisplayData(selectedNodeId);
+      if (renderer === null || renderer === undefined || node === undefined) {
+        return;
+      }
+      const camera = renderer.getCamera();
+      void camera.animate(
+        {
+          x: node.x,
+          y: node.y,
+          ratio: Math.min(camera.ratio, 0.22),
+        },
+        { duration: 220 },
+      );
+    }, 125);
+    return () => window.clearTimeout(timer);
+  }, [selectedNodeId]);
 
   return (
     <div className="sigma-canvas-wrap">

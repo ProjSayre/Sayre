@@ -73,6 +73,7 @@ export interface WorkspaceState {
   drawerOpen: boolean;
   settingsSection: SettingsSection | null;
   controlsOpen: boolean;
+  fileTreeOpen: boolean;
   search: string;
   /** Fixture-only optimistic-concurrency scenario. */
   agentSkillConflict: boolean;
@@ -98,6 +99,7 @@ const FIXTURE_INITIAL_STATE: WorkspaceState = {
   drawerOpen: false,
   settingsSection: null,
   controlsOpen: false,
+  fileTreeOpen: true,
   search: '',
   agentSkillConflict: false,
 };

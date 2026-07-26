@@ -7,7 +7,33 @@ export function ViewRail() {
   const { state, dispatch } = useMock();
 
   return (
-    <nav className="mock-rail" aria-label="Graph views">
+    <nav className="mock-rail" aria-label="Workspace navigation">
+      <button
+        type="button"
+        className="mock-rail-item"
+        title="Repository explorer"
+        aria-label="Repository explorer"
+        aria-pressed={state.view === 'technical' && state.fileTreeOpen}
+        onClick={() =>
+          dispatch({
+            type: 'patch',
+            patch:
+              state.view === 'technical'
+                ? { fileTreeOpen: !state.fileTreeOpen }
+                : {
+                    view: 'technical',
+                    fileTreeOpen: true,
+                    selectedFeatureId: null,
+                    drawerOpen: false,
+                  },
+          })
+        }
+      >
+        F
+      </button>
+
+      <span className="mock-rail-divider" />
+
       {workspaceViews.map((view) => (
         <button
           key={view.id}

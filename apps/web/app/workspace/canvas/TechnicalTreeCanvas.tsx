@@ -100,6 +100,24 @@ export function TechnicalTreeCanvas({
     }
   }, [command, flow, renderer]);
 
+  useEffect(() => {
+    if (renderer !== 'react-flow' || selectedId === null) return undefined;
+    const timer = window.setTimeout(() => {
+      const selected = flow.getNode(selectedId);
+      if (selected === undefined) return;
+      const position = selected.position;
+      void flow.setCenter(
+        position.x + NODE_BOX / 2,
+        position.y + NODE_BOX / 2,
+        {
+          duration: 220,
+          zoom: Math.min(1.4, Math.max(0.9, flow.getZoom())),
+        },
+      );
+    }, 125);
+    return () => window.clearTimeout(timer);
+  }, [flow, renderer, selectedId]);
+
   const { nodes, edges } = useMemo(() => {
     const positions = layoutTree(
       graphNodes,
@@ -208,6 +226,7 @@ export function TechnicalTreeCanvas({
       <SigmaCanvas
         payload={sigmaPayload}
         command={command}
+        fitKey={fitKey}
         search={search}
         selectedNodeId={selectedId}
         onSelect={(node) => onSelect(node.id)}

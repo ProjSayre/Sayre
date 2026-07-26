@@ -27,6 +27,7 @@ import {
 } from './CanvasStates';
 import { CanvasToolbar } from './CanvasToolbar';
 import { ControlPanel } from '../../mock/components/ControlPanel';
+import { FileTreePane } from './FileTreePane';
 import { GlobalStates } from './GlobalStates';
 import { StatusBanner } from './StatusBanner';
 import { TopBar } from './TopBar';
@@ -169,7 +170,7 @@ function Workspace() {
             selectedId={state.selectedNodeId}
             search={state.search}
             showMinimap={showMinimap}
-            fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
+            fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
             onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
           />
         )}
@@ -183,7 +184,7 @@ function Workspace() {
             selectedNodeId={state.selectedNodeId}
             search={state.search}
             showMinimap={showMinimap}
-            fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
+            fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
             onSelectFeature={(featureId) =>
               dispatch({ type: 'selectFeature', featureId })
             }
@@ -202,7 +203,7 @@ function Workspace() {
             selectedId={state.selectedNodeId}
             search={state.search}
             showMinimap={showMinimap}
-            fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
+            fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
             onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
           />
         )}
@@ -227,12 +228,25 @@ function Workspace() {
 }
 
 export function WorkspaceShell() {
-  const { mode, state } = useMock();
+  const {
+    dispatch,
+    graph,
+    graphStatus,
+    mode,
+    repository,
+    scope,
+    state,
+  } = useMock();
   const drawerSelected =
     state.drawerOpen &&
     (state.selectedNodeId !== null || state.selectedFeatureId !== null);
   const drawerVisible =
     state.settingsSection === null && drawerSelected;
+  const fileTreeVisible = state.view === 'technical' && state.fileTreeOpen;
+  const fileTreeRootId =
+    graph.nodes.find((node) => node.parentId === null)?.id ??
+    graph.nodes[0]?.id ??
+    'empty';
 
   const globallyBlocked =
     state.session !== 'authenticated' ||
@@ -251,8 +265,38 @@ export function WorkspaceShell() {
   return (
     <div className="mock-root" style={themeVariables(warmGraphiteTheme)}>
       <TopBar />
-      <div className={`mock-body${drawerVisible ? ' mock-body-drawer' : ''}`}>
+      <div
+        className={[
+          'mock-body',
+          fileTreeVisible ? 'mock-body-explorer' : '',
+          drawerVisible ? 'mock-body-drawer' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
         <ViewRail />
+        {state.view === 'technical' && (
+          <FileTreePane
+            hidden={!fileTreeVisible}
+            nodes={graph.nodes}
+            status={graphStatus}
+            repositoryLabel={
+              repository === null
+                ? '/'
+                : `${repository.name.split('/').pop() ?? repository.name}/`
+            }
+            treeKey={
+              scope === null
+                ? 'no-repository'
+                : `${scope.repositoryId}:${scope.refName}:${fileTreeRootId}`
+            }
+            selectedNodeId={state.selectedNodeId}
+            onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+            onClose={() =>
+              dispatch({ type: 'patch', patch: { fileTreeOpen: false } })
+            }
+          />
+        )}
         <ReactFlowProvider>
           <Workspace />
         </ReactFlowProvider>
