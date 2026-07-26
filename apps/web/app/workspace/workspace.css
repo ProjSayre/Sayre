@@ -465,6 +465,20 @@
   white-space: nowrap;
 }
 
+.mock-coverage-summary {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .mock-search {
   flex: 0 1 260px;
   border: 1px solid var(--border);
@@ -911,12 +925,44 @@
   position: absolute;
   top: 50%;
   left: calc(50% + 12px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transform: translateY(-50%);
   color: var(--text-muted);
   font-family: var(--mono);
   font-size: 11px;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.mock-coverage {
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.mock-coverage-pass {
+  color: var(--accent-text);
+}
+
+.mock-coverage-fail {
+  color: var(--danger);
+}
+
+.mock-coverage-stale {
+  color: var(--warn);
+}
+
+.mock-coverage-unknown {
+  border-style: dashed;
+  color: var(--text-faint);
 }
 
 .mock-node-folder .mock-node-label {
@@ -1790,6 +1836,14 @@ button.mock-list-row:hover {
 
   .mock-toolbar > .mock-topbar-spacer {
     display: none;
+  }
+
+  .mock-coverage-summary {
+    width: 100%;
+    order: 3;
+    overflow-x: auto;
+    border-left: 0;
+    padding-left: 0;
   }
 
   .mock-search {

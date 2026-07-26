@@ -28,6 +28,7 @@ import type {
 export type Role = 'member' | 'admin' | 'owner';
 
 export type ViewId = 'technical' | 'product' | 'onboarding';
+export type SettingsSection = 'github' | 'providers';
 
 /** Exact repository-catalog values returned by the core service. */
 export type RepositoryReadiness = 'registered' | 'graph_ready';

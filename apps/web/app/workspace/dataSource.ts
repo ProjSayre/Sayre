@@ -141,13 +141,17 @@ async function jsonRequest<T>(
 function graphNodes(
   nodes: TechnicalTreeResponse['nodes'] | ProductTreeResponse['nodes'],
 ): GraphNode[] {
-  return nodes.map((node) => ({
-    id: node.id,
-    kind: node.label,
-    name: node.name,
-    path: node.path,
-    parentId: node.parentId,
-  }));
+  return nodes.map((node) => {
+    const coverage = 'coverage' in node ? node.coverage : undefined;
+    return {
+      id: node.id,
+      kind: node.label,
+      name: node.name,
+      path: node.path,
+      parentId: node.parentId,
+      ...(coverage === undefined ? {} : { coverage }),
+    };
+  });
 }
 
 function features(response: ProductTreeResponse): Feature[] {

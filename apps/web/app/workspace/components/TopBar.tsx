@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { clearStoredSessionToken } from '../../lib/coreFetch';
 import { useMock } from '../state';
 import type { RealtimeStatus, RepositoryReadiness, SemanticStatus } from '../types';
 import { Badge } from './ui';
@@ -167,8 +168,8 @@ export function TopBar() {
           <Badge tone={semanticTone}>
             {SEMANTIC_LABEL[semanticState.status]}
           </Badge>
-          {/* Reserved sync indicator — the gateway exists, the client does not
-              consume it yet, so this reports state and controls nothing. */}
+          {/* The gateway re-authorizes every pushed delta before this client
+              refreshes its currently selected graph projection. */}
           <Badge tone={realtimeTone}>{REALTIME_LABEL[state.realtime]}</Badge>
         </>
       )}
@@ -244,19 +245,19 @@ function AccountMenu() {
               {currentUser.org} · {state.role}
             </span>
           </div>
-          {mode === 'fixture' && (
-            <button
-              type="button"
-              role="menuitem"
-              className="mock-picker-option"
-              onClick={() => {
-                setOpen(false);
-                dispatch({ type: 'patch', patch: { session: 'signed-out' } });
-              }}
-            >
-              <span className="mock-picker-name">Sign out</span>
-            </button>
-          )}
+          <button
+            type="button"
+            role="menuitem"
+            className="mock-picker-option"
+            onClick={() => {
+              setOpen(false);
+              if (mode === 'live') clearStoredSessionToken();
+              dispatch({ type: 'patch', patch: { session: 'signed-out' } });
+              if (mode === 'live') window.location.assign('/login');
+            }}
+          >
+            <span className="mock-picker-name">Sign out</span>
+          </button>
         </div>
       )}
     </div>

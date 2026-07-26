@@ -1,7 +1,7 @@
 'use client';
 
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { NodeKind } from '../types';
+import type { GraphCoverage, NodeKind } from '../types';
 
 export interface GraphNodeData extends Record<string, unknown> {
   name: string;
@@ -10,6 +10,7 @@ export interface GraphNodeData extends Record<string, unknown> {
   selected: boolean;
   dimmed: boolean;
   matched: boolean;
+  coverage?: GraphCoverage;
 }
 
 export interface FeatureBoundaryData extends Record<string, unknown> {
@@ -39,7 +40,23 @@ export function GraphNodeView({ data }: NodeProps) {
     <div className={classes}>
       <Handle type="target" position={Position.Top} className="mock-center-handle" />
       <span className="mock-node-glyph" />
-      <span className="mock-node-label">{node.name}</span>
+      <span className="mock-node-label">
+        {node.name}
+        {node.kind === 'File' && node.coverage !== undefined && (
+          <span
+            className={`mock-coverage mock-coverage-${node.coverage.status}`}
+            title={`${node.coverage.coveringTests} covering tests${
+              node.coverage.lastRun === null
+                ? ''
+                : ` · last run ${new Date(node.coverage.lastRun).toLocaleString()}`
+            }`}
+          >
+            {node.coverage.status === 'unknown'
+              ? 'unmeasured'
+              : node.coverage.status}
+          </span>
+        )}
+      </span>
       <Handle type="source" position={Position.Bottom} className="mock-center-handle" />
     </div>
   );

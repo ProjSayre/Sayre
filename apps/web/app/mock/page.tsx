@@ -16,10 +16,11 @@ export const metadata: Metadata = {
  * slots, and every state the MVP has to handle can be reviewed before the real
  * client is wired to the service layer.
  *
- * Deliberately absent, because they are not MVP features: the Onboarding Tree,
- * MCP key management, organization and member administration, custom LLM views,
- * raw credential entry, and any Retry / Reindex / Force-sync control (no
- * user-facing endpoint backs those).
+ * It includes a deterministic Onboarding Tree workflow so its layout and
+ * execution states can be reviewed without running a sandbox. MCP key
+ * management, organization administration, custom LLM views, raw credential
+ * entry, and force-sync controls remain out of scope because no MVP browser
+ * contract backs them.
  */
 export default function MockPage() {
   return (

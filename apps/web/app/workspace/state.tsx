@@ -32,6 +32,7 @@ import type {
   SemanticState,
   SemanticStatus,
   SessionState,
+  SettingsSection,
   ViewId,
   WorkspaceGraph,
   AgentSkillVersion,
@@ -45,6 +46,7 @@ import type {
   ProviderSettingView,
 } from '@sayre/shared-types';
 import type { OnboardingExecutionResponse } from '../lib/onboardingTree';
+import { getStoredSessionToken } from '../lib/coreFetch';
 
 export interface WorkspaceState {
   /** Scenario dials are exposed only by the fixture route. */
@@ -65,7 +67,7 @@ export interface WorkspaceState {
   selectedNodeId: string | null;
   selectedFeatureId: string | null;
   drawerOpen: boolean;
-  settingsSection: 'github' | 'providers' | null;
+  settingsSection: SettingsSection | null;
   controlsOpen: boolean;
   search: string;
   /** Fixture-only optimistic-concurrency scenario. */
@@ -205,6 +207,7 @@ function initialState(options: {
   repositoryId?: string | null;
   refName?: string | null;
   view?: ViewId;
+  settingsSection?: SettingsSection | null;
 }): WorkspaceState {
   if (options.mode === 'fixture') return FIXTURE_INITIAL_STATE;
   return {
@@ -217,6 +220,7 @@ function initialState(options: {
     repositoryId: options.repositoryId ?? null,
     refName: options.refName ?? null,
     view: options.view ?? 'technical',
+    settingsSection: options.settingsSection ?? null,
   };
 }
 
@@ -238,6 +242,7 @@ export interface WorkspaceProviderProps {
   initialRepositoryId?: string | null;
   initialRefName?: string | null;
   initialView?: ViewId;
+  initialSettingsSection?: SettingsSection | null;
 }
 
 export function WorkspaceProvider({
@@ -246,6 +251,7 @@ export function WorkspaceProvider({
   initialRepositoryId,
   initialRefName,
   initialView,
+  initialSettingsSection,
 }: WorkspaceProviderProps) {
   const initial = useMemo(
     () =>
@@ -254,8 +260,15 @@ export function WorkspaceProvider({
         repositoryId: initialRepositoryId,
         refName: initialRefName,
         view: initialView,
+        settingsSection: initialSettingsSection,
       }),
-    [initialRefName, initialRepositoryId, initialView, source.id],
+    [
+      initialRefName,
+      initialRepositoryId,
+      initialSettingsSection,
+      initialView,
+      source.id,
+    ],
   );
   const [state, dispatch] = useReducer(reducer, initial);
   const [catalog, setCatalog] = useState<Repository[]>([]);
@@ -324,6 +337,15 @@ export function WorkspaceProvider({
                   ? 'no-repositories'
                   : 'authorized'
                 : state.access,
+            installation:
+              source.id === 'live'
+                ? nextCatalog.some(
+                    (repository) =>
+                      repository.provider.toLowerCase() === 'github',
+                  )
+                  ? 'installed'
+                  : 'not-installed'
+                : state.installation,
             repositoryId:
               nextCatalog.some((item) => item.id === state.repositoryId)
                 ? state.repositoryId
@@ -342,7 +364,15 @@ export function WorkspaceProvider({
         if (!active || (error as { name?: string }).name === 'AbortError') return;
         const status = statusOf(error);
         if (status === 401) {
-          dispatch({ type: 'patch', patch: { session: 'signed-out' } });
+          dispatch({
+            type: 'patch',
+            patch: {
+              session:
+                getStoredSessionToken() === null
+                  ? 'signed-out'
+                  : 'session-expired',
+            },
+          });
         } else if (status === 403) {
           dispatch({ type: 'patch', patch: { access: 'forbidden' } });
         } else {
@@ -374,7 +404,7 @@ export function WorkspaceProvider({
         if (!active || (error as { name?: string }).name === 'AbortError') return;
         const status = statusOf(error);
         if (status === 401) {
-          dispatch({ type: 'patch', patch: { session: 'signed-out' } });
+          dispatch({ type: 'patch', patch: { session: 'session-expired' } });
         } else {
           // 403 means an ordinary member. Other failures must not grant write
           // affordances merely because the capability could not be checked.
@@ -451,7 +481,11 @@ export function WorkspaceProvider({
         if (!active || (error as { name?: string }).name === 'AbortError') return;
         setGraph(EMPTY_GRAPH);
         setGraphStatus('error');
-        setGraphErrorStatus(statusOf(error));
+        const status = statusOf(error);
+        setGraphErrorStatus(status);
+        if (status === 401) {
+          dispatch({ type: 'patch', patch: { session: 'session-expired' } });
+        }
       });
     return () => {
       active = false;
@@ -501,6 +535,12 @@ export function WorkspaceProvider({
             active &&
             (error as { name?: string }).name !== 'AbortError'
           ) {
+            if (statusOf(error) === 401) {
+              dispatch({
+                type: 'patch',
+                patch: { session: 'session-expired' },
+              });
+            }
             setProviderSemantic({
               status: graph.features.length > 0 ? 'ready' : 'generating',
               reasonCode: null,
@@ -547,6 +587,9 @@ export function WorkspaceProvider({
       })
       .catch((error: unknown) => {
         if (!active || (error as { name?: string }).name === 'AbortError') return;
+        if (statusOf(error) === 401) {
+          dispatch({ type: 'patch', patch: { session: 'session-expired' } });
+        }
         setOverlayStatus('error');
       });
     return () => {
@@ -561,8 +604,13 @@ export function WorkspaceProvider({
     params.set('repoId', repository.id);
     params.set('refName', scope.refName);
     params.set('view', state.view);
+    if (state.settingsSection === null) {
+      params.delete('settings');
+    } else {
+      params.set('settings', state.settingsSection);
+    }
     window.history.replaceState(null, '', `/?${params.toString()}`);
-  }, [repository, scope, source.id, state.view]);
+  }, [repository, scope, source.id, state.settingsSection, state.view]);
 
   const reloadCatalog = useCallback(
     () => setCatalogVersion((version) => version + 1),
@@ -667,6 +715,10 @@ export function WorkspaceProvider({
         return;
       }
       socket.addEventListener('open', () => {
+        const sessionToken = getStoredSessionToken();
+        if (sessionToken !== null) {
+          socket?.send(JSON.stringify({ type: 'auth', token: sessionToken }));
+        }
         // Development auto-auth and production first-frame auth both reply
         // with `ready`; no subscription is sent before that boundary.
         dispatch({ type: 'patch', patch: { realtime: 'reconnecting' } });
@@ -709,10 +761,17 @@ export function WorkspaceProvider({
           return;
         }
         if (message.type === 'error' && message.code === 'unauthenticated') {
+          dispatch({ type: 'patch', patch: { session: 'session-expired' } });
           socket?.close();
         }
       });
-      socket.addEventListener('close', scheduleReconnect);
+      socket.addEventListener('close', (event) => {
+        if (event.code === 4401) {
+          dispatch({ type: 'patch', patch: { session: 'session-expired' } });
+          return;
+        }
+        scheduleReconnect();
+      });
       socket.addEventListener('error', () => socket?.close());
     };
 

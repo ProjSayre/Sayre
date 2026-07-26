@@ -34,7 +34,7 @@ describe('fetchProviderState', () => {
 
     const [url, init] = fetcher.mock.calls[0]!;
     expect(url).toBe(
-      '/api/provider-state/22222222-2222-4222-8222-222222222222?refName=refs%2Fheads%2Fmain&surface=product',
+      '/api/core/repos/22222222-2222-4222-8222-222222222222/provider-state?refName=refs%2Fheads%2Fmain&surface=product',
     );
     expect(init).toMatchObject({
       cache: 'no-store',

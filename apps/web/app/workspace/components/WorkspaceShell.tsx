@@ -93,6 +93,18 @@ function Workspace() {
   const ready = status === 'ready';
   const visibleNodeCount = graph.nodes.length;
   const renderer = rendererFor(state.view, visibleNodeCount);
+  const coverageSummary =
+    ready && isTechnical
+      ? graph.nodes.reduce(
+          (summary, node) => {
+            if (node.kind === 'File') {
+              summary[node.coverage?.status ?? 'unknown'] += 1;
+            }
+            return summary;
+          },
+          { pass: 0, fail: 0, stale: 0, unknown: 0 },
+        )
+      : null;
   const scopeLabel =
     state.selectedNodeId !== null
       ? 'selected node'
@@ -113,6 +125,7 @@ function Workspace() {
         visibleNodeCount={ready ? visibleNodeCount : 0}
         edgeCount={ready && !isProduct ? graph.edges.length : null}
         renderer={renderer}
+        coverageSummary={coverageSummary}
         interactive={ready}
         showMinimap={showMinimap}
         onToggleMinimap={() => setShowMinimap((value) => !value)}

@@ -9,7 +9,10 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import type { AuthorizedCanvasPayload } from '../../lib/scaleGraph';
+import {
+  coverageColor,
+  type AuthorizedCanvasPayload,
+} from '../../lib/scaleGraph';
 import type { GraphEdge, GraphNode } from '../types';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
 import { NODE_TYPES } from './nodes';
@@ -110,6 +113,9 @@ export function TechnicalTreeCanvas({
           selected: node.id === selectedId,
           dimmed: query.length > 0 && !matched,
           matched,
+          ...(node.coverage === undefined
+            ? {}
+            : { coverage: node.coverage }),
         },
       };
     });
@@ -153,6 +159,9 @@ export function TechnicalTreeCanvas({
           path: node.path,
           x: point.x,
           y: point.y,
+          ...(node.coverage === undefined
+            ? {}
+            : { coverage: node.coverage }),
         };
       }),
       edges: graphEdges.map((edge) => ({
@@ -203,7 +212,15 @@ export function TechnicalTreeCanvas({
             (node.data as { kind?: string }).kind === 'Folder' ? '#8b8b82' : '#55554e'
           }
           nodeColor={(node) =>
-            (node.data as { kind?: string }).kind === 'Folder' ? '#8b8b82' : '#55554e'
+            (node.data as { kind?: string }).kind === 'Folder'
+              ? '#8b8b82'
+              : coverageColor(
+                  (
+                    node.data as {
+                      coverage?: { status?: Parameters<typeof coverageColor>[0] };
+                    }
+                  ).coverage?.status,
+                )
           }
         />
       )}

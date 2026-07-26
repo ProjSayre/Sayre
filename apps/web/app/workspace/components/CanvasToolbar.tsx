@@ -11,6 +11,12 @@ interface CanvasToolbarProps {
   visibleNodeCount: number;
   edgeCount: number | null;
   renderer: RendererDefinition;
+  coverageSummary?: {
+    pass: number;
+    fail: number;
+    stale: number;
+    unknown: number;
+  } | null;
   /** Controls are inert whenever no graph is on screen. */
   interactive: boolean;
   showMinimap: boolean;
@@ -23,6 +29,7 @@ export function CanvasToolbar({
   visibleNodeCount,
   edgeCount,
   renderer,
+  coverageSummary = null,
   interactive,
   showMinimap,
   onToggleMinimap,
@@ -40,6 +47,23 @@ export function CanvasToolbar({
           {renderer.label}
         </span>
       </span>
+
+      {coverageSummary !== null && (
+        <span className="mock-coverage-summary" aria-label="Test coverage status">
+          {(
+            [
+              ['pass', coverageSummary.pass],
+              ['fail', coverageSummary.fail],
+              ['stale', coverageSummary.stale],
+              ['unknown', coverageSummary.unknown],
+            ] as const
+          ).map(([status, count]) => (
+            <span key={status} className={`mock-coverage-${status}`}>
+              {status === 'unknown' ? 'unmeasured' : status} {count}
+            </span>
+          ))}
+        </span>
+      )}
 
       <span className="mock-topbar-spacer" />
 
