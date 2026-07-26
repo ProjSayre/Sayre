@@ -21,9 +21,15 @@ import {
   type NodeOverlayResponse,
 } from '../lib/nodeOverlay';
 import {
+  fetchOnboardingTree,
+  runOnboardingStep,
+  type OnboardingExecutionResponse,
+} from '../lib/onboardingTree';
+import {
   fetchProductTree,
   type ProductTreeResponse,
 } from '../lib/productTree';
+import { coreFetch } from '../lib/coreFetch';
 import { fetchProviderState } from '../lib/providerState';
 import { fetchRepositoryCatalog } from '../lib/repositoryCatalog';
 import {
@@ -36,6 +42,7 @@ import type {
   GraphEdge,
   GraphNode,
   NodeOverlay,
+  OnboardingWorkflow,
   Repository,
 } from './types';
 import {
@@ -59,6 +66,18 @@ export interface WorkspaceDataSource {
     scope: WorkspaceScope,
     signal: AbortSignal,
   ): Promise<{ nodes: GraphNode[]; features: Feature[] }>;
+  onboardingTree(
+    scope: WorkspaceScope,
+    signal: AbortSignal,
+  ): Promise<{
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+    onboarding: OnboardingWorkflow;
+  }>;
+  runOnboardingStep(
+    scope: WorkspaceScope,
+    stepId: string,
+  ): Promise<OnboardingExecutionResponse>;
   providerState(
     scope: WorkspaceScope,
     signal: AbortSignal,
@@ -103,7 +122,7 @@ async function jsonRequest<T>(
   init: RequestInit,
   message: string,
 ): Promise<T> {
-  const response = await fetch(url, {
+  const response = await coreFetch(url, {
     ...init,
     credentials: 'same-origin',
     headers: {
@@ -206,6 +225,32 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
       nodes: graphNodes(response.nodes),
       features: features(response),
     };
+  },
+  async onboardingTree(scope, signal) {
+    const presentation = await fetchOnboardingTree(
+      scope.repositoryId,
+      scope.refName,
+      { signal },
+    );
+    return {
+      nodes: graphNodes(presentation.response.nodes),
+      edges: presentation.canvas.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.relationship,
+      })),
+      onboarding: {
+        revisionSha: presentation.response.revisionSha,
+        steps: presentation.response.steps.map((step) => ({
+          ...step,
+          requires: [...step.requires],
+        })),
+      },
+    };
+  },
+  runOnboardingStep(scope, stepId) {
+    return runOnboardingStep(scope.repositoryId, scope.refName, stepId, coreFetch);
   },
   providerState(scope, signal) {
     return fetchProviderState(
@@ -315,6 +360,43 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
   },
   async productTree() {
     return { nodes: GRAPH_NODES, features: FEATURES };
+  },
+  async onboardingTree() {
+    return {
+      nodes: GRAPH_NODES,
+      edges: GRAPH_EDGES.filter((edge) => edge.type === 'CONTAINS'),
+      onboarding: {
+        revisionSha: 'f'.repeat(40),
+        steps: [
+          {
+            id: 'fixture-install',
+            sequence: 0,
+            command: 'npm install',
+            requires: [],
+          },
+          {
+            id: 'fixture-check',
+            sequence: 1,
+            command: 'npm run build',
+            requires: ['fixture-install'],
+          },
+        ],
+      },
+    };
+  },
+  async runOnboardingStep(_scope, stepId) {
+    const sequence = stepId === 'fixture-install' ? 0 : 1;
+    return {
+      sandbox: 'container',
+      status: 'succeeded',
+      exitCode: 0,
+      stdout: 'Fixture sandbox step completed.',
+      stderr: '',
+      durationMs: 480,
+      stepId,
+      sequence,
+      revisionSha: 'f'.repeat(40),
+    };
   },
   async providerState(scope) {
     return {

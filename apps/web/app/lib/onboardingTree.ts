@@ -1,4 +1,5 @@
 import type { AuthorizedCanvasPayload } from './scaleGraph';
+import { coreFetch } from './coreFetch';
 
 export interface OnboardingTreeNode {
   id: string;
@@ -248,7 +249,7 @@ export async function fetchOnboardingTree(
   refName: string,
   options: { signal?: AbortSignal; fetchImpl?: typeof fetch } = {},
 ): Promise<OnboardingTreePresentation> {
-  const response = await (options.fetchImpl ?? fetch)(
+  const response = await (options.fetchImpl ?? coreFetch)(
     `/api/core/repos/${encodeURIComponent(repoId)}/onboarding-tree?ref=${encodeURIComponent(refName)}`,
     {
       method: 'GET',
@@ -271,7 +272,7 @@ export async function runOnboardingStep(
   repoId: string,
   refName: string,
   stepId: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = coreFetch,
 ): Promise<OnboardingExecutionResponse> {
   const response = await fetchImpl(
     `/api/core/repos/${encodeURIComponent(repoId)}/onboarding-steps/${encodeURIComponent(stepId)}/execute?ref=${encodeURIComponent(refName)}`,

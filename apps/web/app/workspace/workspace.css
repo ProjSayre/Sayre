@@ -728,6 +728,148 @@
   display: none;
 }
 
+/* --------------------------------------------------- onboarding workflow */
+
+.mock-onboarding-layout {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(286px, 27vw, 360px);
+  min-width: 0;
+  min-height: 0;
+}
+
+.mock-onboarding-graph {
+  min-width: 0;
+  min-height: 0;
+}
+
+.mock-workflow {
+  min-width: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  padding-bottom: 40px;
+}
+
+.mock-workflow-header {
+  border-bottom: 1px solid var(--border);
+  padding: 14px;
+}
+
+.mock-workflow-header h2 {
+  margin: 5px 0 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mock-workflow-header p,
+.mock-workflow-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.mock-workflow-revision {
+  display: block;
+  margin-top: 9px;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.mock-workflow-empty {
+  padding: 16px 14px;
+}
+
+.mock-workflow-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mock-workflow-step {
+  border-bottom: 1px solid var(--border);
+  padding: 13px 14px;
+}
+
+.mock-workflow-step-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+}
+
+.mock-workflow-step-head > span:first-child {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--node-stroke);
+  border-radius: 50%;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.mock-workflow-step-head strong {
+  flex: 1 1 auto;
+  color: var(--text-bright);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.mock-workflow-outcome {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.mock-workflow-succeeded {
+  color: var(--accent-text);
+}
+
+.mock-workflow-failed,
+.mock-workflow-timed_out {
+  color: var(--danger);
+}
+
+.mock-workflow-step code {
+  display: block;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-raised);
+  padding: 8px 9px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+
+.mock-workflow-result {
+  max-height: 180px;
+  overflow: auto;
+  margin: 10px 0 0;
+  border-left: 2px solid var(--accent);
+  background: var(--bg-raised);
+  padding: 9px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mock-workflow-result-error {
+  border-left-color: var(--danger);
+}
+
 /* graph nodes */
 
 .mock-node {
@@ -1674,6 +1816,17 @@ button.mock-list-row:hover {
 
   .mock-dock-scope {
     display: none;
+  }
+
+  .mock-onboarding-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 1fr) minmax(220px, 0.9fr);
+  }
+
+  .mock-workflow {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+    padding-bottom: 28px;
   }
 
   .mock-statusline {

@@ -44,6 +44,7 @@ import type {
   ProviderSettingsUpdateRequest,
   ProviderSettingView,
 } from '@sayre/shared-types';
+import type { OnboardingExecutionResponse } from '../lib/onboardingTree';
 
 export interface WorkspaceState {
   /** Scenario dials are exposed only by the fixture route. */
@@ -158,6 +159,7 @@ interface WorkspaceContextValue {
     content: string,
     expectedVersion: number,
   ) => Promise<AgentSkillVersion>;
+  runOnboardingStep: (stepId: string) => Promise<OnboardingExecutionResponse>;
   loadProviderSettings: (signal: AbortSignal) => Promise<ProviderSettingsResponse>;
   saveProviderSetting: (
     purpose: ProviderPurpose,
@@ -170,7 +172,12 @@ interface WorkspaceContextValue {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
-const EMPTY_GRAPH: WorkspaceGraph = { nodes: [], edges: [], features: [] };
+const EMPTY_GRAPH: WorkspaceGraph = {
+  nodes: [],
+  edges: [],
+  features: [],
+  onboarding: null,
+};
 
 const SEMANTIC_REASONS: Record<SemanticStatus, string | null> = {
   generating: null,
@@ -597,6 +604,15 @@ export function WorkspaceProvider({
     },
     [source, state.agentSkillConflict],
   );
+  const runOnboardingStep = useCallback(
+    (stepId: string) => {
+      if (scope === null) {
+        throw new Error('Select a repository before running an onboarding step.');
+      }
+      return source.runOnboardingStep(scope, stepId);
+    },
+    [scope, source],
+  );
 
   useEffect(() => {
     if (source.id !== 'live' || repository === null) {
@@ -753,6 +769,7 @@ export function WorkspaceProvider({
       reloadGraph,
       reloadOverlay,
       saveAgentSkillMd,
+      runOnboardingStep,
       loadProviderSettings: source.providerSettings,
       saveProviderSetting: source.saveProviderSetting,
       githubInstallUrl: source.githubInstallUrl,
@@ -773,6 +790,7 @@ export function WorkspaceProvider({
       repositories,
       repository,
       saveAgentSkillMd,
+      runOnboardingStep,
       scope,
       semanticState,
       source.id,

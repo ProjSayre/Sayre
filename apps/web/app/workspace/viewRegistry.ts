@@ -15,8 +15,6 @@ export interface WorkspaceViewDefinition {
   ): Promise<WorkspaceGraph>;
 }
 
-const EMPTY_GRAPH: WorkspaceGraph = { nodes: [], edges: [], features: [] };
-
 const definitions: WorkspaceViewDefinition[] = [
   {
     id: 'technical',
@@ -27,7 +25,7 @@ const definitions: WorkspaceViewDefinition[] = [
     semantic: false,
     async load(source, scope, signal) {
       const graph = await source.technicalTree(scope, signal);
-      return { ...graph, features: [] };
+      return { ...graph, features: [], onboarding: null };
     },
   },
   {
@@ -39,18 +37,19 @@ const definitions: WorkspaceViewDefinition[] = [
     semantic: true,
     async load(source, scope, signal) {
       const graph = await source.productTree(scope, signal);
-      return { ...graph, edges: [] };
+      return { ...graph, edges: [], onboarding: null };
     },
   },
   {
     id: 'onboarding',
     glyph: 'O',
     label: 'Onboarding',
-    hint: 'Onboarding Tree — reserved until its browser route is available',
-    enabled: false,
-    semantic: true,
-    async load() {
-      return EMPTY_GRAPH;
+    hint: 'Onboarding Tree — ordered, sandboxed setup',
+    enabled: true,
+    semantic: false,
+    async load(source, scope, signal) {
+      const graph = await source.onboardingTree(scope, signal);
+      return { ...graph, features: [] };
     },
   },
 ];

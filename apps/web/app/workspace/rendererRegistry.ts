@@ -20,14 +20,14 @@ export const workspaceRenderers: readonly RendererDefinition[] = Object.freeze([
   {
     id: 'react-flow',
     label: 'react flow',
-    supports: ['technical', 'product'],
+    supports: ['technical', 'product', 'onboarding'],
     minimumNodeCount: 0,
     supportsMinimap: true,
   },
   {
     id: 'sigma',
     label: 'sigma · webgl',
-    supports: ['technical'],
+    supports: ['technical', 'onboarding'],
     minimumNodeCount: 501,
     supportsMinimap: false,
   },

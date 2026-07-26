@@ -45,12 +45,21 @@ export interface Repository {
 }
 
 export type NodeKind = 'Folder' | 'File';
+export type CoverageStatus = 'pass' | 'fail' | 'stale' | 'unknown';
+
+export interface GraphCoverage {
+  status: CoverageStatus;
+  lastRun: string | null;
+  coveringTests: number;
+}
+
 export interface GraphNode {
   id: string;
   kind: NodeKind;
   name: string;
   path: string;
   parentId: string | null;
+  coverage?: GraphCoverage;
 }
 export type GraphEdge = TechnicalTreeEdge;
 
@@ -61,6 +70,18 @@ export interface Feature {
   team: string | null;
   memberIds: string[];
   recentEdits: ProductTreeRecentEdit[];
+}
+
+export interface OnboardingStep {
+  id: string;
+  sequence: number;
+  command: string;
+  requires: string[];
+}
+
+export interface OnboardingWorkflow {
+  revisionSha: string;
+  steps: OnboardingStep[];
 }
 
 export interface AgentSkillVersion {
@@ -135,4 +156,5 @@ export interface WorkspaceGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   features: Feature[];
+  onboarding: OnboardingWorkflow | null;
 }

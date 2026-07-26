@@ -11,6 +11,7 @@ import {
 import { themeVariables, warmGraphiteTheme } from '../theme';
 import { ProductTreeCanvas } from '../canvas/ProductTreeCanvas';
 import { TechnicalTreeCanvas } from '../canvas/TechnicalTreeCanvas';
+import { OnboardingTreeCanvas } from '../canvas/OnboardingTreeCanvas';
 import { FeatureDrawer } from '../drawer/FeatureDrawer';
 import { NodeDrawer } from '../drawer/NodeDrawer';
 import { SettingsPanel } from '../settings/SettingsPanel';
@@ -60,6 +61,10 @@ function Workspace() {
     setCanvasCommand((current) => ({ id: (current?.id ?? 0) + 1, type }));
   }
 
+  const isTechnical = state.view === 'technical';
+  const isProduct = state.view === 'product';
+  const isOnboarding = state.view === 'onboarding';
+
   const status: CanvasStatus = ((): CanvasStatus => {
     if (repository === null) return 'no-repository';
     if (!authorizedForRepository) return 'forbidden';
@@ -74,8 +79,9 @@ function Workspace() {
     if (graphStatus === 'error') {
       return graphErrorStatus === 403 ? 'forbidden' : 'unavailable';
     }
+    if (isOnboarding && graph.onboarding === null) return 'unavailable';
     if (
-      state.view === 'product' &&
+      isProduct &&
       (semanticState.status === 'generating' || semanticState.status === 'failed')
     ) {
       return 'product-unavailable';
@@ -84,7 +90,6 @@ function Workspace() {
     return 'ready';
   })();
 
-  const isTechnical = state.view === 'technical';
   const ready = status === 'ready';
   const visibleNodeCount = graph.nodes.length;
   const renderer = rendererFor(state.view, visibleNodeCount);
@@ -98,9 +103,15 @@ function Workspace() {
   return (
     <main className="mock-main">
       <CanvasToolbar
-        title={isTechnical ? 'Technical Tree' : 'Product Tree'}
+        title={
+          isTechnical
+            ? 'Technical Tree'
+            : isProduct
+              ? 'Product Tree'
+              : 'Onboarding Tree'
+        }
         visibleNodeCount={ready ? visibleNodeCount : 0}
-        edgeCount={ready && isTechnical ? graph.edges.length : null}
+        edgeCount={ready && !isProduct ? graph.edges.length : null}
         renderer={renderer}
         interactive={ready}
         showMinimap={showMinimap}
@@ -131,41 +142,59 @@ function Workspace() {
           />
         )}
 
-        {ready &&
-          (isTechnical ? (
-            <TechnicalTreeCanvas
-              graphNodes={graph.nodes}
-              graphEdges={graph.edges}
-              renderer={renderer.id}
-              command={canvasCommand}
-              selectedId={state.selectedNodeId}
-              search={state.search}
-              showMinimap={showMinimap}
-              fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
-              onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
-            />
-          ) : (
-            <ProductTreeCanvas
-              graphNodes={graph.nodes}
-              features={graph.features}
-              command={canvasCommand}
-              selectedFeatureId={state.selectedFeatureId}
-              selectedNodeId={state.selectedNodeId}
-              search={state.search}
-              showMinimap={showMinimap}
-              fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
-              onSelectFeature={(featureId) =>
-                dispatch({ type: 'selectFeature', featureId })
-              }
-              onSelectNode={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
-            />
-          ))}
+        {ready && isTechnical && (
+          <TechnicalTreeCanvas
+            graphNodes={graph.nodes}
+            graphEdges={graph.edges}
+            renderer={renderer.id}
+            command={canvasCommand}
+            selectedId={state.selectedNodeId}
+            search={state.search}
+            showMinimap={showMinimap}
+            fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
+            onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+          />
+        )}
+
+        {ready && isProduct && (
+          <ProductTreeCanvas
+            graphNodes={graph.nodes}
+            features={graph.features}
+            command={canvasCommand}
+            selectedFeatureId={state.selectedFeatureId}
+            selectedNodeId={state.selectedNodeId}
+            search={state.search}
+            showMinimap={showMinimap}
+            fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
+            onSelectFeature={(featureId) =>
+              dispatch({ type: 'selectFeature', featureId })
+            }
+            onSelectNode={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+          />
+        )}
+
+        {ready && isOnboarding && graph.onboarding !== null && (
+          <OnboardingTreeCanvas
+            graphNodes={graph.nodes}
+            graphEdges={graph.edges}
+            workflow={graph.onboarding}
+            renderer={renderer.id}
+            command={canvasCommand}
+            selectedId={state.selectedNodeId}
+            search={state.search}
+            showMinimap={showMinimap}
+            fitKey={`${state.drawerOpen}:${state.controlsOpen}`}
+            onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+          />
+        )}
 
         {ready && (
           <span className="mock-statusline">
             {isTechnical
               ? 'tree layout · contains + imports'
-              : `feature layout · ${graph.features.length} features`}{' '}
+              : isProduct
+                ? `feature layout · ${graph.features.length} features`
+                : `ordered setup · ${graph.onboarding?.steps.length ?? 0} sandbox steps`}{' '}
             · showing only nodes you are authorized to see
           </span>
         )}

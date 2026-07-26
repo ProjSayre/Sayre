@@ -112,7 +112,7 @@ function requestError(status: number): RepositoryCatalogRequestError {
 export async function fetchRepositoryCatalog(
   options: FetchRepositoryCatalogOptions = {},
 ): Promise<RepositoryCatalogResponse> {
-  const response = await (options.fetchImpl ?? fetch)('/api/core/repositories', {
+  const response = await (options.fetchImpl ?? coreFetch)('/api/core/repositories', {
     method: 'GET',
     headers: { accept: 'application/json' },
     credentials: 'same-origin',
@@ -126,3 +126,4 @@ export async function fetchRepositoryCatalog(
     throw new RepositoryCatalogResponseError();
   }
 }
+import { coreFetch } from './coreFetch';

@@ -10,7 +10,7 @@ const SESSION_COOKIE = 'sayre_session';
 const BEARER_RE = /^Bearer\s+\S+$/i;
 
 interface CoreRoute {
-  method: 'GET' | 'PUT';
+  method: 'GET' | 'POST' | 'PUT';
   path: string;
   query: ReadonlySet<string>;
   redirect?: boolean;
@@ -19,7 +19,7 @@ interface CoreRoute {
 const NO_QUERY = new Set<string>();
 
 function coreRoute(
-  method: 'GET' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT',
   segments: readonly string[],
 ): CoreRoute | null {
   if (segments.length === 1 && segments[0] === 'repositories' && method === 'GET') {
@@ -39,6 +39,20 @@ function coreRoute(
   }
   if (
     segments.length === 3 &&
+    segments[0] === 'auth' &&
+    segments[1] === 'github' &&
+    segments[2] === 'login' &&
+    method === 'GET'
+  ) {
+    return {
+      method,
+      path: '/auth/github/login',
+      query: new Set(['redirect_to']),
+      redirect: true,
+    };
+  }
+  if (
+    segments.length === 3 &&
     segments[0] === 'settings' &&
     segments[1] === 'model-providers' &&
     (segments[2] === 'generation' || segments[2] === 'embedding') &&
@@ -48,6 +62,33 @@ function coreRoute(
       method,
       path: `/settings/model-providers/${segments[2]}`,
       query: NO_QUERY,
+    };
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'repos' &&
+    segments[2] === 'onboarding-tree' &&
+    method === 'GET'
+  ) {
+    return {
+      method,
+      path: `/repos/${encodeURIComponent(segments[1])}/onboarding-tree`,
+      query: new Set(['ref']),
+    };
+  }
+  if (
+    segments.length === 5 &&
+    segments[0] === 'repos' &&
+    segments[2] === 'onboarding-steps' &&
+    segments[4] === 'execute' &&
+    method === 'POST'
+  ) {
+    return {
+      method,
+      path:
+        `/repos/${encodeURIComponent(segments[1])}` +
+        `/onboarding-steps/${encodeURIComponent(segments[3])}/execute`,
+      query: new Set(['ref']),
     };
   }
   if (
@@ -221,7 +262,7 @@ async function boundedResponse(response: Response): Promise<NextResponse> {
 
 async function proxy(
   request: NextRequest,
-  method: 'GET' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT',
   segments: readonly string[],
 ): Promise<NextResponse> {
   const route = coreRoute(method, segments);
@@ -275,4 +316,11 @@ export async function PUT(
   context: { params: { path: string[] } },
 ): Promise<NextResponse> {
   return proxy(request, 'PUT', context.params.path);
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
+  return proxy(request, 'POST', context.params.path);
 }
