@@ -76,13 +76,15 @@ function stored(
   };
 }
 
-function lockKey(scope: AgentSkillMdNodeScope): string {
-  return [
+export function agentSkillMdLockKey(scope: AgentSkillMdNodeScope): string {
+  // PostgreSQL text values cannot contain NUL bytes. JSON preserves field
+  // boundaries without introducing an invalid byte or ambiguous concatenation.
+  return JSON.stringify([
     scope.orgId,
     scope.repositoryId,
     scope.refName,
     scope.nodeId,
-  ].join('\0');
+  ]);
 }
 
 export class PostgresAgentSkillMdStore implements AgentSkillMdStore {
@@ -133,7 +135,7 @@ export class PostgresAgentSkillMdStore implements AgentSkillMdStore {
       // A transaction-scoped advisory lock serializes the first insert as well
       // as later versions; SELECT ... FOR UPDATE alone cannot lock an absent row.
       await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${lockKey(scope)}, 0))`,
+        sql`select pg_advisory_xact_lock(hashtextextended(${agentSkillMdLockKey(scope)}, 0))`,
       );
 
       const currentRows = await tx
