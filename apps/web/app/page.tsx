@@ -1,3 +1,4 @@
+import { getOptionalConfig } from '@sayre/config';
 import { WorkspaceShell } from './workspace/components/WorkspaceShell';
 import { WorkspaceProvider } from './workspace/state';
 import type { SettingsSection, ViewId } from './workspace/types';
@@ -38,6 +39,10 @@ function initialSettings(
 export default function Home({ searchParams }: HomeProps) {
   return (
     <WorkspaceProvider
+      gatewayWsUrl={getOptionalConfig('NEXT_PUBLIC_GATEWAY_WS_URL')}
+      allowLocalGatewayFallback={
+        getOptionalConfig('NODE_ENV') === 'development'
+      }
       initialRepositoryId={singleParam(searchParams?.repoId)}
       initialRefName={singleParam(searchParams?.refName)}
       initialView={initialView(searchParams?.view)}

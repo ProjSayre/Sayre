@@ -251,6 +251,8 @@ function visibleRepositories(
 export interface WorkspaceProviderProps {
   children: ReactNode;
   source?: WorkspaceDataSource;
+  gatewayWsUrl?: string | null;
+  allowLocalGatewayFallback?: boolean;
   initialRepositoryId?: string | null;
   initialRefName?: string | null;
   initialView?: ViewId;
@@ -260,6 +262,8 @@ export interface WorkspaceProviderProps {
 export function WorkspaceProvider({
   children,
   source = liveWorkspaceDataSource,
+  gatewayWsUrl = null,
+  allowLocalGatewayFallback = false,
   initialRepositoryId,
   initialRefName,
   initialView,
@@ -684,8 +688,8 @@ export function WorkspaceProvider({
 
     const url = browserRealtimeUrl(
       window.location,
-      process.env.NEXT_PUBLIC_GATEWAY_WS_URL,
-      process.env.NODE_ENV === 'development',
+      gatewayWsUrl ?? undefined,
+      allowLocalGatewayFallback,
     );
     if (url === null) {
       dispatch({ type: 'patch', patch: { realtime: 'not-connected' } });
@@ -800,6 +804,8 @@ export function WorkspaceProvider({
       socket?.close();
     };
   }, [
+    allowLocalGatewayFallback,
+    gatewayWsUrl,
     reloadGraph,
     reloadOverlay,
     repository,
