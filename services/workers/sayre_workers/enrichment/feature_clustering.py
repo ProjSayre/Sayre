@@ -122,7 +122,7 @@ def build_feature_clustering_schema(
                     "required": ["id", "label", "properties"],
                     "properties": {
                         "id": {"type": "string", "minLength": 1},
-                        "label": {"const": "Feature"},
+                        "label": {"type": "string", "const": "Feature"},
                         "properties": {
                             "type": "object",
                             "additionalProperties": False,
@@ -148,7 +148,7 @@ def build_feature_clustering_schema(
                     "properties": {
                         "source": {"type": "string", "enum": file_paths},
                         "target": {"type": "string", "minLength": 1},
-                        "relationship": {"const": "PART_OF"},
+                        "relationship": {"type": "string", "const": "PART_OF"},
                     },
                 },
             },

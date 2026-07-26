@@ -38,7 +38,7 @@ ONBOARDING_OUTPUT_SCHEMA: dict[str, Any] = {
                 "required": ["id", "label", "properties"],
                 "properties": {
                     "id": {"type": "string", "minLength": 1, "maxLength": 128},
-                    "label": {"const": "EnvStep"},
+                    "label": {"type": "string", "const": "EnvStep"},
                     "properties": {
                         "type": "object",
                         "additionalProperties": False,
@@ -69,7 +69,7 @@ ONBOARDING_OUTPUT_SCHEMA: dict[str, Any] = {
                 "properties": {
                     "source": {"type": "string", "minLength": 1, "maxLength": 128},
                     "target": {"type": "string", "minLength": 1, "maxLength": 128},
-                    "relationship": {"const": "REQUIRES"},
+                    "relationship": {"type": "string", "const": "REQUIRES"},
                 },
             },
         },

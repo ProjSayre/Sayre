@@ -31,13 +31,13 @@ def _step(uid: str, sequence: int, command: str = "printf ready") -> EnrichmentN
 
 def test_schema_allows_only_bounded_env_steps_and_requires_edges() -> None:
     [node_schema] = [ONBOARDING_OUTPUT_SCHEMA["properties"]["nodes"]["items"]]
-    assert node_schema["properties"]["label"] == {"const": "EnvStep"}
+    assert node_schema["properties"]["label"] == {"type": "string", "const": "EnvStep"}
     assert ONBOARDING_OUTPUT_SCHEMA["properties"]["nodes"]["minItems"] == 1
     assert (
         ONBOARDING_OUTPUT_SCHEMA["properties"]["edges"]["items"]["properties"][
             "relationship"
         ]
-        == {"const": "REQUIRES"}
+        == {"type": "string", "const": "REQUIRES"}
     )
 
 
