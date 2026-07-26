@@ -80,8 +80,8 @@ describe('providerJobStateService', () => {
     for (const scope of [
       { allows: [], denies: [] },
       {
-        allows: [{ repoId: REPO_ID, branch: REF, pathPrefix: '/src' }],
-        denies: [{ repoId: REPO_ID, branch: REF, pathPrefix: '/src' }],
+        allows: [{ repoId: REPO_ID, branch: REF, pathPrefix: 'src' }],
+        denies: [{ repoId: REPO_ID, branch: REF, pathPrefix: 'src' }],
       },
       {
         allows: [{ repoId: REPO_ID, branch: 'refs/heads/other', pathPrefix: null }],
@@ -99,8 +99,8 @@ describe('providerJobStateService', () => {
   it('accepts a surviving path-scoped grant without exposing graph paths', async () => {
     const deps = dependencies(
       {
-        allows: [{ repoId: REPO_ID, branch: REF, pathPrefix: '/src' }],
-        denies: [{ repoId: REPO_ID, branch: REF, pathPrefix: '/src/private' }],
+        allows: [{ repoId: REPO_ID, branch: REF, pathPrefix: 'src' }],
+        denies: [{ repoId: REPO_ID, branch: REF, pathPrefix: 'src/private' }],
       },
       DEGRADED_ROW,
     );

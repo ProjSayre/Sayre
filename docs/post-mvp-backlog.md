@@ -21,14 +21,14 @@ file should stay the durable record, not the PR thread.
 | Item | Surfaced by | Why deferred |
 |---|---|---|
 | Real session-gating on `GET /integrations/github/install` (currently behind the dev-placeholder `tenantContext`, hard-fails outside dev/test) | W1-06 | W1-03 (AuthN/AuthZ middleware) not yet built; install route intentionally MVP-only until it lands |
-| GitHub OAuth `code` exchange to record the acting user for install audit trail | W1-06 (O-3) | Org binding already comes from signed `state`, not GitHub identity — code exchange only adds audit attribution, not correctness |
-| Production-sanctioned pre-tenant read path for `github_app_installations` (currently a privileged lookup that bypasses RLS via the dev superuser role) | W1-02 (O-4), reconfirmed by W1-06 (second consumer of the same gap) | Local/test dev role is a superuser so the plain query works; needs a scoped read role or dedicated service connection before this ships to a real tenant |
+| Persist the GitHub acting-user identity for an install audit trail | W1-06 (O-3) | The callback now exchanges the one-time OAuth code to authorize the installation account, but deliberately retains neither the user token nor acting-user metadata |
 
 ## Integrations
 
 | Item | Surfaced by | Why deferred |
 |---|---|---|
-| Hard cap of 25 repos per GitHub App installation callback (repos beyond the cap are silently not enqueued, no error/warning) | W1-06 (O-5) | Simplest bound on ingestion cost/callback latency for MVP; revisit as a per-org configurable limit (e.g. tied to a future billing tier) or an async fan-out job if real installs approach the cap |
+| Replace the 25-repository GitHub callback cap with paginated async reconciliation and visible partial-sync state | W1-06 (O-5) | Today repositories after the first 25 are neither registered nor queued, and no background reconciliation repairs the gap; the bound protects callback latency but installations above it are not fully synchronized |
+| Correlate an organization member's `setup_action=request` with a later owner-approved installation | W1-06 security review | The request has no installation to bind and the later `installation.created` webhook has no authenticated Sayre tenant context; requires an expiring, single-use pending intent bound to an authoritative GitHub target account plus replay/conflict/out-of-order tests |
 | `installation_repositories` webhook event is subscribed in the App manifest but not explicitly handled (falls through to the normalizer's ignored path) | W1-06 security-checker | Doesn't affect `installation` (add/remove) handling already built; matters once repo-level add/remove-without-reinstall needs its own sync behavior |
 | FIFO group-id scheme (`org_id, provider_repo_id, ref`) must stay consistent between W1-02's push-delta path and any future initial-parse producer | W1-02 (O-3) | No correctness issue today (W1-06 already matches the scheme); flagging so a future ticket touching either producer doesn't drift them apart |
 

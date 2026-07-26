@@ -23,14 +23,17 @@ import {
 } from '../github/installState';
 import {
   createDefaultGithubAppClient,
+  GithubAppAuthorizationError,
+  type AuthorizedInstallation,
   type GithubAppClient,
   type InstalledRepo,
 } from '../github/appClient';
 import { getRuntimeDb, resolveInstallationOrg } from '../db/installations';
 import { withOrgContext, type Db } from '../db/client';
 import { registerRepository, upsertInstallation } from '../db/githubAppInstallWrites';
-import { publishInitialParseEvent } from '../queue/sqs';
+import { enqueueInitialParseOutbox } from '../db/githubInitialParseOutbox';
 import { makeEnvelope, type MessageEnvelope } from '../queue/envelope';
+import { kickInitialParseOutboxDispatcher } from './initialParseOutboxWake';
 
 export interface StartInstallResult {
   redirectTo: string;
@@ -67,7 +70,7 @@ export interface CallbackInput {
   installationId?: string; // req.query.installation_id
   setupAction?: string; // req.query.setup_action ('install' | 'update' | 'request')
   state?: string; // req.query.state (signed)
-  code?: string; // req.query.code (optional OAuth user code) — unused (O-3)
+  code?: string; // req.query.code (required one-time GitHub App user OAuth code)
 }
 
 export interface CallbackResult {
@@ -90,6 +93,14 @@ export class InstallationOrgConflictError extends Error {
   }
 }
 
+/** The GitHub user completing OAuth cannot administer the installation account. */
+export class GithubInstallationAuthorizationError extends Error {
+  constructor() {
+    super('The GitHub user cannot administer this installation account.');
+    this.name = 'GithubInstallationAuthorizationError';
+  }
+}
+
 /** Any GitHub App API failure (token mint or repo list) — maps to 502. */
 export class GithubApiError extends Error {
   constructor(message: string) {
@@ -106,7 +117,11 @@ export interface InstallCallbackDeps {
   githubClient: GithubAppClient;
   withOrg: <T>(db: Db, orgId: string, fn: (tx: Db) => Promise<T>) => Promise<T>;
   getDb: () => Promise<Db>;
-  publishInitialParse: (envelope: MessageEnvelope<RepoInitialParseEvent>) => Promise<void>;
+  enqueueInitialParse: (
+    tx: Db,
+    envelope: MessageEnvelope<RepoInitialParseEvent>,
+  ) => Promise<void>;
+  kickInitialParseOutbox: () => void;
   upsertInstallation: typeof upsertInstallation;
   registerRepository: typeof registerRepository;
 }
@@ -128,9 +143,8 @@ const defaultCallbackDeps: InstallCallbackDeps = {
   githubClient: createDefaultGithubAppClient(),
   withOrg: withOrgContext,
   getDb: getRuntimeDb,
-  publishInitialParse: async (envelope) => {
-    await publishInitialParseEvent(envelope);
-  },
+  enqueueInitialParse: enqueueInitialParseOutbox,
+  kickInitialParseOutbox: kickInitialParseOutboxDispatcher,
   upsertInstallation,
   registerRepository,
 };
@@ -139,7 +153,7 @@ function parseInstallationId(raw: string | undefined): number | null {
   if (raw === undefined || raw.trim().length === 0) return null;
   if (!/^\d+$/.test(raw.trim())) return null;
   const parsed = Number(raw);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 async function verifyState(
@@ -164,13 +178,28 @@ async function listInstalledRepos(
   installationId: number,
 ): Promise<InstalledRepo[]> {
   try {
-    return await deps.githubClient.listInstallationRepos(installationId);
+    return await deps.githubClient.listInstallationRepos(installationId, MAX_REPOS_PER_CALLBACK);
   } catch (error) {
     throw new GithubApiError(
       `Failed to fetch GitHub App installation repositories: ${
         error instanceof Error ? error.message : 'unknown error'
       }`,
     );
+  }
+}
+
+async function authorizeInstallation(
+  deps: InstallCallbackDeps,
+  code: string,
+  installationId: number,
+): Promise<AuthorizedInstallation> {
+  try {
+    return await deps.githubClient.authorizeInstallation(code, installationId);
+  } catch (error) {
+    if (error instanceof GithubAppAuthorizationError) {
+      throw new GithubInstallationAuthorizationError();
+    }
+    throw new GithubApiError('Failed to authorize the GitHub App installation.');
   }
 }
 
@@ -181,18 +210,27 @@ function buildInitialParseEnvelope(input: {
   providerRepoId: string;
   fullName: string;
   ref: string;
+  revisionSha: string;
 }): MessageEnvelope<RepoInitialParseEvent> {
   return makeEnvelope<RepoInitialParseEvent>({
     org_id: input.orgId,
     type: 'repo.initial_parse',
     source: 'github-app-install',
     trace_id: `install:${input.installationId}`,
-    idempotency_key: `github:initial_parse:${input.installationId}:${input.providerRepoId}:${input.ref}`,
+    idempotency_key: [
+      'github',
+      'initial_parse',
+      input.installationId,
+      input.providerRepoId,
+      input.ref,
+      input.revisionSha,
+    ].join(':'),
     payload: {
       provider: 'github',
       type: 'initial_parse',
       repo: { provider_repo_id: input.providerRepoId, full_name: input.fullName, repo_id: input.repoId },
       ref: input.ref,
+      revision_sha: input.revisionSha,
       installation_id: String(input.installationId),
       reason: 'app_install',
     },
@@ -200,10 +238,11 @@ function buildInitialParseEnvelope(input: {
 }
 
 /**
- * Verifies `state` -> mints an installation token + lists repos -> writes the
- * installation + repository rows -> enqueues one `repo.initial_parse` per
- * repo with a non-null default branch. `org_id` comes ONLY from the verified
- * `state` token; a forged `org_id`-shaped query param is never read.
+ * Verifies `state` -> exchanges the one-time OAuth code and proves the user
+ * administers the installation account -> lists repos -> commits installation
+ * and repository rows -> enqueues one `repo.initial_parse` per non-empty repo.
+ * `org_id` comes ONLY from the verified `state` token; a forged
+ * `org_id`-shaped query param is never read.
  */
 export async function handleGithubAppCallback(
   input: CallbackInput,
@@ -225,15 +264,28 @@ export async function handleGithubAppCallback(
   if (installationId === null) {
     throw new InstallCallbackBadRequestError('Missing or non-numeric installation_id.');
   }
+  if (!input.code || input.code.trim().length === 0) {
+    throw new InstallCallbackBadRequestError('Missing OAuth callback code.');
+  }
 
+  // The signed state proves which Sayre organization started the flow. The
+  // OAuth exchange independently proves that the GitHub user completing it
+  // owns/administers this exact GitHub installation account. Never bind an
+  // arbitrary query-string installation_id based on state alone.
+  const authorizedInstallation = await authorizeInstallation(
+    resolvedDeps,
+    input.code,
+    installationId,
+  );
   const existing = await resolvedDeps.resolveExistingInstallationOrg(installationId);
   if (existing && existing.orgId !== state.org_id) {
     throw new InstallationOrgConflictError();
   }
 
   const allRepos = await listInstalledRepos(resolvedDeps, installationId);
-  // O-5 (human-confirmed deviation, see MAX_REPOS_PER_CALLBACK above): hard
-  // cap, not pagination — repos past the cap are silently excluded.
+  // O-5 (human-confirmed deviation, see MAX_REPOS_PER_CALLBACK above): the
+  // real client is asked for at most 25, and this second cap preserves that
+  // boundary for injected/custom clients.
   const repos = allRepos.slice(0, MAX_REPOS_PER_CALLBACK);
 
   const db = await resolvedDeps.getDb();
@@ -241,11 +293,10 @@ export async function handleGithubAppCallback(
     await resolvedDeps.upsertInstallation(tx, {
       orgId: state.org_id,
       installationId,
-      // Neither the callback query params nor GithubAppClient expose account/
-      // repository_selection metadata (that lands on the webhook payload —
-      // W1-02's concern) — left null here; see .pipeline/changes.md.
-      accountLogin: null,
-      accountType: null,
+      accountLogin: authorizedInstallation.account_login,
+      accountType: authorizedInstallation.account_type,
+      // repository_selection is carried by installation webhooks; the
+      // authenticated callback account metadata above is authoritative here.
       repositorySelection: null,
     });
 
@@ -258,9 +309,11 @@ export async function handleGithubAppCallback(
         defaultBranch: repo.default_branch,
       });
 
-      // No default branch (empty repo, no commits) => no ref to target a full
-      // parse at. Registered, but excluded from enqueuedRepos.
-      if (!repo.default_branch) continue;
+      // No default branch HEAD (empty/unavailable Git repository) => no
+      // immutable revision to parse. Registered, but excluded from enqueuedRepos.
+      if (!repo.default_branch || !repo.default_branch_head_sha) continue;
+
+      const ref = `refs/heads/${repo.default_branch}`;
 
       const envelope = buildInitialParseEnvelope({
         orgId: state.org_id,
@@ -268,13 +321,20 @@ export async function handleGithubAppCallback(
         repoId,
         providerRepoId: repo.provider_repo_id,
         fullName: repo.full_name,
-        ref: repo.default_branch,
+        ref,
+        revisionSha: repo.default_branch_head_sha,
       });
-      await resolvedDeps.publishInitialParse(envelope);
+      await resolvedDeps.enqueueInitialParse(tx, envelope);
       enqueued += 1;
     }
     return enqueued;
   });
+
+  // The notification is only a latency optimization. The durable dispatcher
+  // polls from startup, so a process/request failure here cannot strand rows.
+  // It may claim only after `withOrg` has committed the repository + outbox
+  // transaction, and it republishes the exact stored envelope on retry.
+  if (enqueuedRepos > 0) resolvedDeps.kickInitialParseOutbox();
 
   return { redirectTo: postInstallRedirect, enqueuedRepos };
 }

@@ -28,7 +28,15 @@ import { Client, Pool, type PoolClient } from "pg";
 import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { createDb, createPool, withOrgContext, type Db } from "./client";
+import { resolveInstallationOrg } from "./installations";
 import { getConfig, getSecret } from "@sayre/config";
+import {
+  claimInitialParseOutbox,
+  completeInitialParseOutbox,
+  enqueueInitialParseOutbox,
+  retryInitialParseOutbox,
+} from "./githubInitialParseOutbox";
+import { makeEnvelope } from "../queue/envelope";
 
 const TEST_DB_NAME = getConfig("RLS_TEST_DB_NAME");
 
@@ -537,4 +545,196 @@ test("[AC-10] cross-org write inside withOrgContext is rejected by WITH CHECK", 
     }),
     /row-level security/i,
   );
+});
+
+// ---------------------------------------------------------------------------
+// GitHub installation pre-tenant resolution (migration 0011)
+// ---------------------------------------------------------------------------
+
+test("installation resolver crosses FORCE RLS only through the exact bigint -> org_id/active function", async () => {
+  const seeded = await pool.query<{ installation_id: string }>(
+    "SELECT installation_id FROM github_app_installations WHERE id = $1",
+    [orgA.githubAppInstallationId],
+  );
+  const installationId = Number(seeded.rows[0].installation_id);
+
+  const resolved = await resolveInstallationOrg(db, installationId);
+  assert.deepEqual(resolved, { orgId: orgA.orgId, active: true });
+  assert.equal(await resolveInstallationOrg(db, 9_000_000_000_000_000), null);
+});
+
+test("installation resolver reports suspended/revoked state without exposing lifecycle metadata", async () => {
+  const seeded = await pool.query<{ installation_id: string }>(
+    "SELECT installation_id FROM github_app_installations WHERE id = $1",
+    [orgB.githubAppInstallationId],
+  );
+  const installationId = Number(seeded.rows[0].installation_id);
+  await pool.query(
+    "UPDATE github_app_installations SET suspended_at = now() WHERE id = $1",
+    [orgB.githubAppInstallationId],
+  );
+
+  assert.deepEqual(await resolveInstallationOrg(db, installationId), {
+    orgId: orgB.orgId,
+    active: false,
+  });
+});
+
+test("installation resolver role is NOLOGIN/NOBYPASSRLS, membership-free, and cannot read account metadata", async () => {
+  const role = await pool.query<{
+    rolcanlogin: boolean;
+    rolsuper: boolean;
+    rolbypassrls: boolean;
+    membership_count: string;
+  }>(`
+    SELECT role.rolcanlogin,
+           role.rolsuper,
+           role.rolbypassrls,
+           (
+             SELECT count(*)::text
+               FROM pg_auth_members AS membership
+              WHERE membership.roleid = role.oid
+                 OR membership.member = role.oid
+           ) AS membership_count
+      FROM pg_roles AS role
+     WHERE role.rolname = 'sayre_installation_resolver'
+  `);
+  assert.deepEqual(role.rows[0], {
+    rolcanlogin: false,
+    rolsuper: false,
+    rolbypassrls: false,
+    membership_count: "0",
+  });
+
+  const allowed = await pool.connect();
+  try {
+    await allowed.query("BEGIN");
+    await allowed.query("SET LOCAL ROLE sayre_installation_resolver");
+    const rows = await allowed.query(
+      "SELECT installation_id, org_id, suspended_at, revoked_at FROM github_app_installations",
+    );
+    assert.equal(rows.rowCount, 2);
+  } finally {
+    await allowed.query("ROLLBACK");
+    allowed.release();
+  }
+
+  const forbidden = await pool.connect();
+  try {
+    await forbidden.query("BEGIN");
+    await forbidden.query("SET LOCAL ROLE sayre_installation_resolver");
+    await assert.rejects(
+      forbidden.query("SELECT account_login FROM github_app_installations"),
+      /permission denied/i,
+    );
+  } finally {
+    await forbidden.query("ROLLBACK");
+    forbidden.release();
+  }
+});
+
+test("initial-parse outbox is tenant-atomic, immutable, and recoverable through its narrow dispatcher", async () => {
+  const revision = "c".repeat(40);
+  const envelope = makeEnvelope({
+    message_id: randomUUID(),
+    idempotency_key:
+      `github:initial_parse:555:42:refs/heads/main:${revision}`,
+    org_id: orgA.orgId,
+    type: "repo.initial_parse",
+    source: "github-app-install",
+    payload: {
+      provider: "github" as const,
+      type: "initial_parse" as const,
+      repo: {
+        repo_id: orgA.repoId,
+        provider_repo_id: "42",
+        full_name: "acme/widgets",
+      },
+      ref: "refs/heads/main",
+      revision_sha: revision,
+      installation_id: "555",
+      reason: "app_install" as const,
+    },
+  });
+
+  await withOrgContext(db, orgA.orgId, async (tx) => {
+    await enqueueInitialParseOutbox(tx, envelope);
+    // A replay is a no-op on the deterministic tenant/idempotency identity.
+    await enqueueInitialParseOutbox(tx, envelope);
+  });
+
+  const stored = await pool.query<{
+    envelope: unknown;
+    delivered_at: Date | null;
+  }>(
+    "SELECT envelope, delivered_at FROM github_initial_parse_outbox WHERE org_id = $1",
+    [orgA.orgId],
+  );
+  assert.equal(stored.rowCount, 1);
+  assert.deepEqual(stored.rows[0].envelope, envelope);
+  assert.equal(stored.rows[0].delivered_at, null);
+
+  await assert.rejects(
+    withOrgContext(db, orgB.orgId, async (tx) => {
+      await enqueueInitialParseOutbox(tx, envelope);
+    }),
+    /row-level security/i,
+  );
+
+  await withTenantSession(pool, orgA.orgId, async (c) => {
+    await assert.rejects(
+      c.query("SELECT envelope FROM github_initial_parse_outbox"),
+      /permission denied/i,
+    );
+  });
+
+  const claims = await claimInitialParseOutbox(db, 5, 30);
+  const claimed = claims.find(
+    (event) => event.envelope.idempotency_key === envelope.idempotency_key,
+  );
+  assert.ok(claimed);
+  assert.deepEqual(claimed.envelope, envelope);
+  assert.equal(
+    await completeInitialParseOutbox(
+      db,
+      claimed.id,
+      "00000000-0000-4000-8000-000000000099",
+    ),
+    false,
+  );
+  assert.equal(
+    await retryInitialParseOutbox(db, claimed.id, claimed.leaseToken, 1),
+    true,
+  );
+  const tooEarly = await claimInitialParseOutbox(db, 5, 30);
+  assert.equal(
+    tooEarly.some(
+      (event) => event.envelope.idempotency_key === envelope.idempotency_key,
+    ),
+    false,
+  );
+
+  // Simulate the bounded retry delay elapsing without making the suite sleep.
+  await pool.query(
+    "UPDATE github_initial_parse_outbox SET next_attempt_at = now() WHERE id = $1",
+    [claimed.id],
+  );
+  const recovered = (
+    await claimInitialParseOutbox(db, 5, 30)
+  ).find(
+    (event) => event.envelope.idempotency_key === envelope.idempotency_key,
+  );
+  assert.ok(recovered);
+  assert.equal(recovered.attemptCount, 2);
+  assert.deepEqual(recovered.envelope, envelope);
+  assert.equal(
+    await completeInitialParseOutbox(db, recovered.id, recovered.leaseToken),
+    true,
+  );
+
+  const delivered = await pool.query<{ delivered: boolean }>(
+    "SELECT delivered_at IS NOT NULL AS delivered FROM github_initial_parse_outbox WHERE org_id = $1",
+    [orgA.orgId],
+  );
+  assert.equal(delivered.rows[0].delivered, true);
 });

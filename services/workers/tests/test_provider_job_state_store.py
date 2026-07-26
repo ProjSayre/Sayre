@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+from contextlib import asynccontextmanager
 from typing import Any
 
 import psycopg
@@ -50,35 +50,22 @@ async def test_postgres_state_store_sets_transaction_local_org_and_upserts_only_
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     statements: list[tuple[str, tuple[object, ...]]] = []
-
-    class Transaction:
-        async def __aenter__(self) -> Transaction:
-            return self
-
-        async def __aexit__(self, *args: object) -> None:
-            del args
+    scoped_connections: list[tuple[str, str]] = []
 
     class Connection:
-        async def __aenter__(self) -> Connection:
-            return self
-
-        async def __aexit__(self, *args: object) -> None:
-            del args
-
-        def transaction(self) -> Transaction:
-            return Transaction()
-
         async def execute(
             self, statement: str, params: tuple[object, ...]
         ) -> None:
             statements.append((statement, params))
 
-    async def connect(_dsn: str) -> Connection:
-        return Connection()
+    @asynccontextmanager
+    async def connect(dsn: str, org_id: str):
+        scoped_connections.append((dsn, org_id))
+        yield Connection()
 
     monkeypatch.setattr(
-        "sayre_workers.enrichment.state_store.psycopg.AsyncConnection",
-        SimpleNamespace(connect=connect),
+        "sayre_workers.enrichment.state_store.org_scoped_connection",
+        connect,
     )
     store = PostgresProviderJobStateStore("postgresql://not-used")
     state = ProviderJobState(
@@ -90,9 +77,9 @@ async def test_postgres_state_store_sets_transaction_local_org_and_upserts_only_
 
     await store.set_state(state)
 
-    assert "set_config('app.org_id', %s, true)" in statements[0][0]
-    assert statements[0][1] == (SCOPE.org_id,)
-    upsert, params = statements[1]
+    assert scoped_connections == [("postgresql://not-used", SCOPE.org_id)]
+    assert len(statements) == 1
+    upsert, params = statements[0]
     assert "ON CONFLICT (org_id, repository_id, ref_name, surface)" in upsert
     assert "WHERE model_provider_job_states.org_id = EXCLUDED.org_id" in upsert
     assert "FROM repository_refs" in upsert
@@ -118,12 +105,14 @@ async def test_postgres_state_store_sets_transaction_local_org_and_upserts_only_
 async def test_postgres_state_store_sanitizes_driver_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def fail(_dsn: str) -> None:
+    @asynccontextmanager
+    async def fail(_dsn: str, _org_id: str):
         raise psycopg.OperationalError("private DSN or endpoint detail")
+        yield
 
     monkeypatch.setattr(
-        "sayre_workers.enrichment.state_store.psycopg.AsyncConnection",
-        SimpleNamespace(connect=fail),
+        "sayre_workers.enrichment.state_store.org_scoped_connection",
+        fail,
     )
     store = PostgresProviderJobStateStore("postgresql://secret@private")
 

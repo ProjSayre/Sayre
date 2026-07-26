@@ -191,5 +191,14 @@ async def main() -> int:
     return result_code
 
 
+def console_main() -> int:
+    """Installed ``sayre-graph-migrate`` entrypoint."""
+
+    try:
+        return asyncio.run(main())
+    except KeyboardInterrupt:
+        return 130
+
+
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
+    raise SystemExit(console_main())

@@ -83,6 +83,7 @@ class QueueProvider:
     def __init__(self, responses: list[str]) -> None:
         self._responses = responses
         self.requests: list[Any] = []
+        self.schemas: list[Any] = []
 
     async def generate(self, request: Any) -> GenerationResponse:
         self.requests.append(request)
@@ -94,8 +95,15 @@ class QueueProvider:
         schema: Any,
     ) -> StructuredGenerationResponse:
         self.requests.append(request)
+        self.schemas.append(schema)
         assert schema
-        assert self._responses.pop(0) == "graph-shaping-output"
+        raw_response = self._responses.pop(0)
+        if raw_response != "graph-shaping-output":
+            try:
+                data = json.loads(raw_response)
+            except json.JSONDecodeError:
+                data = {"invalid_text": raw_response}
+            return StructuredGenerationResponse(data=data)
         return StructuredGenerationResponse(
             data={
                 "nodes": [
@@ -138,6 +146,9 @@ async def test_classifier_emits_distinct_folder_style_properties_through_model_b
     )
     assert len(provider.requests) == 1
     assert provider.requests[0].max_output_tokens == 2_048
+    assert provider.schemas[0]["properties"]["folders"]["items"]["properties"][
+        "uid"
+    ] == {"type": "string", "enum": ["folder-1"]}
 
 
 @pytest.mark.asyncio
@@ -229,7 +240,7 @@ async def test_classifier_processes_every_folder_beyond_the_old_total_job_bound(
 @pytest.mark.parametrize(
     "response_text, message",
     [
-        ("not-json", "valid JSON"),
+        ("not-json", "only a folders array"),
         (json.dumps({"unexpected": []}), "only a folders array"),
         (json.dumps({"folders": {}}), "must be an array"),
         (

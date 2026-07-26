@@ -328,6 +328,47 @@ export const githubAppInstallations = pgTable(
 );
 
 /**
+ * Durable, transactionally-written handoff from the GitHub App callback to
+ * the Python ingestion FIFO queue. This table is intentionally specific to
+ * `repo.initial_parse`; it is not a general event bus or a replacement for
+ * the W0-04 SQS topology.
+ *
+ * Callback writes use ordinary org-scoped RLS. A narrowly privileged
+ * SECURITY DEFINER dispatcher boundary (migration 0012) may lease only due
+ * rows and update delivery bookkeeping after the tenant transaction commits.
+ */
+export const githubInitialParseOutbox = pgTable(
+  "github_initial_parse_outbox",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull().default("repo.initial_parse"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    envelope: jsonb("envelope").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    unique("github_initial_parse_outbox_org_idempotency_unique").on(
+      table.orgId,
+      table.idempotencyKey,
+    ),
+    index("github_initial_parse_outbox_due_idx").on(
+      table.nextAttemptAt,
+      table.createdAt,
+    ),
+  ],
+);
+
+/**
  * Org-scoped agent API keys (W4-06 issues/resolves; consumed there).
  * Security-sensitive: only a keyed HMAC-SHA-256 digest of the key is ever
  * stored, never the raw secret (see spec.md "Audit-integrity design").
@@ -628,6 +669,8 @@ export type AgentSkillMdVersion = typeof agentSkillMdVersions.$inferSelect;
 export type NewAgentSkillMdVersion = typeof agentSkillMdVersions.$inferInsert;
 export type GithubAppInstallation = typeof githubAppInstallations.$inferSelect;
 export type NewGithubAppInstallation = typeof githubAppInstallations.$inferInsert;
+export type GithubInitialParseOutbox = typeof githubInitialParseOutbox.$inferSelect;
+export type NewGithubInitialParseOutbox = typeof githubInitialParseOutbox.$inferInsert;
 export type McpClientKey = typeof mcpClientKeys.$inferSelect;
 export type NewMcpClientKey = typeof mcpClientKeys.$inferInsert;
 export type ModelProviderConfig = typeof modelProviderConfigs.$inferSelect;

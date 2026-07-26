@@ -1,6 +1,6 @@
 {
   "message_id": "00000000-0000-4000-8000-000000000000",
-  "idempotency_key": "github:initial_parse:555:42:refs/heads/main",
+  "idempotency_key": "github:initial_parse:555:42:refs/heads/main:0123456789abcdef0123456789abcdef01234567",
   "org_id": "22222222-2222-4222-8222-222222222222",
   "type": "repo.initial_parse",
   "schema_version": 1,
@@ -16,6 +16,7 @@
       "repo_id": "11111111-1111-4111-8111-111111111111"
     },
     "ref": "refs/heads/main",
+    "revision_sha": "0123456789abcdef0123456789abcdef01234567",
     "installation_id": "555",
     "reason": "app_install"
   }

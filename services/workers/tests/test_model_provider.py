@@ -5,6 +5,7 @@ import json
 import socket
 import threading
 import time
+from contextlib import asynccontextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import SimpleNamespace
 from typing import Any
@@ -109,9 +110,10 @@ async def test_postgres_config_store_preserves_json_options_and_generation_scope
 
     store = PostgresGenerationConfigStore("postgresql://not-used")
 
-    async def connect(org_id: str) -> Connection:
+    @asynccontextmanager
+    async def connect(org_id: str):
         assert org_id == "org-real"
-        return Connection()
+        yield Connection()
 
     monkeypatch.setattr(store, "_connect", connect)
 
@@ -173,9 +175,10 @@ async def test_generation_config_store_reads_fresh_settings_for_each_job(
 
     store = PostgresGenerationConfigStore("postgresql://not-used")
 
-    async def connect(org_id: str) -> Connection:
+    @asynccontextmanager
+    async def connect(org_id: str):
         assert org_id == "org-real"
-        return Connection()
+        yield Connection()
 
     monkeypatch.setattr(store, "_connect", connect)
 
@@ -278,7 +281,11 @@ def _fake_openai_client(contents: list[str | None]) -> Any:
 @pytest.mark.asyncio
 async def test_openai_compatible_adapter_supports_plain_and_structured_calls() -> None:
     client = _fake_openai_client(["plain answer", json.dumps(_semantic_payload())])
-    provider = OpenAICompatibleModelProvider(client, "local-fixture")
+    provider = OpenAICompatibleModelProvider(
+        client,
+        "local-fixture",
+        options={"reasoning_effort": "none"},
+    )
     request = GenerationRequest(
         system="Return an answer.",
         input="fixture",
@@ -297,9 +304,29 @@ async def test_openai_compatible_adapter_supports_plain_and_structured_calls() -
     assert first["model"] == "local-fixture"
     assert first["max_tokens"] == 321
     assert first["temperature"] == 0.25
+    assert first["reasoning_effort"] == "none"
     assert "response_format" not in first
+    assert second["reasoning_effort"] == "none"
     assert second["response_format"]["type"] == "json_schema"
     assert second["response_format"]["json_schema"]["strict"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reasoning_effort", ["", "off", 0, True])
+async def test_openai_compatible_adapter_rejects_invalid_reasoning_effort(
+    reasoning_effort: object,
+) -> None:
+    client = _fake_openai_client(["unused"])
+    provider = OpenAICompatibleModelProvider(
+        client,
+        "local-fixture",
+        options={"reasoning_effort": reasoning_effort},
+    )
+
+    with pytest.raises(InvalidModelProviderConfigError, match="reasoning_effort"):
+        await provider.generate(GenerationRequest(system="system", input="input"))
+
+    assert client.completions_fixture.calls == []
 
 
 @pytest.mark.asyncio

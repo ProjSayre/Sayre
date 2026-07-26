@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from messaging.envelope import MessageEnvelope
 
 _SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
+_INSTALLATION_ID = re.compile(r"^[1-9][0-9]{0,15}$")
 
 
 class InvalidIngestionJobError(ValueError):
@@ -23,6 +24,7 @@ class RepositoryLocator(BaseModel):
     provider: str = Field(min_length=1)
     provider_repo_id: str = Field(min_length=1)
     full_name: str = Field(min_length=1)
+    installation_id: int | None = Field(default=None, ge=1, le=9_007_199_254_740_991)
     clone_url: str | None = None
     credential_ref: str | None = None
 
@@ -178,6 +180,17 @@ def _optional_string(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
+def _installation_id(value: object, *, required: bool) -> int | None:
+    if value is None and not required:
+        return None
+    if not isinstance(value, str) or not _INSTALLATION_ID.fullmatch(value):
+        raise InvalidIngestionJobError("payload.installation_id must be a positive decimal string")
+    installation_id = int(value)
+    if installation_id > 9_007_199_254_740_991:
+        raise InvalidIngestionJobError("payload.installation_id is outside the supported range")
+    return installation_id
+
+
 def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
     """Translate the shared queue envelope without ever trusting a payload org_id."""
     if envelope.type not in {"repo.initial_parse", "repo.push"}:
@@ -192,6 +205,10 @@ def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
             "payload.repo.provider_repo_id",
         ),
         full_name=_required_string(repository_data.get("full_name"), "payload.repo.full_name"),
+        installation_id=_installation_id(
+            event.get("installation_id"),
+            required=provider == "github",
+        ),
         clone_url=_optional_string(repository_data.get("clone_url") or event.get("clone_url")),
         credential_ref=_optional_string(
             repository_data.get("credential_ref") or event.get("credential_ref")

@@ -40,22 +40,64 @@ describe('permission scope resolution', () => {
         { repoId: 'repo-1', branch: null, pathPrefix: '/src/private', effect: 'unexpected' },
       ]),
     ).toEqual({
-      allows: [{ repoId: 'repo-1', branch: 'refs/heads/main', pathPrefix: '/src/public' }],
-      denies: [{ repoId: 'repo-1', branch: null, pathPrefix: '/src/private' }],
+      allows: [{ repoId: 'repo-1', branch: 'refs/heads/main', pathPrefix: 'src/public' }],
+      denies: [{ repoId: 'repo-1', branch: null, pathPrefix: 'src/private' }],
     });
   });
 
-  it('uses path-segment boundaries and deny precedence', () => {
+  it('applies a relative-path deny beneath a broad allow', () => {
     const scope = scopeFromRows([
-      { repoId: 'repo-1', branch: null, pathPrefix: '/src', effect: 'allow' },
-      { repoId: 'repo-1', branch: null, pathPrefix: '/src/private', effect: 'deny' },
+      { repoId: 'repo-1', branch: null, pathPrefix: null, effect: 'allow' },
+      { repoId: 'repo-1', branch: null, pathPrefix: 'src/private', effect: 'deny' },
     ]);
     const resource = (path: string) => ({ repoId: 'repo-1', refName: 'refs/heads/main', path });
 
-    expect(canReadResource(scope, resource('/src/public/a.ts'))).toBe(true);
-    expect(canReadResource(scope, resource('/src/private/secret.ts'))).toBe(false);
-    expect(canReadResource(scope, resource('/src/privateer/not-secret.ts'))).toBe(true);
-    expect(canReadResource(scope, { ...resource('/src/public/a.ts'), repoId: 'repo-2' })).toBe(false);
+    expect(canReadResource(scope, resource('src/public/a.ts'))).toBe(true);
+    expect(canReadResource(scope, resource('src/private/secret.ts'))).toBe(false);
+    expect(canReadResource(scope, resource('src/privateer/not-secret.ts'))).toBe(true);
+  });
+
+  it('includes only canonical relative paths beneath a scoped allow', () => {
+    const scope = scopeFromRows([
+      { repoId: 'repo-1', branch: 'main', pathPrefix: '/src/public/', effect: 'allow' },
+    ]);
+    const resource = (path: string) => ({ repoId: 'repo-1', refName: 'refs/heads/main', path });
+
+    expect(canReadResource(scope, resource('src/public'))).toBe(true);
+    expect(canReadResource(scope, resource('src/public/a.ts'))).toBe(true);
+    expect(canReadResource(scope, resource('src/private/a.ts'))).toBe(false);
+    expect(canReadResource(scope, resource('/src/public/a.ts'))).toBe(false);
+    expect(canReadResource(scope, resource('src/public/../private/a.ts'))).toBe(false);
+  });
+
+  it('preserves root semantics and repo/ref boundaries', () => {
+    const rootScope = scopeFromRows([
+      { repoId: 'repo-1', branch: 'main', pathPrefix: '/', effect: 'allow' },
+    ]);
+    const scoped = scopeFromRows([
+      { repoId: 'repo-1', branch: 'main', pathPrefix: 'src', effect: 'allow' },
+    ]);
+    const root = { repoId: 'repo-1', refName: 'refs/heads/main', path: '' };
+
+    expect(canReadResource(rootScope, root)).toBe(true);
+    expect(canReadResource(rootScope, { ...root, path: 'src/a.ts' })).toBe(true);
+    expect(canReadResource(scoped, root)).toBe(false);
+    expect(canReadResource(rootScope, { ...root, repoId: 'repo-2' })).toBe(false);
+    expect(
+      canReadResource(rootScope, { ...root, refName: 'refs/heads/release' }),
+    ).toBe(false);
+  });
+
+  it('fails closed when persisted permission paths are malformed', () => {
+    expect(
+      scopeFromRows([
+        { repoId: 'repo-1', branch: null, pathPrefix: '../private', effect: 'allow' },
+        { repoId: 'repo-1', branch: null, pathPrefix: 'src/../private', effect: 'deny' },
+      ]),
+    ).toEqual({
+      allows: [],
+      denies: [{ repoId: 'repo-1', branch: null, pathPrefix: null }],
+    });
   });
 
   it('grants a user owner tenant-wide access without querying Postgres', async () => {

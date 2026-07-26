@@ -2,6 +2,10 @@ import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { AuthContext } from '../auth/context';
 import { createDb, createPoolFromSecret, type Db, withOrgContext } from '../db/client';
 import { permissions } from '../db/schema';
+import {
+  canonicalRelativePath,
+  normalizePermissionPathPrefix,
+} from './path';
 
 export interface AuthorizationRule {
   repoId: string | null;
@@ -66,18 +70,17 @@ function normalizeBranch(branch: string | null): string | null {
   return value.startsWith('refs/') ? value : `refs/heads/${value}`;
 }
 
-function normalizePathPrefix(prefix: string | null): string | null {
-  const value = prefix?.trim().replaceAll('\\', '/');
-  if (!value || value === '/') return null;
-  const rooted = value.startsWith('/') ? value : `/${value}`;
-  return rooted.replace(/\/+$/, '');
-}
-
-function normalizeRule(row: PermissionRow): AuthorizationRule {
+function normalizeRule(
+  row: PermissionRow,
+): { rule: AuthorizationRule; validPath: boolean } {
+  const normalizedPath = normalizePermissionPathPrefix(row.pathPrefix);
   return {
-    repoId: row.repoId,
-    branch: normalizeBranch(row.branch),
-    pathPrefix: normalizePathPrefix(row.pathPrefix),
+    rule: {
+      repoId: row.repoId,
+      branch: normalizeBranch(row.branch),
+      pathPrefix: normalizedPath.pathPrefix,
+    },
+    validPath: normalizedPath.valid,
   };
 }
 
@@ -96,9 +99,21 @@ export function scopeFromRows(rows: readonly PermissionRow[]): ReadScope {
   const denies: AuthorizationRule[] = [];
 
   for (const row of rows) {
+    const normalized = normalizeRule(row);
     // Only the exact persisted value "allow" grants data. Unknown effects fail
     // closed as denies because the current schema predates CHECK constraints.
-    (row.effect === 'allow' ? allows : denies).push(normalizeRule(row));
+    if (row.effect === 'allow') {
+      // A malformed allow must never widen access.
+      if (normalized.validPath) allows.push(normalized.rule);
+    } else {
+      // A malformed deny cannot safely identify a narrower subtree. Treat it
+      // as a root deny within the same repo/ref boundary.
+      denies.push(
+        normalized.validPath
+          ? normalized.rule
+          : { ...normalized.rule, pathPrefix: null },
+      );
+    }
   }
 
   return { allows: deduplicate(allows), denies: deduplicate(denies) };
@@ -110,27 +125,65 @@ export interface ScopedGraphResource {
   path: string;
 }
 
-function ruleMatches(rule: AuthorizationRule, resource: ScopedGraphResource): boolean {
+function ruleMatches(
+  rule: AuthorizationRule,
+  resource: ScopedGraphResource,
+  malformedPathMatches: boolean,
+): boolean {
   if (rule.repoId !== null && rule.repoId !== resource.repoId) return false;
   if (rule.branch !== null && rule.branch !== resource.refName) return false;
   if (rule.pathPrefix === null) return true;
-  return resource.path === rule.pathPrefix || resource.path.startsWith(`${rule.pathPrefix}/`);
+  const canonicalPrefix = canonicalRelativePath(rule.pathPrefix);
+  if (canonicalPrefix === null || canonicalPrefix === '') {
+    return malformedPathMatches;
+  }
+  return (
+    resource.path === canonicalPrefix ||
+    resource.path.startsWith(`${canonicalPrefix}/`)
+  );
 }
 
 /** Defense-in-depth mirror of the predicate embedded in each Cypher query. */
 export function canReadResource(scope: ReadScope, resource: ScopedGraphResource): boolean {
+  if (canonicalRelativePath(resource.path) !== resource.path) return false;
   return (
-    scope.allows.some((rule) => ruleMatches(rule, resource)) &&
-    !scope.denies.some((rule) => ruleMatches(rule, resource))
+    scope.allows.some((rule) => ruleMatches(rule, resource, false)) &&
+    !scope.denies.some((rule) => ruleMatches(rule, resource, true))
   );
 }
 
-export function cypherRules(rules: readonly AuthorizationRule[]): Array<Record<string, string | null>> {
-  return rules.map((rule) => ({
-    repo_id: rule.repoId,
-    branch: rule.branch,
-    path_prefix: rule.pathPrefix,
-  }));
+export function cypherRules(
+  rules: readonly AuthorizationRule[],
+  malformedPathPolicy: 'drop' | 'deny-root' = 'drop',
+): Array<Record<string, string | null>> {
+  const result: Array<Record<string, string | null>> = [];
+  for (const rule of rules) {
+    if (rule.pathPrefix === null) {
+      result.push({
+        repo_id: rule.repoId,
+        branch: rule.branch,
+        path_prefix: null,
+      });
+      continue;
+    }
+    const pathPrefix = canonicalRelativePath(rule.pathPrefix);
+    if (pathPrefix === null || pathPrefix === '') {
+      if (malformedPathPolicy === 'deny-root') {
+        result.push({
+            repo_id: rule.repoId,
+            branch: rule.branch,
+            path_prefix: null,
+        });
+      }
+      continue;
+    }
+    result.push({
+      repo_id: rule.repoId,
+      branch: rule.branch,
+      path_prefix: pathPrefix,
+    });
+  }
+  return result;
 }
 
 export class PostgresPermissionStore implements PermissionStore {

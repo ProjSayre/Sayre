@@ -20,7 +20,7 @@ const AUTH_CONTEXT: AuthContext = {
 };
 
 const READ_SCOPE: ReadScope = {
-  allows: [{ repoId: REPO_ID, branch: REF_NAME, pathPrefix: '/src' }],
+  allows: [{ repoId: REPO_ID, branch: REF_NAME, pathPrefix: 'src' }],
   denies: [],
 };
 
@@ -52,7 +52,7 @@ function styleRecord(options: StyleRecordOptions = {}): GraphReadRecord {
     target_id: NODE_ID,
     target_label: 'File',
     target_org_id: options.targetOrgId ?? ORG_ID,
-    target_path: '/src/app/file.ts',
+    target_path: 'src/app/file.ts',
     target_repo_id: options.targetRepoId ?? REPO_ID,
     target_ref_name: options.targetRefName ?? REF_NAME,
     target_revision_sha: options.targetRevisionSha ?? REVISION_SHA,
@@ -61,7 +61,7 @@ function styleRecord(options: StyleRecordOptions = {}): GraphReadRecord {
     ancestor_id: ancestorId,
     ancestor_label: ancestorId === null ? null : 'Folder',
     ancestor_org_id: options.ancestorOrgId ?? ORG_ID,
-    ancestor_path: options.ancestorPath ?? '/src/app',
+    ancestor_path: options.ancestorPath ?? 'src/app',
     ancestor_repo_id: options.ancestorRepoId ?? REPO_ID,
     ancestor_ref_name: options.ancestorRefName ?? REF_NAME,
     ancestor_revision_sha: options.ancestorRevisionSha ?? REVISION_SHA,
@@ -89,14 +89,14 @@ describe('RbacGraphQueryService.resolveStyleRules', () => {
     const executor = new QueueExecutor([[
       styleRecord({
         ancestorId: 'folder-nearest',
-        ancestorPath: '/src/app',
+        ancestorPath: 'src/app',
         ancestorCoding: 'Use typed service boundaries.',
         ancestorComment: null,
         distance: 1,
       }),
       styleRecord({
         ancestorId: 'folder-root',
-        ancestorPath: '/src',
+        ancestorPath: 'src',
         ancestorCoding: 'Farther coding rule.',
         ancestorComment: 'Document exported APIs.',
         distance: 2,
@@ -199,7 +199,7 @@ describe('RbacGraphQueryService.resolveStyleRules', () => {
         org_id: ORG_ID,
         node_id: NODE_ID,
         allow_rules: [
-          { repo_id: REPO_ID, branch: REF_NAME, path_prefix: '/src' },
+          { repo_id: REPO_ID, branch: REF_NAME, path_prefix: 'src' },
         ],
         deny_rules: [],
       },

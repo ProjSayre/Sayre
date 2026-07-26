@@ -145,7 +145,7 @@ function canSeeProviderState(scope: ReadScope, repoId: string, refName: string):
       refName,
       // Test an actually granted path. A more-specific matching deny still wins;
       // a deny beneath this path does not erase visibility of all authorized data.
-      path: allow.pathPrefix ?? '/',
+      path: allow.pathPrefix ?? '',
     }),
   );
 }

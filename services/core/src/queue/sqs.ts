@@ -137,9 +137,26 @@ export function ingestionGroupId(orgId: string, providerRepoId: string, refName:
 }
 
 /**
+ * SQS FIFO limits MessageDeduplicationId to 128 characters. Envelope
+ * idempotency keys intentionally retain their human-readable semantic tuple,
+ * which may contain a valid Git ref long enough to exceed that boundary.
+ * Hash the UTF-8 bytes for a stable, fixed-width, SQS-safe transport ID while
+ * keeping the original key inside the message envelope.
+ */
+export function messageDeduplicationId(idempotencyKey: string): string {
+  if (idempotencyKey.trim().length === 0) {
+    throw new Error('idempotency key must not be blank');
+  }
+  return createHash('sha256').update(idempotencyKey, 'utf8').digest('hex');
+}
+
+/**
  * Publish a MessageEnvelope to a queue. For a *.fifo queue, messageGroupId is required and
- * messageDeduplicationId defaults to envelope.idempotency_key. Serializes the envelope with
- * JSON.stringify (snake_case keys → byte-compatible with the Python MessageEnvelope.from_body).
+ * the semantic messageDeduplicationId defaults to envelope.idempotency_key. The
+ * semantic value is SHA-256 hashed before it enters SQS so every transport ID
+ * stays inside the 128-character limit. Serializes the envelope with
+ * JSON.stringify (snake_case keys → byte-compatible with the Python
+ * MessageEnvelope.from_body).
  */
 export async function publish(
   queueName: string,
@@ -164,7 +181,9 @@ export async function publish(
       ...(isFifo
         ? {
             MessageGroupId: opts?.messageGroupId,
-            MessageDeduplicationId: opts?.messageDeduplicationId ?? envelope.idempotency_key,
+            MessageDeduplicationId: messageDeduplicationId(
+              opts?.messageDeduplicationId ?? envelope.idempotency_key,
+            ),
           }
         : {}),
     }),
@@ -176,7 +195,7 @@ export async function publish(
   return response.MessageId;
 }
 
-/** Convenience wrapper: sets MessageGroupId = ingestionGroupId(...) and dedup = envelope.idempotency_key. */
+/** Convenience wrapper: sets the stable group and semantic deduplication key. */
 export async function publishIngestionEvent(
   envelope: MessageEnvelope<NormalizedRepoEvent>,
 ): Promise<string> {

@@ -37,6 +37,11 @@ import type {
   StructuralEdgeType,
   Viewport,
 } from './types';
+import { canonicalRefName } from '../refName';
+import {
+  canonicalRelativePath,
+  MAX_GRAPH_PATH_LENGTH,
+} from './path';
 
 export * from './types';
 export {
@@ -47,6 +52,17 @@ export {
   type ReadScope,
 } from './permissions';
 
+function canonicalGraphPathPredicate(variable: string): string {
+  return `${variable}.path IS NOT NULL
+  AND size(${variable}.path) <= ${MAX_GRAPH_PATH_LENGTH}
+  AND NOT (${variable}.path STARTS WITH '/')
+  AND NOT (${variable}.path ENDS WITH '/')
+  AND NOT (${variable}.path CONTAINS '//')
+  AND NOT (${variable}.path CONTAINS '\\\\')
+  AND NOT (('/' + ${variable}.path + '/') CONTAINS '/../')
+  AND NOT (('/' + ${variable}.path + '/') CONTAINS '/./')`;
+}
+
 // Permission predicates intentionally run inside the graph query so hidden
 // nodes do not cross the graph-store boundary. The TypeScript mapper repeats
 // the same decision as defense in depth before returning any record.
@@ -55,9 +71,10 @@ MATCH (node)
 WHERE (node:Folder OR node:File)
   AND node.org_id = $org_id
   AND node.repo_id = $repo_id
+  AND node.ref_name = $ref_name
   AND node.uid IS NOT NULL
   AND node.name IS NOT NULL
-  AND node.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('node')}
   AND node.ref_name IS NOT NULL
   AND (
     node.layout_x IS NULL OR node.layout_y IS NULL OR
@@ -77,8 +94,10 @@ WHERE (node:Folder OR node:File)
 OPTIONAL MATCH (parent:Folder)-[parent_edge:CONTAINS]->(node)
 WHERE parent.org_id = $org_id
   AND parent.repo_id = node.repo_id
+  AND parent.ref_name = $ref_name
   AND parent.ref_name = node.ref_name
   AND parent_edge.org_id = $org_id
+  AND ${canonicalGraphPathPredicate('parent')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = parent.repo_id) AND
     (rule.branch IS NULL OR rule.branch = parent.ref_name) AND
@@ -109,8 +128,14 @@ WHERE source.org_id = $org_id
   AND edge.org_id = $org_id
   AND source.uid IN $node_ids
   AND target.uid IN $node_ids
+  AND source.repo_id = $repo_id
+  AND target.repo_id = $repo_id
+  AND source.ref_name = $ref_name
+  AND target.ref_name = $ref_name
   AND (source:Folder OR source:File)
   AND (target:Folder OR target:File)
+  AND ${canonicalGraphPathPredicate('source')}
+  AND ${canonicalGraphPathPredicate('target')}
   AND type(edge) IN ['CONTAINS', 'IMPORTS']
   AND source.repo_id = target.repo_id
   AND source.ref_name = target.ref_name
@@ -155,6 +180,7 @@ WHERE (node:Folder OR node:File)
   AND node.uid IS NOT NULL
   AND node.name IS NOT NULL
   AND node.ref_name IS NOT NULL
+  AND ${canonicalGraphPathPredicate('node')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
     (rule.branch IS NULL OR rule.branch = node.ref_name) AND
@@ -170,6 +196,7 @@ WHERE parent.org_id = $org_id
   AND parent.repo_id = node.repo_id
   AND parent.ref_name = node.ref_name
   AND parent_edge.org_id = $org_id
+  AND ${canonicalGraphPathPredicate('parent')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = parent.repo_id) AND
     (rule.branch IS NULL OR rule.branch = parent.ref_name) AND
@@ -201,7 +228,7 @@ WHERE (target:Folder OR target:File)
   AND target.repo_id IS NOT NULL
   AND target.ref_name IS NOT NULL
   AND target.revision_sha IS NOT NULL
-  AND target.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('target')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = target.repo_id) AND
     (rule.branch IS NULL OR rule.branch = target.ref_name) AND
@@ -218,7 +245,7 @@ WHERE ALL(path_node IN nodes(path) WHERE
     path_node.repo_id = target.repo_id AND
     path_node.ref_name = target.ref_name AND
     path_node.revision_sha = target.revision_sha AND
-    path_node.path IS NOT NULL AND
+    ${canonicalGraphPathPredicate('path_node')} AND
     ANY(rule IN $allow_rules WHERE
       (rule.repo_id IS NULL OR rule.repo_id = path_node.repo_id) AND
       (rule.branch IS NULL OR rule.branch = path_node.ref_name) AND
@@ -261,7 +288,7 @@ WHERE (node:Folder OR node:File)
   AND node.org_id = $org_id
   AND node.uid IS NOT NULL
   AND node.name IS NOT NULL
-  AND node.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('node')}
   AND node.repo_id IS NOT NULL
   AND node.ref_name IS NOT NULL
   AND node.revision_sha IS NOT NULL
@@ -310,7 +337,7 @@ MATCH (anchor)
 WHERE (anchor:Folder OR anchor:File)
   AND anchor.org_id = $org_id
   AND anchor.uid = $anchor_id
-  AND anchor.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('anchor')}
   AND anchor.repo_id IS NOT NULL
   AND anchor.ref_name IS NOT NULL
   AND anchor.revision_sha IS NOT NULL
@@ -333,7 +360,7 @@ WHERE length(path) <= $max_hops
   AND node.revision_sha = anchor.revision_sha
   AND node.uid IS NOT NULL
   AND node.name IS NOT NULL
-  AND node.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('node')}
   AND ALL(edge IN relationships(path) WHERE
     type(edge) IN ['CONTAINS', 'IMPORTS'] AND edge.org_id = $org_id)
   AND ALL(path_node IN nodes(path) WHERE
@@ -342,7 +369,7 @@ WHERE length(path) <= $max_hops
     path_node.repo_id = anchor.repo_id AND
     path_node.ref_name = anchor.ref_name AND
     path_node.revision_sha = anchor.revision_sha AND
-    path_node.path IS NOT NULL AND
+    ${canonicalGraphPathPredicate('path_node')} AND
     ANY(rule IN $allow_rules WHERE
       (rule.repo_id IS NULL OR rule.repo_id = path_node.repo_id) AND
       (rule.branch IS NULL OR rule.branch = path_node.ref_name) AND
@@ -401,7 +428,7 @@ WHERE member.org_id = $org_id
   AND feature.revision_sha = root.revision_sha
   AND member.uid IS NOT NULL
   AND member.name IS NOT NULL
-  AND member.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('member')}
   AND feature.uid IS NOT NULL
   AND feature.name IS NOT NULL
   AND ANY(rule IN $allow_rules WHERE
@@ -458,6 +485,7 @@ WHERE (target:Folder OR target:File)
   AND target.repo_id IS NOT NULL
   AND target.ref_name IS NOT NULL
   AND target.revision_sha IS NOT NULL
+  AND ${canonicalGraphPathPredicate('target')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = target.repo_id) AND
     (rule.branch IS NULL OR rule.branch = target.ref_name) AND
@@ -477,7 +505,7 @@ WHERE (out_dependency:Folder OR out_dependency:File)
   AND out_dependency.revision_sha = target.revision_sha
   AND out_dependency.uid IS NOT NULL
   AND out_dependency.name IS NOT NULL
-  AND out_dependency.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('out_dependency')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = out_dependency.repo_id) AND
     (rule.branch IS NULL OR rule.branch = out_dependency.ref_name) AND
@@ -497,7 +525,7 @@ WHERE (in_dependency:Folder OR in_dependency:File)
   AND in_dependency.revision_sha = target.revision_sha
   AND in_dependency.uid IS NOT NULL
   AND in_dependency.name IS NOT NULL
-  AND in_dependency.path IS NOT NULL
+  AND ${canonicalGraphPathPredicate('in_dependency')}
   AND ANY(rule IN $allow_rules WHERE
     (rule.repo_id IS NULL OR rule.repo_id = in_dependency.repo_id) AND
     (rule.branch IS NULL OR rule.branch = in_dependency.ref_name) AND
@@ -609,14 +637,21 @@ function valueAsOptionalString(record: GraphReadRecord, key: string): string | n
   return normalized.length > 0 ? normalized : null;
 }
 
+function valueAsCanonicalPath(
+  record: GraphReadRecord,
+  key: string,
+): string | null {
+  return canonicalRelativePath(record.get(key));
+}
+
 function resourceFromRecord(
   record: GraphReadRecord,
   prefix = '',
 ): ScopedGraphResource | null {
   const repoId = valueAsString(record, `${prefix}repo_id`);
   const refName = valueAsString(record, `${prefix}ref_name`);
-  const path = valueAsString(record, `${prefix}path`);
-  return repoId && refName && path ? { repoId, refName, path } : null;
+  const path = valueAsCanonicalPath(record, `${prefix}path`);
+  return repoId && refName && path !== null ? { repoId, refName, path } : null;
 }
 
 interface ScopedStyleResource extends ScopedGraphResource {
@@ -641,8 +676,8 @@ function styleResourceFromRecord(
   const repoId = valueAsString(record, `${prefix}repo_id`);
   const refName = valueAsString(record, `${prefix}ref_name`);
   const revisionSha = valueAsString(record, `${prefix}revision_sha`);
-  const path = record.get(`${prefix}path`);
-  return orgId && repoId && refName && revisionSha && typeof path === 'string'
+  const path = valueAsCanonicalPath(record, `${prefix}path`);
+  return orgId && repoId && refName && revisionSha && path !== null
     ? { orgId, repoId, refName, revisionSha, path }
     : null;
 }
@@ -788,28 +823,51 @@ function isCanvasLabel(value: string | null): value is CanvasNodeLabel {
   return value === 'Folder' || value === 'File';
 }
 
-function mapNode(record: GraphReadRecord, scope: ReadScope): GraphNode | null {
+function mapNode(
+  record: GraphReadRecord,
+  scope: ReadScope,
+  expected?: { repoId: string; refName: string },
+): GraphNode | null {
   const id = valueAsString(record, 'id');
   const label = valueAsString(record, 'label');
   const name = valueAsString(record, 'name');
   const resource = resourceFromRecord(record);
-  if (!id || !isCanvasLabel(label) || !name || !resource) return null;
+  if (
+    !id ||
+    !isCanvasLabel(label) ||
+    !name ||
+    !resource ||
+    (expected !== undefined &&
+      (resource.repoId !== expected.repoId ||
+        resource.refName !== expected.refName))
+  ) {
+    return null;
+  }
   if (!canReadResource(scope, resource)) return null;
 
   const rawParentId = valueAsString(record, 'parent_id');
   const parentResource = resourceFromRecord(record, 'parent_');
   const parentId =
-    rawParentId && parentResource && canReadResource(scope, parentResource)
+    rawParentId &&
+    parentResource &&
+    (expected === undefined ||
+      (parentResource.repoId === expected.repoId &&
+        parentResource.refName === expected.refName)) &&
+    canReadResource(scope, parentResource)
       ? rawParentId
       : null;
 
   return { id, label, name, path: resource.path, parentId };
 }
 
-function distinctNodes(records: readonly GraphReadRecord[], scope: ReadScope): GraphNode[] {
+function distinctNodes(
+  records: readonly GraphReadRecord[],
+  scope: ReadScope,
+  expected?: { repoId: string; refName: string },
+): GraphNode[] {
   const nodes = new Map<string, GraphNode>();
   for (const record of records) {
-    const node = mapNode(record, scope);
+    const node = mapNode(record, scope, expected);
     if (node) nodes.set(node.id, node);
   }
   return [...nodes.values()];
@@ -841,7 +899,7 @@ function mapRetrievalNode(
   const id = valueAsString(record, `${prefix}id`);
   const label = valueAsString(record, `${prefix}label`);
   const name = valueAsString(record, `${prefix}name`);
-  const path = valueAsString(record, `${prefix}path`);
+  const path = valueAsCanonicalPath(record, `${prefix}path`);
   const orgId = valueAsString(record, `${prefix}org_id`);
   const repoId = valueAsString(record, `${prefix}repo_id`);
   const refName = valueAsString(record, `${prefix}ref_name`);
@@ -1059,7 +1117,7 @@ function overlayTargetFromRecord(
   const repoId = valueAsString(record, 'target_repo_id');
   const refName = valueAsString(record, 'target_ref_name');
   const revisionSha = valueAsString(record, 'target_revision_sha');
-  const path = record.get('target_path');
+  const path = valueAsCanonicalPath(record, 'target_path');
   if (
     id !== expectedNodeId ||
     !isCanvasLabel(label) ||
@@ -1068,7 +1126,7 @@ function overlayTargetFromRecord(
     !repoId ||
     !refName ||
     !revisionSha ||
-    typeof path !== 'string'
+    path === null
   ) {
     return null;
   }
@@ -1105,7 +1163,7 @@ function overlayDependency(
   const repoId = valueAsString(record, `${prefix}repo_id`);
   const refName = valueAsString(record, `${prefix}ref_name`);
   const revisionSha = valueAsString(record, `${prefix}revision_sha`);
-  const path = record.get(`${prefix}path`);
+  const path = valueAsCanonicalPath(record, `${prefix}path`);
   if (
     !id ||
     !isCanvasLabel(label) ||
@@ -1114,7 +1172,7 @@ function overlayDependency(
     repoId !== target.repoId ||
     refName !== target.refName ||
     revisionSha !== target.revisionSha ||
-    typeof path !== 'string' ||
+    path === null ||
     !canReadResource(scope, { repoId, refName, path })
   ) {
     return null;
@@ -1299,7 +1357,7 @@ function isStructuralEdgeType(value: string | null): value is StructuralEdgeType
 function scopeParameters(scope: ReadScope): Record<string, unknown> {
   return {
     allow_rules: cypherRules(scope.allows),
-    deny_rules: cypherRules(scope.denies),
+    deny_rules: cypherRules(scope.denies, 'deny-root'),
   };
 }
 
@@ -1317,11 +1375,14 @@ export class RbacGraphQueryService
 
   async getNodesInViewport(
     repoId: string,
+    refName: string,
     viewport: Viewport,
     ctx: AuthContext,
   ): Promise<GraphNode[]> {
-    if (!repoId.trim()) return [];
-    const scope = await this.permissions.getReadScope(ctx, repoId);
+    const normalizedRepoId = repoId.trim();
+    const normalizedRefName = canonicalRefName(refName);
+    if (!normalizedRepoId || normalizedRefName === null) return [];
+    const scope = await this.permissions.getReadScope(ctx, normalizedRepoId);
     if (scope.allows.length === 0) return [];
 
     const worldWidth = viewport.width / viewport.zoom;
@@ -1340,27 +1401,38 @@ export class RbacGraphQueryService
 
     const result = await this.graph.run(ctx.orgId, 'viewport_read', GET_NODES_IN_VIEWPORT_CYPHER, {
       org_id: ctx.orgId,
-      repo_id: repoId,
+      repo_id: normalizedRepoId,
+      ref_name: normalizedRefName,
       viewport_min_x: viewport.x,
       viewport_max_x: viewportMaxX,
       viewport_min_y: viewport.y,
       viewport_max_y: viewportMaxY,
       ...scopeParameters(scope),
     });
-    return distinctNodes(result.records, scope);
+    return distinctNodes(result.records, scope, {
+      repoId: normalizedRepoId,
+      refName: normalizedRefName,
+    });
   }
 
   async getStructuralEdges(
+    repoId: string,
+    refName: string,
     nodeIds: readonly string[],
     ctx: AuthContext,
   ): Promise<GraphEdge[]> {
+    const normalizedRepoId = repoId.trim();
+    const normalizedRefName = canonicalRefName(refName);
+    if (!normalizedRepoId || normalizedRefName === null) return [];
     const ids = [...new Set(nodeIds.filter((id) => id.trim().length > 0))];
     if (ids.length === 0) return [];
-    const scope = await this.permissions.getReadScope(ctx);
+    const scope = await this.permissions.getReadScope(ctx, normalizedRepoId);
     if (scope.allows.length === 0) return [];
 
     const result = await this.graph.run(ctx.orgId, 'traversal', GET_STRUCTURAL_EDGES_CYPHER, {
       org_id: ctx.orgId,
+      repo_id: normalizedRepoId,
+      ref_name: normalizedRefName,
       node_ids: ids,
       ...scopeParameters(scope),
     });
@@ -1381,6 +1453,10 @@ export class RbacGraphQueryService
         !requested.has(target) ||
         !sourceResource ||
         !targetResource ||
+        sourceResource.repoId !== normalizedRepoId ||
+        targetResource.repoId !== normalizedRepoId ||
+        sourceResource.refName !== normalizedRefName ||
+        targetResource.refName !== normalizedRefName ||
         sourceResource.repoId !== targetResource.repoId ||
         sourceResource.refName !== targetResource.refName ||
         !canReadResource(scope, sourceResource) ||
@@ -1400,7 +1476,14 @@ export class RbacGraphQueryService
     paths: readonly string[],
     ctx: AuthContext,
   ): Promise<AffectedNodes> {
-    const distinctPaths = [...new Set(paths.filter((path) => path.length > 0))];
+    const distinctPaths = [
+      ...new Set(
+        paths.filter(
+          (path) =>
+            path.length > 0 && canonicalRelativePath(path) === path,
+        ),
+      ),
+    ];
     if (!repoId.trim() || distinctPaths.length === 0) return { visible: [], removed: [] };
     const scope = await this.permissions.getReadScope(ctx, repoId);
     if (scope.allows.length === 0) return { visible: [], removed: [] };

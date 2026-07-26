@@ -89,6 +89,9 @@ class OpenAICompatibleEmbeddingProvider:
         ordered = sorted(response.data, key=lambda item: item.index)
         return validate_embeddings([item.embedding for item in ordered], len(texts))
 
+    async def aclose(self) -> None:
+        await self._client.close()
+
 
 class EmbeddingProviderFactory:
     async def create(self, config: EmbeddingConfig) -> EmbeddingProvider:
@@ -136,5 +139,10 @@ class EmbeddingConsumer:
         if work is None:
             return False
         provider = await self._factory.create(work.config)
-        vector = (await provider.embed([work.content]))[0]
-        return await self._store.store_embedding(work, vector)
+        try:
+            vector = (await provider.embed([work.content]))[0]
+            return await self._store.store_embedding(work, vector)
+        finally:
+            close = getattr(provider, "aclose", None)
+            if callable(close):
+                await close()

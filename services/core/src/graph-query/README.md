@@ -4,6 +4,9 @@ This module is the sole node-level authorization boundary for graph reads.
 
 - `permissions.ts` resolves direct-user/role (and future agent-key) permission
   rows through Postgres RLS and normalizes repo/ref/path scopes.
+- `path.ts` defines the one path contract used by permission rules and graph
+  records: repository-relative POSIX paths, with `""` as repository root and
+  `null` as the equivalent root-wide permission prefix.
 - `index.ts` embeds allow/deny scopes in static, parameterized openCypher and
   repeats the authorization decision while mapping results as defense in depth.
 - `neo4j.ts` owns instrumented read sessions and lazy secret-backed driver setup.

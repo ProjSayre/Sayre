@@ -96,10 +96,16 @@ export interface FeatureCluster {
 export interface GraphQueryService {
   getNodesInViewport(
     repoId: string,
+    refName: string,
     viewport: Viewport,
     ctx: AuthContext,
   ): Promise<GraphNode[]>;
-  getStructuralEdges(nodeIds: readonly string[], ctx: AuthContext): Promise<GraphEdge[]>;
+  getStructuralEdges(
+    repoId: string,
+    refName: string,
+    nodeIds: readonly string[],
+    ctx: AuthContext,
+  ): Promise<GraphEdge[]>;
   getAffectedNodes(
     repoId: string,
     paths: readonly string[],

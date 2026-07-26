@@ -228,6 +228,32 @@ be granted with `SET FALSE`. This assertion is invoked once at service startup
 per `infra/.env.example`) is intentionally a superuser, so the assertion is a no-op
 unless `SAYRE_ENV`/`NODE_ENV` indicates `ci` or `production`.
 
+### GitHub installation bootstrap lookup
+
+GitHub webhook routing has one pre-tenant bootstrap problem: the signed provider
+payload supplies an installation id, and Sayre must resolve that id to `org_id`
+before it can establish ordinary tenant context. A direct query through
+`DATABASE_RUNTIME_URL` is intentionally useless under FORCE RLS when
+`app.org_id` is unset.
+
+Migration `0011_github_installation_resolver.sql` supplies a narrow database
+boundary instead of an admin connection or a general RLS bypass:
+
+- `sayre_installation_resolver` is `NOLOGIN`, `NOINHERIT`, and `NOBYPASSRLS`,
+  has no role memberships, and can select only `installation_id`, `org_id`,
+  `suspended_at`, and `revoked_at`;
+- one SELECT-only RLS policy exposes installation rows to that role;
+- one `SECURITY DEFINER` SQL function accepts only a bigint installation id and
+  returns only `org_id` and the derived `active` boolean;
+- `PUBLIC` cannot execute the function; `sayre_app` can invoke that function but
+  still cannot directly read another tenant's installation rows.
+
+`resolveInstallationOrg` explicitly drops to `sayre_app`, clears ambient
+transaction-local org context, and calls only that function. Core startup runs
+`assertInstallationResolverReady` in every environment and refuses to listen if
+the migration, ACLs, owner attributes, column grants, or operational function
+call are missing or widened. No additional DSN or secret is required.
+
 ## Fail-closed posture (all stores)
 
 - Unset or empty-string `app.org_id` → zero rows, every write rejected (Postgres,

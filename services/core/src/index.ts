@@ -1,6 +1,11 @@
 import { createApp } from './app';
 import { getConfig, getSecret } from '@sayre/config';
 import { assertRuntimeRoleRlsSafe } from './security/assertRuntimeRoleRlsSafe';
+import { assertInstallationResolverReady } from './security/assertInstallationResolverReady';
+import { assertInitialParseOutboxReady } from './security/assertInitialParseOutboxReady';
+import { getInitialParseOutboxDispatcher } from './services/initialParseOutboxDispatcher';
+import { setInitialParseOutboxWakeHandler } from './services/initialParseOutboxWake';
+import { closeSqsClient } from './queue/sqs';
 
 const portText = getConfig('CORE_PORT');
 const port = Number(portText);
@@ -12,9 +17,44 @@ async function main(): Promise<void> {
   // CI/production startup gate (Resolved decision Q2, docs/tenant-isolation.md
   // "DSN-role provisioning risk"). No-ops outside NODE_ENV=production/CI=true
   // -- local dev's login role is intentionally a superuser.
-  await assertRuntimeRoleRlsSafe(await getSecret('env://DATABASE_RUNTIME_URL'));
+  const runtimeDsn = await getSecret('env://DATABASE_RUNTIME_URL');
+  await assertRuntimeRoleRlsSafe(runtimeDsn);
+  await assertInstallationResolverReady(runtimeDsn);
+  await assertInitialParseOutboxReady(runtimeDsn);
 
-  createApp().listen(port, () => console.log(`[core] listening on :${port}`));
+  const outboxDispatcher = getInitialParseOutboxDispatcher();
+  setInitialParseOutboxWakeHandler(() => outboxDispatcher.kick());
+  outboxDispatcher.start();
+  const server = createApp().listen(port, () => console.log(`[core] listening on :${port}`));
+
+  let shutdownPending: Promise<void> | null = null;
+  const shutdown = (): void => {
+    if (shutdownPending) return;
+    shutdownPending = (async () => {
+      // Stop accepting callbacks first and let any request transaction finish.
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+      // No callback can append more work now. Finish the bounded active batch,
+      // then destroy the shared SQS client before exiting.
+      setInitialParseOutboxWakeHandler(null);
+      await outboxDispatcher.stop();
+      await closeSqsClient();
+    })();
+    void shutdownPending.then(
+      () => process.exit(0),
+      () => {
+        console.error('[core] graceful shutdown failed');
+        process.exit(1);
+      },
+    );
+  };
+
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }
 
-void main();
+void main().catch(() => {
+  console.error('[core] startup failed');
+  process.exitCode = 1;
+});

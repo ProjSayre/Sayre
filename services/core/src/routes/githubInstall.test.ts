@@ -81,7 +81,7 @@ describe('GET /integrations/github/callback', () => {
     activeServer = server;
 
     const res = await fetch(
-      `${baseUrl}/integrations/github/callback?installation_id=555&setup_action=install&state=signed-state`,
+      `${baseUrl}/integrations/github/callback?installation_id=555&setup_action=install&state=signed-state&code=oauth-code`,
       { redirect: 'manual' },
     );
 
@@ -91,7 +91,7 @@ describe('GET /integrations/github/callback', () => {
       installationId: '555',
       setupAction: 'install',
       state: 'signed-state',
-      code: undefined,
+      code: 'oauth-code',
     });
   });
 
@@ -117,6 +117,23 @@ describe('GET /integrations/github/callback', () => {
     });
 
     expect(res.status).toBe(409);
+  });
+
+  it('propagates GithubInstallationAuthorizationError as 403', async () => {
+    const { GithubInstallationAuthorizationError } = await import(
+      '../services/githubAppInstallService'
+    );
+    handleGithubAppCallback.mockRejectedValueOnce(new GithubInstallationAuthorizationError());
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+
+    const res = await fetch(
+      `${baseUrl}/integrations/github/callback?installation_id=555&state=x&code=oauth-code`,
+      { redirect: 'manual' },
+    );
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'GitHub installation authorization failed' });
   });
 
   it('propagates GithubApiError as 502', async () => {

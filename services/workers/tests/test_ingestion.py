@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import ctypes
+import os
 import subprocess
+import sys
+import time
 from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,18 +29,102 @@ from sayre_workers.ingestion.models import (
     GraphScope,
     PersistedChunk,
     RefState,
+    InvalidIngestionJobError,
     RepositoryLocator,
     SymbolRef,
     parse_ingestion_envelope,
 )
 from sayre_workers.ingestion.projection import build_projection
-from sayre_workers.ingestion.repository import GitRepositorySource, RepositorySnapshot
+from sayre_workers.ingestion.repository import (
+    GitCommandError,
+    GitRepositorySource,
+    RepositorySnapshot,
+    _GitRunner,
+    _run_git_process,
+)
 from sayre_workers.ingestion.service import IngestionService
 from sayre_workers.parsing import SourceFile, parse_full
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40
 SHA_C = "c" * 40
+
+
+def _process_is_running(process_id: int) -> bool:
+    if os.name != "nt":
+        if sys.platform.startswith("linux"):
+            try:
+                process_state = Path(f"/proc/{process_id}/stat").read_text(
+                    encoding="ascii"
+                ).split()[2]
+            except (FileNotFoundError, OSError, IndexError):
+                return False
+            if process_state == "Z":
+                # A zombie has exited and owns no environment or handles; only
+                # its accounting record remains until the orphan is reaped.
+                return False
+        try:
+            os.kill(process_id, 0)
+        except ProcessLookupError:
+            return False
+        return True
+
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.OpenProcess(0x00100000, False, process_id)  # SYNCHRONIZE
+    if not handle:
+        return False
+    try:
+        return kernel32.WaitForSingleObject(handle, 0) == 258  # WAIT_TIMEOUT
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def test_git_process_timeout_terminates_inherited_stdout_process_tree(
+    tmp_path: Path,
+) -> None:
+    child_pid_path = tmp_path / "git-helper.pid"
+    helper_script = (
+        "import os,sys,time;"
+        "from pathlib import Path;"
+        "Path(sys.argv[1]).write_text(str(os.getpid()),encoding='ascii');"
+        "time.sleep(10)"
+    )
+    parent_script = (
+        "import subprocess,sys,time;"
+        "subprocess.Popen([sys.executable,'-c',sys.argv[1],sys.argv[2]],"
+        "stdout=sys.stdout);"
+        "time.sleep(10)"
+    )
+
+    started = time.perf_counter()
+    with pytest.raises(GitCommandError, match="timed out"):
+        _run_git_process(
+            [
+                sys.executable,
+                "-c",
+                parent_script,
+                helper_script,
+                str(child_pid_path),
+            ],
+            timeout_seconds=0.5,
+            capture_stdout=True,
+        )
+
+    assert time.perf_counter() - started < 2.0
+    assert child_pid_path.exists(), "the descendant must start before timeout cleanup"
+    child_pid = int(child_pid_path.read_text(encoding="ascii"))
+    deadline = time.monotonic() + 1.0
+    while _process_is_running(child_pid) and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not _process_is_running(child_pid)
 
 
 def initial_envelope(revision: str = SHA_A) -> MessageEnvelope:
@@ -54,6 +143,7 @@ def initial_envelope(revision: str = SHA_A) -> MessageEnvelope:
             },
             "ref": "refs/heads/main",
             "revision_sha": revision,
+            "installation_id": "777",
         },
     )
 
@@ -71,6 +161,7 @@ def push_envelope(
             "provider": "github",
             "repo": {"provider_repo_id": "583231", "full_name": "acme/widgets"},
             "ref": "refs/heads/main",
+            "installation_id": "777",
             "payload": {"before": before, "after": revision, "forced": forced},
         },
     )
@@ -237,7 +328,34 @@ def test_job_parser_uses_only_server_resolved_envelope_org() -> None:
 
     assert job.org_id == "org-server-resolved"
     assert job.repository.provider_repo_id == "583231"
+    assert job.repository.installation_id == 777
     assert not hasattr(job.repository, "repo_id")
+
+
+def test_push_job_parser_preserves_github_installation_id() -> None:
+    job = parse_ingestion_envelope(push_envelope())
+
+    assert job.repository.installation_id == 777
+
+
+@pytest.mark.parametrize(
+    "installation_id",
+    [None, "", "0", "-1", "not-a-number", 777, str(9_007_199_254_740_992)],
+)
+@pytest.mark.parametrize("envelope_factory", [initial_envelope, push_envelope])
+def test_github_job_parser_rejects_missing_or_invalid_installation_id(
+    installation_id: object,
+    envelope_factory: object,
+) -> None:
+    assert callable(envelope_factory)
+    envelope = envelope_factory()
+    if installation_id is None:
+        envelope.payload.pop("installation_id")
+    else:
+        envelope.payload["installation_id"] = installation_id
+
+    with pytest.raises(InvalidIngestionJobError, match="installation_id"):
+        parse_ingestion_envelope(envelope)
 
 
 def test_projection_stamps_scope_and_resolves_structural_edges() -> None:
@@ -524,3 +642,50 @@ async def test_real_git_snapshot_is_destroyed_after_parse(tmp_path: Path) -> Non
         assert [function.name for function in parsed.functions] == ["app"]
 
     assert not scratch.exists()
+
+
+def test_git_runner_works_on_a_selector_loop_without_asyncio_subprocess_support(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Regression: psycopg requires this loop on Windows, where subprocess APIs fail."""
+
+    repository = tmp_path / "selector-loop-repository"
+    subprocess.run(["git", "init", "--quiet", str(repository)], check=True)
+
+    async def unsupported_subprocess(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Git must not use asyncio subprocess APIs")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", unsupported_subprocess)
+
+    async def inspect_repository() -> bytes:
+        return await _GitRunner(repository).run(
+            "rev-parse", "--is-inside-work-tree"
+        )
+
+    with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+        result = runner.run(inspect_repository())
+
+    assert result.strip() == b"true"
+
+
+def test_git_runner_rejects_stdout_above_its_capture_limit(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "bounded-output-repository"
+    subprocess.run(["git", "init", "--quiet", str(repository)], check=True)
+    monkeypatch.setattr(
+        "sayre_workers.ingestion.repository._GIT_STDOUT_LIMIT_BYTES",
+        4,
+    )
+
+    async def read_repository_path() -> bytes:
+        return await _GitRunner(repository).run("rev-parse", "--show-toplevel")
+
+    with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+        with pytest.raises(
+            GitCommandError,
+            match="git command output exceeded the safe limit",
+        ):
+            runner.run(read_repository_path())

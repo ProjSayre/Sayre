@@ -8,6 +8,7 @@ import { githubInstallRouter } from './routes/githubInstall';
 import { providerSettingsRouter } from './routes/providerSettings';
 import { providerJobStateRouter } from './routes/providerJobState';
 import { nodeOverlayRouter } from './routes/nodeOverlay';
+import { repositoryCatalogRouter } from './routes/repositoryCatalog';
 import { errorHandler } from './http/express';
 
 export function createApp(): Express {
@@ -37,6 +38,7 @@ export function createApp(): Express {
   app.use(githubInstallRouter);
   app.use(providerSettingsRouter);
   app.use(nodeOverlayRouter);
+  app.use(repositoryCatalogRouter);
   app.use(errorHandler);
   return app;
 }

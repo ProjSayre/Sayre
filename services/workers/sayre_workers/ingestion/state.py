@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any, Protocol
@@ -13,13 +14,47 @@ from sayre_workers.db import org_scoped_connection
 
 from .models import RefState, RepositoryLocator
 
+_GITHUB_FULL_NAME = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
 
 class UnknownRepositoryError(LookupError):
     pass
 
 
+class RepositoryCredentialBindingError(PermissionError):
+    """The queue repository identity is not bound to this tenant installation."""
+
+
 class RevisionConflictError(RuntimeError):
     pass
+
+
+def _github_binding_matches(
+    repository: RepositoryLocator,
+    row: dict[str, Any],
+) -> bool:
+    """Compare only canonical identities; callers emit one sanitized failure."""
+
+    if (
+        repository.installation_id is None
+        or not _GITHUB_FULL_NAME.fullmatch(repository.full_name)
+        or not isinstance(row.get("name"), str)
+        or row["name"].casefold() != repository.full_name.casefold()
+        or row.get("installation_id") != repository.installation_id
+        or row.get("suspended_at") is not None
+        or row.get("revoked_at") is not None
+    ):
+        return False
+
+    account_login = row.get("account_login")
+    account_type = row.get("account_type")
+    owner, _repository_name = repository.full_name.split("/", 1)
+    return (
+        isinstance(account_login, str)
+        and account_login.casefold() == owner.casefold()
+        and isinstance(account_type, str)
+        and account_type.casefold() in {"organization", "user"}
+    )
 
 
 class LockedRef(Protocol):
@@ -111,17 +146,61 @@ class PostgresRefStateStore:
         self, org_id: str, repository: RepositoryLocator, ref_name: str
     ) -> AsyncIterator[_PostgresLockedRef]:
         async with org_scoped_connection(self._dsn, org_id) as connection:
-            repository_cursor = await connection.execute(
-                """
-                SELECT id::text
-                FROM repositories
-                WHERE org_id = %s AND provider = %s AND external_id = %s
-                """,
-                (org_id, repository.provider, repository.provider_repo_id),
-            )
+            if repository.provider == "github":
+                # Resolve the complete credential binding under the same
+                # tenant-scoped/RLS-enforced transaction that owns the ref
+                # lock. A queue tuple can authorize a GitHub token only when:
+                #   * the provider id and full name identify this org's row;
+                #   * the installation id is visible in this same org;
+                #   * the installation is active; and
+                #   * its GitHub account owns the repository namespace.
+                #
+                # This happens before RepositorySource.checkout(), and
+                # therefore before mint_token(), so a forged/misrouted queue
+                # delivery never receives or uses an installation credential.
+                repository_cursor = await connection.execute(
+                    """
+                    SELECT
+                        repository.id::text,
+                        repository.name,
+                        installation.installation_id,
+                        installation.account_login,
+                        installation.account_type,
+                        installation.suspended_at,
+                        installation.revoked_at
+                    FROM repositories AS repository
+                    LEFT JOIN github_app_installations AS installation
+                      ON installation.org_id = repository.org_id
+                     AND installation.installation_id = %s
+                    WHERE repository.org_id = %s
+                      AND repository.provider = %s
+                      AND repository.external_id = %s
+                    """,
+                    (
+                        repository.installation_id,
+                        org_id,
+                        repository.provider,
+                        repository.provider_repo_id,
+                    ),
+                )
+            else:
+                repository_cursor = await connection.execute(
+                    """
+                    SELECT id::text, name
+                    FROM repositories
+                    WHERE org_id = %s AND provider = %s AND external_id = %s
+                    """,
+                    (org_id, repository.provider, repository.provider_repo_id),
+                )
             repository_row = await repository_cursor.fetchone()
             if repository_row is None:
                 raise UnknownRepositoryError("repository is not registered for this organization")
+            if repository.provider == "github" and not _github_binding_matches(
+                repository, repository_row
+            ):
+                raise RepositoryCredentialBindingError(
+                    "repository credentials are not bound to this organization"
+                )
             repository_id = str(repository_row["id"])
             # SELECT ... FOR UPDATE cannot lock a ref row that does not exist yet.
             # Serialize the whole graph-write/accept sequence for this scope so

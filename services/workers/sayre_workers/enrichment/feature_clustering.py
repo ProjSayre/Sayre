@@ -11,6 +11,8 @@ import hashlib
 import json
 import re
 import unicodedata
+from collections.abc import Mapping
+from typing import Any
 
 from sayre_workers.ingestion.projection import stable_uid
 
@@ -27,6 +29,7 @@ from .providers import GenerationRequest
 _FEATURE_PROPERTIES = frozenset({"name", "description", "team"})
 _FEATURE_RELATIONSHIPS = frozenset({"PART_OF"})
 _KEY_LIMIT = 96
+FEATURE_CLUSTERING_MAX_OUTPUT_TOKENS = 8_192
 
 FEATURE_CLUSTERING_SYSTEM_PROMPT = """\
 You identify product capabilities implemented by files in one repository ref.
@@ -36,7 +39,8 @@ Return only graph primitives accepted by the supplied Graphify schema:
 - Feature nodes only, with exact properties: name, description, team.
 - Give each Feature a short canonical lower-kebab-case local id derived from the
   capability, not from a folder name or revision.
-- Link each member File to its Feature with File -> Feature PART_OF.
+- Link each member File to its Feature with File -> Feature PART_OF. The edge
+  source must be one exact supplied File path; never shorten, rename, or invent it.
 - A feature may span API, shared-library, and frontend folders. Folder proximity is
   evidence, not a clustering boundary.
 - Do not invent Files, modify structural nodes/edges, emit prose, or introduce graph
@@ -82,8 +86,74 @@ def build_feature_clustering_request(context: EnrichmentContext) -> GenerationRe
     return GenerationRequest(
         system=FEATURE_CLUSTERING_SYSTEM_PROMPT,
         input=json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
-        max_output_tokens=2048,
+        # A real repository can require hundreds of File -> Feature edges.
+        # Keep enough room for the schema-constrained projection to close its
+        # JSON document instead of accepting only toy-repository output sizes.
+        max_output_tokens=FEATURE_CLUSTERING_MAX_OUTPUT_TOKENS,
     )
+
+
+def build_feature_clustering_schema(
+    context: EnrichmentContext,
+) -> Mapping[str, Any]:
+    """Constrain File endpoints to paths that came from the authorized graph.
+
+    The generic Graphify schema cannot express the default lane's stricter
+    File -> Feature contract. Supplying a path enum makes capable structured
+    providers choose an exact in-context source instead of producing a
+    plausible-but-nonexistent path. Graphify and the canonicalizer still
+    validate every endpoint again before any write.
+    """
+
+    file_paths = [
+        file.path
+        for file in sorted(context.files, key=lambda item: (item.path, item.uid))
+    ]
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["nodes", "edges"],
+        "properties": {
+            "nodes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["id", "label", "properties"],
+                    "properties": {
+                        "id": {"type": "string", "minLength": 1},
+                        "label": {"const": "Feature"},
+                        "properties": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["name", "description", "team"],
+                            "properties": {
+                                "name": {"type": "string", "minLength": 1},
+                                "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                                "team": {"type": ["string", "null"]},
+                            },
+                        },
+                    },
+                },
+            },
+            "edges": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["source", "target", "relationship"],
+                    "properties": {
+                        "source": {"type": "string", "enum": file_paths},
+                        "target": {"type": "string", "minLength": 1},
+                        "relationship": {"const": "PART_OF"},
+                    },
+                },
+            },
+        },
+    }
 
 
 def _feature_properties(properties: dict[str, object]) -> tuple[str, str, str | None]:
