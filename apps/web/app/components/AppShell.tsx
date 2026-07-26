@@ -22,6 +22,12 @@ function productTreeHref(repoId: string | null, refName: string): string {
   return `/product?${query.toString()}`;
 }
 
+function onboardingTreeHref(repoId: string | null, refName: string): string {
+  if (repoId === null) return '/onboarding';
+  const query = new URLSearchParams({ repoId, ref: refName });
+  return `/onboarding?${query.toString()}`;
+}
+
 export function AppShell({
   repoId,
   providerStateRepositoryId,
@@ -56,10 +62,14 @@ export function AppShell({
           <p className="sidebar-label">Graph views</p>
           <nav className="nav-list" aria-label="Graph views">
             {views.map((view) => (
-              view.label === 'Product' ? (
+              view.label === 'Product' || view.label === 'Onboarding' ? (
                 <Link
                   className="nav-item"
-                  href={productTreeHref(repoId, refName)}
+                  href={
+                    view.label === 'Product'
+                      ? productTreeHref(repoId, refName)
+                      : onboardingTreeHref(repoId, refName)
+                  }
                   key={view.label}
                 >
                   <span className="nav-icon">{view.icon}</span>

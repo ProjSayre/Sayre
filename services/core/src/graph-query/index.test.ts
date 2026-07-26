@@ -8,6 +8,8 @@ import {
   GET_NODE_OVERLAY_CYPHER,
   GET_NODES_IN_VIEWPORT_CYPHER,
   GET_STRUCTURAL_EDGES_CYPHER,
+  GET_ONBOARDING_CANVAS_NODES_CYPHER,
+  GET_ONBOARDING_STEPS_CYPHER,
   RESOLVE_RETRIEVAL_ANCHORS_CYPHER,
   RbacGraphQueryService,
   TRAVERSE_RETRIEVAL_CONTEXT_CYPHER,
@@ -216,6 +218,10 @@ const publicScope: ReadScope = {
 };
 const privateScope: ReadScope = {
   allows: [{ repoId: REPO_ID, branch: 'refs/heads/main', pathPrefix: 'src/private' }],
+  denies: [],
+};
+const repositoryScope: ReadScope = {
+  allows: [{ repoId: REPO_ID, branch: 'refs/heads/main', pathPrefix: null }],
   denies: [],
 };
 
@@ -895,5 +901,142 @@ describe('RbacGraphQueryService', () => {
     );
     expect(GET_NODE_OVERLAY_CYPHER).toContain('LIMIT 512');
     expect(GET_NODE_OVERLAY_CYPHER).not.toContain(ORG_ID);
+  });
+
+  it('returns ordered EnvStep metadata beside Folder/File-only canvas nodes', async () => {
+    const revision = 'a'.repeat(40);
+    const executor = new QueueExecutor([
+      [
+        record({
+          root_org_id: ORG_ID,
+          root_repo_id: REPO_ID,
+          root_ref_name: 'refs/heads/main',
+          root_revision_sha: revision,
+          step_org_id: ORG_ID,
+          step_repo_id: REPO_ID,
+          step_ref_name: 'refs/heads/main',
+          step_revision_sha: revision,
+          step_id: 'step-1',
+          step_sequence: 0,
+          step_command: 'printf ready',
+          prerequisite_ids: [],
+        }),
+      ],
+      [
+        record({
+          root_revision_sha: revision,
+          id: 'root',
+          label: 'Folder',
+          name: 'fixture',
+          path: '',
+          org_id: ORG_ID,
+          repo_id: REPO_ID,
+          ref_name: 'refs/heads/main',
+          revision_sha: revision,
+          parent_id: null,
+          parent_org_id: null,
+          parent_repo_id: null,
+          parent_ref_name: null,
+          parent_path: null,
+          parent_revision_sha: null,
+        }),
+        record({
+          root_revision_sha: revision,
+          id: 'readme',
+          label: 'File',
+          name: 'README.md',
+          path: 'README.md',
+          org_id: ORG_ID,
+          repo_id: REPO_ID,
+          ref_name: 'refs/heads/main',
+          revision_sha: revision,
+          parent_id: 'root',
+          parent_org_id: ORG_ID,
+          parent_repo_id: REPO_ID,
+          parent_ref_name: 'refs/heads/main',
+          parent_path: '',
+          parent_revision_sha: revision,
+        }),
+      ],
+    ]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: repositoryScope }),
+    );
+
+    await expect(
+      service.getOnboardingProjection(
+        REPO_ID,
+        'refs/heads/main',
+        user('alice'),
+      ),
+    ).resolves.toEqual({
+      revisionSha: revision,
+      steps: [
+        {
+          id: 'step-1',
+          sequence: 0,
+          command: 'printf ready',
+          requires: [],
+        },
+      ],
+      nodes: [
+        {
+          id: 'root',
+          label: 'Folder',
+          name: 'fixture',
+          path: '',
+          parentId: null,
+        },
+        {
+          id: 'readme',
+          label: 'File',
+          name: 'README.md',
+          path: 'README.md',
+          parentId: 'root',
+        },
+      ],
+    });
+    expect(executor.run).toHaveBeenNthCalledWith(
+      1,
+      ORG_ID,
+      'traversal',
+      GET_ONBOARDING_STEPS_CYPHER,
+      expect.objectContaining({
+        org_id: ORG_ID,
+        repo_id: REPO_ID,
+        ref_name: 'refs/heads/main',
+      }),
+    );
+    expect(executor.run).toHaveBeenNthCalledWith(
+      2,
+      ORG_ID,
+      'traversal',
+      GET_ONBOARDING_CANVAS_NODES_CYPHER,
+      expect.objectContaining({ revision_sha: revision }),
+    );
+    expect(GET_ONBOARDING_STEPS_CYPHER).toContain(
+      'OPTIONAL MATCH (step:EnvStep {\n  org_id: $org_id',
+    );
+    expect(GET_ONBOARDING_CANVAS_NODES_CYPHER).toContain(
+      '(node:Folder OR node:File)',
+    );
+  });
+
+  it('denies repo-wide onboarding commands to a path-only permission scope', async () => {
+    const executor = new QueueExecutor([]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(
+      service.getOnboardingProjection(
+        REPO_ID,
+        'refs/heads/main',
+        user('alice'),
+      ),
+    ).resolves.toBeNull();
+    expect(executor.run).not.toHaveBeenCalled();
   });
 });

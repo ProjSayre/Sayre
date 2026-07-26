@@ -65,7 +65,11 @@ projection so structural nodes from abandoned history cannot survive.
   then publishes `onboarding.generate` to `enrichment-onboarding-priority` before bounded tenant
   chunks enter `embedding-upserts`. Successful onboarding completion records
   `ttfc_cold_start_to_onboarding_ready_ms` by `org_id`/`repo_id`; the priority lane lets onboarding
-  finish ahead of general enrichment. The separate
+  finish ahead of general enrichment. Its schema-constrained generation writes only ordered
+  EnvStep/REQUIRES primitives and atomically replaces them only while the requested revision is
+  still current. Executable steps are later resolved from that authorized graph projection and run
+  in a digest-pinned, networkless, read-only container with no host mounts; client-supplied commands
+  never enter the runner. The separate
   `EmbeddingProvider` writes 1024-dimensional cosine vectors with provider/model/dimension metadata.
   The scratch checkout is destroyed and never persisted.
 - **Steady-state push (15-second structural target):** the webhook is validated, changed files are

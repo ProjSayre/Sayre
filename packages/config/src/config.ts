@@ -33,6 +33,18 @@ export const CONFIG_NAMES = [
   'NEO4J_URI',
   'NEO4J_USER',
   'MODEL_PROVIDER_ENDPOINT_CATALOG',
+  'ONBOARDING_SANDBOX_RUNTIME',
+  'ONBOARDING_SANDBOX_IMAGE',
+  'ONBOARDING_SANDBOX_TIMEOUT_MS',
+  'ONBOARDING_SANDBOX_MAX_OUTPUT_BYTES',
+  'ONBOARDING_SANDBOX_INTEGRATION_IMAGE',
+  'PATH',
+  'PATHEXT',
+  'SystemRoot',
+  'WINDIR',
+  'DOCKER_HOST',
+  'DOCKER_CONTEXT',
+  'DOCKER_CONFIG',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -75,6 +87,11 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // Non-secret W3-09 allowlist. Each production endpoint must be explicitly
   // provisioned for an org; an empty catalog makes self-hosted selection fail closed.
   MODEL_PROVIDER_ENDPOINT_CATALOG: '[]',
+  ONBOARDING_SANDBOX_RUNTIME: 'docker',
+  // ONBOARDING_SANDBOX_IMAGE deliberately has no default. Operators must pin
+  // an approved image by sha256 digest before executable onboarding is enabled.
+  ONBOARDING_SANDBOX_TIMEOUT_MS: '30000',
+  ONBOARDING_SANDBOX_MAX_OUTPUT_BYTES: '32768',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);

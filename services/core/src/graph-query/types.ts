@@ -90,6 +90,23 @@ export interface FeatureCluster {
   members: FeatureMember[];
 }
 
+/**
+ * EnvStep stays graph-internal. This metadata drives the ordered workflow
+ * sidebar; it is never exposed as a canvas-renderable node.
+ */
+export interface OnboardingGraphStep {
+  id: string;
+  sequence: number;
+  command: string;
+  requires: string[];
+}
+
+export interface OnboardingGraphProjection {
+  revisionSha: string;
+  nodes: GraphNode[];
+  steps: OnboardingGraphStep[];
+}
+
 // Every method receives the complete, server-resolved AuthContext. This keeps
 // REST, realtime, and future MCP callers on one authorization path and prevents
 // a caller from supplying its own tenant or subject identity.
@@ -225,4 +242,13 @@ export interface StyleRuleGraphQueryService {
     nodeId: string,
     ctx: AuthContext,
   ): Promise<ResolvedStyleRules | null>;
+}
+
+/** Narrow Onboarding Tree contract shared by REST and sandbox execution. */
+export interface OnboardingGraphQueryService {
+  getOnboardingProjection(
+    repoId: string,
+    refName: string,
+    ctx: AuthContext,
+  ): Promise<OnboardingGraphProjection | null>;
 }

@@ -28,6 +28,9 @@ import type {
   OverlayFeature,
   OverlayRecentChange,
   OverlayTicket,
+  OnboardingGraphProjection,
+  OnboardingGraphQueryService,
+  OnboardingGraphStep,
   ResolvedStyleRules,
   ResolvedStyleValue,
   StyleRuleGraphQueryService,
@@ -623,6 +626,122 @@ RETURN target.uid AS target_id,
        reference.org_id AS reference_org_id
 ORDER BY commit_timestamp DESC, feature_name, ticket_external_id
 LIMIT 512
+`;
+
+export const GET_ONBOARDING_STEPS_CYPHER = `
+MATCH (root:Folder {
+  org_id: $org_id,
+  repo_id: $repo_id,
+  ref_name: $ref_name,
+  path: ''
+})
+WHERE root.revision_sha IS NOT NULL
+  AND root.uid IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = root.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = root.ref_name) AND
+    rule.path_prefix IS NULL)
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = root.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = root.ref_name) AND
+    rule.path_prefix IS NULL)
+OPTIONAL MATCH (step:EnvStep {
+  org_id: $org_id,
+  repo_id: $repo_id,
+  ref_name: $ref_name,
+  revision_sha: root.revision_sha
+})
+WHERE step.uid IS NOT NULL
+  AND step.sequence IS NOT NULL
+  AND step.command IS NOT NULL
+OPTIONAL MATCH (step)-[requires:REQUIRES]->(prerequisite:EnvStep)
+WHERE requires.org_id = $org_id
+  AND prerequisite.org_id = $org_id
+  AND prerequisite.repo_id = $repo_id
+  AND prerequisite.ref_name = $ref_name
+  AND prerequisite.revision_sha = root.revision_sha
+RETURN root.org_id AS root_org_id,
+       root.repo_id AS root_repo_id,
+       root.ref_name AS root_ref_name,
+       root.revision_sha AS root_revision_sha,
+       step.org_id AS step_org_id,
+       step.repo_id AS step_repo_id,
+       step.ref_name AS step_ref_name,
+       step.revision_sha AS step_revision_sha,
+       step.uid AS step_id,
+       step.sequence AS step_sequence,
+       step.command AS step_command,
+       collect(DISTINCT prerequisite.uid) AS prerequisite_ids
+ORDER BY step.sequence, step.uid
+`;
+
+export const GET_ONBOARDING_CANVAS_NODES_CYPHER = `
+MATCH (root:Folder {
+  org_id: $org_id,
+  repo_id: $repo_id,
+  ref_name: $ref_name,
+  path: ''
+})
+WHERE root.revision_sha = $revision_sha
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = root.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = root.ref_name) AND
+    rule.path_prefix IS NULL)
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = root.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = root.ref_name) AND
+    rule.path_prefix IS NULL)
+MATCH (node)
+WHERE (node:Folder OR node:File)
+  AND node.org_id = $org_id
+  AND node.repo_id = $repo_id
+  AND node.ref_name = $ref_name
+  AND node.revision_sha = root.revision_sha
+  AND node.uid IS NOT NULL
+  AND node.name IS NOT NULL
+  AND node.path IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = node.ref_name) AND
+    (rule.path_prefix IS NULL OR node.path = rule.path_prefix OR
+      node.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = node.ref_name) AND
+    (rule.path_prefix IS NULL OR node.path = rule.path_prefix OR
+      node.path STARTS WITH rule.path_prefix + '/'))
+OPTIONAL MATCH (parent:Folder)-[parent_edge:CONTAINS]->(node)
+WHERE parent.org_id = $org_id
+  AND parent.repo_id = $repo_id
+  AND parent.ref_name = $ref_name
+  AND parent.revision_sha = root.revision_sha
+  AND parent_edge.org_id = $org_id
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = parent.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = parent.ref_name) AND
+    (rule.path_prefix IS NULL OR parent.path = rule.path_prefix OR
+      parent.path STARTS WITH rule.path_prefix + '/'))
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = parent.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = parent.ref_name) AND
+    (rule.path_prefix IS NULL OR parent.path = rule.path_prefix OR
+      parent.path STARTS WITH rule.path_prefix + '/'))
+RETURN root.revision_sha AS root_revision_sha,
+       node.uid AS id,
+       CASE WHEN node:Folder THEN 'Folder' ELSE 'File' END AS label,
+       node.name AS name,
+       node.path AS path,
+       node.org_id AS org_id,
+       node.repo_id AS repo_id,
+       node.ref_name AS ref_name,
+       node.revision_sha AS revision_sha,
+       parent.uid AS parent_id,
+       parent.org_id AS parent_org_id,
+       parent.repo_id AS parent_repo_id,
+       parent.ref_name AS parent_ref_name,
+       parent.path AS parent_path,
+       parent.revision_sha AS parent_revision_sha
+ORDER BY node.path, node.uid
 `;
 
 function valueAsString(record: GraphReadRecord, key: string): string | null {
@@ -1350,6 +1469,145 @@ function distinctNodeOverlay(
   };
 }
 
+function valueAsStringArray(
+  record: GraphReadRecord,
+  key: string,
+): string[] | null {
+  const value = record.get(key);
+  if (!Array.isArray(value)) return null;
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string' || !item) return null;
+    result.push(item);
+  }
+  return [...new Set(result)].sort();
+}
+
+function mapOnboardingSteps(
+  records: readonly GraphReadRecord[],
+  expected: { orgId: string; repoId: string; refName: string },
+): Pick<OnboardingGraphProjection, 'revisionSha' | 'steps'> | null {
+  let revisionSha: string | null = null;
+  const steps = new Map<string, OnboardingGraphStep>();
+  const sequences = new Set<number>();
+
+  for (const record of records) {
+    if (
+      valueAsString(record, 'root_org_id') !== expected.orgId ||
+      valueAsString(record, 'root_repo_id') !== expected.repoId ||
+      valueAsString(record, 'root_ref_name') !== expected.refName
+    ) {
+      return null;
+    }
+    const rowRevision = valueAsString(record, 'root_revision_sha');
+    if (!rowRevision || (revisionSha !== null && revisionSha !== rowRevision)) {
+      return null;
+    }
+    revisionSha = rowRevision;
+
+    const id = valueAsString(record, 'step_id');
+    if (id === null) continue;
+    const sequence = valueAsSafeInteger(record, 'step_sequence');
+    const command = valueAsString(record, 'step_command');
+    const requires = valueAsStringArray(record, 'prerequisite_ids');
+    if (
+      valueAsString(record, 'step_org_id') !== expected.orgId ||
+      valueAsString(record, 'step_repo_id') !== expected.repoId ||
+      valueAsString(record, 'step_ref_name') !== expected.refName ||
+      valueAsString(record, 'step_revision_sha') !== rowRevision ||
+      sequence === null ||
+      sequence < 0 ||
+      sequence >= 24 ||
+      !command ||
+      command.length > 4_096 ||
+      command.includes('\0') ||
+      requires === null ||
+      steps.has(id) ||
+      sequences.has(sequence)
+    ) {
+      return null;
+    }
+    sequences.add(sequence);
+    steps.set(id, { id, sequence, command, requires });
+  }
+
+  if (revisionSha === null) return null;
+  const ordered = [...steps.values()].sort(
+    (left, right) =>
+      left.sequence - right.sequence || left.id.localeCompare(right.id),
+  );
+  if (ordered.some((step, index) => step.sequence !== index)) return null;
+  const byId = new Map(ordered.map((step) => [step.id, step]));
+  for (const step of ordered) {
+    if (
+      step.requires.some((requiredId) => {
+        const required = byId.get(requiredId);
+        return required === undefined || required.sequence >= step.sequence;
+      })
+    ) {
+      return null;
+    }
+  }
+  return { revisionSha, steps: ordered };
+}
+
+function valueAsPath(record: GraphReadRecord, key: string): string | null {
+  const value = record.get(key);
+  return typeof value === 'string' ? value : null;
+}
+
+function mapOnboardingNode(
+  record: GraphReadRecord,
+  scope: ReadScope,
+  expected: {
+    orgId: string;
+    repoId: string;
+    refName: string;
+    revisionSha: string;
+  },
+): GraphNode | null {
+  const id = valueAsString(record, 'id');
+  const label = valueAsString(record, 'label');
+  const name = valueAsString(record, 'name');
+  const path = valueAsPath(record, 'path');
+  if (
+    !id ||
+    !isCanvasLabel(label) ||
+    !name ||
+    path === null ||
+    valueAsString(record, 'org_id') !== expected.orgId ||
+    valueAsString(record, 'repo_id') !== expected.repoId ||
+    valueAsString(record, 'ref_name') !== expected.refName ||
+    valueAsString(record, 'revision_sha') !== expected.revisionSha ||
+    valueAsString(record, 'root_revision_sha') !== expected.revisionSha ||
+    !canReadResource(scope, {
+      repoId: expected.repoId,
+      refName: expected.refName,
+      path,
+    })
+  ) {
+    return null;
+  }
+
+  const rawParentId = valueAsString(record, 'parent_id');
+  const parentPath = valueAsPath(record, 'parent_path');
+  const parentId =
+    rawParentId &&
+    parentPath !== null &&
+    valueAsString(record, 'parent_org_id') === expected.orgId &&
+    valueAsString(record, 'parent_repo_id') === expected.repoId &&
+    valueAsString(record, 'parent_ref_name') === expected.refName &&
+    valueAsString(record, 'parent_revision_sha') === expected.revisionSha &&
+    canReadResource(scope, {
+      repoId: expected.repoId,
+      refName: expected.refName,
+      path: parentPath,
+    })
+      ? rawParentId
+      : null;
+  return { id, label, name, path, parentId };
+}
+
 function isStructuralEdgeType(value: string | null): value is StructuralEdgeType {
   return value === 'CONTAINS' || value === 'IMPORTS';
 }
@@ -1366,7 +1624,8 @@ export class RbacGraphQueryService
     GraphQueryService,
     RetrievalGraphQueryService,
     StyleRuleGraphQueryService,
-    NodeOverlayGraphQueryService
+    NodeOverlayGraphQueryService,
+    OnboardingGraphQueryService
 {
   constructor(
     private readonly graph: GraphReadExecutor,
@@ -1683,13 +1942,79 @@ export class RbacGraphQueryService
       scope,
     );
   }
+
+  async getOnboardingProjection(
+    repoId: string,
+    refName: string,
+    ctx: AuthContext,
+  ): Promise<OnboardingGraphProjection | null> {
+    const normalizedRepoId = repoId.trim();
+    const normalizedRefName = refName.trim();
+    if (!normalizedRepoId || !normalizedRefName) return null;
+    const scope = await this.permissions.getReadScope(ctx, normalizedRepoId);
+    if (scope.allows.length === 0) return null;
+    if (
+      !canReadResource(scope, {
+        repoId: normalizedRepoId,
+        refName: normalizedRefName,
+        path: '',
+      })
+    ) {
+      return null;
+    }
+
+    const parameters = {
+      org_id: ctx.orgId,
+      repo_id: normalizedRepoId,
+      ref_name: normalizedRefName,
+      ...scopeParameters(scope),
+    };
+    const stepResult = await this.graph.run(
+      ctx.orgId,
+      'traversal',
+      GET_ONBOARDING_STEPS_CYPHER,
+      parameters,
+    );
+    const workflow = mapOnboardingSteps(stepResult.records, {
+      orgId: ctx.orgId,
+      repoId: normalizedRepoId,
+      refName: normalizedRefName,
+    });
+    if (workflow === null) return null;
+
+    const nodeResult = await this.graph.run(
+      ctx.orgId,
+      'traversal',
+      GET_ONBOARDING_CANVAS_NODES_CYPHER,
+      { ...parameters, revision_sha: workflow.revisionSha },
+    );
+    const expected = {
+      orgId: ctx.orgId,
+      repoId: normalizedRepoId,
+      refName: normalizedRefName,
+      revisionSha: workflow.revisionSha,
+    };
+    const nodes = new Map<string, GraphNode>();
+    for (const record of nodeResult.records) {
+      const node = mapOnboardingNode(record, scope, expected);
+      if (node) nodes.set(node.id, node);
+    }
+    if (![...nodes.values()].some((node) => node.path === '')) return null;
+    return {
+      ...workflow,
+      nodes: [...nodes.values()].sort(
+        (left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id),
+      ),
+    };
+  }
 }
 
 export const graphQueryService:
   GraphQueryService &
   RetrievalGraphQueryService &
   StyleRuleGraphQueryService &
-  NodeOverlayGraphQueryService =
+  NodeOverlayGraphQueryService &
+  OnboardingGraphQueryService =
   new RbacGraphQueryService(
     new LazyGraphReadExecutor(),
     new PostgresPermissionStore(),

@@ -16,6 +16,7 @@ from opentelemetry.util._once import Once
 from messaging.envelope import MessageEnvelope
 from messaging import sqs_client
 from messaging.sqs_client import ENRICHMENT_DEFAULT_QUEUE, ENRICHMENT_PRIORITY_QUEUE
+from sayre_workers.enrichment.models import EnrichmentResult
 from sayre_workers.enrichment.onboarding import OnboardingPriorityHandler
 from sayre_workers.ingestion import events as ingestion_events
 from sayre_workers.ingestion.events import MessagingPublisher, graph_scope_key
@@ -142,6 +143,30 @@ def test_failed_generation_does_not_emit_a_false_ready_metric() -> None:
 
     with pytest.raises(RuntimeError, match="generation failed"):
         OnboardingPriorityHandler(fail, clock_ms=lambda: 1_500)(_onboarding_envelope())
+
+    assert reader.get_metrics_data() is None
+
+
+@pytest.mark.parametrize("status", ["degraded", "skipped_no_context", "skipped_stale"])
+def test_non_written_generation_does_not_emit_a_false_ready_metric(status: str) -> None:
+    reader = _install_metrics_backend()
+    scope = GraphScope(
+        org_id="org-server-resolved",
+        repository_id="repo-server-resolved",
+        ref_name="refs/heads/main",
+        revision_sha=SHA_A,
+    )
+    handler = OnboardingPriorityHandler(
+        lambda _job: EnrichmentResult(
+            status=status,  # type: ignore[arg-type]
+            scope=scope,
+            node_count=0,
+            edge_count=0,
+        ),
+        clock_ms=lambda: 1_500,
+    )
+
+    handler(_onboarding_envelope())
 
     assert reader.get_metrics_data() is None
 

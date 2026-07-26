@@ -15,6 +15,12 @@ from .protocol import (
 
 
 def _minimal_schema_value(schema: Mapping[str, Any]) -> Any:
+    alternatives = schema.get("oneOf")
+    if isinstance(alternatives, list) and alternatives:
+        first = alternatives[0]
+        if isinstance(first, Mapping):
+            return _minimal_schema_value(first)
+
     enum = schema.get("enum")
     if isinstance(enum, list) and enum:
         return enum[0]
@@ -33,6 +39,14 @@ def _minimal_schema_value(schema: Mapping[str, Any]) -> Any:
             if name in properties and isinstance(properties[name], Mapping)
         }
     if schema_type == "array":
+        minimum = schema.get("minItems", 0)
+        items = schema.get("items")
+        if (
+            isinstance(minimum, int)
+            and minimum > 0
+            and isinstance(items, Mapping)
+        ):
+            return [_minimal_schema_value(items) for _ in range(minimum)]
         return []
     if schema_type == "integer":
         return int(schema.get("minimum", 0))
