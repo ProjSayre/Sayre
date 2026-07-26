@@ -88,12 +88,13 @@ export function TechnicalTreeCanvas({
   onRequestFullGraph,
 }: TechnicalTreeCanvasProps) {
   const flow = useReactFlow();
-  const [compactLayout, setCompactLayout] = useState(false);
+  const [portraitViewport, setPortraitViewport] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const fitPadding = portraitViewport ? 0.42 : 0.1;
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 760px)');
-    const update = () => setCompactLayout(media.matches);
+    const update = () => setPortraitViewport(media.matches);
     update();
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
@@ -111,27 +112,27 @@ export function TechnicalTreeCanvas({
   // it was and slides under the drawer.
   useEffect(() => {
     const timer = setTimeout(
-      () => flow.fitView({ padding: 0.1, maxZoom: 1 }),
+      () => flow.fitView({ padding: fitPadding, maxZoom: 1 }),
       80,
     );
     return () => clearTimeout(timer);
-  }, [compactLayout, fitKey, flow]);
+  }, [fitKey, fitPadding, flow]);
 
   useEffect(() => {
     if (renderer !== 'react-flow' || command === null) return;
     if (command.type === 'zoom-in') void flow.zoomIn();
     if (command.type === 'zoom-out') void flow.zoomOut();
     if (command.type === 'fit') {
-      void flow.fitView({ padding: 0.1, maxZoom: 1 });
+      void flow.fitView({ padding: fitPadding, maxZoom: 1 });
     }
-  }, [command, flow, renderer]);
+  }, [command, fitPadding, flow, renderer]);
 
   useEffect(() => {
     if (renderer !== 'react-flow') return undefined;
     const timer = window.setTimeout(() => {
       if (cameraFocusId === null) {
         void flow.fitView({
-          padding: 0.1,
+          padding: fitPadding,
           maxZoom: 1,
           duration: reducedMotion ? 0 : 220,
         });
@@ -153,6 +154,7 @@ export function TechnicalTreeCanvas({
   }, [
     fitKey,
     cameraFocusId,
+    fitPadding,
     flow,
     layoutKey,
     reducedMotion,
@@ -160,10 +162,15 @@ export function TechnicalTreeCanvas({
   ]);
 
   const { nodes, edges } = useMemo(() => {
-    const positions = layoutTree(
-      graphNodes,
-      compactLayout ? 'left-right' : 'top-down',
-    );
+    const basePositions = layoutTree(graphNodes);
+    const positions = portraitViewport
+      ? new Map(
+          [...basePositions].map(([id, point]) => [
+            id,
+            { x: point.x * 0.86, y: point.y },
+          ]),
+        )
+      : basePositions;
     const ancestry = ancestryOf(graphNodes, selectedId);
     const query = search.trim().toLowerCase();
 
@@ -251,13 +258,13 @@ export function TechnicalTreeCanvas({
 
     return { nodes: flowNodes, edges: flowEdges };
   }, [
-    compactLayout,
     graphEdges,
     graphNodes,
     expansion,
     onRequestFullGraph,
     onSetFolderExpanded,
     onTogglePinned,
+    portraitViewport,
     rootLabel,
     search,
     selectedId,
@@ -266,7 +273,7 @@ export function TechnicalTreeCanvas({
   const sigmaPayload = useMemo<AuthorizedCanvasPayload>(() => {
     const positions = layoutScalableTree(
       graphNodes,
-      compactLayout ? 'portrait' : 'landscape',
+      portraitViewport ? 'portrait' : 'landscape',
     );
     return {
       authorization: 'server-filtered',
@@ -292,7 +299,7 @@ export function TechnicalTreeCanvas({
         relationship: edge.type,
       })),
     };
-  }, [compactLayout, graphEdges, graphNodes, rootLabel]);
+  }, [graphEdges, graphNodes, portraitViewport, rootLabel]);
 
   if (renderer === 'sigma') {
     return (
@@ -315,7 +322,7 @@ export function TechnicalTreeCanvas({
       nodeTypes={NODE_TYPES}
       onNodeClick={(_event, node) => onSelect(node.id)}
       fitView
-      fitViewOptions={{ padding: 0.1, maxZoom: 1 }}
+      fitViewOptions={{ padding: fitPadding, maxZoom: 1 }}
       minZoom={0.2}
       maxZoom={2.4}
       nodesDraggable={false}

@@ -183,6 +183,30 @@ function Workspace() {
       technicalExpansion.preferences,
     ],
   );
+  const onboardingProjection = useMemo(
+    () =>
+      projectTechnicalExpansion(
+        graph.nodes,
+        graph.edges,
+        {
+          mode: 'focus',
+          manuallyExpanded: new Set(),
+          manuallyCollapsed: new Set(),
+          pinnedBranches: new Set(),
+          manualOrder: [],
+          focusNodeId: state.selectedNodeId,
+          transientReveal: effectiveTransientReveal,
+        },
+        Math.min(canvasBudget, 18),
+      ),
+    [
+      canvasBudget,
+      effectiveTransientReveal,
+      graph.edges,
+      graph.nodes,
+      state.selectedNodeId,
+    ],
+  );
   const uniqueTransientFocusId =
     effectiveTransientReveal !== null &&
     effectiveTransientReveal.nodeIds.size === 1
@@ -190,10 +214,14 @@ function Workspace() {
       : null;
   const visibleNodeCount = isTechnical
     ? technicalProjection.nodes.length
-    : graph.nodes.length;
+    : isOnboarding
+      ? onboardingProjection.nodes.length
+      : graph.nodes.length;
   const visibleEdgeCount = isTechnical
     ? technicalProjection.edges.length
-    : graph.edges.length;
+    : isOnboarding
+      ? onboardingProjection.edges.length
+      : graph.edges.length;
   const renderer = rendererFor(state.view, visibleNodeCount);
   const coverageSummary =
     ready && isTechnical
@@ -259,7 +287,9 @@ function Workspace() {
 
       {/* Same reason as the top-bar badges: no processing state for a
           repository the viewer cannot read. */}
-      {repository !== null && authorizedForRepository && <StatusBanner />}
+      {repository !== null && authorizedForRepository && !isOnboarding && (
+        <StatusBanner />
+      )}
 
       <div className="mock-canvas" ref={canvasRef}>
         {status === 'no-repository' && (
@@ -320,8 +350,9 @@ function Workspace() {
 
         {ready && isOnboarding && graph.onboarding !== null && (
           <OnboardingTreeCanvas
-            graphNodes={graph.nodes}
-            graphEdges={graph.edges}
+            graphNodes={onboardingProjection.nodes}
+            graphEdges={onboardingProjection.edges}
+            totalNodeCount={graph.nodes.length}
             rootLabel={graphRootLabel}
             workflow={graph.onboarding}
             renderer={renderer.id}

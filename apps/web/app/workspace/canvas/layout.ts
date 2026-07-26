@@ -5,7 +5,6 @@ export interface Point {
   y: number;
 }
 
-export type TreeOrientation = 'top-down' | 'left-right';
 export type ScalableTreeViewport = 'landscape' | 'portrait';
 
 /** Circle/dot geometry from the design system: open circles contain, dots are leaves. */
@@ -36,10 +35,7 @@ function slotWidth(node: GraphNode): number {
  * laid out left to right across the bottom of their branch. Leaf order fixes
  * the x cursor; every parent is centred over its own first and last child.
  */
-export function layoutTree(
-  nodes: GraphNode[],
-  orientation: TreeOrientation = 'top-down',
-): Map<string, Point> {
+export function layoutTree(nodes: GraphNode[]): Map<string, Point> {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const childrenOf = new Map<string, GraphNode[]>();
   const roots: GraphNode[] = [];
@@ -109,17 +105,6 @@ export function layoutTree(
     if (positions.has(node.id)) continue;
     place(node, 0);
     leafCursor += LABEL_GAP;
-  }
-  if (orientation === 'left-right') {
-    return new Map(
-      [...positions].map(([id, point]) => [
-        id,
-        {
-          x: point.y * 0.8,
-          y: point.x * 0.5,
-        },
-      ]),
-    );
   }
   return positions;
 }

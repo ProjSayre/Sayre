@@ -50,6 +50,9 @@ describe('workspace graph layouts', () => {
     expect(positions.get('web')?.y).toBeGreaterThan(
       positions.get('apps')?.y ?? 0,
     );
+    expect(positions.get('packages')?.y).toBe(
+      positions.get('apps')?.y,
+    );
   });
 
   it('keeps the large renderer in the approved top-down hierarchy', () => {

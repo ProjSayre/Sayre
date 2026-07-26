@@ -986,121 +986,256 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(286px, 27vw, 360px);
+  grid-template-columns: clamp(410px, 40vw, 520px) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-}
-
-.mock-onboarding-graph {
-  min-width: 0;
-  min-height: 0;
+  overflow: hidden;
 }
 
 .mock-workflow {
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
-  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   background: var(--bg);
-  padding-bottom: 40px;
+  scrollbar-color: var(--node-stroke) transparent;
 }
 
 .mock-workflow-header {
   border-bottom: 1px solid var(--border);
-  padding: 14px;
+  padding: 20px 22px 18px;
+}
+
+.mock-workflow-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 7px;
+}
+
+.mock-workflow-title-row > div {
+  min-width: 0;
 }
 
 .mock-workflow-header h2 {
-  margin: 5px 0 6px;
-  font-size: 14px;
+  margin: 0 0 7px;
+  color: var(--text-bright);
+  font-size: 19px;
   font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.mock-workflow-progress-label {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 .mock-workflow-header p,
-.mock-workflow-empty {
+.mock-workflow-empty p,
+.mock-onboarding-context-header p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.55;
+}
+
+.mock-workflow-progress {
+  height: 3px;
+  overflow: hidden;
+  margin-top: 15px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.mock-workflow-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 220ms ease;
+}
+
+.mock-workflow-safety {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 15px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-raised);
+  padding: 10px 11px;
+}
+
+.mock-workflow-safety > span {
+  flex: 0 0 auto;
+  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.mock-workflow-safety p {
+  color: var(--text);
+  font-size: 11px;
 }
 
 .mock-workflow-revision {
   display: block;
-  margin-top: 9px;
+  margin-top: 12px;
   color: var(--text-faint);
   font-family: var(--mono);
   font-size: 10px;
 }
 
 .mock-workflow-empty {
-  padding: 16px 14px;
+  display: grid;
+  min-height: 260px;
+  align-content: center;
+  justify-items: start;
+  padding: 34px 22px 52px;
+}
+
+.mock-workflow-empty-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  margin-bottom: 14px;
+  border: 1px solid var(--node-stroke);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.mock-workflow-empty h3 {
+  margin: 0 0 7px;
+  color: var(--text-bright);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.mock-workflow-empty p {
+  max-width: 360px;
+}
+
+.mock-workflow-empty .mock-btn {
+  margin-top: 18px;
 }
 
 .mock-workflow-steps {
+  display: grid;
+  gap: 10px;
   margin: 0;
-  padding: 0;
+  padding: 16px 18px 42px;
   list-style: none;
 }
 
 .mock-workflow-step {
-  border-bottom: 1px solid var(--border);
-  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-raised) 70%, var(--bg));
+  padding: 14px;
+}
+
+.mock-workflow-step-next {
+  border-color: color-mix(in srgb, var(--accent) 78%, var(--border));
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.mock-workflow-step-complete {
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
 }
 
 .mock-workflow-step-head {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 9px;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 11px;
 }
 
 .mock-workflow-step-head > span:first-child {
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--node-stroke);
   border-radius: 50%;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
+}
+
+.mock-workflow-step-complete .mock-workflow-step-head > span:first-child {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-btn-text);
+}
+
+.mock-workflow-step-head > div {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 2px;
 }
 
 .mock-workflow-step-head strong {
-  flex: 1 1 auto;
   color: var(--text-bright);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
-.mock-workflow-outcome {
-  color: var(--text-muted);
+.mock-workflow-step-head small {
+  color: var(--text-faint);
   font-family: var(--mono);
   font-size: 9px;
+}
+
+.mock-workflow-state {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 6px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 8.5px;
   text-transform: uppercase;
 }
 
-.mock-workflow-succeeded {
+.mock-workflow-state-next {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
   color: var(--accent-text);
 }
 
-.mock-workflow-failed,
-.mock-workflow-timed_out {
-  color: var(--danger);
+.mock-workflow-state-complete {
+  border-color: transparent;
+  color: var(--accent-text);
 }
 
 .mock-workflow-step code {
   display: block;
   overflow-x: auto;
-  margin-bottom: 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: var(--bg-raised);
-  padding: 8px 9px;
-  color: var(--text);
+  background: var(--bg);
+  padding: 10px 11px;
+  color: var(--text-bright);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.55;
   white-space: nowrap;
+}
+
+.mock-workflow-step-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 11px;
 }
 
 .mock-workflow-result {
@@ -1120,6 +1255,49 @@
 
 .mock-workflow-result-error {
   border-left-color: var(--danger);
+}
+
+.mock-onboarding-context {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--bg);
+}
+
+.mock-onboarding-context-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px 13px;
+}
+
+.mock-onboarding-context-header > div {
+  min-width: 0;
+}
+
+.mock-onboarding-context-header h3 {
+  margin: 5px 0 4px;
+  color: var(--text-bright);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mock-onboarding-context-header p {
+  max-width: 470px;
+  font-size: 10.5px;
+}
+
+.mock-onboarding-context-header .mock-btn {
+  margin-top: 13px;
+}
+
+.mock-onboarding-graph {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* graph nodes */
@@ -2392,13 +2570,23 @@ button.mock-list-row:hover {
 
   .mock-onboarding-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(220px, 1fr) minmax(220px, 0.9fr);
+    grid-template-rows: max-content 340px;
+    align-content: start;
+    overflow-y: auto;
   }
 
   .mock-workflow {
-    border-top: 1px solid var(--border);
-    border-left: 0;
-    padding-bottom: 28px;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mock-onboarding-context {
+    min-height: 340px;
+  }
+
+  .mock-onboarding-context-header {
+    padding: 12px;
   }
 
   .mock-statusline {
@@ -2488,6 +2676,33 @@ button.mock-list-row:hover {
 
   .mock-toolbar-title h1 {
     font-size: 12.5px;
+  }
+
+  .mock-workflow-header {
+    padding: 16px 14px;
+  }
+
+  .mock-workflow-title-row,
+  .mock-onboarding-context-header {
+    flex-direction: column;
+  }
+
+  .mock-workflow-progress-label,
+  .mock-onboarding-context-header .mock-btn {
+    margin-top: 0;
+  }
+
+  .mock-workflow-steps {
+    padding: 12px 10px 32px;
+  }
+
+  .mock-workflow-step {
+    padding: 12px;
+  }
+
+  .mock-workflow-empty {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
   .mock-card-head {
