@@ -140,6 +140,88 @@ describe('allowlisted Core browser-for-frontend route', () => {
     );
   });
 
+  it('follows only the admin Jira connect redirect contract', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: 'https://auth.atlassian.com/authorize?client_id=x' },
+        }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const request = new NextRequest(
+      'http://web.local/api/core/integrations/jira/connect?org_id=attacker',
+      { headers: { authorization: 'Bearer signed-session' } },
+    );
+
+    const response = await GET(request, {
+      params: { path: ['integrations', 'jira', 'connect'] },
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'https://auth.atlassian.com/authorize?client_id=x',
+    );
+    const [target] = upstream.mock.calls[0]!;
+    expect(String(target)).toBe('http://core.internal:4000/integrations/jira/connect');
+  });
+
+  it('forwards only the admin Jira status read contract', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        Response.json({
+          authorization: 'server-filtered',
+          connection: null,
+          updatedAt: '2026-07-27T00:00:00.000Z',
+        }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const request = new NextRequest(
+      'http://web.local/api/core/integrations/jira/status?orgId=attacker',
+      { headers: { authorization: 'Bearer signed-session' } },
+    );
+
+    const response = await GET(request, {
+      params: { path: ['integrations', 'jira', 'status'] },
+    });
+
+    expect(response.status).toBe(200);
+    const [target, init] = upstream.mock.calls[0]!;
+    expect(String(target)).toBe('http://core.internal:4000/integrations/jira/status');
+    expect(requestHeaders(init).get('authorization')).toBe('Bearer signed-session');
+    expect(String(target)).not.toContain('attacker');
+  });
+
+  it('forwards only the admin Jira disconnect contract', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        Response.json({
+          authorization: 'server-filtered',
+          connection: null,
+          updatedAt: '2026-07-27T00:00:00.000Z',
+        }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const request = new NextRequest(
+      'http://web.local/api/core/integrations/jira/disconnect?org_id=attacker',
+      { method: 'POST', headers: { authorization: 'Bearer signed-session' } },
+    );
+
+    const response = await POST(request, {
+      params: { path: ['integrations', 'jira', 'disconnect'] },
+    });
+
+    expect(response.status).toBe(200);
+    const [target, init] = upstream.mock.calls[0]!;
+    expect(String(target)).toBe('http://core.internal:4000/integrations/jira/disconnect');
+    expect(init?.method).toBe('POST');
+    expect(requestHeaders(init).get('authorization')).toBe('Bearer signed-session');
+    expect(String(target)).not.toContain('attacker');
+  });
+
   it('rejects routes outside the explicit browser contract', async () => {
     const upstream = vi.fn();
     vi.stubGlobal('fetch', upstream);
