@@ -2,14 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600&family=Fragment+Mono&display=swap");
+
+/*
+ * Mirrors the `.mock-root` token block in workspace/workspace.css. Signing in
+ * is the first surface anyone sees, so it uses the product's palette and type
+ * rather than a separate identity — the previous gold-on-near-black auth theme
+ * belonged to no other screen.
+ */
 :root {
   color-scheme: dark;
-  --auth-bg: #11110f;
-  --auth-surface: #1a1916;
-  --auth-border: #35332d;
-  --auth-text: #e8e6e1;
-  --auth-muted: #9a978d;
-  --auth-accent: #d8c87f;
+  --bg: #131412;
+  --bg-raised: #1b1c19;
+  --border: #262723;
+  --border-bright: #353630;
+  --text-faint: #64645c;
+  --text-muted: #8b8b82;
+  --text: #a9a9a0;
+  --text-bright: #e8e6e1;
+  --accent: #4f7f5d;
+  --accent-text: #74a583;
+  --accent-btn-text: #edece7;
+  --danger: #9e6b62;
+
+  --ui: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: "Fragment Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * {
@@ -23,11 +40,9 @@ body {
 
 body {
   margin: 0;
-  background: var(--auth-bg);
-  color: var(--auth-text);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  background: var(--bg);
+  color: var(--text-bright);
+  font-family: var(--ui);
 }
 
 button,
@@ -45,96 +60,99 @@ a {
   display: grid;
   min-height: 100vh;
   place-items: center;
-  background:
-    radial-gradient(circle at 50% 10%, rgba(216, 200, 127, 0.1), transparent 34%),
-    var(--auth-bg);
+  background: var(--bg);
   padding: 24px;
 }
 
+/* Same construction as `.mock-fullstate-card`, the workspace's own full-page
+   card, so signing in reads as the same product rather than a landing page. */
 .auth-card {
-  width: min(100%, 390px);
-  border: 1px solid var(--auth-border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--auth-surface) 94%, transparent);
-  padding: 30px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  width: min(100%, 430px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  padding: 26px;
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  color: var(--auth-text);
-  font-size: 18px;
-  font-weight: 760;
-  letter-spacing: -0.03em;
-}
-
-.brand-mark {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  border-radius: 4px;
-  background: var(--auth-accent);
-  color: #18170f;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 15px;
-  font-weight: 900;
+  display: block;
+  color: var(--text-bright);
+  font-family: var(--mono);
+  font-size: 14px;
 }
 
 .auth-card .brand {
-  margin-bottom: 28px;
+  margin-bottom: 22px;
+}
+
+.auth-kind {
+  display: block;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .auth-card h1 {
-  margin: 0;
-  color: var(--auth-text);
-  font-size: 24px;
-  letter-spacing: -0.035em;
+  margin: 6px 0 9px;
+  color: var(--text-bright);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .auth-card > p {
-  margin: 9px 0 24px;
-  color: var(--auth-muted);
-  font-size: 13px;
-  line-height: 1.55;
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.65;
 }
 
 .auth-primary {
   display: block;
-  margin-top: 4px;
-  border-radius: 4px;
-  background: var(--auth-accent);
-  padding: 11px;
-  color: #18170f;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--accent);
+  padding: 9px 12px;
+  color: var(--accent-btn-text);
   font-size: 12px;
-  font-weight: 800;
   text-align: center;
-  transition:
-    filter 140ms ease,
-    transform 140ms ease;
+  transition: background 120ms ease;
 }
 
 .auth-primary:hover {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
+  background: #588a67;
 }
 
 .auth-primary:focus-visible {
-  outline: 2px solid var(--auth-text);
-  outline-offset: 3px;
+  outline: 1px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.auth-note {
+  margin: 12px 0 0;
+  border-left: 2px solid var(--border-bright);
+  padding: 0 0 0 9px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.55;
 }
 
 .auth-switch {
   margin-top: 20px;
-  color: var(--auth-muted);
-  font-size: 11px;
-  text-align: center;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  color: var(--text-faint);
+  font-size: 11.5px;
 }
 
 .auth-switch a {
-  color: var(--auth-accent);
+  color: var(--accent-text);
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
 }
 
 @media (prefers-reduced-motion: reduce) {
