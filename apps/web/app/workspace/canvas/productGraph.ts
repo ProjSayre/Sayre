@@ -15,6 +15,8 @@ export interface ProductClusterDirectory {
   x: number;
   y: number;
   files: ProductClusterFile[];
+  visibleFileCount: number;
+  hiddenFileCount: number;
 }
 
 export interface ProductFeatureCluster {
@@ -28,6 +30,8 @@ export interface ProductFeatureCluster {
   radius: number;
   diameter: number;
   directories: ProductClusterDirectory[];
+  directoryCount: number;
+  hiddenDirectoryCount: number;
 }
 
 export interface ProductFeatureConnection {
@@ -47,7 +51,14 @@ export interface ProductFeaturePlacement {
   y: number;
 }
 
+export interface ProductFeatureFocus {
+  adjacentFeatureIds: ReadonlySet<string>;
+  activeConnectionIds: ReadonlySet<string>;
+}
+
 export const FEATURE_LABEL_WIDTH = 172;
+export const MAX_VISIBLE_FEATURE_DIRECTORIES = 8;
+export const MAX_VISIBLE_FILES_PER_DIRECTORY = 6;
 
 const MIN_RADIUS = 78;
 const MAX_RADIUS = 116;
@@ -88,14 +99,47 @@ function workspaceForPath(path: string): string {
 }
 
 function featureRadius(directoryCount: number, fileCount: number): number {
-  const radius = 66 + directoryCount * 7 + Math.sqrt(fileCount) * 4;
+  const visualDirectoryCount = Math.min(
+    directoryCount,
+    MAX_VISIBLE_FEATURE_DIRECTORIES,
+  );
+  const radius = 66 + visualDirectoryCount * 7 + Math.sqrt(fileCount) * 4;
   return Math.round(Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, radius)));
+}
+
+function gridPosition(
+  index: number,
+  count: number,
+  radius: number,
+): { x: number; y: number } {
+  if (count <= 1) return { x: 0, y: 0 };
+  const columns = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / columns);
+  const column = index % columns;
+  const row = Math.floor(index / columns);
+  const inset = Math.min(46, radius * 0.42);
+  const horizontalSpan = Math.max(0, radius * 2 - inset * 2);
+  const verticalSpan = Math.max(0, radius * 2 - inset * 2);
+  return {
+    x:
+      columns === 1
+        ? 0
+        : -radius + inset + (column * horizontalSpan) / (columns - 1),
+    y:
+      rows === 1
+        ? 0
+        : -radius + inset + (row * verticalSpan) / (rows - 1),
+  };
 }
 
 /**
  * Builds the visual feature bundles from the already-authorized Product Tree
  * payload. Product files do not carry Folder nodes, so directory glyphs are
  * derived only from each authorized file path and never trigger traversal.
+ *
+ * The graph can contain hundreds of files in one inferred feature. The node
+ * therefore renders a bounded visual sample while retaining exact total counts
+ * and the complete file list in the feature drawer.
  */
 export function buildProductFeatureClusters(
   graphNodes: readonly GraphNode[],
@@ -120,20 +164,25 @@ export function buildProductFeatureClusters(
     }
 
     const radius = featureRadius(filesByDirectory.size, files.length);
-    const directoryEntries = [...filesByDirectory.entries()].sort(([left], [right]) =>
-      left.localeCompare(right, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      }),
+    const directoryEntries = [...filesByDirectory.entries()].sort(
+      ([leftPath, leftFiles], [rightPath, rightFiles]) =>
+        rightFiles.length - leftFiles.length ||
+        leftPath.localeCompare(rightPath, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        }),
     );
-    const directoryOrbit = directoryEntries.length <= 1 ? 0 : radius * 0.5;
-    const directories = directoryEntries.map<ProductClusterDirectory>(
+    const visibleDirectoryEntries = directoryEntries.slice(
+      0,
+      MAX_VISIBLE_FEATURE_DIRECTORIES,
+    );
+    const directories = visibleDirectoryEntries.map<ProductClusterDirectory>(
       ([path, directoryFiles], directoryIndex) => {
-        const directoryAngle =
-          -Math.PI / 2 +
-          (directoryIndex * Math.PI * 2) / Math.max(1, directoryEntries.length);
-        const x = Math.cos(directoryAngle) * directoryOrbit;
-        const y = Math.sin(directoryAngle) * directoryOrbit;
+        const { x, y } = gridPosition(
+          directoryIndex,
+          visibleDirectoryEntries.length,
+          radius,
+        );
         const sortedFiles = [...directoryFiles].sort(
           (left, right) =>
             left.path.localeCompare(right.path, undefined, {
@@ -148,15 +197,23 @@ export function buildProductFeatureClusters(
           label: directoryLabel(path),
           x,
           y,
+          visibleFileCount: Math.min(
+            sortedFiles.length,
+            MAX_VISIBLE_FILES_PER_DIRECTORY,
+          ),
+          hiddenFileCount: Math.max(
+            0,
+            sortedFiles.length - MAX_VISIBLE_FILES_PER_DIRECTORY,
+          ),
           files: sortedFiles.map((file, fileIndex) => {
-            const ring = Math.floor(fileIndex / 8);
-            const positionInRing = fileIndex % 8;
-            const filesInRing = Math.min(8, sortedFiles.length - ring * 8);
+            const visibleFileCount = Math.min(
+              sortedFiles.length,
+              MAX_VISIBLE_FILES_PER_DIRECTORY,
+            );
             const fileAngle =
-              directoryAngle +
-              Math.PI / 2 +
-              (positionInRing * Math.PI * 2) / Math.max(1, filesInRing);
-            const fileOrbit = 17 + ring * 10;
+              -Math.PI / 2 +
+              (fileIndex * Math.PI * 2) / Math.max(1, visibleFileCount);
+            const fileOrbit = 17;
             return {
               id: file.id,
               name: file.name,
@@ -180,6 +237,11 @@ export function buildProductFeatureClusters(
       radius,
       diameter: radius * 2,
       directories,
+      directoryCount: directoryEntries.length,
+      hiddenDirectoryCount: Math.max(
+        0,
+        directoryEntries.length - visibleDirectoryEntries.length,
+      ),
     };
   });
 }
@@ -308,6 +370,27 @@ export function buildProductFeatureConnections(
         left.sourceFeatureId.localeCompare(right.sourceFeatureId) ||
         left.targetFeatureId.localeCompare(right.targetFeatureId),
     );
+}
+
+export function productFeatureFocus(
+  selectedFeatureId: string | null,
+  connections: readonly ProductFeatureConnection[],
+): ProductFeatureFocus | null {
+  if (selectedFeatureId === null) return null;
+  const adjacentFeatureIds = new Set<string>([selectedFeatureId]);
+  const activeConnectionIds = new Set<string>();
+  for (const connection of connections) {
+    if (
+      connection.sourceFeatureId !== selectedFeatureId &&
+      connection.targetFeatureId !== selectedFeatureId
+    ) {
+      continue;
+    }
+    activeConnectionIds.add(connection.id);
+    adjacentFeatureIds.add(connection.sourceFeatureId);
+    adjacentFeatureIds.add(connection.targetFeatureId);
+  }
+  return { adjacentFeatureIds, activeConnectionIds };
 }
 
 function connectedFeatureOrder(

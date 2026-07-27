@@ -210,24 +210,6 @@ function Workspace() {
           ),
     [graph.nodes, normalizedSearch],
   );
-  const searchResultCount = useMemo(() => {
-    if (normalizedSearch.length === 0) return 0;
-    const nodeMatches = searchMatchIds.size;
-    if (!isProduct) return nodeMatches;
-    const featureMatches = graph.features.filter((feature) =>
-      [
-        feature.name,
-        feature.description ?? '',
-        feature.team ?? '',
-      ].some((value) => value.toLowerCase().includes(normalizedSearch)),
-    ).length;
-    return nodeMatches + featureMatches;
-  }, [
-    graph.features,
-    isProduct,
-    normalizedSearch,
-    searchMatchIds,
-  ]);
   const selectedDependencyIds = useMemo(() => {
     if (!isTechnical || state.selectedNodeId === null) return new Set<string>();
     const ids = new Set<string>();
@@ -395,10 +377,14 @@ function Workspace() {
           nodes={graph.nodes}
           status={graphStatus}
           repositoryLabel={graphRootLabel}
+          search={state.search}
           selectedNodeId={state.selectedNodeId}
           expandedFolderIds={technicalProjection.expandedFolderIds}
           pinnedNodeIds={technicalExpansion.preferences.pinnedBranches}
           onSelect={selectTechnicalNode}
+          onSearchChange={(search) =>
+            dispatch({ type: 'patch', patch: { search } })
+          }
           onSetFolderExpanded={setTechnicalFolderExpanded}
           onCollapseAll={() => {
             setGraphExpansionAnchorId(null);
@@ -432,9 +418,6 @@ function Workspace() {
         edgeCount={ready && !isProduct ? visibleEdgeCount : null}
         renderer={renderer}
         coverageSummary={coverageSummary}
-        searchResultCount={
-          normalizedSearch.length === 0 ? null : searchResultCount
-        }
         technicalExpansion={
           isTechnical
             ? {
@@ -538,7 +521,6 @@ function Workspace() {
             command={canvasCommand}
             selectedFeatureId={state.selectedFeatureId}
             selectedNodeId={state.selectedNodeId}
-            search={state.search}
             showMinimap={showMinimap}
             fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
             onSelectFeature={(featureId) =>

@@ -21,6 +21,7 @@ import {
   buildProductFeatureClusters,
   buildProductFeatureConnections,
   layoutProductFeatureClusters,
+  productFeatureFocus,
   type ProductFeatureConnection,
   type ProductFeatureCluster,
 } from './productGraph';
@@ -32,7 +33,6 @@ interface ProductTreeCanvasProps {
   command: CanvasCommand | null;
   selectedFeatureId: string | null;
   selectedNodeId: string | null;
-  search: string;
   showMinimap: boolean;
   /** Changes whenever the canvas column resizes, so the graph refits. */
   fitKey: string;
@@ -79,7 +79,7 @@ function connectionLabel(
 }
 
 /**
- * Product Tree renders features as the primary graph grammar. Each dashed ring
+ * Product Tree renders features as the primary graph grammar. Each dashed frame
  * owns directory and file glyphs, while feature-to-feature links summarize
  * shared membership and authorized import relationships.
  */
@@ -90,7 +90,6 @@ export function ProductTreeCanvas({
   command,
   selectedFeatureId,
   selectedNodeId,
-  search,
   showMinimap,
   fitKey,
   onSelectFeature,
@@ -101,6 +100,7 @@ export function ProductTreeCanvas({
   const [hoveredFeatureId, setHoveredFeatureId] = useState<string | null>(null);
   const [openDirectory, setOpenDirectory] = useState<OpenDirectory | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [inventoryQuery, setInventoryQuery] = useState('');
 
   useEffect(() => {
     const update = (): void => {
@@ -139,27 +139,32 @@ export function ProductTreeCanvas({
     () => new Map(clusters.map((cluster) => [cluster.id, cluster])),
     [clusters],
   );
-  const query = search.trim().toLowerCase();
+  const focus = useMemo(
+    () => productFeatureFocus(selectedFeatureId, connections),
+    [connections, selectedFeatureId],
+  );
+  const normalizedInventoryQuery = inventoryQuery.trim().toLowerCase();
+  const inventoryClusters = useMemo(
+    () =>
+      [...clusters]
+        .filter(
+          (cluster) =>
+            normalizedInventoryQuery.length === 0 ||
+            [cluster.name, cluster.description ?? '', cluster.team ?? ''].some(
+              (value) =>
+                value.toLowerCase().includes(normalizedInventoryQuery),
+            ),
+        )
+        .sort(
+          (left, right) =>
+            (left.team ?? '').localeCompare(right.team ?? '') ||
+            left.name.localeCompare(right.name),
+        ),
+    [clusters, normalizedInventoryQuery],
+  );
 
   const nodes = useMemo<Node<ProductFeatureNodeData>[]>(() => {
     return placements.map(({ cluster, x, y }) => {
-      const featureMatched =
-        query.length > 0 &&
-        [cluster.name, cluster.description ?? '', cluster.team ?? ''].some(
-          (value) => value.toLowerCase().includes(query),
-        );
-      const matchedFileIds =
-        query.length === 0
-          ? []
-          : cluster.directories.flatMap(({ files }) =>
-              files
-                .filter(
-                  (file) =>
-                    file.name.toLowerCase().includes(query) ||
-                    file.path.toLowerCase().includes(query),
-                )
-                .map(({ id }) => id),
-            );
       const selected = cluster.id === selectedFeatureId;
       const containsSelectedFile =
         selectedNodeId !== null && cluster.memberIds.includes(selectedNodeId);
@@ -186,12 +191,10 @@ export function ProductTreeCanvas({
           selected,
           containsSelectedFile,
           dimmed:
-            query.length > 0 &&
-            !featureMatched &&
-            matchedFileIds.length === 0,
-          matched: featureMatched,
+            focus !== null && !focus.adjacentFeatureIds.has(cluster.id),
+          matched: false,
           selectedNodeId,
-          matchedFileIds,
+          matchedFileIds: [],
           openDirectoryId: directoryOpen,
           onSelectFeature: () => onSelectFeature(cluster.id),
           onSelectFile: onSelectNode,
@@ -211,25 +214,34 @@ export function ProductTreeCanvas({
     onSelectNode,
     openDirectory,
     placements,
-    query,
+    focus,
     selectedFeatureId,
     selectedNodeId,
   ]);
 
   const edges = useMemo<Edge[]>(() => {
     return connections.map((connection) => {
+      const selectionActive =
+        focus?.activeConnectionIds.has(connection.id) === true;
+      const hoverActive =
+        selectedFeatureId === null &&
+        (connection.sourceFeatureId === hoveredFeatureId ||
+          connection.targetFeatureId === hoveredFeatureId);
+      const fileActive =
+        selectedFeatureId === null &&
+        selectedNodeId !== null &&
+        (clusterById
+          .get(connection.sourceFeatureId)
+          ?.memberIds.includes(selectedNodeId) === true ||
+          clusterById
+            .get(connection.targetFeatureId)
+            ?.memberIds.includes(selectedNodeId) === true);
       const active =
-        connection.sourceFeatureId === selectedFeatureId ||
-        connection.targetFeatureId === selectedFeatureId ||
-        connection.sourceFeatureId === hoveredFeatureId ||
-        connection.targetFeatureId === hoveredFeatureId ||
-        (selectedNodeId !== null &&
-          (clusterById
-            .get(connection.sourceFeatureId)
-            ?.memberIds.includes(selectedNodeId) === true ||
-            clusterById
-              .get(connection.targetFeatureId)
-              ?.memberIds.includes(selectedNodeId) === true));
+        selectionActive ||
+        hoverActive ||
+        fileActive;
+      const dimmed =
+        focus !== null && !focus.activeConnectionIds.has(connection.id);
       const relation = connectionLabel(connection, clusterById);
       return {
         id: connection.id,
@@ -242,21 +254,13 @@ export function ProductTreeCanvas({
             ? 'mock-feature-connection-shared'
             : 'mock-feature-connection-dependency',
           active ? 'mock-edge-active' : '',
+          dimmed ? 'mock-edge-dimmed' : '',
         ]
           .filter(Boolean)
           .join(' '),
-        label: active ? relation : undefined,
-        labelStyle: {
-          fill: '#d8d7cf',
-          fontFamily: 'var(--mono)',
-          fontSize: 10,
-        },
-        labelBgStyle: {
-          fill: '#181916',
-          fillOpacity: 0.94,
-        },
-        labelBgPadding: [5, 4],
-        labelBgBorderRadius: 3,
+        // Relationship prose belongs in the selected feature drawer. Showing
+        // every incident label on hover causes unreadable collisions at scale.
+        label: undefined,
         ...(connection.sourceToTargetDependencyCount > 0
           ? {
               markerEnd: {
@@ -280,12 +284,13 @@ export function ProductTreeCanvas({
         ariaLabel: `${clusterById.get(connection.sourceFeatureId)?.name ?? 'Feature'} to ${
           clusterById.get(connection.targetFeatureId)?.name ?? 'feature'
         }: ${relation}`,
-        zIndex: 0,
+        zIndex: active ? 1 : 0,
       };
     });
   }, [
     clusterById,
     connections,
+    focus,
     hoveredFeatureId,
     selectedFeatureId,
     selectedNodeId,
@@ -381,14 +386,27 @@ export function ProductTreeCanvas({
           <span aria-hidden="true">{inventoryOpen ? '▴' : '▾'}</span>
         </button>
         {inventoryOpen && (
-          <div className="mock-feature-index-list">
-            {[...clusters]
-              .sort(
-                (left, right) =>
-                  (left.team ?? '').localeCompare(right.team ?? '') ||
-                  left.name.localeCompare(right.name),
-              )
-              .map((cluster) => (
+          <>
+            <div className="mock-feature-index-search">
+              <input
+                type="search"
+                aria-label="Filter features"
+                value={inventoryQuery}
+                placeholder="Filter features…"
+                onChange={(event) => setInventoryQuery(event.target.value)}
+              />
+              {inventoryQuery.length > 0 && (
+                <button
+                  type="button"
+                  aria-label="Clear feature filter"
+                  onClick={() => setInventoryQuery('')}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="mock-feature-index-list">
+              {inventoryClusters.map((cluster) => (
                 <button
                   key={cluster.id}
                   type="button"
@@ -408,7 +426,11 @@ export function ProductTreeCanvas({
                   </em>
                 </button>
               ))}
-          </div>
+              {inventoryClusters.length === 0 && (
+                <p className="mock-feature-index-empty">No matching features.</p>
+              )}
+            </div>
+          </>
         )}
       </Panel>
       {showMinimap && (

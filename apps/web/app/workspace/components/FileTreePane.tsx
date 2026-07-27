@@ -10,6 +10,8 @@ import {
 } from 'react';
 import {
   buildFileTreeModel,
+  matchingFileTreeNodeIds,
+  searchedFileTreeRows,
   visibleFileTreeRows,
   type FileTreeRow,
 } from '../fileTree';
@@ -20,10 +22,12 @@ interface FileTreePaneProps {
   nodes: readonly GraphNode[];
   status: LoadStatus;
   repositoryLabel: string;
+  search: string;
   selectedNodeId: string | null;
   expandedFolderIds: ReadonlySet<string>;
   pinnedNodeIds: ReadonlySet<string>;
   onSelect: (nodeId: string) => void;
+  onSearchChange: (value: string) => void;
   onSetFolderExpanded: (nodeId: string, expanded: boolean) => void;
   onCollapseAll: () => void;
   onTogglePin: (nodeId: string) => void;
@@ -52,10 +56,12 @@ export function FileTreePane({
   nodes,
   status,
   repositoryLabel,
+  search,
   selectedNodeId,
   expandedFolderIds,
   pinnedNodeIds,
   onSelect,
+  onSearchChange,
   onSetFolderExpanded,
   onCollapseAll,
   onTogglePin,
@@ -76,9 +82,17 @@ export function FileTreePane({
     return () => window.clearTimeout(timer);
   }, [model, selectedNodeId]);
 
+  const matchingNodeIds = useMemo(
+    () => matchingFileTreeNodeIds(model, search),
+    [model, search],
+  );
+  const searchActive = search.trim().length > 0;
   const rows = useMemo(
-    () => visibleFileTreeRows(model, expandedFolderIds),
-    [expandedFolderIds, model],
+    () =>
+      searchActive
+        ? searchedFileTreeRows(model, matchingNodeIds)
+        : visibleFileTreeRows(model, expandedFolderIds),
+    [expandedFolderIds, matchingNodeIds, model, searchActive],
   );
   const rowIndex = useMemo(
     () => new Map(rows.map((row, index) => [row.node.id, index])),
@@ -89,9 +103,14 @@ export function FileTreePane({
     onSetFolderExpanded(nodeId, expanded);
   };
 
+  const rowIsExpanded = (row: FileTreeRow): boolean =>
+    searchActive
+      ? rows.some((candidate) => candidate.parentId === row.node.id)
+      : expandedFolderIds.has(row.node.id);
+
   const activate = (row: FileTreeRow): void => {
     if (row.hasChildren) {
-      setExpanded(row.node.id, !expandedFolderIds.has(row.node.id));
+      setExpanded(row.node.id, !rowIsExpanded(row));
     }
     onSelect(row.node.id);
   };
@@ -131,7 +150,7 @@ export function FileTreePane({
     }
     if (event.key === 'ArrowRight' && row.hasChildren) {
       event.preventDefault();
-      if (!expandedFolderIds.has(row.node.id)) {
+      if (!rowIsExpanded(row)) {
         setExpanded(row.node.id, true);
       } else {
         focusRow(rows[index + 1]);
@@ -140,7 +159,7 @@ export function FileTreePane({
     }
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      if (row.hasChildren && expandedFolderIds.has(row.node.id)) {
+      if (row.hasChildren && rowIsExpanded(row)) {
         setExpanded(row.node.id, false);
       } else if (row.parentId !== null) {
         focusRow(rows[rowIndex.get(row.parentId) ?? -1]);
@@ -222,6 +241,36 @@ export function FileTreePane({
         </button>
       </div>
 
+      <div className="mock-filetree-search">
+        <span aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          aria-label="Search repository files and folders"
+          value={search}
+          placeholder="Search files and folders…"
+          disabled={status !== 'ready'}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        {searchActive && (
+          <>
+            <small
+              className={matchingNodeIds.size === 0 ? 'is-empty' : undefined}
+              aria-live="polite"
+            >
+              {matchingNodeIds.size}
+            </small>
+            <button
+              type="button"
+              aria-label="Clear repository search"
+              title="Clear search"
+              onClick={() => onSearchChange('')}
+            >
+              ×
+            </button>
+          </>
+        )}
+      </div>
+
       {status === 'loading' || status === 'idle' ? (
         <div className="mock-filetree-state" role="status">
           Loading authorized files…
@@ -239,7 +288,7 @@ export function FileTreePane({
           aria-label={`${repositoryLabel} files`}
         >
           {rows.map((row) => {
-            const expanded = expandedFolderIds.has(row.node.id);
+            const expanded = rowIsExpanded(row);
             const selected = row.node.id === selectedNodeId;
             const displayName =
               row.node.parentId === null ? repositoryLabel : row.node.name;
@@ -280,7 +329,11 @@ export function FileTreePane({
         </div>
       )}
       <div className="mock-filetree-footer">
-        {nodes.length.toLocaleString()} authorized nodes
+        {searchActive
+          ? `${matchingNodeIds.size.toLocaleString()} ${
+              matchingNodeIds.size === 1 ? 'match' : 'matches'
+            } · ${nodes.length.toLocaleString()} authorized nodes`
+          : `${nodes.length.toLocaleString()} authorized nodes`}
       </div>
     </aside>
   );
