@@ -2,13 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('MCP thin-handler contract', () => {
-  it('keeps exactly one dependency-free adapter per v1 tool', () => {
+  it('keeps exactly one dependency-free adapter per exposed tool', () => {
     const directory = new URL('./handlers/', import.meta.url);
     const files = readdirSync(directory)
       .filter((name) => name.endsWith('.ts'))
       .sort();
     expect(files).toEqual(
       [
+        'checkLiveness.ts',
         'findRelevantNodes.ts',
         'getAgentSkillMd.ts',
         'getCoveringTests.ts',

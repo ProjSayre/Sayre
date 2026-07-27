@@ -314,6 +314,39 @@ Return recent authorized commit, editor, and pull-request metadata for a node.
 }
 ```
 
+### `check_liveness`
+
+Report whether a node is reached by production code, only by tests, or by
+nothing. Call it before editing an unfamiliar file: a superseded module that is
+still well named, well commented, and covered by its own passing tests ranks
+highly in retrieval while having no effect on the running system.
+
+```json
+{
+  "node_id": "file:apps/web/app/lib/scaleGraph.ts"
+}
+```
+
+`data` is the following object or `null`:
+
+```ts
+{
+  node: { id: string; name: string; path: string };
+  liveness: 'imported_by_production' | 'imported_by_tests_only' | 'no_inbound_imports';
+  inbound: { production: number; tests: number };
+  productionImporters: string[];  // sampled, at most 5
+  testImporters: string[];        // sampled, at most 5
+  lastChangedAt: string | null;   // ISO 8601, newest authorized commit
+}
+```
+
+This is reachability evidence, **not** a deletion verdict.
+`no_inbound_imports` is the expected state for framework entry points, and a
+test-only file may be a deliberately retained public API. Reachability is
+computed at file granularity from `IMPORTS`; a dead export inside a live file is
+outside this contract. `inbound` carries true counts even when the importer
+arrays are truncated.
+
 ## Errors, rate limits, and retries
 
 Authentication failures return HTTP 401 with a JSON-RPC error whose public

@@ -1,6 +1,7 @@
 import type { AuthContext } from '../auth/context';
 import { getAgentSkillMd } from '../services/agentSkillMdService';
 import { getCoveringTests } from '../services/coverageContextService';
+import { getNodeLiveness } from '../services/livenessService';
 import { getNodeOverlay } from '../services/nodeOverlayService';
 import {
   resolveAnchorNodes,
@@ -21,6 +22,7 @@ export interface McpToolServices {
   getCoveringTests(nodeId: string, ctx: AuthContext): Promise<unknown>;
   getFeatureCluster(nodeId: string, ctx: AuthContext): Promise<unknown>;
   getRecentChanges(nodeId: string, ctx: AuthContext): Promise<unknown>;
+  checkLiveness(nodeId: string, ctx: AuthContext): Promise<unknown>;
 }
 
 export const mcpToolServices: McpToolServices = {
@@ -48,4 +50,5 @@ export const mcpToolServices: McpToolServices = {
         }
       : null;
   },
+  checkLiveness: getNodeLiveness,
 };

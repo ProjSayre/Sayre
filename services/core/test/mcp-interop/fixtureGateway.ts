@@ -171,6 +171,21 @@ const fixtureServices: McpToolServices = {
       ],
     };
   },
+  async checkLiveness(nodeId, ctx) {
+    if (nodeId !== PRIVATE_NODE.id || !canSeePrivate(ctx)) return null;
+    return {
+      node: {
+        id: PRIVATE_NODE.id,
+        name: PRIVATE_NODE.name,
+        path: PRIVATE_NODE.path,
+      },
+      liveness: 'imported_by_production',
+      inbound: { production: 1, tests: 0 },
+      productionImporters: [PUBLIC_NODE.path],
+      testImporters: [],
+      lastChangedAt: '2026-07-22T00:00:00.000Z',
+    };
+  },
 };
 
 function credentialFor(token: string): ResolvedMcpCredential {

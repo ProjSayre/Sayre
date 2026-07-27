@@ -8,6 +8,7 @@ import {
   resolveMcpCredential,
   type ResolvedMcpCredential,
 } from '../services/mcpKeyService';
+import { checkLivenessHandler } from './handlers/checkLiveness';
 import { getAgentSkillMdHandler } from './handlers/getAgentSkillMd';
 import { getCoveringTestsHandler } from './handlers/getCoveringTests';
 import { getFeatureClusterHandler } from './handlers/getFeatureCluster';
@@ -224,6 +225,22 @@ function createServer(
     ({ node_id }) =>
       execute('get_recent_changes', () =>
         getRecentChangesHandler(node_id, credential.context, deps.services),
+      ),
+  );
+  server.registerTool(
+    'check_liveness',
+    {
+      description:
+        'Check whether an authorized node is imported by production code, ' +
+        'only by tests, or by nothing. Call this before editing an unfamiliar ' +
+        'file to avoid changing a superseded duplicate. File-level evidence, ' +
+        'not a deletion verdict: entry points legitimately have no importers.',
+      inputSchema: { node_id: NODE_ID },
+      annotations: READ_ONLY,
+    },
+    ({ node_id }) =>
+      execute('check_liveness', () =>
+        checkLivenessHandler(node_id, credential.context, deps.services),
       ),
   );
   return server;
