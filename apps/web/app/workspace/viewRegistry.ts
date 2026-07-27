@@ -29,6 +29,7 @@ const definitions: WorkspaceViewDefinition[] = [
         ...graph,
         features: [],
         onboarding: null,
+        prerequisite: null,
         productCoverage: null,
       };
     },
@@ -42,14 +43,14 @@ const definitions: WorkspaceViewDefinition[] = [
     semantic: true,
     async load(source, scope, signal) {
       const graph = await source.productTree(scope, signal);
-      return { ...graph, onboarding: null };
+      return { ...graph, onboarding: null, prerequisite: null };
     },
   },
   {
     id: 'onboarding',
     glyph: 'O',
     label: 'Onboarding',
-    hint: 'Onboarding Tree — ordered, sandboxed setup',
+    hint: 'Onboarding — what to read, in what order',
     enabled: true,
     semantic: false,
     async load(source, scope, signal) {

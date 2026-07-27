@@ -204,6 +204,7 @@ const EMPTY_GRAPH: WorkspaceGraph = {
   edges: [],
   features: [],
   onboarding: null,
+  prerequisite: null,
   productCoverage: null,
 };
 

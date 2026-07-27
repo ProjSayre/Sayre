@@ -15,6 +15,7 @@ import type {
 import type {
   ProductTreeRecentEdit,
 } from '../lib/productTree';
+import type { PrerequisiteGraph } from '../lib/prerequisiteGraph';
 import type {
   TechnicalTreeEdge,
 } from '../lib/technicalTree';
@@ -63,6 +64,30 @@ export interface GraphNode {
   coverage?: GraphCoverage;
 }
 export type GraphEdge = TechnicalTreeEdge;
+
+/**
+ * The Onboarding view's edges are derived, not stored — reversed `IMPORTS`
+ * meaning "understand this before that". They are typed separately from
+ * `GraphEdge` so the two views cannot silently converge on one shape again,
+ * which is how the Onboarding view became a filtered Technical tree.
+ */
+export interface OnboardingEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: 'PREREQUISITE';
+}
+
+/**
+ * Narrows a mixed edge list to the stored structural relations. Consumers built
+ * for the Technical and Product views use this rather than being widened to
+ * accept a derived relation they have no meaning for.
+ */
+export function isStructuralEdge(
+  edge: GraphEdge | OnboardingEdge,
+): edge is GraphEdge {
+  return edge.type === 'CONTAINS' || edge.type === 'IMPORTS';
+}
 
 export interface Feature {
   id: string;
@@ -162,9 +187,17 @@ export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface WorkspaceGraph {
   nodes: GraphNode[];
-  edges: GraphEdge[];
+  /**
+   * Technical and Product carry stored `CONTAINS`/`IMPORTS`; Onboarding carries
+   * derived `PREREQUISITE`. Consumers must switch on the view rather than
+   * assuming one relation, which is what let the Onboarding view drift into
+   * rendering the Technical tree.
+   */
+  edges: Array<GraphEdge | OnboardingEdge>;
   features: Feature[];
   onboarding: OnboardingWorkflow | null;
+  /** Present only for the Onboarding view: per-node layer and cycle grouping. */
+  prerequisite: PrerequisiteGraph | null;
   /**
    * Product Tree completeness is computed from the already-authorized
    * Technical Tree response. Null means the comparison was unavailable.

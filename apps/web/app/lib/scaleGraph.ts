@@ -22,11 +22,16 @@ export interface AuthorizedCanvasNode {
   coverage?: CoverageBadge;
 }
 
+/**
+ * `PREREQUISITE` is a presentation relationship, not a stored edge type. The
+ * Onboarding view derives it by reversing `IMPORTS` at read time — see
+ * `prerequisiteGraph.ts`. The graph schema's closed edge set is unchanged.
+ */
 export interface AuthorizedCanvasEdge {
   id: string;
   source: string;
   target: string;
-  relationship: 'CONTAINS' | 'IMPORTS';
+  relationship: 'CONTAINS' | 'IMPORTS' | 'PREREQUISITE';
 }
 
 /**

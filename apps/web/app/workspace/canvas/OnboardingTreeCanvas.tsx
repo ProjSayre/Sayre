@@ -5,17 +5,18 @@ import type { OnboardingExecutionResponse } from '../../lib/onboardingTree';
 import { useMock } from '../state';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
 import type {
-  GraphEdge,
   GraphNode,
   OnboardingStep,
   OnboardingWorkflow,
 } from '../types';
-import { TechnicalTreeCanvas } from './TechnicalTreeCanvas';
+import type { PrerequisiteGraph } from '../../lib/prerequisiteGraph';
+import { PrerequisiteCanvas } from './PrerequisiteCanvas';
 import { copyText } from '../components/ui';
 
 interface OnboardingTreeCanvasProps {
   graphNodes: GraphNode[];
-  graphEdges: GraphEdge[];
+  /** Reading order for the right pane; null while the view is still loading. */
+  prerequisite: PrerequisiteGraph | null;
   totalNodeCount: number;
   rootLabel: string;
   workflow: OnboardingWorkflow;
@@ -114,6 +115,25 @@ function storedResults(revisionSha: string): Record<string, StepResult> {
   }
 }
 
+/**
+ * Progress is client-side per revision in v1; server-side persistence is a
+ * follow-up and not a prerequisite for the view to be useful.
+ */
+function storedReadIds(revisionSha: string): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const value: unknown = JSON.parse(
+      window.sessionStorage.getItem(`sayre:onboarding-read:${revisionSha}`) ??
+        '[]',
+    );
+    return Array.isArray(value)
+      ? new Set(value.filter((id): id is string => typeof id === 'string'))
+      : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
 function messageForExecutionError(error: unknown): string {
   if (
     typeof error === 'object' &&
@@ -160,7 +180,7 @@ function requirementLabel(
 
 export function OnboardingTreeCanvas({
   graphNodes,
-  graphEdges,
+  prerequisite,
   totalNodeCount,
   rootLabel,
   workflow,
@@ -188,6 +208,29 @@ export function OnboardingTreeCanvas({
   const [copyFailedStepId, setCopyFailedStepId] = useState<string | null>(
     null,
   );
+  const [readIds, setReadIds] = useState<Set<string>>(() =>
+    storedReadIds(workflow.revisionSha),
+  );
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        `sayre:onboarding-read:${workflow.revisionSha}`,
+        JSON.stringify([...readIds]),
+      );
+    } catch {
+      // Session persistence is a convenience; the path remains usable without it.
+    }
+  }, [readIds, workflow.revisionSha]);
+
+  const toggleRead = (nodeId: string) => {
+    setReadIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     try {
@@ -532,12 +575,14 @@ export function OnboardingTreeCanvas({
       >
         <header className="mock-onboarding-context-header">
           <div>
-            <span className="mock-drawer-kind">repository context</span>
+            <span className="mock-drawer-kind">reading order</span>
             <h3>{rootLabel}</h3>
             <p>
-              Setup landmarks and top-level structure for orientation. Showing{' '}
-              {graphNodes.length.toLocaleString()} of{' '}
-              {totalNodeCount.toLocaleString()} repository nodes you can view.
+              {prerequisite === null || prerequisite.nodes.length === 0
+                ? 'No import relationships are available for this revision yet.'
+                : `${prerequisite.nodes.length.toLocaleString()} files across ${prerequisite.layerCount.toLocaleString()} step${
+                    prerequisite.layerCount === 1 ? '' : 's'
+                  }, ordered so nothing is read before what it depends on. Click a file to mark it read.`}
             </p>
           </div>
           <button
@@ -550,20 +595,27 @@ export function OnboardingTreeCanvas({
         </header>
         <section
           className="mock-onboarding-graph"
-          aria-label="Onboarding repository tree"
+          aria-label="Onboarding reading order"
         >
-          <TechnicalTreeCanvas
-            graphNodes={graphNodes}
-            graphEdges={graphEdges}
-            rootLabel={rootLabel}
-            renderer={renderer}
-            command={command}
-            selectedId={selectedId}
-            search={search}
-            showMinimap={showMinimap}
-            fitKey={fitKey}
-            onSelect={onSelect}
-          />
+          {prerequisite === null || prerequisite.nodes.length === 0 ? (
+            <p className="mock-prereq-empty">
+              This revision has no authorized import relationships, so no
+              reading order can be derived from it yet.
+            </p>
+          ) : (
+            <PrerequisiteCanvas
+              graph={prerequisite}
+              doneIds={readIds}
+              command={command}
+              selectedId={selectedId}
+              search={search}
+              fitKey={fitKey}
+              onSelect={(nodeId) => {
+                toggleRead(nodeId);
+                onSelect(nodeId);
+              }}
+            />
+          )}
         </section>
       </aside>
     </div>

@@ -1,6 +1,7 @@
 import type { AuthContext } from '../auth/context';
 import { graphQueryService } from '../graph-query';
 import type {
+  GraphEdge,
   GraphNode,
   OnboardingGraphQueryService,
   OnboardingGraphStep,
@@ -21,6 +22,7 @@ export interface OnboardingTree {
   revisionSha: string;
   visibleNodeCount: number;
   nodes: GraphNode[];
+  edges: GraphEdge[];
   steps: OnboardingGraphStep[];
 }
 
@@ -69,6 +71,14 @@ export async function getOnboardingTree(
     ctx,
   );
   if (projection === null) throw new OnboardingTreeNotFoundError();
+  // Edges are re-authorized against the same node set the projection returned,
+  // so an edge can never reference a node the caller was not already granted.
+  const edges = await graph.getStructuralEdges(
+    normalizedRepoId,
+    normalizedRefName,
+    projection.nodes.map(({ id }) => id),
+    ctx,
+  );
   return {
     authorization: 'server-filtered',
     repoId: normalizedRepoId,
@@ -76,6 +86,7 @@ export async function getOnboardingTree(
     revisionSha: projection.revisionSha,
     visibleNodeCount: projection.nodes.length,
     nodes: projection.nodes,
+    edges,
     steps: projection.steps,
   };
 }

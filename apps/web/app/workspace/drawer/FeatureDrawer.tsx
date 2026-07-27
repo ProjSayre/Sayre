@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMock } from '../state';
 import { buildProductFeatureConnections } from '../canvas/productGraph';
+import { isStructuralEdge } from '../types';
 import { EmptyState, Module, formatTimestamp } from '../components/ui';
 
 type FeatureDrawerTab = 'description' | 'connections' | 'files' | 'activity';
@@ -55,7 +56,10 @@ export function FeatureDrawer() {
   );
   const relatedFeatures = useMemo(() => {
     if (feature === undefined) return [];
-    return buildProductFeatureConnections(graph.features, graph.edges)
+    return buildProductFeatureConnections(
+      graph.features,
+      graph.edges.filter(isStructuralEdge),
+    )
       .flatMap((connection) => {
         const selectedIsSource = connection.sourceFeatureId === feature.id;
         const selectedIsTarget = connection.targetFeatureId === feature.id;
