@@ -29,10 +29,6 @@ export function AuthCard({ mode }: AuthCardProps) {
         <a className="auth-primary" href="/api/core/auth/github/login">
           Continue with GitHub
         </a>
-        <p className="auth-note">
-          GitHub is the only sign-in path. Sayre reads repository structure to
-          build the graph; it never stores your source.
-        </p>
         <div className="auth-switch">
           {login ? 'New to Sayre? ' : 'Already have an account? '}
           <Link href={login ? '/signup' : '/login'}>{login ? 'Create an account' : 'Sign in'}</Link>

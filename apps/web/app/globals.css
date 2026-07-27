@@ -130,15 +130,6 @@ a {
   outline-offset: 2px;
 }
 
-.auth-note {
-  margin: 12px 0 0;
-  border-left: 2px solid var(--border-bright);
-  padding: 0 0 0 9px;
-  color: var(--text-faint);
-  font-size: 11px;
-  line-height: 1.55;
-}
-
 .auth-switch {
   margin-top: 20px;
   border-top: 1px solid var(--border);
