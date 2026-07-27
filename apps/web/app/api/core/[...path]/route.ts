@@ -191,6 +191,46 @@ function coreRoute(
       redirect: true,
     };
   }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'integrations' &&
+    segments[1] === 'jira' &&
+    segments[2] === 'connect' &&
+    method === 'GET'
+  ) {
+    return {
+      method,
+      path: '/integrations/jira/connect',
+      query: NO_QUERY,
+      redirect: true,
+    };
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'integrations' &&
+    segments[1] === 'jira' &&
+    segments[2] === 'status' &&
+    method === 'GET'
+  ) {
+    return {
+      method,
+      path: '/integrations/jira/status',
+      query: NO_QUERY,
+    };
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'integrations' &&
+    segments[1] === 'jira' &&
+    segments[2] === 'disconnect' &&
+    method === 'POST'
+  ) {
+    return {
+      method,
+      path: '/integrations/jira/disconnect',
+      query: NO_QUERY,
+    };
+  }
   return null;
 }
 
