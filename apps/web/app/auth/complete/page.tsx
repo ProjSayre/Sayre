@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseAuthCompleteHash } from '../../lib/authComplete';
 import {
+  getStoredSessionToken,
   persistSessionCookie,
   setStoredSessionToken,
 } from '../../lib/coreFetch';
@@ -20,7 +21,15 @@ export default function AuthCompletePage() {
   const router = useRouter();
 
   useEffect(() => {
-    const { token, redirectTo } = parseAuthCompleteHash(window.location.hash);
+    const { token: hashToken, redirectTo } = parseAuthCompleteHash(window.location.hash);
+
+    // React Strict Mode (dev-only) double-invokes this effect. The first
+    // invocation already stores the token and strips the fragment via
+    // history.replaceState -- which Next.js's router treats as a navigation
+    // and re-triggers this effect against the now-fragment-less URL. Fall
+    // back to whatever's already stored so the second invocation doesn't
+    // misreport "no token" and bounce to /login.
+    const token = hashToken ?? getStoredSessionToken();
 
     if (!token) {
       router.replace('/login');
@@ -31,7 +40,9 @@ export default function AuthCompletePage() {
     setStoredSessionToken(token);
     // Strip the fragment from history immediately — the token must not
     // linger in browser history once it has been read and stored.
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (hashToken) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     // A full-page GitHub App installation cannot attach a localStorage bearer
     // header. Mirror the same token into an HttpOnly BFF cookie before leaving
     // this completion page; core still verifies it on every request.
