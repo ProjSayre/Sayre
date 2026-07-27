@@ -463,6 +463,117 @@ describe('createDefaultGithubAppClient', () => {
     await expect(client.listInstallationRepos(1)).rejects.toBeInstanceOf(GithubAppApiError);
   });
 
+  describe('getInstallationRepo (W2-09)', () => {
+    it('mints a token, GETs /repos/{owner}/{repo}, and resolves the default-branch HEAD', async () => {
+      const calls: Array<{ url: string; init?: RequestInit }> = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+          calls.push({ url, init });
+          if (url.includes('/access_tokens')) return Response.json({ token: 'ghs_faketoken' });
+          if (url.includes('/git/ref/')) {
+            return Response.json({ object: { type: 'commit', sha: SHA_A } });
+          }
+          return Response.json({ id: 111, full_name: 'acme/widgets', default_branch: 'main' });
+        }),
+      );
+
+      const repo = await createDefaultGithubAppClient().getInstallationRepo(555, 'acme/widgets');
+
+      expect(repo).toEqual({
+        provider_repo_id: '111',
+        full_name: 'acme/widgets',
+        default_branch: 'main',
+        default_branch_head_sha: SHA_A,
+      });
+      const repoCall = calls.find(({ url }) => url.endsWith('/repos/acme/widgets'));
+      expect(repoCall?.init?.headers).toMatchObject({ Authorization: 'Bearer ghs_faketoken' });
+    });
+
+    it('returns null on a 404 (repo not/no-longer accessible to the installation)', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) => {
+          if (url.includes('/access_tokens')) return Response.json({ token: 'ghs_faketoken' });
+          return new Response(null, { status: 404 });
+        }),
+      );
+
+      await expect(
+        createDefaultGithubAppClient().getInstallationRepo(555, 'acme/gone'),
+      ).resolves.toBeNull();
+    });
+
+    it('resolves a null default_branch_head_sha for an empty repo (409 from the ref lookup)', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) => {
+          if (url.includes('/access_tokens')) return Response.json({ token: 'ghs_faketoken' });
+          if (url.includes('/git/ref/')) return new Response(null, { status: 409 });
+          return Response.json({ id: 111, full_name: 'acme/empty', default_branch: 'main' });
+        }),
+      );
+
+      await expect(
+        createDefaultGithubAppClient().getInstallationRepo(555, 'acme/empty'),
+      ).resolves.toEqual({
+        provider_repo_id: '111',
+        full_name: 'acme/empty',
+        default_branch: 'main',
+        default_branch_head_sha: null,
+      });
+    });
+
+    it('resolves default_branch_head_sha: null for a repo with no default_branch at all (empty, no commits)', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) => {
+          if (url.includes('/access_tokens')) return Response.json({ token: 'ghs_faketoken' });
+          return Response.json({ id: 111, full_name: 'acme/empty', default_branch: null });
+        }),
+      );
+
+      await expect(
+        createDefaultGithubAppClient().getInstallationRepo(555, 'acme/empty'),
+      ).resolves.toEqual({
+        provider_repo_id: '111',
+        full_name: 'acme/empty',
+        default_branch: null,
+        default_branch_head_sha: null,
+      });
+    });
+
+    it('wraps a non-2xx/non-404 repo-lookup failure as GithubAppApiError', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) => {
+          if (url.includes('/access_tokens')) return Response.json({ token: 'ghs_faketoken' });
+          return new Response(null, { status: 500 });
+        }),
+      );
+
+      await expect(
+        createDefaultGithubAppClient().getInstallationRepo(555, 'acme/widgets'),
+      ).rejects.toBeInstanceOf(GithubAppApiError);
+    });
+
+    it('wraps a malformed full_name (not owner/name) as GithubAppApiError, never issues the repo GET', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => Response.json({ token: 'ghs_faketoken' })));
+
+      await expect(
+        createDefaultGithubAppClient().getInstallationRepo(555, 'not-owner-slash-name'),
+      ).rejects.toBeInstanceOf(GithubAppApiError);
+    });
+
+    it('wraps a failed token mint as GithubAppApiError', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })));
+
+      await expect(
+        createDefaultGithubAppClient().getInstallationRepo(555, 'acme/widgets'),
+      ).rejects.toBeInstanceOf(GithubAppApiError);
+    });
+  });
+
   it('never logs the minted token or private key', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);

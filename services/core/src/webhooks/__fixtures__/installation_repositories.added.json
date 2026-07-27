@@ -1,0 +1,28 @@
+{
+  "headers": {
+    "x-github-event": "installation_repositories",
+    "x-github-delivery": "aaaaaaaa-1111-4111-8111-111111111111"
+  },
+  "body": {
+    "action": "added",
+    "installation": {
+      "id": 555
+    },
+    "repository_selection": "selected",
+    "repositories_added": [
+      {
+        "id": 583232,
+        "node_id": "R_new-repo",
+        "name": "new-repo",
+        "full_name": "acme-corp/new-repo",
+        "private": false
+      }
+    ],
+    "repositories_removed": [],
+    "requester": null,
+    "sender": {
+      "login": "octocat",
+      "id": 1
+    }
+  }
+}

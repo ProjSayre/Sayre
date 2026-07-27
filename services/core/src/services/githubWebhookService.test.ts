@@ -41,6 +41,7 @@ interface Deps extends WebhookDeps {
   publishIngestion: ReturnType<typeof vi.fn>;
   publishOwnership: ReturnType<typeof vi.fn>;
   applyInstallationLifecycle: ReturnType<typeof vi.fn>;
+  applyInstallationRepositories: ReturnType<typeof vi.fn>;
 }
 
 function makeDeps(overrides: Partial<Deps> = {}): Deps {
@@ -50,6 +51,7 @@ function makeDeps(overrides: Partial<Deps> = {}): Deps {
     publishIngestion: vi.fn(async () => undefined),
     publishOwnership: vi.fn(async () => undefined),
     applyInstallationLifecycle: vi.fn(async () => ({ status: 'revoked' as const })),
+    applyInstallationRepositories: vi.fn(async () => ({ status: 'added' as const, registered: 1, enqueued: 1 })),
     ...overrides,
   };
 }
@@ -365,6 +367,120 @@ describe('handleGithubWebhook — installation lifecycle (W1-06)', () => {
       ),
     ).rejects.toBeInstanceOf(WebhookSignatureError);
     expect(deps.applyInstallationLifecycle).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleGithubWebhook — installation_repositories (W2-09)', () => {
+  it("delegates 'installation_repositories' added events to applyInstallationRepositories instead of the normalize/enqueue path", async () => {
+    const deps = makeDeps({
+      applyInstallationRepositories: vi.fn(async () => ({
+        status: 'added' as const,
+        registered: 1,
+        enqueued: 1,
+      })),
+    });
+    const rawBody = Buffer.from(
+      JSON.stringify({
+        action: 'added',
+        installation: { id: 555 },
+        repositories_added: [{ id: 111, full_name: 'acme/widgets' }],
+        repositories_removed: [],
+      }),
+    );
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation_repositories', deliveryId: 'd30' },
+      deps,
+    );
+    expect(outcome).toEqual({
+      status: 'installation_repositories',
+      result: { status: 'added', registered: 1, enqueued: 1 },
+    });
+    expect(deps.applyInstallationRepositories).toHaveBeenCalledWith({
+      action: 'added',
+      installationId: 555,
+      added: [{ providerRepoId: '111', fullName: 'acme/widgets' }],
+      removed: [],
+    });
+    expect(deps.publishIngestion).not.toHaveBeenCalled();
+    expect(deps.publishOwnership).not.toHaveBeenCalled();
+    expect(deps.resolveOrg).not.toHaveBeenCalled();
+  });
+
+  it("delegates 'installation_repositories' removed events, returning the removed result", async () => {
+    const deps = makeDeps({
+      applyInstallationRepositories: vi.fn(async () => ({ status: 'removed' as const, revoked: 2 })),
+    });
+    const rawBody = Buffer.from(
+      JSON.stringify({
+        action: 'removed',
+        installation: { id: 555 },
+        repositories_added: [],
+        repositories_removed: [
+          { id: 111, full_name: 'acme/widgets' },
+          { id: 222, full_name: 'acme/gadgets' },
+        ],
+      }),
+    );
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation_repositories', deliveryId: 'd31' },
+      deps,
+    );
+    expect(outcome).toEqual({ status: 'installation_repositories', result: { status: 'removed', revoked: 2 } });
+  });
+
+  it("an 'installation_repositories' event missing installation.id is ignored (no_installation), never reaches the service", async () => {
+    const deps = makeDeps();
+    const rawBody = Buffer.from(
+      JSON.stringify({ action: 'added', repositories_added: [{ id: 111, full_name: 'acme/widgets' }] }),
+    );
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation_repositories', deliveryId: 'd32' },
+      deps,
+    );
+    expect(outcome).toEqual({ status: 'ignored', reason: 'no_installation' });
+    expect(deps.applyInstallationRepositories).not.toHaveBeenCalled();
+  });
+
+  it('an unrecognized action is ignored (noop_action), never reaches the service', async () => {
+    const deps = makeDeps();
+    const rawBody = Buffer.from(JSON.stringify({ action: 'unknown_future_action', installation: { id: 555 } }));
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation_repositories', deliveryId: 'd33' },
+      deps,
+    );
+    expect(outcome).toEqual({ status: 'ignored', reason: 'noop_action' });
+    expect(deps.applyInstallationRepositories).not.toHaveBeenCalled();
+  });
+
+  it('an empty repositories_added array is ignored (no_repositories), never reaches the service', async () => {
+    const deps = makeDeps();
+    const rawBody = Buffer.from(
+      JSON.stringify({ action: 'added', installation: { id: 555 }, repositories_added: [] }),
+    );
+    const outcome = await handleGithubWebhook(
+      { rawBody, signature: sign(rawBody), githubEvent: 'installation_repositories', deliveryId: 'd34' },
+      deps,
+    );
+    expect(outcome).toEqual({ status: 'ignored', reason: 'no_repositories' });
+    expect(deps.applyInstallationRepositories).not.toHaveBeenCalled();
+  });
+
+  it('signature validation still gates installation_repositories events (401 before any mutation)', async () => {
+    const deps = makeDeps();
+    const rawBody = Buffer.from(
+      JSON.stringify({
+        action: 'added',
+        installation: { id: 555 },
+        repositories_added: [{ id: 111, full_name: 'acme/widgets' }],
+      }),
+    );
+    await expect(
+      handleGithubWebhook(
+        { rawBody, signature: 'sha256=bad', githubEvent: 'installation_repositories', deliveryId: 'd35' },
+        deps,
+      ),
+    ).rejects.toBeInstanceOf(WebhookSignatureError);
+    expect(deps.applyInstallationRepositories).not.toHaveBeenCalled();
   });
 });
 

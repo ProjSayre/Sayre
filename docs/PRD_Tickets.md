@@ -235,6 +235,16 @@ Parse test files as Test nodes during Tree-sitter ingestion; infer COVERS edges 
 
 **Acceptance criteria:** a cold-start ingestion produces the onboarding-ready signal before general feature-cluster enrichment completes for the same repo; the TTFC metric appears in the metrics backend for every cold start. 
 
+### **W2-09 — GitHub `installation_repositories` handling + Configure-page reconciliation** **_(new — gap identified during hands-on testing after W1-06 shipped)_**
+
+**Depends on:** W1-06, W1-05, W0-04 · **Executor:** Pair (webhook handling is AI-agent-gradable; the reconciliation-on-poll fallback needed human sign-off on trigger/bound/destructive-direction tradeoffs)
+
+W1-06 lands installation-level lifecycle handling (install/uninstall/suspend), but a user adding or removing individual repositories from an existing installation via GitHub's own Configure page never redirects the browser back to Sayre — the `installation_repositories` webhook is subscribed in the App manifest but was left unhandled (falling through to the normalizer's ignored path) once W1-06 shipped. This ticket closes that gap: `added`/`removed` webhook handling, plus a manual "Refresh installations" reconciliation endpoint as a backstop for missed or out-of-order webhook deliveries. No fresh install required.
+
+**What it should look like:** an `installation_repositories` branch in the existing `POST /webhooks/github` receiver, signature-validated identically to every other event and intercepted the same way the sibling `installation` event already is; `added` resolves each repo's default-branch HEAD via the GitHub App client (the webhook payload itself carries no HEAD/`default_branch`) and enqueues `repo.initial_parse` reusing W1-06's exact envelope/outbox/dispatcher path unchanged, against the *existing* installation (no new `github_app_installations` row); `removed` marks the repository revoked (a new `repositories.revoked_at` column) without deleting graph history; a new authenticated, admin-or-owner-gated, org-scoped `POST /integrations/github/reconcile` endpoint that lists an installation's GitHub-accessible repos (bounded at 25, matching W1-06's callback cap) and registers/enqueues any repo GitHub reports that we don't hold active. Reconcile is deliberately additive-repair-only for MVP — it never revokes a repository based on an inferred absence from a GitHub API diff; the only path that revokes a repository is the real `removed` webhook itself, a direct signal from GitHub (a missed `removed` delivery is an accepted, documented MVP limitation, not something reconcile routes around).
+
+**Acceptance criteria:** replaying a captured `installation_repositories` `added` webhook delivery results in exactly one `repo.initial_parse` outbox row per added repo with a resolvable HEAD, is idempotent on redelivery (no duplicate repository row, no second outbox row), and never creates a second `github_app_installations` row; replaying a `removed` delivery revokes each named repo without deleting its graph history and is a no-op on redelivery; `POST /integrations/github/reconcile` requires an authenticated admin-or-owner session (a member is 403, unauthenticated is 401), resolves `org_id` only from the session, and repairs a simulated missed-webhook gap (a repo GitHub reports that we don't hold) without ever writing revocation state.
+
 ## **Wave 3 — Semantic layer, integrations & real canvas (needs Wave 2)** 
 
 ### **W2-04 — Technical Tree end-to-end** **_(moved from Wave 2 in v2 — it depends on two Wave 2 tickets, violating the intra-wave parallelism rule as previously placed)_** 
@@ -496,6 +506,7 @@ Extends the MCP surface beyond read-only context: tools letting agents propose c
 |W2-06|W0-02, W0-05, W1-03|2|
 |W2-07|W1-01, W0-02|2|
 |W2-08|W0-04, W1-05|2|
+|W2-09|W1-06, W1-05, W0-04|2_(new)_|
 |W2-04|W2-01, W2-02|3_(moved)_|
 |W3-01|W2-05|3|
 |W3-02|W3-01, W2-01|3|

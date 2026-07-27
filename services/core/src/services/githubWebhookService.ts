@@ -16,6 +16,10 @@ import {
   type IgnoreReason,
   type NormalizationResult,
 } from '../webhooks/normalizeGithubEvent';
+import {
+  parseInstallationRepositoriesEvent,
+  type InstallationRepositoriesEvent,
+} from '../webhooks/parseInstallationRepositoriesEvent';
 import { makeEnvelope, type MessageEnvelope } from '../queue/envelope';
 import { publishIngestionEvent } from '../queue/sqs';
 import { enqueue } from '../queue/bullmq';
@@ -24,6 +28,10 @@ import {
   applyInstallationLifecycleEvent,
   type InstallationLifecycleResult,
 } from './githubInstallationLifecycleService';
+import {
+  applyInstallationRepositoriesEvent,
+  type InstallationRepositoriesResult,
+} from './githubInstallationRepositoriesService';
 
 export class WebhookBadRequestError extends Error {
   constructor(message = 'Malformed GitHub webhook request.') {
@@ -34,8 +42,17 @@ export class WebhookBadRequestError extends Error {
 
 export type WebhookOutcome =
   | { status: 'published'; type: RepoEventType; destinations: Array<'ingestion' | 'ownership'> }
-  | { status: 'ignored'; reason: IgnoreReason | 'unknown_installation' | 'revoked_installation' }
-  | { status: 'installation'; result: InstallationLifecycleResult };
+  | {
+      status: 'ignored';
+      reason:
+        | IgnoreReason
+        | 'unknown_installation'
+        | 'revoked_installation'
+        | 'noop_action'
+        | 'no_repositories';
+    }
+  | { status: 'installation'; result: InstallationLifecycleResult }
+  | { status: 'installation_repositories'; result: InstallationRepositoriesResult };
 
 export interface WebhookDeps {
   getWebhookSecret: () => Promise<string>; // default: getSecret('env://GITHUB_WEBHOOK_SECRET')
@@ -48,6 +65,11 @@ export interface WebhookDeps {
     action: string;
     installationId: number;
   }) => Promise<InstallationLifecycleResult>;
+  // W2-09: `installation_repositories` events (added/removed) delegate here, sibling to
+  // `applyInstallationLifecycle` above. Default: applyInstallationRepositoriesEvent.
+  applyInstallationRepositories: (
+    input: InstallationRepositoriesEvent,
+  ) => Promise<InstallationRepositoriesResult>;
 }
 
 const defaultDeps: WebhookDeps = {
@@ -61,6 +83,7 @@ const defaultDeps: WebhookDeps = {
     await enqueue('github-sync', envelope, { jobId: envelope.idempotency_key });
   },
   applyInstallationLifecycle: (input) => applyInstallationLifecycleEvent(input),
+  applyInstallationRepositories: (input) => applyInstallationRepositoriesEvent(input),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -123,6 +146,22 @@ export async function handleGithubWebhook(
     const action = typeof body.action === 'string' ? body.action : '';
     const result = await resolvedDeps.applyInstallationLifecycle({ action, installationId });
     return { status: 'installation', result };
+  }
+
+  // (d.6) W2-09: `installation_repositories` (added/removed via GitHub's Configure page)
+  // is likewise a repository-catalog mutation, not a repo content event — delegate to
+  // `applyInstallationRepositories` INSTEAD of the normalize -> resolve-org(active-gated)
+  // -> enqueue path below. `normalizeGithubEvent` has no case for this event type either,
+  // so it must be intercepted here, sibling to the `installation` branch above.
+  if (githubEvent === 'installation_repositories') {
+    const parsedRepositoriesEvent = parseInstallationRepositoriesEvent(
+      parsed as Record<string, unknown>,
+    );
+    if ('ignored' in parsedRepositoriesEvent) {
+      return { status: 'ignored', reason: parsedRepositoriesEvent.ignored };
+    }
+    const result = await resolvedDeps.applyInstallationRepositories(parsedRepositoriesEvent);
+    return { status: 'installation_repositories', result };
   }
 
   // (e) Normalize. A structurally malformed but otherwise-supported event (missing

@@ -203,7 +203,14 @@ async function authorizeInstallation(
   }
 }
 
-function buildInitialParseEnvelope(input: {
+/**
+ * Exported (W2-09) so `githubInstallationRepositoriesService.ts` (webhook added path) and
+ * `githubInstallationReconcileService.ts` (manual reconcile) build the EXACT same envelope
+ * shape as the fresh-install callback — same `source`/`reason`/`trace_id`/`idempotency_key`
+ * composition — rather than reimplementing it, so downstream idempotent-dedup and the W1-05
+ * consumer need no changes (see spec.md OQ-4).
+ */
+export function buildInitialParseEnvelope(input: {
   orgId: string;
   installationId: number;
   repoId: string;

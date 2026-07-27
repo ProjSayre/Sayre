@@ -44,6 +44,28 @@ vi.mock('../queue/bullmq', () => ({
   enqueue: (...args: unknown[]) => (enqueue as unknown as (...a: unknown[]) => unknown)(...args),
 }));
 
+// W2-09: mocked at the service-layer boundary (mirrors routes/githubInstall.test.ts's
+// treatment of handleGithubAppCallback) — the deep added/removed business logic (envelope
+// construction, registerRepository/markRepositoryRevoked semantics, idempotency) is unit-
+// tested directly against injected fakes in services/githubInstallationRepositoriesService.test.ts.
+// This suite instead proves the HTTP/signature/parsing wiring: real signature verification,
+// real parseInstallationRepositoriesEvent parsing, and correct outcome -> HTTP status mapping.
+const applyInstallationRepositoriesEvent = vi.fn(async () => ({
+  status: 'added' as const,
+  registered: 1,
+  enqueued: 1,
+}));
+vi.mock('../services/githubInstallationRepositoriesService', async () => {
+  const actual = await vi.importActual<
+    typeof import('../services/githubInstallationRepositoriesService')
+  >('../services/githubInstallationRepositoriesService');
+  return {
+    ...actual,
+    applyInstallationRepositoriesEvent: (...args: unknown[]) =>
+      (applyInstallationRepositoriesEvent as unknown as (...a: unknown[]) => unknown)(...args),
+  };
+});
+
 import { createApp } from '../app';
 
 async function startServer() {
@@ -70,6 +92,8 @@ beforeEach(() => {
   publishIngestionEvent.mockResolvedValue('sqs-message-id');
   enqueue.mockClear();
   enqueue.mockResolvedValue('bullmq-job-id');
+  applyInstallationRepositoriesEvent.mockClear();
+  applyInstallationRepositoriesEvent.mockResolvedValue({ status: 'added', registered: 1, enqueued: 1 });
 });
 
 afterEach(async () => {
@@ -251,6 +275,74 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     expect(res.status).toBe(400);
     expect(publishIngestionEvent).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /webhooks/github — replayed installation_repositories fixtures (W2-09)', () => {
+  it('installation_repositories.added.json delegates to applyInstallationRepositoriesEvent and enqueues, returns 200', async () => {
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('installation_repositories.added.json');
+
+    const res = await replay(baseUrl, fixture);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(applyInstallationRepositoriesEvent).toHaveBeenCalledTimes(1);
+    expect(applyInstallationRepositoriesEvent).toHaveBeenCalledWith({
+      action: 'added',
+      installationId: 555,
+      added: [{ providerRepoId: '583232', fullName: 'acme-corp/new-repo' }],
+      removed: [],
+    });
+    // Never delegates to the normalize -> resolve-org -> publish path.
+    expect(publishIngestionEvent).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('installation_repositories.removed.json delegates to applyInstallationRepositoriesEvent, returns 200', async () => {
+    applyInstallationRepositoriesEvent.mockResolvedValueOnce({ status: 'removed', revoked: 1 });
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('installation_repositories.removed.json');
+
+    const res = await replay(baseUrl, fixture);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(applyInstallationRepositoriesEvent).toHaveBeenCalledWith({
+      action: 'removed',
+      installationId: 555,
+      added: [],
+      removed: [{ providerRepoId: '583231', fullName: 'acme-corp/widgets' }],
+    });
+    expect(publishIngestionEvent).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('replaying installation_repositories.added.json twice (GitHub retry) calls the service twice with the identical parsed input, both 200', async () => {
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('installation_repositories.added.json');
+
+    const first = await replay(baseUrl, fixture);
+    const second = await replay(baseUrl, fixture);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(applyInstallationRepositoriesEvent).toHaveBeenCalledTimes(2);
+    expect(applyInstallationRepositoriesEvent.mock.calls[0]).toEqual(applyInstallationRepositoriesEvent.mock.calls[1]);
+  });
+
+  it('a bad signature on installation_repositories.added.json is rejected 401 before any parse/delegate', async () => {
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('installation_repositories.added.json');
+
+    const res = await replay(baseUrl, fixture, { signature: 'sha256=' + '0'.repeat(64) });
+
+    expect(res.status).toBe(401);
+    expect(applyInstallationRepositoriesEvent).not.toHaveBeenCalled();
   });
 });
 

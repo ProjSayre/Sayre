@@ -1,0 +1,28 @@
+{
+  "headers": {
+    "x-github-event": "installation_repositories",
+    "x-github-delivery": "bbbbbbbb-2222-4222-8222-222222222222"
+  },
+  "body": {
+    "action": "removed",
+    "installation": {
+      "id": 555
+    },
+    "repository_selection": "selected",
+    "repositories_added": [],
+    "repositories_removed": [
+      {
+        "id": 583231,
+        "node_id": "R_widgets",
+        "name": "widgets",
+        "full_name": "acme-corp/widgets",
+        "private": false
+      }
+    ],
+    "requester": null,
+    "sender": {
+      "login": "octocat",
+      "id": 1
+    }
+  }
+}

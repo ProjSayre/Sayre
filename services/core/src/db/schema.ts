@@ -115,6 +115,13 @@ export const repositories = pgTable(
     provider: text("provider").notNull().default("github"),
     externalId: text("external_id"),
     defaultBranch: text("default_branch"),
+    // W2-09: set when a repo is removed from the installation
+    // (installation_repositories `removed`, or reconcile detecting GitHub no
+    // longer reports it). Distinct from graph deletion — graph history is
+    // retained. NULL = active. Mirrors github_app_installations.revoked_at
+    // (COALESCE-idempotent on redelivery). Re-adding a repo clears this
+    // (registerRepository).
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [
