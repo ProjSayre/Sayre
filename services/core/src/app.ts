@@ -5,6 +5,7 @@ import { productTreeRouter } from './routes/productTree';
 import { realtimeInternalRouter } from './routes/realtimeInternal';
 import { githubWebhookRouter } from './routes/githubWebhook';
 import { githubInstallRouter } from './routes/githubInstall';
+import { githubInstallationReconcileRouter } from './routes/githubInstallationReconcile';
 import { loginRouter } from './routes/login';
 import { providerSettingsRouter } from './routes/providerSettings';
 import { providerJobStateRouter } from './routes/providerJobState';
@@ -50,6 +51,11 @@ export function createApp(): Express {
   app.use(providerSettingsRouter);
   app.use(nodeOverlayRouter);
   app.use(repositoryCatalogRouter);
+  // Manual reconciliation backstop for missed/out-of-order installation_repositories
+  // webhook deliveries (W2-09). Mounted after express.json(), alongside the other
+  // session-authenticated routes; authenticate()/authorize('admin') applied per-route
+  // inside routes/githubInstallationReconcile.ts.
+  app.use(githubInstallationReconcileRouter);
   app.use(mcpKeysRouter);
   app.use(mcpGatewayRouter);
   app.use(errorHandler);

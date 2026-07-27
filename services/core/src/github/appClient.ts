@@ -39,6 +39,17 @@ export interface GithubAppClient {
   ): Promise<AuthorizedInstallation>;
   mintInstallationToken(installationId: number): Promise<string>; // in-memory only, never persisted/logged
   listInstallationRepos(installationId: number, maxRepos?: number): Promise<InstalledRepo[]>; // handles pagination
+  /**
+   * W2-09: fetch a single installation-accessible repo's metadata + default-branch HEAD
+   * (used by the `installation_repositories` `added` webhook path, which only receives
+   * `id`/`full_name` in the payload — no `default_branch`/HEAD). Mints an installation
+   * token (in-memory only), GETs /repos/{owner}/{repo}, then resolves the default-branch
+   * HEAD via the same `resolveDefaultBranchHead` helper `listInstallationRepos` uses.
+   * Returns null when the repo is not accessible to the installation (404) — e.g. a
+   * removed/renamed repo between the webhook firing and this call running.
+   * `default_branch_head_sha` is null for an empty repo (409), same as `listInstallationRepos`.
+   */
+  getInstallationRepo(installationId: number, fullName: string): Promise<InstalledRepo | null>;
 }
 
 /** Normalized failure for any GitHub App API call (token mint or repo list). */
@@ -474,7 +485,40 @@ async function listInstallationRepos(
   }
 }
 
+/**
+ * Wraps any failure (including a failed token mint) as GithubAppApiError, EXCEPT a 404 from
+ * the repo lookup itself, which resolves to null (repo not/no-longer accessible to this
+ * installation) rather than throwing.
+ */
+async function getInstallationRepo(
+  installationId: number,
+  fullName: string,
+): Promise<InstalledRepo | null> {
+  const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const token = await mintInstallationToken(installationId, signal);
+
+  const response = await githubApiFetch(
+    `/repos/${encodedRepositoryPath(fullName)}`,
+    { headers: { Authorization: `Bearer ${token}` }, signal },
+    [404],
+  );
+  if (response.status === 404) return null;
+
+  const repo = await readBoundedJson<GithubRepoResponse>(response, 'GitHub repository lookup');
+  return {
+    provider_repo_id: String(repo.id),
+    full_name: repo.full_name,
+    default_branch: repo.default_branch ?? null,
+    default_branch_head_sha: await resolveDefaultBranchHead(token, repo, signal),
+  };
+}
+
 /** Default, real-network implementation. Tests inject a fake `GithubAppClient` instead. */
 export function createDefaultGithubAppClient(): GithubAppClient {
-  return { authorizeInstallation, mintInstallationToken, listInstallationRepos };
+  return {
+    authorizeInstallation,
+    mintInstallationToken,
+    listInstallationRepos,
+    getInstallationRepo,
+  };
 }

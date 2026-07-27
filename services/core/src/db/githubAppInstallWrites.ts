@@ -12,7 +12,7 @@
 // No schema migration required: `github_app_installations` and `repositories`
 // already exist with every column this ticket needs (see spec.md).
 
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from './client';
 import { githubAppInstallations, repositories } from './schema';
 
@@ -58,7 +58,12 @@ export async function upsertInstallation(
     });
 }
 
-/** Upsert on (org_id, provider='github', external_id=providerRepoId) — the existing composite unique index. */
+/**
+ * Upsert on (org_id, provider='github', external_id=providerRepoId) — the existing composite
+ * unique index. W2-09: re-adding a previously-removed repo (installation_repositories `added`
+ * webhook, or reconcile's additive repair) clears `revoked_at` — re-activation, consistent with
+ * `upsertInstallation` clearing `suspendedAt`/`revokedAt` on re-install.
+ */
 export async function registerRepository(
   tx: Db,
   row: { orgId: string; providerRepoId: string; fullName: string; defaultBranch: string | null },
@@ -77,12 +82,83 @@ export async function registerRepository(
       set: {
         name: row.fullName,
         defaultBranch: row.defaultBranch,
+        revokedAt: null,
         updatedAt: new Date(),
       },
     })
     .returning({ id: repositories.id });
 
   return { repoId: inserted.id };
+}
+
+/**
+ * W2-09: mirrors `markInstallationRevoked`'s COALESCE pattern — a redelivered
+ * `installation_repositories` `removed` event (or a repeated reconcile pass) for an
+ * already-revoked repo is a true no-op; `revoked_at` never advances on retry.
+ * Returns true iff a matching (org_id, provider='github', external_id) row was updated.
+ */
+export async function markRepositoryRevoked(
+  tx: Db,
+  row: { orgId: string; providerRepoId: string },
+): Promise<boolean> {
+  const updated = await tx
+    .update(repositories)
+    .set({
+      revokedAt: sql`coalesce(${repositories.revokedAt}, now())`,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(repositories.orgId, row.orgId),
+        eq(repositories.provider, 'github'),
+        eq(repositories.externalId, row.providerRepoId),
+      ),
+    )
+    .returning({ id: repositories.id });
+  return updated.length > 0;
+}
+
+/**
+ * W2-09: org-scoped read (ordinary RLS via withOrgContext) — the installations to reconcile
+ * against GitHub for this org. Active = suspended_at IS NULL AND revoked_at IS NULL, mirroring
+ * `resolveInstallationOrg`'s definition of `active`.
+ */
+export async function listActiveInstallationsForOrg(
+  tx: Db,
+  orgId: string,
+): Promise<Array<{ installationId: number }>> {
+  const rows = await tx
+    .select({ installationId: githubAppInstallations.installationId })
+    .from(githubAppInstallations)
+    .where(
+      and(
+        eq(githubAppInstallations.orgId, orgId),
+        isNull(githubAppInstallations.suspendedAt),
+        isNull(githubAppInstallations.revokedAt),
+      ),
+    );
+  return rows.map((row) => ({ installationId: row.installationId }));
+}
+
+/**
+ * W2-09: org-scoped read — our current github repositories (any revocation state), for the
+ * reconcile diff. Reconcile decides active/revoked itself from `revokedAt`.
+ */
+export async function listOrgGithubRepositories(
+  tx: Db,
+  orgId: string,
+): Promise<Array<{ id: string; externalId: string; revokedAt: Date | null }>> {
+  const rows = await tx
+    .select({
+      id: repositories.id,
+      externalId: repositories.externalId,
+      revokedAt: repositories.revokedAt,
+    })
+    .from(repositories)
+    .where(and(eq(repositories.orgId, orgId), eq(repositories.provider, 'github')));
+  return rows
+    .filter((row): row is { id: string; externalId: string; revokedAt: Date | null } => row.externalId !== null)
+    .map((row) => ({ id: row.id, externalId: row.externalId, revokedAt: row.revokedAt }));
 }
 
 /**
