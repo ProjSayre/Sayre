@@ -11,9 +11,9 @@ export function AuthCard({ mode }: AuthCardProps) {
     <main className="auth-page">
       <section className="auth-card">
         <Link className="brand" href="/">
-          <span className="brand-mark">S</span>
-          sayre
+          sayre_
         </Link>
+        <span className="auth-kind">{login ? 'sign in' : 'create account'}</span>
         <h1>{login ? 'Welcome back' : 'Create your workspace'}</h1>
         <p>
           {login

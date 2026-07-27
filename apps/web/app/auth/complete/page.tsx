@@ -59,9 +59,18 @@ export default function AuthCompletePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Every sign-in passes through this page between the auth card and the
+  // workspace, so it uses the same card rather than dropping to bare text.
   return (
     <main className="auth-page">
-      <p>Signing you in&hellip;</p>
+      <section className="auth-card">
+        <span className="brand">sayre_</span>
+        <span className="auth-kind">signing in</span>
+        <h1>Completing sign-in</h1>
+        <p aria-live="polite">
+          Verifying your GitHub session and opening your workspace&hellip;
+        </p>
+      </section>
     </main>
   );
 }
