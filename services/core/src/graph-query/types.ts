@@ -278,11 +278,25 @@ export interface StyleRuleGraphQueryService {
   ): Promise<ResolvedStyleRules | null>;
 }
 
-/** Narrow Onboarding Tree contract shared by REST and sandbox execution. */
+/**
+ * Narrow Onboarding Tree contract shared by REST and sandbox execution.
+ *
+ * `getStructuralEdges` is included because the Onboarding view derives its
+ * prerequisite ordering from reversed `IMPORTS` — "if A imports B, understand B
+ * first". Reusing the existing structural-edge query keeps that derivation on
+ * the same authorization path as the canvas rather than introducing a second
+ * traversal with its own filtering.
+ */
 export interface OnboardingGraphQueryService {
   getOnboardingProjection(
     repoId: string,
     refName: string,
     ctx: AuthContext,
   ): Promise<OnboardingGraphProjection | null>;
+  getStructuralEdges(
+    repoId: string,
+    refName: string,
+    nodeIds: readonly string[],
+    ctx: AuthContext,
+  ): Promise<GraphEdge[]>;
 }

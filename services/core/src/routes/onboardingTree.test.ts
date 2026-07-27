@@ -23,7 +23,18 @@ const getOnboardingProjection = vi.fn(async () => ({
     requires: [],
   }],
 }));
-const graph = { getOnboardingProjection } satisfies OnboardingGraphQueryService;
+const getStructuralEdges = vi.fn(async () => [
+  {
+    id: 'IMPORTS:root:root',
+    type: 'IMPORTS' as const,
+    source: 'root',
+    target: 'root',
+  },
+]);
+const graph = {
+  getOnboardingProjection,
+  getStructuralEdges,
+} satisfies OnboardingGraphQueryService;
 const run = vi.fn(async () => ({
   sandbox: 'container' as const,
   status: 'succeeded' as const,
@@ -53,6 +64,7 @@ let activeServer: Server | undefined;
 
 afterEach(async () => {
   getOnboardingProjection.mockClear();
+  getStructuralEdges.mockClear();
   run.mockClear();
   if (activeServer) {
     await closeServer(activeServer);
@@ -72,6 +84,16 @@ describe('Onboarding Tree routes', () => {
       authorization: 'server-filtered',
       refName: 'refs/heads/main',
       visibleNodeCount: 1,
+      // The Onboarding view derives prerequisite ordering from these; without
+      // them it degrades to a filtered copy of the Technical tree.
+      edges: [
+        {
+          id: 'IMPORTS:root:root',
+          type: 'IMPORTS',
+          source: 'root',
+          target: 'root',
+        },
+      ],
     });
     expect(getOnboardingProjection).toHaveBeenCalledWith(
       'repo-1',

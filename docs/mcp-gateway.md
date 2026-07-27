@@ -46,7 +46,7 @@ Use Streamable HTTP with the issued token as a bearer credential:
 }
 ```
 
-The v1 tool set is:
+The tool set is:
 
 - `find_relevant_nodes(query)`
 - `traverse_from(node_id, intent)`
@@ -56,6 +56,38 @@ The v1 tool set is:
 - `get_covering_tests(node_id)`
 - `get_feature_cluster(node_id)`
 - `get_recent_changes(node_id)`
+- `check_liveness(node_id)`
+
+## `check_liveness`
+
+Reports whether an authorized node is imported by production code, only by
+tests, or by nothing. It exists because retrieval ranks a well-named,
+well-tested, uncalled file *above* the live one it duplicates, so an agent asked
+to change behaviour can confidently edit a superseded module and observe no
+effect. The inbound `IMPORTS` edges are already fetched and RBAC-filtered by the
+node-overlay query, so this adds no new graph traversal.
+
+```json
+{ "data": {
+  "node": { "id": "...", "name": "scaleGraph.ts", "path": "apps/web/app/lib/scaleGraph.ts" },
+  "liveness": "imported_by_tests_only",
+  "inbound": { "production": 0, "tests": 3 },
+  "productionImporters": [],
+  "testImporters": ["apps/web/app/lib/scaleGraph.test.ts"],
+  "lastChangedAt": "2026-07-22T00:00:00.000Z" } }
+```
+
+Two limits are deliberate and must not be papered over by callers.
+
+**It is evidence, not a deletion verdict.** `no_inbound_imports` covers both an
+abandoned file and a framework entry point, and a test-only file may be a
+deliberately retained public API. Meta's context work found deprecated
+identifiers that must be kept for backward compatibility, where acting on a
+"dead" reading is actively harmful.
+
+**Granularity is the file, not the symbol.** Only `CONTAINS`/`IMPORTS` leave the
+Graph Query Service, so a dead export inside a live file is out of scope. Sample
+importer arrays are capped at five entries; `inbound` carries the true counts.
 
 Every successful tool response is one text content block containing JSON shaped
 as `{"data": ...}`. A hidden or absent node returns `{"data":null}`; it is not

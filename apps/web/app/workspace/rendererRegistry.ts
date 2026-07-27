@@ -25,9 +25,12 @@ export const workspaceRenderers: readonly RendererDefinition[] = Object.freeze([
     supportsMinimap: true,
   },
   {
+    // Onboarding is deliberately absent: its view is closure-filtered to a
+    // reading order, so it stays well under the WebGL threshold and renders
+    // ordered cards that the Sigma node programs cannot draw.
     id: 'sigma',
     label: 'sigma · webgl',
-    supports: ['technical', 'onboarding'],
+    supports: ['technical'],
     minimumNodeCount: 501,
     supportsMinimap: false,
   },

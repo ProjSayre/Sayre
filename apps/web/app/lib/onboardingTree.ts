@@ -1,5 +1,9 @@
 import type { AuthorizedCanvasPayload } from './scaleGraph';
 import { coreFetch } from './coreFetch';
+import {
+  derivePrerequisiteGraph,
+  type PrerequisiteGraph,
+} from './prerequisiteGraph';
 
 export interface OnboardingTreeNode {
   id: string;
@@ -7,6 +11,13 @@ export interface OnboardingTreeNode {
   name: string;
   path: string;
   parentId: string | null;
+}
+
+export interface OnboardingTreeEdge {
+  id: string;
+  type: 'CONTAINS' | 'IMPORTS';
+  source: string;
+  target: string;
 }
 
 export interface OnboardingTreeStep {
@@ -23,12 +34,15 @@ export interface OnboardingTreeResponse {
   revisionSha: string;
   visibleNodeCount: number;
   nodes: OnboardingTreeNode[];
+  edges: OnboardingTreeEdge[];
   steps: OnboardingTreeStep[];
 }
 
 export interface OnboardingTreePresentation {
   response: OnboardingTreeResponse;
   canvas: AuthorizedCanvasPayload;
+  /** Reading order derived from reversed IMPORTS; see `prerequisiteGraph.ts`. */
+  prerequisite: PrerequisiteGraph;
 }
 
 export interface OnboardingExecutionResponse {
@@ -99,6 +113,19 @@ function parseNode(value: unknown): OnboardingTreeNode {
   };
 }
 
+function parseEdge(value: unknown): OnboardingTreeEdge {
+  if (!isRecord(value)) throw new OnboardingTreeResponseError();
+  if (value.type !== 'CONTAINS' && value.type !== 'IMPORTS') {
+    throw new OnboardingTreeResponseError();
+  }
+  return {
+    id: stringField(value, 'id'),
+    type: value.type,
+    source: stringField(value, 'source'),
+    target: stringField(value, 'target'),
+  };
+}
+
 function parseStep(value: unknown): OnboardingTreeStep {
   if (
     !isRecord(value) ||
@@ -146,6 +173,7 @@ export function parseOnboardingTreeResponse(value: unknown): OnboardingTreeRespo
     !Number.isSafeInteger(value.visibleNodeCount) ||
     (value.visibleNodeCount as number) < 0 ||
     !Array.isArray(value.nodes) ||
+    !Array.isArray(value.edges) ||
     !Array.isArray(value.steps)
   ) {
     throw new OnboardingTreeResponseError();
@@ -155,14 +183,24 @@ export function parseOnboardingTreeResponse(value: unknown): OnboardingTreeRespo
     throw new OnboardingTreeResponseError();
   }
   const nodes = value.nodes.map(parseNode);
+  const edges = value.edges.map(parseEdge);
   const steps = value.steps.map(parseStep);
+  const nodeIds = new Set(nodes.map(({ id }) => id));
   if (
-    new Set(nodes.map(({ id }) => id)).size !== nodes.length ||
+    nodeIds.size !== nodes.length ||
     value.visibleNodeCount !== nodes.length ||
     nodes.some(
       ({ parentId }) =>
         parentId !== null && !nodes.some(({ id }) => id === parentId),
     )
+  ) {
+    throw new OnboardingTreeResponseError();
+  }
+  // An edge endpoint outside the authorized node set would mean the server
+  // leaked structure it filtered out of `nodes`. Reject rather than render it.
+  if (
+    new Set(edges.map(({ id }) => id)).size !== edges.length ||
+    edges.some(({ source, target }) => !nodeIds.has(source) || !nodeIds.has(target))
   ) {
     throw new OnboardingTreeResponseError();
   }
@@ -174,6 +212,7 @@ export function parseOnboardingTreeResponse(value: unknown): OnboardingTreeRespo
     revisionSha,
     visibleNodeCount: value.visibleNodeCount as number,
     nodes,
+    edges,
     steps: [...steps].sort((a, b) => a.sequence - b.sequence),
   };
 }
@@ -200,39 +239,47 @@ function requestError(status: number): OnboardingTreeRequestError {
   );
 }
 
+const LAYER_SPACING_X = 280;
+const ROW_SPACING_Y = 88;
+
+/**
+ * Lays the Onboarding view out by topological layer rather than by directory
+ * depth. Depth-by-row reproduces the Technical tree's shape; layering answers a
+ * different question — what has to be understood before what.
+ */
 export function toOnboardingTreePresentation(
   response: OnboardingTreeResponse,
 ): OnboardingTreePresentation {
-  const ordered = [...response.nodes].sort(
+  const prerequisite = derivePrerequisiteGraph(response.nodes, response.edges);
+
+  // Cycle members are placed adjacently inside their layer so a mutually
+  // entangled group reads as one unit rather than as scattered nodes that
+  // happen to share a colour.
+  const ordered = [...prerequisite.nodes].sort(
     (a, b) =>
-      a.path.split('/').length - b.path.split('/').length ||
+      a.layer - b.layer ||
+      a.groupId.localeCompare(b.groupId) ||
       a.path.localeCompare(b.path),
   );
-  const rowsByDepth = new Map<number, number>();
+  const rowsByLayer = new Map<number, number>();
   const nodes = ordered.map((node) => {
-    const depth = node.path === '' ? 0 : node.path.split('/').length;
-    const row = rowsByDepth.get(depth) ?? 0;
-    rowsByDepth.set(depth, row + 1);
+    const row = rowsByLayer.get(node.layer) ?? 0;
+    rowsByLayer.set(node.layer, row + 1);
     return {
       id: node.id,
-      kind: node.label,
+      kind: 'File' as const,
       label: node.name,
       path: node.path,
-      x: depth * 230,
-      y: row * 78,
+      x: node.layer * LAYER_SPACING_X,
+      y: row * ROW_SPACING_Y,
     };
   });
-  const ids = new Set(nodes.map(({ id }) => id));
-  const edges = ordered.flatMap((node) =>
-    node.parentId !== null && ids.has(node.parentId)
-      ? [{
-          id: `CONTAINS:${node.parentId}:${node.id}`,
-          source: node.parentId,
-          target: node.id,
-          relationship: 'CONTAINS' as const,
-        }]
-      : [],
-  );
+  const edges = prerequisite.edges.map((edge) => ({
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    relationship: 'PREREQUISITE' as const,
+  }));
   return {
     response,
     canvas: {
@@ -241,6 +288,7 @@ export function toOnboardingTreePresentation(
       nodes,
       edges,
     },
+    prerequisite,
   };
 }
 

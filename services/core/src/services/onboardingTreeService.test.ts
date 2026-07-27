@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthContext } from '../auth/context';
 import type {
+  GraphEdge,
   OnboardingGraphProjection,
   OnboardingGraphQueryService,
 } from '../graph-query/types';
@@ -35,9 +36,17 @@ const projection: OnboardingGraphProjection = {
   }],
 };
 
-function graph(value: OnboardingGraphProjection | null = projection) {
+const edges: GraphEdge[] = [
+  { id: 'IMPORTS:a:b', type: 'IMPORTS', source: 'root', target: 'root' },
+];
+
+function graph(
+  value: OnboardingGraphProjection | null = projection,
+  structuralEdges: GraphEdge[] = edges,
+) {
   return {
     getOnboardingProjection: vi.fn(async () => value),
+    getStructuralEdges: vi.fn(async () => structuralEdges),
   } satisfies OnboardingGraphQueryService;
 }
 
@@ -54,6 +63,7 @@ describe('Onboarding Tree service boundary', () => {
       revisionSha: projection.revisionSha,
       visibleNodeCount: 1,
       nodes: projection.nodes,
+      edges,
       steps: projection.steps,
     });
     expect(store.getOnboardingProjection).toHaveBeenCalledWith(
@@ -61,6 +71,29 @@ describe('Onboarding Tree service boundary', () => {
       'refs/heads/main',
       context,
     );
+  });
+
+  it('re-authorizes edges against exactly the projected node set', async () => {
+    const store = graph();
+
+    await getOnboardingTree(' repo-1 ', 'main', context, store);
+
+    // Scoping the edge query to the ids the projection already returned is what
+    // keeps an edge from referencing a node the caller was never granted.
+    expect(store.getStructuralEdges).toHaveBeenCalledWith(
+      'repo-1',
+      'refs/heads/main',
+      projection.nodes.map(({ id }) => id),
+      context,
+    );
+  });
+
+  it('returns an empty edge set rather than failing when nothing is authorized', async () => {
+    const store = graph(projection, []);
+
+    await expect(
+      getOnboardingTree('repo-1', 'main', context, store),
+    ).resolves.toMatchObject({ edges: [] });
   });
 
   it('executes only the command resolved from the authorized current graph', async () => {

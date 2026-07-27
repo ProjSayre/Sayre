@@ -235,16 +235,46 @@ const containsEdges: GraphEdge[] = GRAPH_NODES.filter(
   target: node.id,
 }));
 
+/**
+ * `[importer, imported]` — read as "the first file imports the second".
+ *
+ * The Onboarding view reverses these into a reading order, so the shape here
+ * decides what that view can demonstrate. This set is deliberately built to
+ * exercise all of it: a shared leaf utility, chains deep enough to produce
+ * several layers, a diamond that converges, and one genuine cycle.
+ */
 const importPairs: Array<[string, string]> = [
+  // Shared leaf utility — nothing depends on anything to read it first.
+  ['n_money', 'n_logger'],
+  ['n_button', 'n_logger'],
+  ['n_session', 'n_logger'],
+  ['n_rbac', 'n_logger'],
+
+  // Auth cycle: session needs permissions to resolve, rbac needs the current
+  // user to check them. Circular by nature, and common in real auth code —
+  // these two have to be learned together.
+  ['n_session', 'n_rbac'],
+  ['n_rbac', 'n_session'],
+
+  // Billing chain.
+  ['n_stripe_client', 'n_money'],
+  ['n_invoice', 'n_money'],
+  ['n_refunds', 'n_invoice'],
+
+  // UI primitives.
+  ['n_modal', 'n_button'],
+
+  // Checkout — a diamond converging on the deepest file in the repo.
+  ['n_use_cart', 'n_money'],
   ['n_payment_form', 'n_stripe_client'],
   ['n_payment_form', 'n_button'],
   ['n_checkout_page', 'n_payment_form'],
-  ['n_use_cart', 'n_money'],
-  ['n_invoice', 'n_money'],
-  ['n_refunds', 'n_invoice'],
+  ['n_checkout_page', 'n_use_cart'],
+
+  // Account.
   ['n_session_banner', 'n_session'],
   ['n_profile_page', 'n_modal'],
-  ['n_rbac', 'n_logger'],
+  ['n_profile_page', 'n_session'],
 ];
 
 export const GRAPH_EDGES: GraphEdge[] = [

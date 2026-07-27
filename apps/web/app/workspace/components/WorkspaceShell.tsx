@@ -15,6 +15,7 @@ import {
   type CanvasCommandType,
 } from '../rendererRegistry';
 import { themeVariables, warmGraphiteTheme } from '../theme';
+import { isStructuralEdge } from '../types';
 import { ProductTreeCanvas } from '../canvas/ProductTreeCanvas';
 import { TechnicalTreeCanvas } from '../canvas/TechnicalTreeCanvas';
 import { OnboardingTreeCanvas } from '../canvas/OnboardingTreeCanvas';
@@ -246,7 +247,7 @@ function Workspace() {
     () =>
       projectTechnicalExpansion(
         graph.nodes,
-        graph.edges,
+        graph.edges.filter(isStructuralEdge),
         {
           ...technicalExpansion.preferences,
           focusNodeId: state.selectedNodeId,
@@ -307,7 +308,7 @@ function Workspace() {
     () =>
       projectTechnicalExpansion(
         graph.nodes,
-        graph.edges,
+        graph.edges.filter(isStructuralEdge),
         {
           mode: 'focus',
           manuallyExpanded: new Set(),
@@ -516,7 +517,7 @@ function Workspace() {
         {ready && isProduct && (
           <ProductTreeCanvas
             graphNodes={graph.nodes}
-            graphEdges={graph.edges}
+            graphEdges={graph.edges.filter(isStructuralEdge)}
             features={graph.features}
             command={canvasCommand}
             selectedFeatureId={state.selectedFeatureId}
@@ -534,7 +535,7 @@ function Workspace() {
           <OnboardingTreeCanvas
             key={graph.onboarding.revisionSha}
             graphNodes={onboardingProjection.nodes}
-            graphEdges={onboardingProjection.edges}
+            prerequisite={graph.prerequisite}
             totalNodeCount={graph.nodes.length}
             rootLabel={graphRootLabel}
             workflow={graph.onboarding}

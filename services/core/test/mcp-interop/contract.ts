@@ -9,7 +9,8 @@ export interface InteropToolCase {
     | 'get_style_rules'
     | 'get_covering_tests'
     | 'get_feature_cluster'
-    | 'get_recent_changes';
+    | 'get_recent_changes'
+    | 'check_liveness';
   arguments: Record<string, string>;
 }
 
@@ -47,6 +48,10 @@ export const V1_TOOL_CASES: readonly InteropToolCase[] = [
   },
   {
     name: 'get_recent_changes',
+    arguments: { node_id: 'file-private' },
+  },
+  {
+    name: 'check_liveness',
     arguments: { node_id: 'file-private' },
   },
 ] as const;

@@ -29,6 +29,14 @@ const response = {
       parentId: 'root',
     },
   ],
+  edges: [
+    {
+      id: 'CONTAINS:root:readme',
+      type: 'CONTAINS' as const,
+      source: 'root',
+      target: 'readme',
+    },
+  ],
   steps: [
     {
       id: 'step-1',
@@ -51,21 +59,101 @@ describe('Onboarding Tree client contract', () => {
       parseOnboardingTreeResponse(response),
     );
 
-    expect(presentation.canvas.nodes.map(({ kind }) => kind)).toEqual([
-      'Folder',
-      'File',
-    ]);
     expect(presentation.canvas.nodes.some(({ id }) => id.startsWith('step-'))).toBe(
       false,
     );
+  });
+
+  it('lays out by prerequisite layer instead of directory depth', () => {
+    // page imports money, so money is a prerequisite and must sit to its left.
+    const parsed = parseOnboardingTreeResponse({
+      ...response,
+      visibleNodeCount: 3,
+      nodes: [
+        ...response.nodes,
+        {
+          id: 'money',
+          label: 'File',
+          name: 'money.ts',
+          path: 'deep/nested/money.ts',
+          parentId: 'root',
+        },
+      ],
+      edges: [
+        ...response.edges,
+        {
+          id: 'IMPORTS:readme:money',
+          type: 'IMPORTS',
+          source: 'readme',
+          target: 'money',
+        },
+      ],
+    });
+    const presentation = toOnboardingTreePresentation(parsed);
+
+    const byId = Object.fromEntries(
+      presentation.canvas.nodes.map((node) => [node.id, node]),
+    );
+    // Directory depth would put the deeply nested file on the right; the
+    // prerequisite ordering puts it first because it is the dependency.
+    expect(byId.money.x).toBeLessThan(byId.readme.x);
+    expect(presentation.prerequisite.layerCount).toBe(2);
     expect(presentation.canvas.edges).toEqual([
       {
-        id: 'CONTAINS:root:readme',
-        source: 'root',
+        id: 'PREREQUISITE:money:readme',
+        source: 'money',
         target: 'readme',
-        relationship: 'CONTAINS',
+        relationship: 'PREREQUISITE',
       },
     ]);
+  });
+
+  it('renders files only, so folders never appear on the onboarding canvas', () => {
+    const presentation = toOnboardingTreePresentation(
+      parseOnboardingTreeResponse(response),
+    );
+    expect(presentation.canvas.nodes.map(({ kind }) => kind)).toEqual(['File']);
+    expect(presentation.canvas.nodes.map(({ id }) => id)).toEqual(['readme']);
+  });
+
+  it('rejects an edge endpoint outside the authorized node set', () => {
+    // A dangling endpoint means the server filtered a node out of `nodes` but
+    // left it reachable through an edge, which would leak hidden structure.
+    expect(() =>
+      parseOnboardingTreeResponse({
+        ...response,
+        edges: [
+          {
+            id: 'IMPORTS:readme:hidden',
+            type: 'IMPORTS',
+            source: 'readme',
+            target: 'hidden',
+          },
+        ],
+      }),
+    ).toThrow(OnboardingTreeResponseError);
+  });
+
+  it('rejects duplicate edge identifiers and unknown relationship types', () => {
+    expect(() =>
+      parseOnboardingTreeResponse({
+        ...response,
+        edges: [response.edges[0], response.edges[0]],
+      }),
+    ).toThrow(OnboardingTreeResponseError);
+    expect(() =>
+      parseOnboardingTreeResponse({
+        ...response,
+        edges: [{ ...response.edges[0], type: 'CALLS' }],
+      }),
+    ).toThrow(OnboardingTreeResponseError);
+  });
+
+  it('rejects a response with no edges array at all', () => {
+    const { edges: _edges, ...withoutEdges } = response;
+    expect(() => parseOnboardingTreeResponse(withoutEdges)).toThrow(
+      OnboardingTreeResponseError,
+    );
   });
 
   it('rejects gapped or forward-pointing prerequisite workflows', () => {

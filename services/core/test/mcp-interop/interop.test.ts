@@ -75,7 +75,7 @@ async function startModelDouble(): Promise<string> {
 }
 
 describe('local-model MCP interoperability harness', () => {
-  it('matches every v1 tool in full and limited scopes without hidden-node leakage', async () => {
+  it('matches every advertised tool in full and limited scopes without hidden-node leakage', async () => {
     const fixture = await startInteropFixtureGateway();
     try {
       const report = await runInteropAgainstFixture(
@@ -89,11 +89,13 @@ describe('local-model MCP interoperability harness', () => {
 
       expect(report.tools).toEqual(V1_TOOL_NAMES);
       expect(report.scopes).toEqual(['full', 'limited']);
-      expect(report.matchedCalls).toBe(16);
+      // Derived from the tool count so adding a tool does not silently weaken
+      // the parity guarantee: every tool is exercised in both scopes.
+      expect(report.matchedCalls).toBe(V1_TOOL_NAMES.length * 2);
       expect(
         report.records.filter((record) => record.scope === 'limited'),
-      ).toHaveLength(8);
-      expect(fixture.measurements).toHaveLength(32);
+      ).toHaveLength(V1_TOOL_NAMES.length);
+      expect(fixture.measurements).toHaveLength(V1_TOOL_NAMES.length * 4);
       expect(
         fixture.measurements.every(
           (measurement) => measurement.outcome === 'ok',

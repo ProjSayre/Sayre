@@ -51,12 +51,17 @@ import {
   fetchTechnicalTreeResponse,
   type TechnicalTreeResponse,
 } from '../lib/technicalTree';
+import {
+  derivePrerequisiteGraph,
+  type PrerequisiteGraph,
+} from '../lib/prerequisiteGraph';
 import type {
   AgentSkillVersion,
   Feature,
   GraphEdge,
   GraphNode,
   NodeOverlay,
+  OnboardingEdge,
   OnboardingWorkflow,
   ProductCoverage,
   Repository,
@@ -98,8 +103,10 @@ export interface WorkspaceDataSource {
     signal: AbortSignal,
   ): Promise<{
     nodes: GraphNode[];
-    edges: GraphEdge[];
+    edges: OnboardingEdge[];
     onboarding: OnboardingWorkflow;
+    /** Reading order: per-node layer and cycle grouping. */
+    prerequisite: PrerequisiteGraph;
   }>;
   runOnboardingStep(
     scope: WorkspaceScope,
@@ -330,13 +337,18 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
       scope.refName,
       { signal },
     );
+    // Files only: the reading order is over units of understanding, and
+    // including folders would reproduce the Technical tree's shape.
+    const fileIds = new Set(presentation.prerequisite.nodes.map(({ id }) => id));
     return {
-      nodes: graphNodes(presentation.response.nodes),
-      edges: presentation.canvas.edges.map((edge) => ({
+      nodes: graphNodes(
+        presentation.response.nodes.filter((node) => fileIds.has(node.id)),
+      ),
+      edges: presentation.prerequisite.edges.map((edge) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-        type: edge.relationship,
+        type: 'PREREQUISITE' as const,
       })),
       onboarding: {
         revisionSha: presentation.response.revisionSha,
@@ -345,6 +357,7 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
           requires: [...step.requires],
         })),
       },
+      prerequisite: presentation.prerequisite,
     };
   },
   runOnboardingStep(scope, stepId) {
@@ -607,9 +620,28 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
     };
   },
   async onboardingTree() {
+    // Derived through the same path as the live source so the fixture lab shows
+    // the real reading order rather than a hand-authored approximation of it.
+    const prerequisite = derivePrerequisiteGraph(
+      GRAPH_NODES.map((node) => ({
+        id: node.id,
+        label: node.kind,
+        name: node.name,
+        path: node.path,
+        parentId: node.parentId,
+      })),
+      GRAPH_EDGES,
+    );
+    const fileIds = new Set(prerequisite.nodes.map(({ id }) => id));
     return {
-      nodes: GRAPH_NODES,
-      edges: GRAPH_EDGES.filter((edge) => edge.type === 'CONTAINS'),
+      nodes: GRAPH_NODES.filter((node) => fileIds.has(node.id)),
+      edges: prerequisite.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: 'PREREQUISITE' as const,
+      })),
+      prerequisite,
       onboarding: {
         revisionSha: 'f'.repeat(40),
         steps: [

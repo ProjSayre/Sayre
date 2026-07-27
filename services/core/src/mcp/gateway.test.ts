@@ -132,6 +132,7 @@ describe('read-only MCP Streamable HTTP gateway', () => {
     const listed = await client.listTools();
     expect(listed.tools.map((tool) => tool.name).sort()).toEqual(
       [
+        'check_liveness',
         'find_relevant_nodes',
         'get_agent_skill_md',
         'get_covering_tests',

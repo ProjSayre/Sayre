@@ -1116,7 +1116,8 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: clamp(410px, 40vw, 520px) minmax(0, 1fr);
+  /* The reading order is this view's subject, so the checklist yields width. */
+  grid-template-columns: clamp(340px, 31vw, 440px) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -3741,5 +3742,192 @@ button.mock-list-row:hover {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* onboarding reading order ------------------------------------------------ */
+
+.mock-prereq-empty {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  margin: 0;
+  padding: 0 32px;
+  color: var(--text-faint);
+  font-size: 11px;
+  text-align: center;
+}
+
+/*
+ * Ordered cards, not containment circles. The Technical tree's node language
+ * would re-read as a folder hierarchy and undo the point of this view.
+ */
+.mock-prereq-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 166px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--edge);
+  border-radius: 5px;
+  padding: 7px 10px;
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 11px;
+  transition: border-color 120ms ease, opacity 120ms ease;
+}
+
+.mock-prereq-state {
+  flex: none;
+  width: 12px;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: center;
+}
+
+.mock-prereq-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mock-prereq-name {
+  overflow: hidden;
+  color: var(--text-bright);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mock-prereq-meta {
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+}
+
+.mock-prereq-node.is-current {
+  border-left-color: var(--accent);
+}
+
+.mock-prereq-node.is-current .mock-prereq-state {
+  color: var(--accent);
+}
+
+.mock-prereq-node.is-done {
+  border-left-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  opacity: 0.66;
+}
+
+.mock-prereq-node.is-locked {
+  border-style: dashed;
+  opacity: 0.5;
+}
+
+.mock-prereq-node.is-entangled {
+  border-left-color: var(--warn);
+  border-left-style: double;
+  border-left-width: 4px;
+}
+
+.mock-prereq-node.is-selected {
+  border-color: var(--accent);
+}
+
+.mock-prereq-node.is-match {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.mock-prereq-node.is-dimmed {
+  opacity: 0.22;
+}
+
+.mock-prereq-handle {
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+}
+
+.mock-prereq-flow .react-flow__edge-path {
+  stroke: var(--edge);
+  stroke-width: 1;
+}
+
+.mock-prereq-flow .mock-prereq-edge.is-entangled .react-flow__edge-path {
+  stroke: var(--warn);
+  stroke-dasharray: 3 3;
+}
+
+.mock-flow .react-flow__panel.mock-prereq-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  pointer-events: none;
+}
+
+.mock-prereq-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mock-prereq-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--edge);
+  border-left-width: 2px;
+  border-radius: 2px;
+}
+
+.mock-prereq-legend .is-current {
+  border-left-color: var(--accent);
+}
+
+.mock-prereq-legend .is-locked {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.mock-prereq-legend .mock-prereq-axis {
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.mock-flow .react-flow__panel.mock-prereq-note {
+  max-width: 320px;
+  margin: 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: 5px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.mock-visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mock-prereq-node {
+    transition: none;
   }
 }
