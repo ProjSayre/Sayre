@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type {
+  GitHubIntegrationStatusResponse,
+  GitHubRepositoryImportState,
   ProviderKind,
   ProviderPurpose,
   ProviderSettingsResponse,
@@ -19,6 +21,31 @@ import { providerConfigurationStatus } from '../providerSettingsContract';
 import { McpSettings } from './McpSettings';
 
 const PURPOSES: readonly ProviderPurpose[] = ['generation', 'embedding'];
+
+const IMPORT_COPY: Record<
+  GitHubRepositoryImportState,
+  {
+    label: string;
+    detail: string;
+    tone: 'ready' | 'warn' | 'danger' | 'neutral' | 'working';
+  }
+> = {
+  preparing: {
+    label: 'importing',
+    detail: 'Sayre is building the repository graph.',
+    tone: 'working',
+  },
+  ready: {
+    label: 'ready',
+    detail: 'The repository graph is available in the workspace.',
+    tone: 'ready',
+  },
+  empty: {
+    label: 'empty repository',
+    detail: 'GitHub did not report a default branch to import.',
+    tone: 'warn',
+  },
+};
 
 const INSTALL_COPY: Record<
   InstallationOutcome,
@@ -92,11 +119,62 @@ function GitHubIntegrations() {
   const {
     dispatch,
     githubInstallUrl,
-    installationSummary,
+    loadGitHubIntegrationStatus,
     mode,
+    reloadCatalog,
     state,
   } = useMock();
-  const outcome = state.installation;
+  const [status, setStatus] =
+    useState<GitHubIntegrationStatusResponse | null>(null);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>(
+    'loading',
+  );
+  const [reloadVersion, setReloadVersion] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const refresh = (): void => {
+      void loadGitHubIntegrationStatus(controller.signal)
+        .then((response) => {
+          if (!active) return;
+          setStatus(response);
+          setLoadState('ready');
+          if (response.repositories.some(
+            (repository) => repository.state === 'preparing',
+          )) {
+            reloadCatalog();
+            timer = setTimeout(refresh, 2_500);
+          }
+        })
+        .catch((error: unknown) => {
+          if (!active || (error as { name?: string }).name === 'AbortError') {
+            return;
+          }
+          setLoadState('error');
+        });
+    };
+
+    refresh();
+    return () => {
+      active = false;
+      if (timer !== null) clearTimeout(timer);
+      controller.abort();
+    };
+  }, [loadGitHubIntegrationStatus, reloadCatalog, reloadVersion]);
+
+  const hasActiveInstallation =
+    status?.installations.some(
+      (installation) => installation.state === 'active',
+    ) ?? false;
+  const outcome =
+    mode === 'fixture'
+      ? state.installation
+      : hasActiveInstallation
+        ? 'installed'
+        : 'not-installed';
   const copy = INSTALL_COPY[outcome];
 
   function startInstallation(): void {
@@ -118,17 +196,29 @@ function GitHubIntegrations() {
           <Badge tone={copy.tone}>{outcome.replace('-', ' ')}</Badge>
         </div>
 
-        {outcome === 'installed' && installationSummary !== null && (
+        {outcome === 'installed' && status !== null && (
           <dl className="mock-kv">
             <div>
-              <dt>Account</dt>
-              <dd>{installationSummary.accountName}</dd>
+              <dt>Connected account</dt>
+              <dd>
+                {status.installations
+                  .filter((installation) => installation.state === 'active')
+                  .map(
+                    (installation) =>
+                      installation.accountLogin ?? 'GitHub account',
+                  )
+                  .join(', ')}
+              </dd>
             </div>
             <div>
-              <dt>Repositories available to Sayre</dt>
+              <dt>Repositories ready</dt>
               <dd>
-                {installationSummary.repositoriesSynced} of{' '}
-                {installationSummary.repositoriesTotal}
+                {
+                  status.repositories.filter(
+                    (repository) => repository.state === 'ready',
+                  ).length
+                }{' '}
+                of {status.repositories.length}
               </dd>
             </div>
           </dl>
@@ -147,6 +237,17 @@ function GitHubIntegrations() {
                 : outcome === 'not-installed'
                   ? 'Install the GitHub App'
                   : 'Start the installation again'}
+          </button>
+          <button
+            type="button"
+            className="mock-btn mock-btn-secondary"
+            onClick={() => {
+              setLoadState('loading');
+              setReloadVersion((version) => version + 1);
+            }}
+            disabled={loadState === 'loading'}
+          >
+            Refresh status
           </button>
           {outcome === 'approval-required' && (
             <span className="mock-field-help">
@@ -167,11 +268,76 @@ function GitHubIntegrations() {
             </p>
           </div>
         </div>
-        <Reserved>
-          Installation and callback plumbing exists, but there is no
-          browser-facing installation-status API yet. This panel stays explicit
-          about that boundary instead of showing invented state.
-        </Reserved>
+        {loadState === 'loading' && status === null && (
+          <p className="mock-field-help" role="status">
+            Checking the GitHub connection…
+          </p>
+        )}
+        {loadState === 'error' && (
+          <div className="mock-inline-error" role="alert">
+            Connection status could not be loaded. The repository catalog is
+            unchanged; try refreshing this status.
+          </div>
+        )}
+        {status !== null && (
+          <>
+            {status.installations.length === 0 ? (
+              <p className="mock-field-help">
+                No GitHub App installation is connected to this organization.
+              </p>
+            ) : (
+              <dl className="mock-kv">
+                {status.installations.map((installation, index) => (
+                  <div
+                    key={`${installation.accountLogin ?? 'account'}-${index}`}
+                  >
+                    <dt>
+                      {installation.accountLogin ?? 'GitHub account'} ·{' '}
+                      {installation.repositorySelection ?? 'unknown selection'}
+                    </dt>
+                    <dd>
+                      <Badge
+                        tone={
+                          installation.state === 'active'
+                            ? 'ready'
+                            : installation.state === 'suspended'
+                              ? 'warn'
+                              : 'danger'
+                        }
+                      >
+                        {installation.state}
+                      </Badge>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            <div className="mock-import-list">
+              {status.repositories.length === 0 ? (
+                <p className="mock-field-help">
+                  No repositories are registered. Choose repositories during
+                  GitHub installation to begin the first import.
+                </p>
+              ) : (
+                status.repositories.map((repository) => {
+                  const copyForState = IMPORT_COPY[repository.state];
+                  return (
+                    <article className="mock-import-row" key={repository.id}>
+                      <div>
+                        <strong>{repository.name}</strong>
+                        <span>{copyForState.detail}</span>
+                      </div>
+                      <Badge tone={copyForState.tone}>
+                        {copyForState.label}
+                      </Badge>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       <section className="mock-card">

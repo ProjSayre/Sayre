@@ -9,6 +9,12 @@ import { getConfig } from '@sayre/config';
 
 const startGithubAppInstall = vi.fn(async () => ({ redirectTo: 'https://github.com/apps/sayre/installations/new?state=signed' }));
 const handleGithubAppCallback = vi.fn(async () => ({ redirectTo: '/settings/integrations', enqueuedRepos: 1 }));
+const getGitHubIntegrationStatus = vi.fn(async () => ({
+  authorization: 'server-filtered' as const,
+  installations: [],
+  repositories: [],
+  updatedAt: '2026-07-26T16:00:00.000Z',
+}));
 
 vi.mock('../services/githubAppInstallService', async () => {
   const actual = await vi.importActual<typeof import('../services/githubAppInstallService')>(
@@ -22,6 +28,13 @@ vi.mock('../services/githubAppInstallService', async () => {
       (handleGithubAppCallback as unknown as (...a: unknown[]) => unknown)(...args),
   };
 });
+
+vi.mock('../services/githubIntegrationStatusService', () => ({
+  getGitHubIntegrationStatus: (...args: unknown[]) =>
+    (getGitHubIntegrationStatus as unknown as (...a: unknown[]) => unknown)(
+      ...args,
+    ),
+}));
 
 import { createApp } from '../app';
 
@@ -42,10 +55,33 @@ let activeServer: Server | undefined;
 afterEach(async () => {
   startGithubAppInstall.mockClear();
   handleGithubAppCallback.mockClear();
+  getGitHubIntegrationStatus.mockClear();
   if (activeServer) {
     await closeServer(activeServer);
     activeServer = undefined;
   }
+});
+
+describe('GET /integrations/github/status', () => {
+  it('uses the authenticated tenant and ignores client-supplied tenant input', async () => {
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const expectedOrgId = getConfig('DEV_ORG_ID');
+
+    const res = await fetch(
+      `${baseUrl}/integrations/github/status?orgId=attacker`,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      authorization: 'server-filtered',
+      installations: [],
+      repositories: [],
+      updatedAt: '2026-07-26T16:00:00.000Z',
+    });
+    expect(getGitHubIntegrationStatus).toHaveBeenCalledWith(expectedOrgId);
+    expect(getGitHubIntegrationStatus).not.toHaveBeenCalledWith('attacker');
+  });
 });
 
 describe('GET /integrations/github/install', () => {

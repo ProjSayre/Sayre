@@ -40,6 +40,7 @@ import type {
 import { workspaceView } from './viewRegistry';
 import { browserRealtimeUrl, parseGatewayMessage } from './realtime';
 import type {
+  GitHubIntegrationStatusResponse,
   McpClientKeyCreateRequest,
   McpClientKeyIssued,
   McpClientKeyView,
@@ -189,8 +190,10 @@ interface WorkspaceContextValue {
   saveMcpRateLimit: (
     rateLimitPerMinute: number,
   ) => Promise<{ rateLimitPerMinute: number }>;
+  loadGitHubIntegrationStatus: (
+    signal: AbortSignal,
+  ) => Promise<GitHubIntegrationStatusResponse>;
   githubInstallUrl: string;
-  installationSummary: WorkspaceDataSource['installationSummary'];
   viewer: WorkspaceDataSource['viewer'];
 }
 
@@ -234,7 +237,13 @@ function initialState(options: {
   selectedNodeId?: string | null;
   selectedFeatureId?: string | null;
 }): WorkspaceState {
-  if (options.mode === 'fixture') return FIXTURE_INITIAL_STATE;
+  if (options.mode === 'fixture') {
+    return {
+      ...FIXTURE_INITIAL_STATE,
+      settingsSection:
+        options.settingsSection ?? FIXTURE_INITIAL_STATE.settingsSection,
+    };
+  }
   const selectedFeatureId =
     options.view === 'product' ? options.selectedFeatureId ?? null : null;
   const selectedNodeId =
@@ -382,15 +391,6 @@ export function WorkspaceProvider({
                   ? 'no-repositories'
                   : 'authorized'
                 : state.access,
-            installation:
-              source.id === 'live'
-                ? nextCatalog.some(
-                    (repository) =>
-                      repository.provider.toLowerCase() === 'github',
-                  )
-                  ? 'installed'
-                  : 'not-installed'
-                : state.installation,
             repositoryId:
               nextCatalog.some((item) => item.id === state.repositoryId)
                 ? state.repositoryId
@@ -706,6 +706,17 @@ export function WorkspaceProvider({
     () => setCatalogVersion((version) => version + 1),
     [],
   );
+  useEffect(() => {
+    if (
+      source.id !== 'live' ||
+      state.session !== 'authenticated' ||
+      !catalog.some((repository) => repository.readiness === 'registered')
+    ) {
+      return undefined;
+    }
+    const timer = setTimeout(reloadCatalog, 2_500);
+    return () => clearTimeout(timer);
+  }, [catalog, reloadCatalog, source.id, state.session]);
   const reloadGraph = useCallback(
     () => setGraphVersion((version) => version + 1),
     [],
@@ -927,8 +938,8 @@ export function WorkspaceProvider({
       issueMcpKey: source.issueMcpKey,
       revokeMcpKey: source.revokeMcpKey,
       saveMcpRateLimit: source.saveMcpRateLimit,
+      loadGitHubIntegrationStatus: source.githubIntegrationStatus,
       githubInstallUrl: source.githubInstallUrl,
-      installationSummary: source.installationSummary,
       viewer: source.viewer,
     }),
     [
@@ -949,9 +960,9 @@ export function WorkspaceProvider({
       scope,
       semanticState,
       source.id,
+      source.githubIntegrationStatus,
       source.githubInstallUrl,
       source.issueMcpKey,
-      source.installationSummary,
       source.mcpSettings,
       source.revokeMcpKey,
       source.saveMcpRateLimit,

@@ -16,6 +16,48 @@ export interface HealthStatus {
  */
 export type OrgRole = 'owner' | 'admin' | 'member';
 
+// --- W1-06/W2-04: browser-visible GitHub repository onboarding ---
+
+export type GitHubInstallationState = 'active' | 'suspended' | 'revoked';
+
+/**
+ * A deliberately small lifecycle for the initial repository parse. Operational
+ * details and provider credentials remain server-side; the browser only gets
+ * enough state to explain what is happening and when the repository is usable.
+ */
+export type GitHubRepositoryImportState =
+  | 'preparing'
+  | 'ready'
+  | 'empty';
+
+export interface GitHubInstallationStatus {
+  accountLogin: string | null;
+  accountType: string | null;
+  repositorySelection: string | null;
+  state: GitHubInstallationState;
+  updatedAt: string;
+}
+
+export interface GitHubRepositoryImportStatus {
+  id: string;
+  name: string;
+  defaultBranch: string | null;
+  currentRef: string | null;
+  state: GitHubRepositoryImportState;
+  registeredAt: string;
+}
+
+/**
+ * Admin-only, tenant-filtered integration status. Installation ids, OAuth/App
+ * tokens, raw queue envelopes, provider errors, and org identity are omitted.
+ */
+export interface GitHubIntegrationStatusResponse {
+  authorization: 'server-filtered';
+  installations: GitHubInstallationStatus[];
+  repositories: GitHubRepositoryImportStatus[];
+  updatedAt: string;
+}
+
 // --- W3-09: redacted provider-settings API contract ---
 
 /** Generation drives enrichment/chatbot; embedding remains a separate provider boundary. */

@@ -38,6 +38,38 @@ describe('allowlisted Core browser-for-frontend route', () => {
     expect(String(target)).not.toContain('attacker');
   });
 
+  it('forwards only the admin GitHub status read contract', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        Response.json({
+          authorization: 'server-filtered',
+          installations: [],
+          repositories: [],
+          updatedAt: '2026-07-26T16:00:00.000Z',
+        }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const request = new NextRequest(
+      'http://web.local/api/core/integrations/github/status?orgId=attacker',
+      { headers: { authorization: 'Bearer signed-session' } },
+    );
+
+    const response = await GET(request, {
+      params: { path: ['integrations', 'github', 'status'] },
+    });
+
+    expect(response.status).toBe(200);
+    const [target, init] = upstream.mock.calls[0]!;
+    expect(String(target)).toBe(
+      'http://core.internal:4000/integrations/github/status',
+    );
+    expect(requestHeaders(init).get('authorization')).toBe(
+      'Bearer signed-session',
+    );
+    expect(String(target)).not.toContain('attacker');
+  });
+
   it('follows only the public GitHub login redirect contract', async () => {
     vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
     const upstream = vi.fn<typeof fetch>(

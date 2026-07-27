@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { handleGithubAppCallback, startGithubAppInstall } from '../services/githubAppInstallService';
+import { getGitHubIntegrationStatus } from '../services/githubIntegrationStatusService';
 import { requireOrgId } from '../auth/context';
 import { authenticate } from '../http/authenticate';
 import { authorize } from '../http/authorize';
@@ -12,6 +13,15 @@ import { asyncHandler } from '../http/express';
 // binding comes from the signed `state` JWT (github/installState.ts), not a
 // session, since it can't rely on a session surviving the GitHub redirect.
 export const githubInstallRouter = Router();
+
+githubInstallRouter.get(
+  '/integrations/github/status',
+  authenticate(),
+  authorize('admin'),
+  asyncHandler(async (req, res) => {
+    res.json(await getGitHubIntegrationStatus(requireOrgId(req)));
+  }),
+);
 
 githubInstallRouter.get(
   '/integrations/github/install',

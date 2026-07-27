@@ -74,7 +74,7 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // the Python client (services/workers/messaging/sqs_client.py).
   GITHUB_API_BASE_URL: 'https://api.github.com',
   GITHUB_WEB_BASE_URL: 'https://github.com',
-  GITHUB_POST_INSTALL_REDIRECT_URL: '/settings/integrations',
+  GITHUB_POST_INSTALL_REDIRECT_URL: 'http://localhost:3000/?settings=github',
   // AUTH-01: web completion page that reads the fragment-delivered session
   // token (see apps/web/app/auth/complete/page.tsx).
   GITHUB_LOGIN_COMPLETE_REDIRECT_URL: '/auth/complete',

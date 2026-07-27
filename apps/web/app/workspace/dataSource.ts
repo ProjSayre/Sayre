@@ -1,4 +1,5 @@
 import type {
+  GitHubIntegrationStatusResponse,
   McpClientKeyCreateRequest,
   McpClientKeyIssued,
   McpClientKeyView,
@@ -37,6 +38,7 @@ import {
 } from '../lib/productTree';
 import { coreFetch } from '../lib/coreFetch';
 import { fetchProviderState } from '../lib/providerState';
+import { fetchGitHubIntegrationStatus } from '../lib/githubIntegrationStatus';
 import { fetchRepositoryCatalog } from '../lib/repositoryCatalog';
 import {
   fetchTechnicalTreeResponse,
@@ -120,12 +122,10 @@ export interface WorkspaceDataSource {
   saveMcpRateLimit(
     rateLimitPerMinute: number,
   ): Promise<{ rateLimitPerMinute: number }>;
+  githubIntegrationStatus(
+    signal: AbortSignal,
+  ): Promise<GitHubIntegrationStatusResponse>;
   readonly githubInstallUrl: string;
-  readonly installationSummary: {
-    accountName: string;
-    repositoriesSynced: number;
-    repositoriesTotal: number;
-  } | null;
   readonly viewer: {
     name: string;
     initials: string;
@@ -256,7 +256,6 @@ function overlay(
 export const liveWorkspaceDataSource: WorkspaceDataSource = {
   id: 'live',
   githubInstallUrl: '/api/core/integrations/github/install',
-  installationSummary: null,
   viewer: {
     name: 'Signed-in user',
     initials: 'SU',
@@ -265,6 +264,9 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
   },
   async repositories(signal) {
     return (await fetchRepositoryCatalog({ signal })).repositories;
+  },
+  async githubIntegrationStatus(signal) {
+    return fetchGitHubIntegrationStatus({ signal });
   },
   async technicalTree(scope, signal) {
     const response = await fetchTechnicalTreeResponse(scope.repositoryId, {
@@ -479,11 +481,6 @@ const fixtureMcpKeys = new Map<string, McpClientKeyView>([
 export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
   id: 'fixture',
   githubInstallUrl: '#fixture-github-install',
-  installationSummary: {
-    accountName: 'acme',
-    repositoriesSynced: 3,
-    repositoriesTotal: 4,
-  },
   viewer: {
     name: 'Alex Kwon',
     initials: 'AK',
@@ -492,6 +489,29 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
   },
   async repositories() {
     return REPOSITORIES;
+  },
+  async githubIntegrationStatus() {
+    return {
+      authorization: 'server-filtered',
+      installations: [
+        {
+          accountLogin: 'acme',
+          accountType: 'Organization',
+          repositorySelection: 'selected',
+          state: 'active',
+          updatedAt: '2026-07-25T14:12:00.000Z',
+        },
+      ],
+      repositories: REPOSITORIES.map((repository, index) => ({
+        id: repository.id,
+        name: repository.name,
+        defaultBranch: repository.defaultBranch,
+        currentRef: repository.currentRef,
+        state: index === REPOSITORIES.length - 1 ? 'preparing' : 'ready',
+        registeredAt: '2026-07-25T14:10:00.000Z',
+      })),
+      updatedAt: '2026-07-25T14:12:00.000Z',
+    };
   },
   async technicalTree() {
     return { nodes: GRAPH_NODES, edges: GRAPH_EDGES };

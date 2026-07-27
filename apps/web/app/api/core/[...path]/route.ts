@@ -168,6 +168,19 @@ function coreRoute(
     segments.length === 3 &&
     segments[0] === 'integrations' &&
     segments[1] === 'github' &&
+    segments[2] === 'status' &&
+    method === 'GET'
+  ) {
+    return {
+      method,
+      path: '/integrations/github/status',
+      query: NO_QUERY,
+    };
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'integrations' &&
+    segments[1] === 'github' &&
     segments[2] === 'install' &&
     method === 'GET'
   ) {
