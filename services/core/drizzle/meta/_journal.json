@@ -113,6 +113,13 @@
       "when": 1785297600000,
       "tag": "0015_w2_09_repositories_revoked_at",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785384000000,
+      "tag": "0016_jira_connections",
+      "breakpoints": true
     }
   ]
 }

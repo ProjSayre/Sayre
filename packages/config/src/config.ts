@@ -31,6 +31,13 @@ export const CONFIG_NAMES = [
   'GATEWAY_REDIS_CHANNEL',
   'CORE_INTERNAL_BASE_URL',
   'JIRA_BASE_URL',
+  'JIRA_OAUTH_AUTHORIZE_URL',
+  'JIRA_OAUTH_TOKEN_URL',
+  'JIRA_OAUTH_API_BASE_URL',
+  'JIRA_OAUTH_SCOPES',
+  'JIRA_OAUTH_CLIENT_ID',
+  'JIRA_OAUTH_CALLBACK_URL',
+  'JIRA_POST_CONNECT_REDIRECT_URL',
   'LINEAR_API_URL',
   'NEO4J_URI',
   'NEO4J_USER',
@@ -90,6 +97,20 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   SQS_GRAPH_UPDATED_REALTIME_QUEUE: 'graph-updated-realtime',
   GATEWAY_REDIS_CHANNEL: 'sayre:graph.updated',
   CORE_INTERNAL_BASE_URL: 'http://localhost:4000',
+  // W3-10 Jira Cloud OAuth 3LO connect flow (per-org credentials). These are
+  // Atlassian's fixed, documented endpoints -- non-secret, App-registration-
+  // independent. JIRA_OAUTH_CLIENT_ID / JIRA_OAUTH_CALLBACK_URL intentionally
+  // have NO default: they identify the specific per-environment Atlassian App
+  // and its registered callback and must be provisioned explicitly (same
+  // posture as GITHUB_APP_CLIENT_ID / GITHUB_LOGIN_CALLBACK_URL above).
+  JIRA_OAUTH_AUTHORIZE_URL: 'https://auth.atlassian.com/authorize',
+  JIRA_OAUTH_TOKEN_URL: 'https://auth.atlassian.com/oauth/token',
+  JIRA_OAUTH_API_BASE_URL: 'https://api.atlassian.com',
+  // offline_access is required to receive a refresh token; write:jira-work is
+  // required for W3-05's outbound updateTicket; read:me powers the
+  // connecting-user record captured at connect time.
+  JIRA_OAUTH_SCOPES: 'read:jira-work write:jira-work read:me offline_access',
+  JIRA_POST_CONNECT_REDIRECT_URL: '/settings/integrations',
   LINEAR_API_URL: 'https://api.linear.app/graphql',
   NEO4J_URI: 'bolt://localhost:7687',
   NEO4J_USER: 'neo4j',

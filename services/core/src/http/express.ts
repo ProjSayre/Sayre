@@ -15,6 +15,10 @@ import {
 } from '../services/githubAppInstallService';
 import { LoginCallbackBadRequestError } from '../services/loginService';
 import {
+  JiraCallbackBadRequestError,
+  JiraOAuthUpstreamError,
+} from '../services/jiraConnectService';
+import {
   GithubOAuthApiError,
   GithubOAuthCodeError,
   NoVerifiedEmailError,
@@ -125,6 +129,21 @@ export function errorHandler(
 
   if (err instanceof GithubOAuthApiError) {
     res.status(502).json({ error: 'GitHub authentication request failed' });
+    return;
+  }
+
+  // W3-10 Jira OAuth 3LO connect flow — generic bodies only, no message
+  // leakage. JiraSingleSiteRequiredError is deliberately NOT mapped here: the
+  // callback route (routes/jiraConnect.ts) catches it itself and issues a 302
+  // redirect with an actionable `?jira_error=multiple_sites` flag instead of a
+  // JSON error body.
+  if (err instanceof JiraCallbackBadRequestError) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
+  if (err instanceof JiraOAuthUpstreamError) {
+    res.status(502).json({ error: 'Jira OAuth request failed' });
     return;
   }
 

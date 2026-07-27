@@ -670,6 +670,80 @@ export const codeEmbeddings = pgTable(
   ],
 );
 
+/**
+ * Per-org Jira Cloud OAuth 3LO connection (W3-10). At most one ACTIVE
+ * (`revoked_at IS NULL`) row per org — enforced by a hand-authored partial
+ * unique index (drizzle/0016_jira_connections.sql; Drizzle's schema builder
+ * has no first-class partial-index support, same convention as
+ * `users_external_auth_id_unique` in drizzle/0013_*), not expressed here.
+ *
+ * Security-sensitive: `jiraAccessTokenEnc` / `jiraRefreshTokenEnc` hold
+ * AES-256-GCM ciphertext (`integrations/tickets/jira/jiraTokenCipher.ts`,
+ * OQ-2) and are read/written ONLY by `db/jiraConnectionStore.ts` and
+ * `integrations/tickets/jira/orgSecrets.ts` (plus this definition site) —
+ * enforced by `scripts/check-org-secret-access.mjs` in CI. Every other
+ * consumer resolves credentials through `getOrgSecret` /
+ * `resolveJiraConnectionContext`, never this table directly.
+ *
+ * Disconnect is a soft-revoke (`revokedAt`/`revokedBy`/`revokedByLabel` set,
+ * and BOTH `*Enc` columns nulled to shrink the at-rest blast radius) — the
+ * row is retained for audit, mirroring `mcpClientKeys`.
+ */
+export const jiraConnections = pgTable(
+  "jira_connections",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    // Atlassian cloudId. The per-org API gateway base is
+    // `${JIRA_OAUTH_API_BASE_URL}/ex/jira/<cloudId>` — never rendered to the
+    // browser (JiraConnectionStatusView omits both this and the tokens).
+    cloudId: text("cloud_id").notNull(),
+    // Human-facing site URL (https://<tenant>.atlassian.net) — used only for
+    // /browse links and Settings display, never as an API call base.
+    siteUrl: text("site_url").notNull(),
+    siteName: text("site_name"),
+    // AES-256-GCM ciphertext ("v1:<ivB64>:<tagB64>:<ctB64>"). NULL once
+    // revoked (soft-revoke nulls both *Enc columns).
+    jiraAccessTokenEnc: text("jira_access_token_enc"),
+    jiraRefreshTokenEnc: text("jira_refresh_token_enc"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    scopes: text("scopes"),
+    // Attribution: best-effort LIVE pointer (SET NULL, not cascade — deleting
+    // the connecting admin never deletes the still-active connection) plus an
+    // immutable label snapshot captured at connect time, mirroring
+    // mcpClientKeys.createdBy / createdByLabel.
+    connectedByUserId: uuid("connected_by_user_id").references(
+      () => users.id,
+      { onDelete: "set null" },
+    ),
+    connectedByLabel: text("connected_by_label").notNull(),
+    // Jira's own accountId for the connecting user (JiraOAuthUser.accountId) —
+    // non-secret metadata kept for support/audit; never an authorization input.
+    connectedByAccountId: text("connected_by_account_id"),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    connectedAt: timestamp("connected_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // Soft-revoke (disconnect). NULL = active.
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    revokedByLabel: text("revoked_by_label"),
+    ...timestamps,
+  },
+  (table) => [
+    // RLS/lookup index over ALL rows (active + revoked); the partial unique
+    // index over only active rows is a SEPARATE hand-authored index (see
+    // drizzle/0016_jira_connections.sql) and does not cover revoked rows.
+    index("jira_connections_org_id_idx").on(table.orgId),
+  ],
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -702,3 +776,5 @@ export type CodeChunk = typeof codeChunks.$inferSelect;
 export type NewCodeChunk = typeof codeChunks.$inferInsert;
 export type CodeEmbedding = typeof codeEmbeddings.$inferSelect;
 export type NewCodeEmbedding = typeof codeEmbeddings.$inferInsert;
+export type JiraConnection = typeof jiraConnections.$inferSelect;
+export type NewJiraConnection = typeof jiraConnections.$inferInsert;

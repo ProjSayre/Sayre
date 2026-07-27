@@ -41,6 +41,11 @@ import {
   fetchGitHubIntegrationStatus,
   type GitHubIntegrationStatusResponse,
 } from '../lib/githubIntegrationStatus';
+import {
+  disconnectJira as disconnectJiraRequest,
+  fetchJiraIntegrationStatus,
+  type JiraStatusResponse,
+} from '../lib/jiraIntegrationStatus';
 import { fetchRepositoryCatalog } from '../lib/repositoryCatalog';
 import {
   fetchTechnicalTreeResponse,
@@ -128,6 +133,9 @@ export interface WorkspaceDataSource {
     signal: AbortSignal,
   ): Promise<GitHubIntegrationStatusResponse>;
   readonly githubInstallUrl: string;
+  jiraIntegrationStatus(signal: AbortSignal): Promise<JiraStatusResponse>;
+  disconnectJira(): Promise<JiraStatusResponse>;
+  readonly jiraConnectUrl: string;
   readonly viewer: {
     name: string;
     initials: string;
@@ -258,6 +266,7 @@ function overlay(
 export const liveWorkspaceDataSource: WorkspaceDataSource = {
   id: 'live',
   githubInstallUrl: '/api/core/integrations/github/install',
+  jiraConnectUrl: '/api/core/integrations/jira/connect',
   viewer: {
     name: 'Signed-in user',
     initials: 'SU',
@@ -269,6 +278,12 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
   },
   async githubIntegrationStatus(signal) {
     return fetchGitHubIntegrationStatus({ signal });
+  },
+  async jiraIntegrationStatus(signal) {
+    return fetchJiraIntegrationStatus({ signal });
+  },
+  async disconnectJira() {
+    return disconnectJiraRequest();
   },
   async technicalTree(scope, signal) {
     const response = await fetchTechnicalTreeResponse(scope.repositoryId, {
@@ -480,9 +495,35 @@ const fixtureMcpKeys = new Map<string, McpClientKeyView>([
   [FIXTURE_MCP_KEY.id, FIXTURE_MCP_KEY],
 ]);
 
+function defaultFixtureJiraConnection(): JiraStatusResponse['connection'] {
+  return {
+    connected: true,
+    siteUrl: 'https://acme.atlassian.net',
+    siteName: 'Acme',
+    connectedByLabel: 'Alex Kwon',
+    connectedByAccountId: 'fixture-jira-account-id',
+    lastSyncedAt: '2026-07-25T14:10:00.000Z',
+    connectedAt: '2026-07-20T09:00:00.000Z',
+  };
+}
+
+let fixtureJiraConnection: JiraStatusResponse['connection'] =
+  defaultFixtureJiraConnection();
+
+/**
+ * Fixture-only demo affordance: there is no real Atlassian consent screen in
+ * fixture mode, so the Settings "Connect" action calls this helper directly
+ * instead of a fourth `WorkspaceDataSource` member. Not part of the live
+ * contract.
+ */
+export function reconnectFixtureJira(): void {
+  fixtureJiraConnection = defaultFixtureJiraConnection();
+}
+
 export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
   id: 'fixture',
   githubInstallUrl: '#fixture-github-install',
+  jiraConnectUrl: '#fixture-jira-connect',
   viewer: {
     name: 'Alex Kwon',
     initials: 'AK',
@@ -513,6 +554,21 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
         registeredAt: '2026-07-25T14:10:00.000Z',
       })),
       updatedAt: '2026-07-25T14:12:00.000Z',
+    };
+  },
+  async jiraIntegrationStatus() {
+    return {
+      authorization: 'server-filtered',
+      connection: fixtureJiraConnection,
+      updatedAt: new Date().toISOString(),
+    };
+  },
+  async disconnectJira() {
+    fixtureJiraConnection = null;
+    return {
+      authorization: 'server-filtered',
+      connection: fixtureJiraConnection,
+      updatedAt: new Date().toISOString(),
     };
   },
   async technicalTree() {
