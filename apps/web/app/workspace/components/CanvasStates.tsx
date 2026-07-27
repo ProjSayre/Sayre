@@ -21,6 +21,7 @@ function CanvasState({
 }
 
 export function NoRepositoryState({ reason }: { reason: 'none' | 'restricted' }) {
+  const { dispatch, isAdmin } = useMock();
   return (
     <CanvasState title="No repository selected">
       {reason === 'none' ? (
@@ -31,6 +32,20 @@ export function NoRepositoryState({ reason }: { reason: 'none' | 'restricted' })
             appear in the picker above.
           </p>
           <p>Nothing is loaded, so there is nothing to explore on this canvas.</p>
+          {isAdmin && (
+            <button
+              type="button"
+              className="mock-btn mock-btn-primary"
+              onClick={() =>
+                dispatch({
+                  type: 'patch',
+                  patch: { settingsSection: 'github' },
+                })
+              }
+            >
+              Connect a GitHub repository
+            </button>
+          )}
         </>
       ) : (
         <p>

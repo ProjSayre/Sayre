@@ -37,7 +37,7 @@ const REALTIME_LABEL: Record<RealtimeStatus, string> = {
 };
 
 function RepositoryPicker() {
-  const { state, dispatch, repositories, repository } = useMock();
+  const { state, dispatch, repositories, repository, isAdmin } = useMock();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
 
@@ -71,9 +71,26 @@ function RepositoryPicker() {
           {repositories.length === 0 ? (
             <div className="mock-picker-empty">
               <strong>No repositories available</strong>
-              {state.access === 'no-repositories'
-                ? 'No repository has been connected to this organization yet. An administrator can install the GitHub App from Settings.'
-                : 'Your account is not authorized for any repository in this organization.'}
+              <span>
+                {state.access === 'no-repositories'
+                  ? 'No repository has been connected to this organization yet.'
+                  : 'Your account is not authorized for any repository in this organization.'}
+              </span>
+              {state.access === 'no-repositories' && isAdmin && (
+                <button
+                  type="button"
+                  className="mock-btn mock-btn-primary mock-btn-sm"
+                  onClick={() => {
+                    dispatch({
+                      type: 'patch',
+                      patch: { settingsSection: 'github' },
+                    });
+                    setOpen(false);
+                  }}
+                >
+                  Connect repository
+                </button>
+              )}
             </div>
           ) : (
             repositories.map((repo) => (
