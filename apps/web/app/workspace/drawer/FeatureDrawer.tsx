@@ -1,9 +1,21 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMock } from '../state';
 import { buildProductFeatureConnections } from '../canvas/productGraph';
 import { EmptyState, Module, formatTimestamp } from '../components/ui';
+
+type FeatureDrawerTab = 'description' | 'connections' | 'files' | 'activity';
+
+const FEATURE_DRAWER_TABS: Array<{
+  id: FeatureDrawerTab;
+  label: string;
+}> = [
+  { id: 'description', label: 'Description' },
+  { id: 'connections', label: 'Links' },
+  { id: 'files', label: 'Files' },
+  { id: 'activity', label: 'Activity' },
+];
 
 function codeArea(path: string): string {
   const parts = path.replaceAll('\\', '/').split('/').filter(Boolean);
@@ -20,9 +32,14 @@ function codeArea(path: string): string {
 
 export function FeatureDrawer() {
   const { state, dispatch, graph, graphStatus } = useMock();
+  const [activeTab, setActiveTab] =
+    useState<FeatureDrawerTab>('description');
   const feature = graph.features.find(
     (item) => item.id === state.selectedFeatureId,
   );
+  useEffect(() => {
+    setActiveTab('description');
+  }, [feature?.id]);
   const featureFiles = useMemo(
     () =>
       feature === undefined
@@ -141,149 +158,200 @@ export function FeatureDrawer() {
         </div>
       </div>
 
-      <div className="mock-drawer-scroll">
-        <Module title="Overview">
-          <p className="mock-prose">
-            {feature.description ?? 'No feature description is available yet.'}
-          </p>
-          <dl className="mock-summary-grid mock-summary-grid-spaced">
-            <div>
-              <dt>Identified files</dt>
-              <dd>{featureFiles.length.toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Code areas</dt>
-              <dd>{codeAreas.length.toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Feature links</dt>
-              <dd>{relatedFeatures.length.toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Recent activity</dt>
-              <dd>
-                {feature.recentEdits.length > 0
-                  ? feature.recentEdits.length.toLocaleString()
-                  : 'Unknown'}
-              </dd>
-            </div>
-          </dl>
-          {codeAreas.length > 0 && (
-            <div className="mock-scope-chips" aria-label="Feature code areas">
-              {codeAreas.map((area) => (
-                <span key={area} className="mock-chip">
-                  {area}
-                </span>
-              ))}
-            </div>
-          )}
-        </Module>
+      <div
+        className="mock-drawer-tabs"
+        role="tablist"
+        aria-label={`${feature.name} details`}
+      >
+        {FEATURE_DRAWER_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            id={`feature-tab-${tab.id}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`feature-panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        <Module
-          title="Detected feature links"
-          count={relatedFeatures.length}
-        >
-          {relatedFeatures.length === 0 ? (
-            <EmptyState>
-              No mapped cross-feature code links were detected. This does not
-              prove the feature is independent; unmapped code is excluded.
-            </EmptyState>
-          ) : (
-            <>
-              <p className="mock-module-note">
-                Links summarize imports between mapped files. Select a related
-                feature to inspect its scope.
+      <div
+        id={`feature-panel-${activeTab}`}
+        className="mock-drawer-scroll"
+        role="tabpanel"
+        aria-labelledby={`feature-tab-${activeTab}`}
+      >
+        {activeTab === 'description' && (
+          <>
+            <Module title="Description">
+              <p className="mock-prose">
+                {feature.description ??
+                  'No feature description is available yet.'}
               </p>
-              <ul className="mock-list">
-                {relatedFeatures.map(({ feature: related, relation }) => (
-                  <li key={related.id}>
-                    <button
-                      type="button"
-                      className="mock-list-row"
-                      onClick={() =>
-                        dispatch({
-                          type: 'selectFeature',
-                          featureId: related.id,
-                        })
-                      }
-                    >
-                      <span className="mock-row-top">
-                        <span className="mock-row-title">{related.name}</span>
-                        <span className="mock-chip">
-                          {related.team ?? 'Unassigned'}
-                        </span>
-                      </span>
-                      <span className="mock-row-sub mock-row-wrap">
-                        {relation}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </Module>
+              <p className="mock-module-note mock-module-note-spaced">
+                This boundary is inferred from the current authorized ref. Treat
+                it as a navigational model, not a permanent product taxonomy.
+              </p>
+            </Module>
 
-        <Module title="Identified files" count={featureFiles.length}>
-          <p className="mock-module-note">
-            These are the files Sayre assigned to this feature, not necessarily
-            its complete implementation.
-          </p>
-          <ul className="mock-list">
-            {featureFiles.map((file) => (
-              <li key={file.id}>
-                <button
-                  type="button"
-                  className="mock-list-row"
-                  onClick={() => dispatch({ type: 'selectNode', nodeId: file.id })}
+            <Module title="At a glance">
+              <dl className="mock-summary-grid mock-summary-grid-spaced">
+                <div>
+                  <dt>Identified files</dt>
+                  <dd>{featureFiles.length.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Code areas</dt>
+                  <dd>{codeAreas.length.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Feature links</dt>
+                  <dd>{relatedFeatures.length.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Recent activity</dt>
+                  <dd>
+                    {feature.recentEdits.length > 0
+                      ? feature.recentEdits.length.toLocaleString()
+                      : 'Unknown'}
+                  </dd>
+                </div>
+              </dl>
+              {codeAreas.length > 0 && (
+                <div
+                  className="mock-scope-chips"
+                  aria-label="Feature code areas"
                 >
-                  <span className="mock-row-top">
-                    <span className="mock-row-title">{file.name}</span>
-                    <span className="mock-chip">{file.kind}</span>
-                  </span>
-                  <span className="mock-row-sub">{file.path}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Module>
-
-        <Module title="Recent edits" count={feature.recentEdits.length}>
-          {feature.recentEdits.length === 0 ? (
-            <EmptyState>
-              No activity data has been ingested for this feature. Delivery
-              status and risk are unknown.
-            </EmptyState>
-          ) : (
-            <ul className="mock-list">
-              {feature.recentEdits.map((edit) => (
-                <li
-                  key={`${edit.filePath}:${edit.editedAt}`}
-                  className="mock-list-row"
-                >
-                  <span className="mock-row-top">
-                    <span className="mock-row-title">{edit.filePath}</span>
-                  </span>
-                  <span className="mock-row-meta">
-                    {edit.editorName ?? edit.editorLogin ?? 'Unknown editor'} ·{' '}
-                    {formatTimestamp(edit.editedAt)}
-                  </span>
-                  {edit.pullRequestUrl !== null && (
-                    <span className="mock-row-sub mock-row-wrap">
-                      <a
-                        href={edit.pullRequestUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                      >
-                        {edit.pullRequestTitle ?? 'View pull request'} ↗
-                      </a>
+                  {codeAreas.map((area) => (
+                    <span key={area} className="mock-chip">
+                      {area}
                     </span>
-                  )}
+                  ))}
+                </div>
+              )}
+            </Module>
+          </>
+        )}
+
+        {activeTab === 'connections' && (
+          <Module
+            title="Detected feature links"
+            count={relatedFeatures.length}
+          >
+            {relatedFeatures.length === 0 ? (
+              <EmptyState>
+                No mapped cross-feature code links were detected. This does not
+                prove the feature is independent; unmapped code is excluded.
+              </EmptyState>
+            ) : (
+              <>
+                <p className="mock-module-note">
+                  Links summarize imports between mapped files. Select a related
+                  feature to inspect its scope.
+                </p>
+                <ul className="mock-list">
+                  {relatedFeatures.map(({ feature: related, relation }) => (
+                    <li key={related.id}>
+                      <button
+                        type="button"
+                        className="mock-list-row"
+                        onClick={() =>
+                          dispatch({
+                            type: 'selectFeature',
+                            featureId: related.id,
+                          })
+                        }
+                      >
+                        <span className="mock-row-top">
+                          <span className="mock-row-title">{related.name}</span>
+                          <span className="mock-chip">
+                            {related.team ?? 'Unassigned'}
+                          </span>
+                        </span>
+                        <span className="mock-row-sub mock-row-wrap">
+                          {relation}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Module>
+        )}
+
+        {activeTab === 'files' && (
+          <Module title="Identified files" count={featureFiles.length}>
+            <p className="mock-module-note">
+              These are the files Sayre assigned to this feature, not
+              necessarily its complete implementation.
+            </p>
+            <ul className="mock-list">
+              {featureFiles.map((file) => (
+                <li key={file.id}>
+                  <button
+                    type="button"
+                    className="mock-list-row"
+                    onClick={() =>
+                      dispatch({ type: 'selectNode', nodeId: file.id })
+                    }
+                  >
+                    <span className="mock-row-top">
+                      <span className="mock-row-title">{file.name}</span>
+                      <span className="mock-chip">{file.kind}</span>
+                    </span>
+                    <span className="mock-row-sub">{file.path}</span>
+                  </button>
                 </li>
               ))}
             </ul>
-          )}
-        </Module>
+          </Module>
+        )}
+
+        {activeTab === 'activity' && (
+          <Module title="Recent edits" count={feature.recentEdits.length}>
+            {feature.recentEdits.length === 0 ? (
+              <EmptyState>
+                No activity data has been ingested for this feature. Delivery
+                status and risk are unknown.
+              </EmptyState>
+            ) : (
+              <ul className="mock-list">
+                {feature.recentEdits.map((edit) => (
+                  <li
+                    key={`${edit.filePath}:${edit.editedAt}`}
+                    className="mock-list-row"
+                  >
+                    <span className="mock-row-top">
+                      <span className="mock-row-title">{edit.filePath}</span>
+                    </span>
+                    <span className="mock-row-meta">
+                      {edit.editorName ??
+                        edit.editorLogin ??
+                        'Unknown editor'}{' '}
+                      · {formatTimestamp(edit.editedAt)}
+                    </span>
+                    {edit.pullRequestUrl !== null && (
+                      <span className="mock-row-sub mock-row-wrap">
+                        <a
+                          href={edit.pullRequestUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          {edit.pullRequestTitle ?? 'View pull request'} ↗
+                        </a>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Module>
+        )}
       </div>
     </aside>
   );

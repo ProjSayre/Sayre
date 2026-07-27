@@ -140,3 +140,60 @@ export function visibleFileTreeRows(
   append(model.roots, 0);
   return rows;
 }
+
+export function matchingFileTreeNodeIds(
+  model: FileTreeModel,
+  query: string,
+): ReadonlySet<string> {
+  const normalized = query.trim().toLowerCase();
+  if (normalized.length === 0) return new Set();
+  return new Set(
+    [...model.byId.values()]
+      .filter(
+        (node) =>
+          node.name.toLowerCase().includes(normalized) ||
+          node.path.toLowerCase().includes(normalized),
+      )
+      .map((node) => node.id),
+  );
+}
+
+/**
+ * Search results retain their authorized ancestor chain so a deep match still
+ * makes sense in the Explorer. Search temporarily ignores manual expansion;
+ * clearing it restores the graph-owned expansion projection unchanged.
+ */
+export function searchedFileTreeRows(
+  model: FileTreeModel,
+  matchingNodeIds: ReadonlySet<string>,
+): FileTreeRow[] {
+  if (matchingNodeIds.size === 0) return [];
+  const includedIds = new Set(matchingNodeIds);
+  for (const nodeId of matchingNodeIds) {
+    for (const ancestorId of fileTreeAncestorFolders(model, nodeId)) {
+      includedIds.add(ancestorId);
+    }
+  }
+
+  const rows: FileTreeRow[] = [];
+  const visited = new Set<string>();
+  const append = (siblings: readonly GraphNode[], depth: number): void => {
+    const visibleSiblings = siblings.filter((node) => includedIds.has(node.id));
+    visibleSiblings.forEach((node, index) => {
+      if (visited.has(node.id)) return;
+      visited.add(node.id);
+      const children = model.childrenById.get(node.id) ?? [];
+      rows.push({
+        node,
+        depth,
+        parentId: model.parentById.get(node.id) ?? null,
+        hasChildren: children.length > 0,
+        positionInSet: index + 1,
+        setSize: visibleSiblings.length,
+      });
+      append(children, depth + 1);
+    });
+  };
+  append(model.roots, 0);
+  return rows;
+}

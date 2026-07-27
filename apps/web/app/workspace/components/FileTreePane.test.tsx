@@ -38,10 +38,12 @@ function renderExplorer(expandedFolderIds: ReadonlySet<string>): string {
       nodes={nodes}
       status="ready"
       repositoryLabel="repository/"
+      search=""
       selectedNodeId={null}
       expandedFolderIds={expandedFolderIds}
       pinnedNodeIds={new Set()}
       onSelect={vi.fn()}
+      onSearchChange={vi.fn()}
       onSetFolderExpanded={vi.fn()}
       onCollapseAll={vi.fn()}
       onTogglePin={vi.fn()}

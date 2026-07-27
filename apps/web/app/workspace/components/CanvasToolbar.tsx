@@ -1,6 +1,5 @@
 'use client';
 
-import { useMock } from '../state';
 import type {
   CanvasCommandType,
   RendererDefinition,
@@ -35,7 +34,6 @@ interface CanvasToolbarProps {
     stale: number;
     unknown: number;
   } | null;
-  searchResultCount: number | null;
   technicalExpansion?: TechnicalExpansionControl | null;
   /** Controls are inert whenever no graph is on screen. */
   interactive: boolean;
@@ -51,15 +49,12 @@ export function CanvasToolbar({
   edgeCount,
   renderer,
   coverageSummary = null,
-  searchResultCount,
   technicalExpansion = null,
   interactive,
   showMinimap,
   onToggleMinimap,
   onCommand,
 }: CanvasToolbarProps) {
-  const { state, dispatch } = useMock();
-
   return (
     <div className="mock-toolbar">
       <span className="mock-toolbar-title">
@@ -144,53 +139,6 @@ export function CanvasToolbar({
           </span>
         </span>
       )}
-
-      <span className="mock-search-control">
-        <input
-          className="mock-search"
-          type="search"
-          value={state.search}
-          placeholder={
-            state.view === 'product'
-              ? 'search features, teams, files…'
-              : state.view === 'onboarding'
-                ? 'search setup landmarks…'
-                : 'search files and folders…'
-          }
-          aria-label={`Search ${title}`}
-          disabled={!interactive}
-          onChange={(event) =>
-            dispatch({ type: 'patch', patch: { search: event.target.value } })
-          }
-        />
-        {searchResultCount !== null && (
-          <span
-            className={`mock-search-results${
-              searchResultCount === 0 ? ' mock-search-results-empty' : ''
-            }`}
-            aria-live="polite"
-          >
-            {searchResultCount === 0
-              ? 'No matches'
-              : `${searchResultCount} ${
-                  searchResultCount === 1 ? 'match' : 'matches'
-                }`}
-          </span>
-        )}
-        {state.search.length > 0 && (
-          <button
-            type="button"
-            className="mock-search-clear"
-            aria-label="Clear search"
-            title="Clear search"
-            onClick={() =>
-              dispatch({ type: 'patch', patch: { search: '' } })
-            }
-          >
-            ×
-          </button>
-        )}
-      </span>
 
       <span className="mock-toolbar-group">
         <button

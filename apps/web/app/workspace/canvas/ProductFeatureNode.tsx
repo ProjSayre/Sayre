@@ -125,7 +125,7 @@ export function ProductFeatureNode({ data }: NodeProps) {
         type="target"
         position={Position.Left}
         className="mock-feature-handle"
-        style={{ left: cluster.radius, top: cluster.radius }}
+        style={{ left: 0, top: cluster.radius }}
       />
       <button
         type="button"
@@ -164,8 +164,18 @@ export function ProductFeatureNode({ data }: NodeProps) {
               <span className="mock-feature-directory-label">
                 {directory.label}
               </span>
+              {directory.hiddenFileCount > 0 && (
+                <span
+                  className="mock-feature-directory-count"
+                  aria-hidden="true"
+                >
+                  +{directory.hiddenFileCount}
+                </span>
+              )}
             </button>
-            {directory.files.map((file) => (
+            {directory.files
+              .slice(0, directory.visibleFileCount)
+              .map((file) => (
               <button
                 key={file.id}
                 type="button"
@@ -187,15 +197,27 @@ export function ProductFeatureNode({ data }: NodeProps) {
                   node.onSelectFile(file.id);
                 }}
               />
-            ))}
+              ))}
           </div>
         );
       })}
 
+      {cluster.hiddenDirectoryCount > 0 && (
+        <span
+          className="mock-feature-overflow"
+          title={`${cluster.hiddenDirectoryCount} additional code ${
+            cluster.hiddenDirectoryCount === 1 ? 'area is' : 'areas are'
+          } listed in feature details`}
+        >
+          +{cluster.hiddenDirectoryCount}{' '}
+          {cluster.hiddenDirectoryCount === 1 ? 'area' : 'areas'}
+        </span>
+      )}
+
       <button
         type="button"
         className="mock-feature-cluster-label nodrag nopan"
-        style={{ left: cluster.diameter + 12, top: cluster.radius - 26 }}
+        style={{ left: 0, top: cluster.diameter + 9 }}
         onClick={(event) => {
           event.stopPropagation();
           node.onSelectFeature();
@@ -223,7 +245,7 @@ export function ProductFeatureNode({ data }: NodeProps) {
         type="source"
         position={Position.Right}
         className="mock-feature-handle"
-        style={{ left: cluster.radius, top: cluster.radius }}
+        style={{ left: cluster.diameter, top: cluster.radius }}
       />
     </div>
   );
