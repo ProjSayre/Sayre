@@ -377,13 +377,15 @@ export function TechnicalTreeCanvas({
       nodeTypes={NODE_TYPES}
       onNodeClick={(_event, flowNode) => {
         const node = flowNode.data as GraphNodeData;
+        // Matches Explorer activation, which expands and selects in one event.
+        // Returning early here was why a folder could be opened from the graph
+        // but never focused from it — only from the file tree.
         if (
           node.kind === 'Folder' &&
           node.folderState !== undefined &&
           node.folderState !== 'leaf'
         ) {
           node.onToggleFolder?.(false);
-          return;
         }
         onSelect(flowNode.id);
       }}
