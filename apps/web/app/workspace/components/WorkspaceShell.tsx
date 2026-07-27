@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useMock } from '../state';
 import {
@@ -67,6 +73,9 @@ function Workspace() {
     technicalExpansion.clearTransientReveal;
   const [showMinimap, setShowMinimap] = useState(true);
   const [canvasCommand, setCanvasCommand] = useState<CanvasCommand | null>(null);
+  const [graphExpansionAnchorId, setGraphExpansionAnchorId] = useState<
+    string | null
+  >(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [canvasSize, setCanvasSize] = useState({
     width: 880,
@@ -109,8 +118,47 @@ function Workspace() {
   }, []);
 
   function commandCanvas(type: CanvasCommandType): void {
+    if (type === 'fit') setGraphExpansionAnchorId(null);
     setCanvasCommand((current) => ({ id: (current?.id ?? 0) + 1, type }));
   }
+
+  const selectTechnicalNode = useCallback(
+    (nodeId: string): void => {
+      // Explorer activation expands and selects the same folder in one event.
+      // Keep that just-established expansion anchor; a selection elsewhere
+      // still clears it so ordinary node navigation gets normal camera focus.
+      setGraphExpansionAnchorId((current) =>
+        current === nodeId ? current : null,
+      );
+      dispatch({ type: 'selectNode', nodeId });
+    },
+    [dispatch],
+  );
+
+  const setTechnicalFolderExpanded = useCallback(
+    (nodeId: string, expanded: boolean): void => {
+      setGraphExpansionAnchorId(nodeId);
+      technicalExpansion.setFolderExpanded(nodeId, expanded);
+    },
+    [technicalExpansion],
+  );
+
+  const toggleTechnicalPin = useCallback(
+    (nodeId: string): void => {
+      setGraphExpansionAnchorId(nodeId);
+      technicalExpansion.togglePinned(nodeId);
+    },
+    [technicalExpansion],
+  );
+
+  useEffect(() => {
+    setGraphExpansionAnchorId(null);
+  }, [
+    repository?.id,
+    state.refName,
+    state.search,
+    state.view,
+  ]);
 
   const isTechnical = state.view === 'technical';
   const isProduct = state.view === 'product';
@@ -350,10 +398,13 @@ function Workspace() {
           selectedNodeId={state.selectedNodeId}
           expandedFolderIds={technicalProjection.expandedFolderIds}
           pinnedNodeIds={technicalExpansion.preferences.pinnedBranches}
-          onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
-          onSetFolderExpanded={technicalExpansion.setFolderExpanded}
-          onCollapseAll={technicalExpansion.collapseAllFolders}
-          onTogglePin={technicalExpansion.togglePinned}
+          onSelect={selectTechnicalNode}
+          onSetFolderExpanded={setTechnicalFolderExpanded}
+          onCollapseAll={() => {
+            setGraphExpansionAnchorId(null);
+            technicalExpansion.collapseAllFolders();
+          }}
+          onTogglePin={toggleTechnicalPin}
           onClose={() =>
             dispatch({ type: 'patch', patch: { fileTreeOpen: false } })
           }
@@ -398,8 +449,14 @@ function Workspace() {
                 transientSource:
                   effectiveTransientReveal?.source ?? null,
                 overBudgetBy: technicalProjection.overBudgetBy,
-                onModeChange: technicalExpansion.setMode,
-                onReset: technicalExpansion.reset,
+                onModeChange: (mode) => {
+                  setGraphExpansionAnchorId(null);
+                  technicalExpansion.setMode(mode);
+                },
+                onReset: () => {
+                  setGraphExpansionAnchorId(null);
+                  technicalExpansion.reset();
+                },
               }
             : null
         }
@@ -452,16 +509,24 @@ function Workspace() {
             renderer={renderer.id}
             command={canvasCommand}
             selectedId={state.selectedNodeId}
-            cameraFocusId={state.selectedNodeId ?? uniqueTransientFocusId}
+            cameraFocusId={
+              graphExpansionAnchorId ??
+              state.selectedNodeId ??
+              uniqueTransientFocusId
+            }
+            preserveCameraZoom={graphExpansionAnchorId !== null}
             search={state.search}
             showMinimap={showMinimap}
             fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
             layoutKey={technicalProjection.key}
             expansion={technicalProjection}
-            onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
-            onSetFolderExpanded={technicalExpansion.setFolderExpanded}
-            onTogglePinned={technicalExpansion.togglePinned}
-            onRequestFullGraph={() => technicalExpansion.setMode('full')}
+            onSelect={selectTechnicalNode}
+            onSetFolderExpanded={setTechnicalFolderExpanded}
+            onTogglePinned={toggleTechnicalPin}
+            onRequestFullGraph={(nodeId) => {
+              setGraphExpansionAnchorId(nodeId);
+              technicalExpansion.setMode('full');
+            }}
           />
         )}
 

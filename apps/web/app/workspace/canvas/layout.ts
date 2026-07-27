@@ -14,16 +14,80 @@ const Y_GAP = 124;
 const LABEL_GAP = 26;
 /** Fragment Mono at 11px is close enough to monospaced 0.6em for layout. */
 const CHAR_WIDTH = 6.4;
+/** Folder pills use the same mono face at 8px plus horizontal padding/borders. */
+const METADATA_CHAR_WIDTH = 4.8;
+const METADATA_CHROME_WIDTH = 10;
+const INLINE_GAP = 6;
+const PIN_WIDTH = 17;
+const DEFAULT_FOLDER_METADATA_WIDTH = 46;
+
+export interface FolderLabelMetadata {
+  foldedDescendantCount?: number;
+  hiddenImportCount?: number;
+  visibleChildCount?: number;
+  totalChildCount?: number;
+  contextual?: boolean;
+  hasPin?: boolean;
+}
+
+export interface LayoutTreeOptions {
+  /** Actual inline controls rendered after each folder name. */
+  folderMetadataById?: ReadonlyMap<string, FolderLabelMetadata>;
+}
+
+function pillWidth(text: string): number {
+  return text.length * METADATA_CHAR_WIDTH + METADATA_CHROME_WIDTH;
+}
+
+/**
+ * Reserve the exact classes of inline UI rendered by GraphNodeView. The
+ * import relationship pill is deliberately included: although it is not a
+ * graph node, it still occupies label-row space and must push siblings away.
+ */
+export function folderLabelMetadataWidth(
+  metadata: FolderLabelMetadata,
+): number {
+  const itemWidths: number[] = [];
+  const foldedDescendantCount = metadata.foldedDescendantCount ?? 0;
+  const hiddenImportCount = metadata.hiddenImportCount ?? 0;
+
+  if (metadata.contextual === true) {
+    itemWidths.push(
+      pillWidth(
+        `${metadata.visibleChildCount ?? 0}/${metadata.totalChildCount ?? 0}`,
+      ),
+    );
+  } else if (foldedDescendantCount > 0) {
+    itemWidths.push(pillWidth(`+${foldedDescendantCount}`));
+  }
+  if (hiddenImportCount > 0) {
+    itemWidths.push(pillWidth(`↗${hiddenImportCount}`));
+  }
+  if (metadata.hasPin === true) itemWidths.push(PIN_WIDTH);
+
+  return itemWidths.reduce(
+    (width, itemWidth) => width + INLINE_GAP + itemWidth,
+    0,
+  );
+}
 
 /**
  * Labels sit to the right of their node, so a leaf must reserve its own label
  * width before the next one starts — short folder names pack tightly and long
  * filenames get room, which is what the approved mock does.
  */
-function slotWidth(node: GraphNode): number {
+function slotWidth(
+  node: GraphNode,
+  folderMetadata?: FolderLabelMetadata,
+): number {
   const metadataWidth =
     node.kind === 'Folder'
-      ? 46
+      ? folderMetadata === undefined
+        ? DEFAULT_FOLDER_METADATA_WIDTH
+        : Math.max(
+            DEFAULT_FOLDER_METADATA_WIDTH,
+            folderLabelMetadataWidth(folderMetadata),
+          )
       : node.coverage === undefined || node.coverage.status === 'unknown'
         ? 0
         : 62;
@@ -35,7 +99,10 @@ function slotWidth(node: GraphNode): number {
  * laid out left to right across the bottom of their branch. Leaf order fixes
  * the x cursor; every parent is centred over its own first and last child.
  */
-export function layoutTree(nodes: GraphNode[]): Map<string, Point> {
+export function layoutTree(
+  nodes: GraphNode[],
+  options: LayoutTreeOptions = {},
+): Map<string, Point> {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const childrenOf = new Map<string, GraphNode[]>();
   const roots: GraphNode[] = [];
@@ -70,7 +137,10 @@ export function layoutTree(nodes: GraphNode[]): Map<string, Point> {
     const y = depth * Y_GAP;
     if (visiting.has(node.id)) {
       const cycleX = leafCursor;
-      leafCursor += slotWidth(node);
+      leafCursor += slotWidth(
+        node,
+        options.folderMetadataById?.get(node.id),
+      );
       positions.set(node.id, { x: cycleX, y });
       return cycleX;
     }
@@ -81,7 +151,10 @@ export function layoutTree(nodes: GraphNode[]): Map<string, Point> {
     );
     if (children.length === 0) {
       const x = leafCursor;
-      leafCursor += slotWidth(node);
+      leafCursor += slotWidth(
+        node,
+        options.folderMetadataById?.get(node.id),
+      );
       positions.set(node.id, { x, y });
       visiting.delete(node.id);
       return x;

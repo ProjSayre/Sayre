@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { GraphNode } from '../types';
-import { layoutScalableTree, layoutTree } from './layout';
+import {
+  folderLabelMetadataWidth,
+  layoutScalableTree,
+  layoutTree,
+} from './layout';
 
 const nodes: GraphNode[] = [
   {
@@ -52,6 +56,48 @@ describe('workspace graph layouts', () => {
     );
     expect(positions.get('packages')?.y).toBe(
       positions.get('apps')?.y,
+    );
+  });
+
+  it('reserves space for folded and dashed import badges', () => {
+    const collapsedFolders: GraphNode[] = [
+      {
+        id: 'apps',
+        kind: 'Folder',
+        name: 'apps',
+        path: 'apps',
+        parentId: null,
+      },
+      {
+        id: 'cloud',
+        kind: 'Folder',
+        name: 'cloud',
+        path: 'cloud',
+        parentId: null,
+      },
+    ];
+    const defaultPositions = layoutTree(collapsedFolders);
+    const metadataWidth = folderLabelMetadataWidth({
+      foldedDescendantCount: 403,
+      hiddenImportCount: 102,
+      hasPin: true,
+    });
+    const reservedPositions = layoutTree(collapsedFolders, {
+      folderMetadataById: new Map([
+        [
+          'apps',
+          {
+            foldedDescendantCount: 403,
+            hiddenImportCount: 102,
+            hasPin: true,
+          },
+        ],
+      ]),
+    });
+
+    expect(metadataWidth).toBeGreaterThan(46);
+    expect(reservedPositions.get('cloud')?.x).toBeGreaterThan(
+      defaultPositions.get('cloud')?.x ?? 0,
     );
   });
 

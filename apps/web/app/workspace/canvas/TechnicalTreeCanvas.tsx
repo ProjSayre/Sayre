@@ -21,6 +21,7 @@ import type { TechnicalExpansionProjection } from '../technicalExpansion';
 import { NODE_TYPES, type GraphNodeData } from './nodes';
 import {
   NODE_BOX,
+  type FolderLabelMetadata,
   layoutScalableTree,
   layoutTree,
   toBoxOrigin,
@@ -34,6 +35,7 @@ interface TechnicalTreeCanvasProps {
   command: CanvasCommand | null;
   selectedId: string | null;
   cameraFocusId?: string | null;
+  preserveCameraZoom?: boolean;
   search: string;
   showMinimap: boolean;
   /** Changes whenever the canvas column resizes, so the graph refits. */
@@ -44,7 +46,7 @@ interface TechnicalTreeCanvasProps {
   onSelect: (nodeId: string) => void;
   onSetFolderExpanded?: (nodeId: string, expanded: boolean) => void;
   onTogglePinned?: (nodeId: string) => void;
-  onRequestFullGraph?: () => void;
+  onRequestFullGraph?: (nodeId: string) => void;
 }
 
 /** Root → node path, so the whole ancestry lights up rather than one edge. */
@@ -79,6 +81,7 @@ export function TechnicalTreeCanvas({
   command,
   selectedId,
   cameraFocusId = selectedId,
+  preserveCameraZoom = false,
   search,
   showMinimap,
   fitKey,
@@ -148,7 +151,9 @@ export function TechnicalTreeCanvas({
         position.y + NODE_BOX / 2,
         {
           duration: reducedMotion ? 0 : 220,
-          zoom: Math.min(1.4, Math.max(0.9, flow.getZoom())),
+          zoom: preserveCameraZoom
+            ? flow.getZoom()
+            : Math.min(1.4, Math.max(0.9, flow.getZoom())),
         },
       );
     }, 125);
@@ -159,12 +164,36 @@ export function TechnicalTreeCanvas({
     fitPadding,
     flow,
     layoutKey,
+    preserveCameraZoom,
     reducedMotion,
     renderer,
   ]);
 
   const { nodes, edges } = useMemo(() => {
-    const basePositions = layoutTree(graphNodes);
+    const folderMetadataById = new Map<string, FolderLabelMetadata>();
+    if (expansion !== undefined) {
+      for (const node of graphNodes) {
+        if (node.kind !== 'Folder') continue;
+        const folderState = expansion.folderStateById.get(node.id);
+        folderMetadataById.set(node.id, {
+          foldedDescendantCount:
+            folderState === 'collapsed'
+              ? (expansion.foldedDescendantCount.get(node.id) ?? 0)
+              : 0,
+          hiddenImportCount:
+            expansion.hiddenImportCount.get(node.id) ?? 0,
+          visibleChildCount:
+            expansion.visibleChildCount.get(node.id) ?? 0,
+          totalChildCount:
+            expansion.totalChildCount.get(node.id) ?? 0,
+          contextual: folderState === 'contextual',
+          hasPin:
+            onTogglePinned !== undefined &&
+            (expansion.totalChildCount.get(node.id) ?? 0) > 0,
+        });
+      }
+    }
+    const basePositions = layoutTree(graphNodes, { folderMetadataById });
     const positions = portraitViewport
       ? new Map(
           [...basePositions].map(([id, point]) => [
@@ -230,7 +259,7 @@ export function TechnicalTreeCanvas({
                 pinned: expansion.pinnedBranchIds.has(node.id),
                 onToggleFolder: (recursive: boolean) => {
                   if (recursive && expansion.mode !== 'full') {
-                    onRequestFullGraph?.();
+                    onRequestFullGraph?.(node.id);
                     return;
                   }
                   onSetFolderExpanded?.(node.id, !folderExpanded);
