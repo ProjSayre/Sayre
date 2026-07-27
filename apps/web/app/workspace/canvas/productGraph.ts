@@ -4,16 +4,26 @@ export interface ProductClusterFile {
   id: string;
   name: string;
   path: string;
+  /**
+   * Top-left of the file block inside its feature block. Only the first
+   * `visibleFileCount` files of a directory are placed on canvas; the rest keep
+   * grid positions that fall past the group and are reached through the
+   * directory flyout, which lists names rather than blocks.
+   */
   x: number;
   y: number;
+  width: number;
+  height: number;
 }
 
 export interface ProductClusterDirectory {
   id: string;
   label: string;
   path: string;
+  /** Top-left of the caption row that heads this group of file blocks. */
   x: number;
   y: number;
+  width: number;
   files: ProductClusterFile[];
   visibleFileCount: number;
   hiddenFileCount: number;
@@ -27,8 +37,10 @@ export interface ProductFeatureCluster {
   memberIds: string[];
   fileCount: number;
   workspaceCount: number;
-  radius: number;
-  diameter: number;
+  /** Fixed across features so the grid columns line up. */
+  width: number;
+  /** Grows with the number of file blocks the feature actually shows. */
+  height: number;
   directories: ProductClusterDirectory[];
   directoryCount: number;
   hiddenDirectoryCount: number;
@@ -56,14 +68,33 @@ export interface ProductFeatureFocus {
   activeConnectionIds: ReadonlySet<string>;
 }
 
-export const FEATURE_LABEL_WIDTH = 172;
+export const FEATURE_BLOCK_WIDTH = 264;
 export const MAX_VISIBLE_FEATURE_DIRECTORIES = 8;
 export const MAX_VISIBLE_FILES_PER_DIRECTORY = 6;
 
-const MIN_RADIUS = 78;
-const MAX_RADIUS = 116;
-const FEATURE_COLUMN_GAP = 74;
-const FEATURE_ROW_GAP = 78;
+/**
+ * A feature is a bounding block and its files are blocks inside it, so the
+ * geometry is a stack of directory groups rather than a radius. Every constant
+ * below is a pixel offset inside that block.
+ */
+const BLOCK_PADDING = 12;
+const HEADER_HEIGHT = 44;
+const DIRECTORY_CAPTION_HEIGHT = 14;
+const DIRECTORY_CAPTION_GAP = 5;
+const DIRECTORY_GROUP_GAP = 11;
+const FILE_COLUMNS = 2;
+const FILE_BLOCK_HEIGHT = 21;
+const FILE_BLOCK_GAP = 6;
+const OVERFLOW_HEIGHT = 20;
+const MIN_BLOCK_HEIGHT = 86;
+
+const CONTENT_WIDTH = FEATURE_BLOCK_WIDTH - BLOCK_PADDING * 2;
+const FILE_BLOCK_WIDTH = Math.floor(
+  (CONTENT_WIDTH - FILE_BLOCK_GAP * (FILE_COLUMNS - 1)) / FILE_COLUMNS,
+);
+
+const FEATURE_COLUMN_GAP = 88;
+const FEATURE_ROW_GAP = 72;
 
 function normalizePath(path: string): string {
   return path.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
@@ -98,38 +129,8 @@ function workspaceForPath(path: string): string {
   return parts[0] ?? '(repository root)';
 }
 
-function featureRadius(directoryCount: number, fileCount: number): number {
-  const visualDirectoryCount = Math.min(
-    directoryCount,
-    MAX_VISIBLE_FEATURE_DIRECTORIES,
-  );
-  const radius = 66 + visualDirectoryCount * 7 + Math.sqrt(fileCount) * 4;
-  return Math.round(Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, radius)));
-}
-
-function gridPosition(
-  index: number,
-  count: number,
-  radius: number,
-): { x: number; y: number } {
-  if (count <= 1) return { x: 0, y: 0 };
-  const columns = Math.ceil(Math.sqrt(count));
-  const rows = Math.ceil(count / columns);
-  const column = index % columns;
-  const row = Math.floor(index / columns);
-  const inset = Math.min(46, radius * 0.42);
-  const horizontalSpan = Math.max(0, radius * 2 - inset * 2);
-  const verticalSpan = Math.max(0, radius * 2 - inset * 2);
-  return {
-    x:
-      columns === 1
-        ? 0
-        : -radius + inset + (column * horizontalSpan) / (columns - 1),
-    y:
-      rows === 1
-        ? 0
-        : -radius + inset + (row * verticalSpan) / (rows - 1),
-  };
+function fileBlockRowCount(visibleFileCount: number): number {
+  return Math.max(1, Math.ceil(visibleFileCount / FILE_COLUMNS));
 }
 
 /**
@@ -163,7 +164,6 @@ export function buildProductFeatureClusters(
       filesByDirectory.set(path, directoryFiles);
     }
 
-    const radius = featureRadius(filesByDirectory.size, files.length);
     const directoryEntries = [...filesByDirectory.entries()].sort(
       ([leftPath, leftFiles], [rightPath, rightFiles]) =>
         rightFiles.length - leftFiles.length ||
@@ -176,13 +176,14 @@ export function buildProductFeatureClusters(
       0,
       MAX_VISIBLE_FEATURE_DIRECTORIES,
     );
+    // Groups stack downward from the header, so the running cursor is the whole
+    // vertical layout — each group advances it by its caption plus its rows.
+    let cursorY = HEADER_HEIGHT;
     const directories = visibleDirectoryEntries.map<ProductClusterDirectory>(
       ([path, directoryFiles], directoryIndex) => {
-        const { x, y } = gridPosition(
-          directoryIndex,
-          visibleDirectoryEntries.length,
-          radius,
-        );
+        if (directoryIndex > 0) cursorY += DIRECTORY_GROUP_GAP;
+        const captionY = cursorY;
+        const filesTop = captionY + DIRECTORY_CAPTION_HEIGHT + DIRECTORY_CAPTION_GAP;
         const sortedFiles = [...directoryFiles].sort(
           (left, right) =>
             left.path.localeCompare(right.path, undefined, {
@@ -190,41 +191,49 @@ export function buildProductFeatureClusters(
               sensitivity: 'base',
             }) || left.id.localeCompare(right.id),
         );
+        const visibleFileCount = Math.min(
+          sortedFiles.length,
+          MAX_VISIBLE_FILES_PER_DIRECTORY,
+        );
+        const rows = fileBlockRowCount(visibleFileCount);
+        cursorY =
+          filesTop + rows * FILE_BLOCK_HEIGHT + (rows - 1) * FILE_BLOCK_GAP;
 
         return {
           id: `${feature.id}:${path}`,
           path,
           label: directoryLabel(path),
-          x,
-          y,
-          visibleFileCount: Math.min(
-            sortedFiles.length,
-            MAX_VISIBLE_FILES_PER_DIRECTORY,
-          ),
+          x: BLOCK_PADDING,
+          y: captionY,
+          width: CONTENT_WIDTH,
+          visibleFileCount,
           hiddenFileCount: Math.max(
             0,
             sortedFiles.length - MAX_VISIBLE_FILES_PER_DIRECTORY,
           ),
-          files: sortedFiles.map((file, fileIndex) => {
-            const visibleFileCount = Math.min(
-              sortedFiles.length,
-              MAX_VISIBLE_FILES_PER_DIRECTORY,
-            );
-            const fileAngle =
-              -Math.PI / 2 +
-              (fileIndex * Math.PI * 2) / Math.max(1, visibleFileCount);
-            const fileOrbit = 17;
-            return {
-              id: file.id,
-              name: file.name,
-              path: file.path,
-              x: x + Math.cos(fileAngle) * fileOrbit,
-              y: y + Math.sin(fileAngle) * fileOrbit,
-            };
-          }),
+          files: sortedFiles.map((file, fileIndex) => ({
+            id: file.id,
+            name: file.name,
+            path: file.path,
+            x:
+              BLOCK_PADDING +
+              (fileIndex % FILE_COLUMNS) * (FILE_BLOCK_WIDTH + FILE_BLOCK_GAP),
+            y:
+              filesTop +
+              Math.floor(fileIndex / FILE_COLUMNS) *
+                (FILE_BLOCK_HEIGHT + FILE_BLOCK_GAP),
+            width: FILE_BLOCK_WIDTH,
+            height: FILE_BLOCK_HEIGHT,
+          })),
         };
       },
     );
+
+    const hiddenDirectoryCount = Math.max(
+      0,
+      directoryEntries.length - visibleDirectoryEntries.length,
+    );
+    if (hiddenDirectoryCount > 0) cursorY += OVERFLOW_HEIGHT;
 
     return {
       id: feature.id,
@@ -234,14 +243,11 @@ export function buildProductFeatureClusters(
       memberIds: files.map(({ id }) => id),
       fileCount: files.length,
       workspaceCount: new Set(files.map(({ path }) => workspaceForPath(path))).size,
-      radius,
-      diameter: radius * 2,
+      width: FEATURE_BLOCK_WIDTH,
+      height: Math.max(MIN_BLOCK_HEIGHT, cursorY + BLOCK_PADDING),
       directories,
       directoryCount: directoryEntries.length,
-      hiddenDirectoryCount: Math.max(
-        0,
-        directoryEntries.length - visibleDirectoryEntries.length,
-      ),
+      hiddenDirectoryCount,
     };
   });
 }
@@ -461,13 +467,21 @@ export function layoutProductFeatureClusters(
         ? Math.min(3, maximumColumns)
         : Math.min(4, maximumColumns);
   const safeColumns = Math.max(1, columns);
-  const maximumDiameter = Math.max(...ordered.map(({ diameter }) => diameter));
-  const cellWidth = maximumDiameter + FEATURE_LABEL_WIDTH + FEATURE_COLUMN_GAP;
-  const cellHeight = maximumDiameter + FEATURE_ROW_GAP;
+  const cellWidth = FEATURE_BLOCK_WIDTH + FEATURE_COLUMN_GAP;
+
+  // Blocks are as tall as their file count, so a row is sized to its own
+  // tallest block. A single large feature would otherwise pad every row.
+  const rowTops: number[] = [];
+  let top = 0;
+  for (let start = 0; start < ordered.length; start += safeColumns) {
+    rowTops.push(top);
+    const row = ordered.slice(start, start + safeColumns);
+    top += Math.max(...row.map(({ height }) => height)) + FEATURE_ROW_GAP;
+  }
 
   return ordered.map((cluster, index) => ({
     cluster,
     x: (index % safeColumns) * cellWidth,
-    y: Math.floor(index / safeColumns) * cellHeight,
+    y: rowTops[Math.floor(index / safeColumns)] ?? 0,
   }));
 }

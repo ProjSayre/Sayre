@@ -152,6 +152,29 @@ function Workspace() {
     [technicalExpansion],
   );
 
+  // Memoized like the Technical handlers above: the Product canvas keys its
+  // React Flow node list off these, and React Flow rebuilds a node's internals
+  // whenever it is handed a new node object, so a fresh callback per render
+  // made every feature node churn.
+  const selectFeature = useCallback(
+    (featureId: string): void => {
+      dispatch({ type: 'selectFeature', featureId });
+    },
+    [dispatch],
+  );
+
+  const selectNode = useCallback(
+    (nodeId: string): void => {
+      dispatch({ type: 'selectNode', nodeId });
+    },
+    [dispatch],
+  );
+
+  const clearSelection = useCallback((): void => {
+    setGraphExpansionAnchorId(null);
+    dispatch({ type: 'clearSelection' });
+  }, [dispatch]);
+
   useEffect(() => {
     setGraphExpansionAnchorId(null);
   }, [
@@ -524,10 +547,9 @@ function Workspace() {
             selectedNodeId={state.selectedNodeId}
             showMinimap={showMinimap}
             fitKey={`${state.drawerOpen}:${state.controlsOpen}:${state.fileTreeOpen}`}
-            onSelectFeature={(featureId) =>
-              dispatch({ type: 'selectFeature', featureId })
-            }
-            onSelectNode={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+            onSelectFeature={selectFeature}
+            onSelectNode={selectNode}
+            onClearSelection={clearSelection}
           />
         )}
 
