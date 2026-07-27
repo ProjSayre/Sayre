@@ -1,4 +1,4 @@
-import { ProductTreeShell } from '../components/ProductTreeShell';
+import { redirect } from 'next/navigation';
 
 interface ProductPageProps {
   searchParams?: {
@@ -14,10 +14,10 @@ function singleParam(value: string | string[] | undefined): string | null {
 }
 
 export default function ProductPage({ searchParams }: ProductPageProps) {
-  return (
-    <ProductTreeShell
-      repoId={singleParam(searchParams?.repoId)}
-      refName={singleParam(searchParams?.ref) ?? 'refs/heads/main'}
-    />
-  );
+  const params = new URLSearchParams({ view: 'product' });
+  const repoId = singleParam(searchParams?.repoId);
+  const refName = singleParam(searchParams?.ref);
+  if (repoId !== null) params.set('repoId', repoId);
+  if (refName !== null) params.set('refName', refName);
+  redirect(`/?${params.toString()}`);
 }

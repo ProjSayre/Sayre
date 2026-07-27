@@ -1,3 +1,5 @@
+import { coreFetch } from './coreFetch';
+
 export interface OverlayDependency {
   id: string;
   label: 'Folder' | 'File';
@@ -217,7 +219,7 @@ export async function fetchNodeOverlay(
 ): Promise<NodeOverlayResponse> {
   const normalized = nodeId.trim();
   if (!normalized) throw new RangeError('A node ID is required.');
-  const response = await (options.fetchImpl ?? fetch)(
+  const response = await (options.fetchImpl ?? coreFetch)(
     `/api/core/nodes/${encodeURIComponent(normalized)}/overlay`,
     {
       method: 'GET',
@@ -239,7 +241,7 @@ export async function saveAgentSkillMd(
   nodeId: string,
   content: string,
   expectedVersion: number,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = coreFetch,
 ): Promise<AgentSkillMdVersion> {
   const response = await fetchImpl(
     `/api/core/nodes/${encodeURIComponent(nodeId)}/agent-skill-md`,
@@ -289,7 +291,8 @@ export async function saveAgentSkillMd(
 
 export async function fetchAgentSkillMdHistory(
   nodeId: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = coreFetch,
+  signal?: AbortSignal,
 ): Promise<AgentSkillMdVersion[]> {
   const response = await fetchImpl(
     `/api/core/nodes/${encodeURIComponent(nodeId)}/agent-skill-md/history`,
@@ -297,6 +300,7 @@ export async function fetchAgentSkillMdHistory(
       method: 'GET',
       headers: { accept: 'application/json' },
       credentials: 'same-origin',
+      signal,
     },
   );
   if (!response.ok) throw requestError(response.status);

@@ -44,6 +44,31 @@ describe('MCP settings web adapter', () => {
     expect(init.cache).toBe('no-store');
   });
 
+  it('uses the HttpOnly BFF session cookie when a client header is absent', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn(async () =>
+      Response.json({ keys: [], rateLimitPerMinute: 60 }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const request = new NextRequest('http://web.local/api/mcp-settings', {
+      headers: {
+        cookie: 'sayre_session=cookie-session; forged=value',
+      },
+    });
+
+    const response = await GET(request, { params: {} });
+    const [, init] = upstream.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+
+    expect(response.status).toBe(200);
+    expect((init.headers as Headers).get('authorization')).toBe(
+      'Bearer cookie-session',
+    );
+    expect((init.headers as Headers).get('cookie')).toBeNull();
+  });
+
   it('proxies issue, revoke, and rate-policy requests to exact endpoints', async () => {
     vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
     const upstream = vi.fn(async () => Response.json({ ok: true }));

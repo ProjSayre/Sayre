@@ -55,6 +55,7 @@ export interface FetchTechnicalTreeOptions {
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
   viewport?: Viewport;
+  refName?: string;
 }
 
 export class TechnicalTreeResponseError extends Error {
@@ -308,6 +309,15 @@ export async function fetchTechnicalTree(
   repoId: string,
   options: FetchTechnicalTreeOptions = {},
 ): Promise<AuthorizedCanvasPayload> {
+  return toAuthorizedCanvasPayload(
+    await fetchTechnicalTreeResponse(repoId, options),
+  );
+}
+
+export async function fetchTechnicalTreeResponse(
+  repoId: string,
+  options: FetchTechnicalTreeOptions = {},
+): Promise<TechnicalTreeResponse> {
   const normalizedRepoId = repoId.trim();
   if (normalizedRepoId.length === 0) {
     throw new RangeError('A repository ID is required.');
@@ -322,6 +332,8 @@ export async function fetchTechnicalTree(
     height: String(viewport.height),
     zoom: String(viewport.zoom),
   });
+  const refName = options.refName?.trim();
+  if (refName) params.set('refName', refName);
 
   const response = await (options.fetchImpl ?? coreFetch)(
     `/api/core/repos/${encodeURIComponent(normalizedRepoId)}/technical-tree?${params}`,
@@ -342,7 +354,7 @@ export async function fetchTechnicalTree(
     throw new TechnicalTreeResponseError();
   }
 
-  return toAuthorizedCanvasPayload(parseTechnicalTreeResponse(value));
+  return parseTechnicalTreeResponse(value);
 }
 
 export function toReactFlowElements(payload: AuthorizedCanvasPayload): {

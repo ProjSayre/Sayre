@@ -1,4 +1,4 @@
-import { OnboardingTreeShell } from '../components/OnboardingTreeShell';
+import { redirect } from 'next/navigation';
 
 interface OnboardingPageProps {
   searchParams?: {
@@ -14,10 +14,10 @@ function singleParam(value: string | string[] | undefined): string | null {
 }
 
 export default function OnboardingPage({ searchParams }: OnboardingPageProps) {
-  return (
-    <OnboardingTreeShell
-      repoId={singleParam(searchParams?.repoId)}
-      refName={singleParam(searchParams?.ref) ?? 'refs/heads/main'}
-    />
-  );
+  const params = new URLSearchParams({ view: 'onboarding' });
+  const repoId = singleParam(searchParams?.repoId);
+  const refName = singleParam(searchParams?.ref);
+  if (repoId !== null) params.set('repoId', repoId);
+  if (refName !== null) params.set('refName', refName);
+  redirect(`/?${params.toString()}`);
 }

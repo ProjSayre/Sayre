@@ -52,7 +52,7 @@ describe('provider settings UI contract', () => {
 
   it('contains no raw credential/reference/endpoint input or secret inventory value', () => {
     const component = readFileSync(
-      new URL('./ProviderSettingsPanel.tsx', import.meta.url),
+      new URL('../../workspace/settings/SettingsPanel.tsx', import.meta.url),
       'utf8',
     );
     const page = readFileSync(new URL('./page.tsx', import.meta.url), 'utf8');
@@ -65,7 +65,7 @@ describe('provider settings UI contract', () => {
     expect(combined).not.toMatch(/type=["']password["']/);
     expect(combined).toMatch(/Generation/);
     expect(combined).toMatch(/Embedding/);
-    expect(combined).toMatch(/Raw keys cannot be entered, viewed, or stored/);
+    expect(combined).toMatch(/Raw keys cannot be entered, displayed, or stored/);
     expect(combined).toMatch(/contractual/i);
     expect(combined).toMatch(/structural/i);
     expect(combined).toMatch(/tradeoffs\.latency/);
