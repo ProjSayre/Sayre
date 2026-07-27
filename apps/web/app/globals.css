@@ -109,6 +109,11 @@ a {
   line-height: 1.65;
 }
 
+/* The completion card ends on its message — no button follows it. */
+.auth-card > p:last-child {
+  margin-bottom: 0;
+}
+
 .auth-primary {
   display: block;
   border: 1px solid transparent;
