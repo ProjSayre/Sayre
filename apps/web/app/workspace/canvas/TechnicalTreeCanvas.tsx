@@ -229,7 +229,7 @@ export function TechnicalTreeCanvas({
                   expansion.hiddenImportCount.get(node.id) ?? 0,
                 pinned: expansion.pinnedBranchIds.has(node.id),
                 onToggleFolder: (recursive: boolean) => {
-                  if (recursive) {
+                  if (recursive && expansion.mode !== 'full') {
                     onRequestFullGraph?.();
                     return;
                   }

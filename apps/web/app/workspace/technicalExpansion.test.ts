@@ -237,6 +237,25 @@ describe('technical expansion projection', () => {
     expect(projection.foldedDescendantCount.get('large')).toBe(8);
   });
 
+  it('honors explicit folder expansion while focus mode is active', () => {
+    const nodes = largeGraph();
+    const projection = projectTechnicalExpansion(
+      nodes,
+      [],
+      intent({
+        mode: 'focus',
+        manuallyExpanded: new Set(['folder-2']),
+        manualOrder: ['folder-2'],
+      }),
+      24,
+    );
+
+    expect(projection.expandedFolderIds.has('folder-2')).toBe(true);
+    expect(
+      projection.nodes.some((node) => node.parentId === 'folder-2'),
+    ).toBe(true);
+  });
+
   it('temporarily reveals search matches without changing the base projection', () => {
     const nodes = largeGraph();
     const preferences = {

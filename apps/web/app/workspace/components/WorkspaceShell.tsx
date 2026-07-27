@@ -337,9 +337,29 @@ function Workspace() {
     repository === null
       ? '/'
       : `${repository.name.split('/').pop() ?? repository.name}/`;
+  const fileTreeVisible = isTechnical && state.fileTreeOpen;
 
   return (
-    <main className="mock-main">
+    <>
+      {isTechnical && (
+        <FileTreePane
+          hidden={!fileTreeVisible}
+          nodes={graph.nodes}
+          status={graphStatus}
+          repositoryLabel={graphRootLabel}
+          selectedNodeId={state.selectedNodeId}
+          expandedFolderIds={technicalProjection.expandedFolderIds}
+          pinnedNodeIds={technicalExpansion.preferences.pinnedBranches}
+          onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
+          onSetFolderExpanded={technicalExpansion.setFolderExpanded}
+          onCollapseAll={technicalExpansion.collapseAllFolders}
+          onTogglePin={technicalExpansion.togglePinned}
+          onClose={() =>
+            dispatch({ type: 'patch', patch: { fileTreeOpen: false } })
+          }
+        />
+      )}
+      <main className="mock-main">
       <CanvasToolbar
         title={
           isTechnical
@@ -503,30 +523,19 @@ function Workspace() {
       </div>
 
       <SettingsPanel />
-    </main>
+      </main>
+    </>
   );
 }
 
 function WorkspaceBody() {
-  const {
-    dispatch,
-    graph,
-    graphStatus,
-    repository,
-    scope,
-    state,
-  } = useMock();
-  const technicalExpansion = useTechnicalExpansion();
+  const { state } = useMock();
   const drawerSelected =
     state.drawerOpen &&
     (state.selectedNodeId !== null || state.selectedFeatureId !== null);
   const drawerVisible =
     state.settingsSection === null && drawerSelected;
   const fileTreeVisible = state.view === 'technical' && state.fileTreeOpen;
-  const fileTreeRootId =
-    graph.nodes.find((node) => node.parentId === null)?.id ??
-    graph.nodes[0]?.id ??
-    'empty';
 
   return (
     <div
@@ -539,30 +548,6 @@ function WorkspaceBody() {
         .join(' ')}
     >
       <ViewRail />
-      {state.view === 'technical' && (
-        <FileTreePane
-          hidden={!fileTreeVisible}
-          nodes={graph.nodes}
-          status={graphStatus}
-          repositoryLabel={
-            repository === null
-              ? '/'
-              : `${repository.name.split('/').pop() ?? repository.name}/`
-          }
-          treeKey={
-            scope === null
-              ? 'no-repository'
-              : `${scope.repositoryId}:${scope.refName}:${fileTreeRootId}`
-          }
-          selectedNodeId={state.selectedNodeId}
-          pinnedNodeIds={technicalExpansion.preferences.pinnedBranches}
-          onSelect={(nodeId) => dispatch({ type: 'selectNode', nodeId })}
-          onTogglePin={technicalExpansion.togglePinned}
-          onClose={() =>
-            dispatch({ type: 'patch', patch: { fileTreeOpen: false } })
-          }
-        />
-      )}
       <ReactFlowProvider>
         <Workspace />
       </ReactFlowProvider>

@@ -36,6 +36,7 @@ interface TechnicalExpansionContextValue {
   transientReveal: TechnicalTransientReveal | null;
   setMode: (mode: TechnicalExpansionMode) => void;
   setFolderExpanded: (nodeId: string, expanded: boolean) => void;
+  collapseAllFolders: () => void;
   togglePinned: (nodeId: string) => void;
   revealTransient: (
     source: TechnicalTransientReveal['source'],
@@ -236,6 +237,10 @@ export function TechnicalExpansionProvider({
 
         return {
           ...current,
+          mode:
+            !expanded && current.mode === 'full'
+              ? 'balanced'
+              : current.mode,
           manuallyExpanded,
           manuallyCollapsed,
           pinnedBranches,
@@ -250,6 +255,39 @@ export function TechnicalExpansionProvider({
     },
     [update],
   );
+
+  const collapseAllFolders = useCallback((): void => {
+    const currentNodes = latestNodes.current ?? [];
+    const parentIds = new Set(
+      currentNodes
+        .map((node) => node.parentId)
+        .filter((id): id is string => id !== null),
+    );
+    const folderIds = new Set(
+      currentNodes
+        .filter(
+          (node) => node.kind === 'Folder' && parentIds.has(node.id),
+        )
+        .map((node) => node.id),
+    );
+    if (folderIds.size === 0) return;
+
+    update((current) => ({
+      ...current,
+      mode: current.mode === 'full' ? 'balanced' : current.mode,
+      manuallyExpanded: new Set(
+        [...current.manuallyExpanded].filter((id) => !folderIds.has(id)),
+      ),
+      manuallyCollapsed: new Set([
+        ...current.manuallyCollapsed,
+        ...folderIds,
+      ]),
+      pinnedBranches: new Set(
+        [...current.pinnedBranches].filter((id) => !folderIds.has(id)),
+      ),
+      manualOrder: current.manualOrder.filter((id) => !folderIds.has(id)),
+    }));
+  }, [update]);
 
   const togglePinned = useCallback(
     (nodeId: string): void => {
@@ -334,6 +372,7 @@ export function TechnicalExpansionProvider({
       transientReveal,
       setMode,
       setFolderExpanded,
+      collapseAllFolders,
       togglePinned,
       revealTransient,
       clearTransientReveal,
@@ -341,6 +380,7 @@ export function TechnicalExpansionProvider({
     }),
     [
       clearTransientReveal,
+      collapseAllFolders,
       preferences,
       reset,
       revealTransient,

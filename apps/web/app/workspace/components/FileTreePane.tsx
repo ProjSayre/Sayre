@@ -10,8 +10,6 @@ import {
 } from 'react';
 import {
   buildFileTreeModel,
-  fileTreeAncestorFolders,
-  initialFileTreeExpansion,
   visibleFileTreeRows,
   type FileTreeRow,
 } from '../fileTree';
@@ -22,10 +20,12 @@ interface FileTreePaneProps {
   nodes: readonly GraphNode[];
   status: LoadStatus;
   repositoryLabel: string;
-  treeKey: string;
   selectedNodeId: string | null;
+  expandedFolderIds: ReadonlySet<string>;
   pinnedNodeIds: ReadonlySet<string>;
   onSelect: (nodeId: string) => void;
+  onSetFolderExpanded: (nodeId: string, expanded: boolean) => void;
+  onCollapseAll: () => void;
   onTogglePin: (nodeId: string) => void;
   onClose: () => void;
 }
@@ -52,41 +52,21 @@ export function FileTreePane({
   nodes,
   status,
   repositoryLabel,
-  treeKey,
   selectedNodeId,
+  expandedFolderIds,
   pinnedNodeIds,
   onSelect,
+  onSetFolderExpanded,
+  onCollapseAll,
   onTogglePin,
   onClose,
 }: FileTreePaneProps) {
   const model = useMemo(() => buildFileTreeModel(nodes), [nodes]);
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
-  const initializedTreeKey = useRef<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
 
   useEffect(() => {
-    if (status !== 'ready' || initializedTreeKey.current === treeKey) return;
-    initializedTreeKey.current = treeKey;
-    setExpandedIds(initialFileTreeExpansion(model));
-    setFocusedNodeId(model.roots[0]?.id ?? null);
-  }, [model, status, treeKey]);
-
-  useEffect(() => {
     if (selectedNodeId === null || !model.byId.has(selectedNodeId)) return;
-    const ancestors = fileTreeAncestorFolders(model, selectedNodeId);
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      let changed = false;
-      for (const ancestorId of ancestors) {
-        if (next.has(ancestorId)) continue;
-        next.add(ancestorId);
-        changed = true;
-      }
-      return changed ? next : current;
-    });
     setFocusedNodeId(selectedNodeId);
     const timer = window.setTimeout(() => {
       rowRefs.current.get(selectedNodeId)?.scrollIntoView({
@@ -97,8 +77,8 @@ export function FileTreePane({
   }, [model, selectedNodeId]);
 
   const rows = useMemo(
-    () => visibleFileTreeRows(model, expandedIds),
-    [expandedIds, model],
+    () => visibleFileTreeRows(model, expandedFolderIds),
+    [expandedFolderIds, model],
   );
   const rowIndex = useMemo(
     () => new Map(rows.map((row, index) => [row.node.id, index])),
@@ -106,17 +86,12 @@ export function FileTreePane({
   );
 
   const setExpanded = (nodeId: string, expanded: boolean): void => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (expanded) next.add(nodeId);
-      else next.delete(nodeId);
-      return next;
-    });
+    onSetFolderExpanded(nodeId, expanded);
   };
 
   const activate = (row: FileTreeRow): void => {
     if (row.hasChildren) {
-      setExpanded(row.node.id, !expandedIds.has(row.node.id));
+      setExpanded(row.node.id, !expandedFolderIds.has(row.node.id));
     }
     onSelect(row.node.id);
   };
@@ -156,7 +131,7 @@ export function FileTreePane({
     }
     if (event.key === 'ArrowRight' && row.hasChildren) {
       event.preventDefault();
-      if (!expandedIds.has(row.node.id)) {
+      if (!expandedFolderIds.has(row.node.id)) {
         setExpanded(row.node.id, true);
       } else {
         focusRow(rows[index + 1]);
@@ -165,7 +140,7 @@ export function FileTreePane({
     }
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      if (row.hasChildren && expandedIds.has(row.node.id)) {
+      if (row.hasChildren && expandedFolderIds.has(row.node.id)) {
         setExpanded(row.node.id, false);
       } else if (row.parentId !== null) {
         focusRow(rows[rowIndex.get(row.parentId) ?? -1]);
@@ -232,7 +207,7 @@ export function FileTreePane({
           aria-label="Collapse all folders"
           title="Collapse all folders"
           disabled={rows.length === 0}
-          onClick={() => setExpandedIds(new Set())}
+          onClick={onCollapseAll}
         >
           ⇤
         </button>
@@ -264,7 +239,7 @@ export function FileTreePane({
           aria-label={`${repositoryLabel} files`}
         >
           {rows.map((row) => {
-            const expanded = expandedIds.has(row.node.id);
+            const expanded = expandedFolderIds.has(row.node.id);
             const selected = row.node.id === selectedNodeId;
             const displayName =
               row.node.parentId === null ? repositoryLabel : row.node.name;

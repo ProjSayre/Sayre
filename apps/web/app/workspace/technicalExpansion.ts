@@ -43,6 +43,7 @@ export interface TechnicalExpansionIntent
 }
 
 export interface TechnicalExpansionProjection {
+  mode: TechnicalExpansionMode;
   nodes: GraphNode[];
   edges: GraphEdge[];
   visibleNodeIds: ReadonlySet<string>;
@@ -401,13 +402,9 @@ export function projectTechnicalExpansion(
     // Give every protected branch one contextual child before a large folder
     // can spend the rest of the viewport budget.
     for (const folderId of pinnedIds) addFirstChild(folderId, 'pinned');
-    if (intent.mode === 'balanced') {
-      for (const folderId of manualIds) addFirstChild(folderId, 'manual');
-    }
+    for (const folderId of manualIds) addFirstChild(folderId, 'manual');
     for (const folderId of pinnedIds) addChildren(folderId, 'pinned');
-    if (intent.mode === 'balanced') {
-      for (const folderId of manualIds) addChildren(folderId, 'manual');
-    }
+    for (const folderId of manualIds) addChildren(folderId, 'manual');
 
     if (intent.focusNodeId && authorizedNodeIds.has(intent.focusNodeId)) {
       const focused = model.byId.get(intent.focusNodeId);
@@ -536,6 +533,7 @@ export function projectTechnicalExpansion(
   ].join(':');
 
   return {
+    mode: intent.mode,
     nodes,
     edges,
     visibleNodeIds,
