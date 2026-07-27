@@ -17,7 +17,6 @@ import {
   type ProductFeatureNodeData,
 } from './ProductFeatureNode';
 import {
-  FEATURE_LABEL_WIDTH,
   buildProductFeatureClusters,
   buildProductFeatureConnections,
   layoutProductFeatureClusters,
@@ -38,6 +37,7 @@ interface ProductTreeCanvasProps {
   fitKey: string;
   onSelectFeature: (featureId: string) => void;
   onSelectNode: (nodeId: string) => void;
+  onClearSelection: () => void;
 }
 
 interface OpenDirectory {
@@ -79,9 +79,10 @@ function connectionLabel(
 }
 
 /**
- * Product Tree renders features as the primary graph grammar. Each dashed frame
- * owns directory and file glyphs, while feature-to-feature links summarize
- * shared membership and authorized import relationships.
+ * Product Tree renders features as the primary graph grammar. Each feature is a
+ * bounding block holding its files as named blocks, grouped by directory, while
+ * feature-to-feature links summarize shared membership and authorized import
+ * relationships.
  */
 export function ProductTreeCanvas({
   graphNodes,
@@ -94,6 +95,7 @@ export function ProductTreeCanvas({
   fitKey,
   onSelectFeature,
   onSelectNode,
+  onClearSelection,
 }: ProductTreeCanvasProps) {
   const flow = useReactFlow();
   const [maximumColumns, setMaximumColumns] = useState(4);
@@ -177,9 +179,14 @@ export function ProductTreeCanvas({
         id: `feature:${cluster.id}`,
         type: 'productFeature',
         position: { x, y },
+        // Declared, not just styled: productGraph computes the exact block
+        // geometry, so there is nothing for React Flow to measure. Matches the
+        // Technical Tree, and gives the minimap real sizes on first paint.
+        width: cluster.width,
+        height: cluster.height,
         style: {
-          width: cluster.diameter + FEATURE_LABEL_WIDTH,
-          height: cluster.diameter,
+          width: cluster.width,
+          height: cluster.height,
         },
         draggable: false,
         connectable: false,
@@ -342,7 +349,10 @@ export function ProductTreeCanvas({
         setHoveredFeatureId(node.id.slice('feature:'.length))
       }
       onNodeMouseLeave={() => setHoveredFeatureId(null)}
-      onPaneClick={() => setOpenDirectory(null)}
+      onPaneClick={() => {
+        setOpenDirectory(null);
+        onClearSelection();
+      }}
       fitView
       fitViewOptions={{
         padding: 0.12,

@@ -30,33 +30,27 @@ function codeAreaCountLabel(count: number): string {
 }
 
 function DirectoryFlyout({
-  cluster,
   directory,
   selectedNodeId,
   onSelectFile,
   onClose,
 }: {
-  cluster: ProductFeatureCluster;
   directory: ProductClusterDirectory;
   selectedNodeId: string | null;
   onSelectFile: (fileId: string) => void;
   onClose: () => void;
 }) {
-  const opensLeft = directory.x > 0;
   return (
     <div
       className="mock-feature-flyout nodrag nopan"
       role="dialog"
       aria-label={`Files in ${directory.path}`}
+      // Anchored to the directory's own caption row inside the block, so the
+      // full list opens exactly where the truncated blocks were.
       style={{
-        left: cluster.radius + directory.x + (opensLeft ? -252 : 16),
-        top: Math.max(
-          8,
-          Math.min(
-            cluster.radius + directory.y - 18,
-            cluster.diameter - 154,
-          ),
-        ),
+        left: directory.x,
+        top: directory.y,
+        width: directory.width,
       }}
       onPointerDown={(event) => event.stopPropagation()}
     >
@@ -103,7 +97,7 @@ export function ProductFeatureNode({ data }: NodeProps) {
     ({ id }) => id === node.openDirectoryId,
   );
   const classes = [
-    'mock-feature-cluster',
+    'mock-feature-block',
     node.selected ? 'is-selected' : '',
     node.containsSelectedFile ? 'has-selected-file' : '',
     node.dimmed ? 'is-dimmed' : '',
@@ -117,19 +111,26 @@ export function ProductFeatureNode({ data }: NodeProps) {
     <div
       className={classes}
       style={{
-        width: cluster.diameter,
-        height: cluster.diameter,
+        width: cluster.width,
+        height: cluster.height,
       }}
     >
+      {/* Pinned to the block's left and right edges so feature links run
+          between the frames rather than out of their centres. */}
       <Handle
         type="target"
         position={Position.Left}
         className="mock-feature-handle"
-        style={{ left: 0, top: cluster.radius }}
+        style={{ left: 0, top: cluster.height / 2 }}
       />
+      {/*
+        The frame is the feature's own click target and sits behind everything
+        else, so clicking anywhere that isn't a file block or a directory
+        caption selects the feature. The header above it is inert text.
+      */}
       <button
         type="button"
-        className="mock-feature-ring nodrag nopan"
+        className="mock-feature-frame nodrag nopan"
         aria-label={`Open feature ${cluster.name}`}
         aria-pressed={node.selected}
         title={cluster.description ?? cluster.name}
@@ -138,6 +139,15 @@ export function ProductFeatureNode({ data }: NodeProps) {
           node.onSelectFeature();
         }}
       />
+
+      <div className="mock-feature-header" aria-hidden="true">
+        <strong>{cluster.name}</strong>
+        <span>
+          {fileCountLabel(cluster.fileCount)} ·{' '}
+          {codeAreaCountLabel(cluster.workspaceCount)}
+        </span>
+        {cluster.team !== null && <em>{cluster.team}</em>}
+      </div>
 
       {cluster.directories.map((directory) => {
         const isOpen = directory.id === node.openDirectoryId;
@@ -149,8 +159,9 @@ export function ProductFeatureNode({ data }: NodeProps) {
                 isOpen ? ' is-open' : ''
               }`}
               style={{
-                left: cluster.radius + directory.x,
-                top: cluster.radius + directory.y,
+                left: directory.x,
+                top: directory.y,
+                width: directory.width,
               }}
               aria-label={`Show files in ${directory.path}`}
               aria-expanded={isOpen}
@@ -160,15 +171,11 @@ export function ProductFeatureNode({ data }: NodeProps) {
                 node.onToggleDirectory(directory.id);
               }}
             >
-              <span className="mock-feature-directory-ring" />
               <span className="mock-feature-directory-label">
                 {directory.label}
               </span>
               {directory.hiddenFileCount > 0 && (
-                <span
-                  className="mock-feature-directory-count"
-                  aria-hidden="true"
-                >
+                <span className="mock-feature-directory-count">
                   +{directory.hiddenFileCount}
                 </span>
               )}
@@ -187,8 +194,10 @@ export function ProductFeatureNode({ data }: NodeProps) {
                   .filter(Boolean)
                   .join(' ')}
                 style={{
-                  left: cluster.radius + file.x,
-                  top: cluster.radius + file.y,
+                  left: file.x,
+                  top: file.y,
+                  width: file.width,
+                  height: file.height,
                 }}
                 aria-label={`Open file ${file.path}`}
                 title={file.path}
@@ -196,7 +205,9 @@ export function ProductFeatureNode({ data }: NodeProps) {
                   event.stopPropagation();
                   node.onSelectFile(file.id);
                 }}
-              />
+              >
+                <span className="mock-feature-file-name">{file.name}</span>
+              </button>
               ))}
           </div>
         );
@@ -214,26 +225,8 @@ export function ProductFeatureNode({ data }: NodeProps) {
         </span>
       )}
 
-      <button
-        type="button"
-        className="mock-feature-cluster-label nodrag nopan"
-        style={{ left: 0, top: cluster.diameter + 9 }}
-        onClick={(event) => {
-          event.stopPropagation();
-          node.onSelectFeature();
-        }}
-      >
-        <strong>{cluster.name}</strong>
-        <span>
-          {fileCountLabel(cluster.fileCount)} ·{' '}
-          {codeAreaCountLabel(cluster.workspaceCount)}
-        </span>
-        {cluster.team !== null && <em>{cluster.team}</em>}
-      </button>
-
       {openDirectory !== undefined && (
         <DirectoryFlyout
-          cluster={cluster}
           directory={openDirectory}
           selectedNodeId={node.selectedNodeId}
           onSelectFile={node.onSelectFile}
@@ -245,7 +238,7 @@ export function ProductFeatureNode({ data }: NodeProps) {
         type="source"
         position={Position.Right}
         className="mock-feature-handle"
-        style={{ left: cluster.diameter, top: cluster.radius }}
+        style={{ left: cluster.width, top: cluster.height / 2 }}
       />
     </div>
   );

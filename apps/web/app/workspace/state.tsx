@@ -113,6 +113,7 @@ export type WorkspaceAction =
   | { type: 'patch'; patch: Partial<WorkspaceState> }
   | { type: 'selectNode'; nodeId: string }
   | { type: 'selectFeature'; featureId: string }
+  | { type: 'clearSelection' }
   | { type: 'closeDrawer' }
   | { type: 'reset'; state?: WorkspaceState };
 
@@ -143,6 +144,17 @@ function reducer(
         selectedNodeId: null,
         returnFeatureId: null,
         drawerOpen: true,
+      };
+    // Clicking empty canvas drops the focus entirely, so the Product view stops
+    // dimming and the drawer has nothing left to show. `closeDrawer` only hides
+    // the panel and deliberately keeps the selection.
+    case 'clearSelection':
+      return {
+        ...state,
+        selectedNodeId: null,
+        selectedFeatureId: null,
+        returnFeatureId: null,
+        drawerOpen: false,
       };
     case 'closeDrawer':
       return { ...state, drawerOpen: false };
