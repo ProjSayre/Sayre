@@ -52,6 +52,7 @@ import type {
 import type { OnboardingExecutionResponse } from '../lib/onboardingTree';
 import { getStoredSessionToken } from '../lib/coreFetch';
 import type { GitHubIntegrationStatusResponse } from '../lib/githubIntegrationStatus';
+import type { JiraStatusResponse } from '../lib/jiraIntegrationStatus';
 
 export interface WorkspaceState {
   /** Scenario dials are exposed only by the fixture route. */
@@ -194,6 +195,9 @@ interface WorkspaceContextValue {
     signal: AbortSignal,
   ) => Promise<GitHubIntegrationStatusResponse>;
   githubInstallUrl: string;
+  loadJiraIntegrationStatus: (signal: AbortSignal) => Promise<JiraStatusResponse>;
+  disconnectJira: () => Promise<JiraStatusResponse>;
+  jiraConnectUrl: string;
   viewer: WorkspaceDataSource['viewer'];
 }
 
@@ -940,6 +944,9 @@ export function WorkspaceProvider({
       saveMcpRateLimit: source.saveMcpRateLimit,
       loadGitHubIntegrationStatus: source.githubIntegrationStatus,
       githubInstallUrl: source.githubInstallUrl,
+      loadJiraIntegrationStatus: source.jiraIntegrationStatus,
+      disconnectJira: source.disconnectJira,
+      jiraConnectUrl: source.jiraConnectUrl,
       viewer: source.viewer,
     }),
     [
@@ -962,6 +969,9 @@ export function WorkspaceProvider({
       source.id,
       source.githubIntegrationStatus,
       source.githubInstallUrl,
+      source.jiraIntegrationStatus,
+      source.disconnectJira,
+      source.jiraConnectUrl,
       source.issueMcpKey,
       source.mcpSettings,
       source.revokeMcpKey,

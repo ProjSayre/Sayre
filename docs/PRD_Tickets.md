@@ -341,6 +341,14 @@ Org-admin settings surface for choosing provider, endpoint, and model by purpose
 
 **Acceptance criteria:** an org admin can switch providers and select an authorized pre-provisioned reference, with the change taking effect on the next enrichment/chatbot job without a deploy; endpoint validation cannot probe arbitrary/internal addresses; no raw credential appears in request bodies, logs, or Postgres.
 
+### **W3-10 — Jira OAuth connect flow: per-org credentials + Settings UI** **_(new in v4 — gap identified during hands-on testing after W3-05 shipped)_**
+
+**Depends on:** W3-05, W0-05, W0-07 · **Executor:** Pair (OAuth is security-sensitive, same reasoning as W1-06)
+
+W3-05 built the Jira/Linear sync worker assuming credentials already exist, but nothing in the product obtains them: no connect button, no OAuth flow, no Settings surface — the only path was an operator hand-pasting global `JIRA_ACCESS_TOKEN`/`JIRA_REFRESH_TOKEN`/`JIRA_OAUTH_CLIENT_SECRET` into `infra/.env`, which also limited the whole instance to a single Jira workspace. This ticket is the Jira equivalent of W1-06's GitHub connect flow: a per-org OAuth 3LO connect flow, a `jira_connections` table (scoped by `org_id`, mirroring `mcp_client_keys`), `GET /integrations/jira/connect` + `/callback` with a signed org-carrying state token, silent refresh + disconnect, a Settings connect/status/disconnect surface, and an org-scoped `getOrgSecret(orgId, name)` credential loader that W3-05's worker and PM-07's later KMS cutover both resolve through. Per-org access/refresh tokens live in Postgres (encrypted at rest), never in `.env`; the App-level `JIRA_OAUTH_CLIENT_SECRET` stays global.
+
+**Acceptance criteria:** an org admin can Connect in Settings, complete Jira's consent screen, and land back on Settings showing an active connection with no manual token/`.env` step; two orgs can each connect their own distinct Jira site simultaneously, proven by a test that org A's sync never reads/writes org B's credentials; disconnecting one org halts its sync without affecting others; no Jira credential is read outside `getOrgSecret`, enforced by a CI gate; the post-mvp-backlog note on this gap is closed with a pointer here.
+
 ## **Wave 4 — Onboarding, overlay, agent surface (needs Wave 3)** 
 
 ### **W4-01 — Onboarding Tree + sandboxed setup exec** 
@@ -517,6 +525,7 @@ Extends the MCP surface beyond read-only context: tools letting agents propose c
 |W3-07|W2-05, W0-07|3_(new in v3)_|
 |W3-08|W3-07|3_(new in v3)_|
 |W3-09|W3-07|3_(new in v3)_|
+|W3-10|W3-05, W0-05, W0-07|3_(new in v4)_|
 |W4-01|W3-01, W0-05, W2-08|4|
 |W4-02|W3-04, W3-05, W3-06, W3-01|4|
 |W4-03|W2-07, W2-04|4|

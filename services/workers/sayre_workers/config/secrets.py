@@ -21,8 +21,11 @@ SECRET_NAMES: tuple[str, ...] = (
     "GITHUB_APP_CLIENT_SECRET",
     "GITHUB_WEBHOOK_SECRET",
     "JIRA_OAUTH_CLIENT_SECRET",
-    "JIRA_ACCESS_TOKEN",
-    "JIRA_REFRESH_TOKEN",
+    # W3-10: per-org Jira access/refresh tokens now live encrypted in
+    # jira_connections (Postgres), resolved through Node's getOrgSecret --
+    # JIRA_ACCESS_TOKEN/JIRA_REFRESH_TOKEN are REMOVED from this catalog (kept
+    # identical to packages/config; see that file's matching comment).
+    "JIRA_TOKEN_ENC_KEY",
     "LINEAR_OAUTH_CLIENT_SECRET",
     "LINEAR_ACCESS_TOKEN",
     "LINEAR_REFRESH_TOKEN",

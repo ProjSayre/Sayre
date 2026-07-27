@@ -41,7 +41,9 @@ jobs:
       # Built-in-only pre-install boundary: these scripts use Node core modules
       # and Git, so no package lifecycle code runs before the source audit.
       - name: Secret-access boundary
-        run: npm run check:secret-access && npm run test:secret-access
+        run: >-
+          npm run check:secret-access && npm run test:secret-access &&
+          npm run check:org-secret-access && npm run test:org-secret-access
 
       # Single root-level install — resolves the marketing site + apps/web +
       # services/core + packages/shared-types together via the workspace

@@ -14,6 +14,8 @@
     "test:waitlist": "node scripts/test-waitlist.mjs",
     "check:secret-access": "node scripts/check-secret-access.mjs",
     "test:secret-access": "node --test scripts/check-secret-access.test.mjs",
+    "check:org-secret-access": "node scripts/check-org-secret-access.mjs",
+    "test:org-secret-access": "node --test scripts/check-org-secret-access.test.mjs",
     "check:security-audit-agents": "node scripts/validate-security-audit-agents.mjs",
     "check:security-audit-run": "node scripts/validate-security-audit-run.mjs",
     "test:security-audit-run": "node --test scripts/validate-security-audit-run.test.mjs",

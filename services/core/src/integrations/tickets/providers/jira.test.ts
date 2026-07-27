@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { JiraProviderAdapter } from './jira';
+import { JiraProviderAdapter, JiraSyncError } from './jira';
 
 const issue = {
   id: '10042',
@@ -87,5 +87,43 @@ describe('JiraProviderAdapter', () => {
     const adapter = new JiraProviderAdapter();
     expect(adapter.externalIdFromWebhook({ issue: { key: 'PAY-42' } })).toBe('PAY-42');
     expect(adapter.externalIdFromWebhook({ project: { key: 'PAY' } })).toBeNull();
+  });
+
+  // W3-10 edge cases (spec.md "Adapter / worker"): the additive browseBaseUrl
+  // param, and the fail-loud default loader now that the global
+  // JIRA_ACCESS_TOKEN secret is gone.
+  describe('W3-10: per-org base URL split + fail-loud default loader', () => {
+    it('calls the API through baseUrl() (the per-org api.atlassian.com gateway) while /browse links use the DISTINCT browseBaseUrl() (the human-facing site URL)', async () => {
+      const fetcher = vi.fn(async () => new Response(JSON.stringify(issue), { status: 200 }));
+      const adapter = new JiraProviderAdapter(
+        async () => 'token',
+        fetcher,
+        () => 'https://api.atlassian.test/ex/jira/cloud-abc', // API gateway base
+        () => 'https://acme.atlassian.net', // human-facing site URL
+      );
+
+      const ticket = await adapter.fetchTicket('PAY-42');
+
+      expect(fetcher).toHaveBeenCalledWith(
+        'https://api.atlassian.test/ex/jira/cloud-abc/rest/api/3/issue/PAY-42?fields=summary,status,description,updated',
+        expect.anything(),
+      );
+      expect(ticket.url).toBe('https://acme.atlassian.net/browse/PAY-42');
+    });
+
+    it('browseBaseUrl defaults to baseUrl when omitted (existing 3-arg callers/tests keep prior behavior)', async () => {
+      const fetcher = vi.fn(async () => new Response(JSON.stringify(issue), { status: 200 }));
+      const adapter = new JiraProviderAdapter(async () => 'token', fetcher, () => 'https://jira.test');
+      const ticket = await adapter.fetchTicket('PAY-42');
+      expect(ticket.url).toBe('https://jira.test/browse/PAY-42');
+    });
+
+    it('the default loadToken (no loader injected) fails LOUD with JiraSyncError instead of silently reading a removed global secret', async () => {
+      const adapter = new JiraProviderAdapter(); // no token loader injected
+      await expect(adapter.fetchTicket('PAY-42')).rejects.toBeInstanceOf(JiraSyncError);
+      await expect(adapter.fetchTicket('PAY-42')).rejects.toThrow(
+        'Jira credentials must be provided per-org; no token loader configured.',
+      );
+    });
   });
 });

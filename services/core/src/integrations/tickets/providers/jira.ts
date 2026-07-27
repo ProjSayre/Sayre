@@ -1,4 +1,4 @@
-import { getConfig, getSecret } from '@sayre/config';
+import { getConfig } from '@sayre/config';
 import { parseTicketReferences } from '../references';
 import type { NormalizedTicket, TicketProviderAdapter } from '../types';
 import type { TicketUpdatePayload } from '../../../queue/bullmq';
@@ -69,9 +69,25 @@ export class JiraProviderAdapter implements TicketProviderAdapter {
   readonly provider = 'jira' as const;
 
   constructor(
-    private readonly loadToken: TokenLoader = () => getSecret('env://JIRA_ACCESS_TOKEN'),
+    // W3-10: credentials are per-org now (jira_connections, resolved via
+    // getOrgSecret) -- there is no more global JIRA_ACCESS_TOKEN to fall back
+    // to. The default loader fails LOUD instead of silently reading a removed
+    // secret, so a caller that forgets to inject a per-org loader gets an
+    // immediate, unambiguous error rather than a confusing 401 from Jira.
+    private readonly loadToken: TokenLoader = () => {
+      throw new JiraSyncError(
+        'Jira credentials must be provided per-org; no token loader configured.',
+      );
+    },
     private readonly fetcher: FetchLike = (input, init) => fetch(input, init),
     private readonly baseUrl: () => string = () => getConfig('JIRA_BASE_URL'),
+    // Additive (W3-10): defaults to `baseUrl` so existing callers/tests that
+    // only pass three args keep their current behavior unchanged. The worker
+    // now injects `baseUrl` as the per-org api.atlassian.com gateway
+    // (`${JIRA_OAUTH_API_BASE_URL}/ex/jira/<cloudId>`) and `browseBaseUrl` as
+    // the per-org human-facing site URL, since a 3LO bearer token must call
+    // through the gateway base while /browse links need the real site URL.
+    private readonly browseBaseUrl: () => string = baseUrl,
   ) {}
 
   externalIdFromWebhook(payload: unknown): string | null {
@@ -86,7 +102,7 @@ export class JiraProviderAdapter implements TicketProviderAdapter {
     const ticket = normalizeIssue(await response.json());
     return {
       ...ticket,
-      url: `${this.baseUrl().replace(/\/+$/u, '')}/browse/${encodeURIComponent(ticket.externalId)}`,
+      url: `${this.browseBaseUrl().replace(/\/+$/u, '')}/browse/${encodeURIComponent(ticket.externalId)}`,
     };
   }
 

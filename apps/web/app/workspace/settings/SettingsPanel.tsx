@@ -10,12 +10,14 @@ import type {
   GitHubIntegrationStatusResponse,
   GitHubRepositoryImportState,
 } from '../../lib/githubIntegrationStatus';
+import type { JiraStatusResponse } from '../../lib/jiraIntegrationStatus';
 import {
   buildProviderSettingsUpdate,
   draftFor,
   type ProviderSettingsDraft,
 } from '../../settings/providers/providerSettingsClient';
 import { useMock } from '../state';
+import { reconnectFixtureJira } from '../dataSource';
 import type { InstallationOutcome } from '../types';
 import { Badge, Reserved } from '../components/ui';
 import { settingsSection, settingsSections } from '../settingsRegistry';
@@ -342,10 +344,12 @@ function GitHubIntegrations() {
         )}
       </section>
 
+      <JiraIntegration />
+
       <section className="mock-card">
         <div className="mock-card-head">
           <div>
-            <h3>Jira and Linear</h3>
+            <h3>Linear</h3>
             <p>
               Linked issues already appear in the node overlay when a repository
               has them.
@@ -353,11 +357,162 @@ function GitHubIntegrations() {
           </div>
         </div>
         <Reserved>
-          Account connection, project selection, connector health, and manual
-          sync are not callable from the browser yet.
+          Per-org Linear connection is a documented follow-up to the Jira
+          connect flow above; Linear continues to use a shared, operator
+          -configured connection for now.
         </Reserved>
       </section>
     </>
+  );
+}
+
+function readableJiraDate(value: string | null): string {
+  if (value === null) return 'never';
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function JiraIntegration() {
+  const { disconnectJira, jiraConnectUrl, loadJiraIntegrationStatus, mode } =
+    useMock();
+  const [status, setStatus] = useState<JiraStatusResponse | null>(null);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>(
+    'loading',
+  );
+  const [actionState, setActionState] = useState<
+    'idle' | 'disconnecting' | 'error'
+  >('idle');
+  const [reloadVersion, setReloadVersion] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setLoadState('loading');
+    void loadJiraIntegrationStatus(controller.signal)
+      .then((response) => {
+        if (!active) return;
+        setStatus(response);
+        setLoadState('ready');
+      })
+      .catch((error: unknown) => {
+        if (!active || (error as { name?: string }).name === 'AbortError') {
+          return;
+        }
+        setLoadState('error');
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [loadJiraIntegrationStatus, reloadVersion]);
+
+  const connection = status?.connection ?? null;
+  const connected = connection?.connected === true;
+
+  function startConnect(): void {
+    if (mode === 'fixture') {
+      reconnectFixtureJira();
+      setReloadVersion((version) => version + 1);
+      return;
+    }
+    window.location.assign(jiraConnectUrl);
+  }
+
+  async function disconnect(): Promise<void> {
+    setActionState('disconnecting');
+    try {
+      const response = await disconnectJira();
+      setStatus(response);
+      setActionState('idle');
+    } catch {
+      setActionState('error');
+    }
+  }
+
+  return (
+    <section className="mock-card">
+      <div className="mock-card-head">
+        <div>
+          <h3>{connected ? 'Jira connected' : 'Jira not connected'}</h3>
+          <p>
+            {connected
+              ? 'Sayre syncs this organization’s Jira issues using its own connection.'
+              : 'Connect Jira to sync this organization’s issues into the node overlay. No manual token or .env edit is required.'}
+          </p>
+        </div>
+        <Badge tone={connected ? 'ready' : 'neutral'}>
+          {connected ? 'connected' : 'not connected'}
+        </Badge>
+      </div>
+
+      {loadState === 'loading' && status === null && (
+        <p className="mock-field-help" role="status">
+          Checking the Jira connection…
+        </p>
+      )}
+      {loadState === 'error' && (
+        <div className="mock-inline-error" role="alert">
+          Jira connection status could not be loaded. Try refreshing this
+          status.
+        </div>
+      )}
+
+      {connected && connection !== null && (
+        <dl className="mock-kv">
+          <div>
+            <dt>Jira site</dt>
+            <dd>{connection.siteName ?? connection.siteUrl}</dd>
+          </div>
+          <div>
+            <dt>Connected by</dt>
+            <dd>{connection.connectedByLabel}</dd>
+          </div>
+          <div>
+            <dt>Last sync</dt>
+            <dd>{readableJiraDate(connection.lastSyncedAt)}</dd>
+          </div>
+        </dl>
+      )}
+
+      <div className="mock-card-actions">
+        <button
+          type="button"
+          className="mock-btn mock-btn-primary"
+          onClick={startConnect}
+          disabled={connected}
+        >
+          {connected ? 'Connected' : 'Connect Jira'}
+        </button>
+        {connected && (
+          <button
+            type="button"
+            className="mock-btn mock-btn-secondary"
+            onClick={() => void disconnect()}
+            disabled={actionState === 'disconnecting'}
+          >
+            {actionState === 'disconnecting' ? 'Disconnecting…' : 'Disconnect'}
+          </button>
+        )}
+        <button
+          type="button"
+          className="mock-btn mock-btn-secondary"
+          onClick={() => {
+            setLoadState('loading');
+            setReloadVersion((version) => version + 1);
+          }}
+          disabled={loadState === 'loading'}
+        >
+          Refresh status
+        </button>
+        {actionState === 'error' && (
+          <span className="mock-field-help" role="alert">
+            The Jira connection could not be disconnected. Try again.
+          </span>
+        )}
+      </div>
+    </section>
   );
 }
 
