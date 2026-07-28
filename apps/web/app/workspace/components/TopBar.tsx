@@ -6,26 +6,12 @@ import {
   clearStoredSessionToken,
 } from '../../lib/coreFetch';
 import { useMock } from '../state';
-import type { RealtimeStatus, RepositoryReadiness, SemanticStatus } from '../types';
+import type { RealtimeStatus, RepositoryReadiness } from '../types';
 import { Badge } from './ui';
 
 const READINESS_LABEL: Record<RepositoryReadiness, string> = {
   registered: 'preparing repository',
   graph_ready: 'graph ready',
-};
-
-const SEMANTIC_LABEL: Record<SemanticStatus, string> = {
-  generating: 'generating product tree',
-  ready: 'semantics ready',
-  degraded: 'semantics degraded',
-  failed: 'semantics unavailable',
-};
-
-const ONBOARDING_LABEL: Record<SemanticStatus, string> = {
-  generating: 'generating setup plan',
-  ready: 'setup analysis ready',
-  degraded: 'setup analysis incomplete',
-  failed: 'setup analysis unavailable',
 };
 
 const REALTIME_LABEL: Record<RealtimeStatus, string> = {
@@ -148,26 +134,8 @@ export function TopBar() {
     dispatch,
     repository,
     authorizedForRepository,
-    readiness,
-    semanticState,
     isAdmin,
   } = useMock();
-
-  const readinessTone =
-    readiness === 'graph_ready' ? 'ready' : 'working';
-  const onboardingStateUnknown =
-    state.view === 'onboarding' && semanticState.updatedAt === null;
-
-  const semanticTone =
-    onboardingStateUnknown
-      ? 'warn'
-      : semanticState.status === 'ready'
-      ? 'ready'
-      : semanticState.status === 'generating'
-        ? 'working'
-        : semanticState.status === 'degraded'
-          ? 'warn'
-          : 'danger';
 
   const realtimeTone =
     state.realtime === 'connected'
@@ -185,29 +153,20 @@ export function TopBar() {
 
       <RepositoryPicker />
 
-      {/* Readiness and semantic state describe the repository's graph, so they
-          are withheld for a repository the viewer is not authorized to read. */}
-      {repository !== null && authorizedForRepository && (
-        <>
-          {/* Read-only on purpose: the catalogue returns the current authorized
-              ref, not a selectable list, so there is nothing to switch between
-              until a refs API exists. */}
-          <Badge dot={false}>
-            ref {repository.currentRef?.replace(/^refs\/heads\//u, '') ?? 'pending'}
-          </Badge>
-          <Badge tone={readinessTone}>{READINESS_LABEL[readiness]}</Badge>
-          <Badge tone={semanticTone}>
-            {state.view === 'onboarding'
-              ? onboardingStateUnknown
-                ? 'setup status unknown'
-                : ONBOARDING_LABEL[semanticState.status]
-              : SEMANTIC_LABEL[semanticState.status]}
-          </Badge>
-          {/* The gateway re-authorizes every pushed delta before this client
-              refreshes its currently selected graph projection. */}
+      {/* The ref, readiness, and semantic badges that used to sit here only ever
+          restated what another surface already says: PreparingState covers a
+          repository that is not graph-ready, StatusBanner covers every semantic
+          status in fuller language, and the ref is not selectable. Realtime is
+          the exception — nothing else reports a dropped connection — so it
+          appears only when it has something to report. Still withheld for a
+          repository the viewer is not authorized to read. */}
+      {repository !== null &&
+        authorizedForRepository &&
+        state.realtime !== 'connected' && (
+          // The gateway re-authorizes every pushed delta before this client
+          // refreshes its currently selected graph projection.
           <Badge tone={realtimeTone}>{REALTIME_LABEL[state.realtime]}</Badge>
-        </>
-      )}
+        )}
 
       <span className="mock-topbar-spacer" />
 
