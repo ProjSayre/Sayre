@@ -23,7 +23,8 @@
     "test:rls:acceptance": "node --env-file=../../infra/.env --import tsx --test src/db/rls_acceptance.tester.test.ts",
     "test:rls:ci": "node --import tsx --test src/db/rls.test.ts",
     "test:rls:acceptance:ci": "node --import tsx --test src/db/rls_acceptance.tester.test.ts",
-    "worker:tickets": "tsx src/integrations/tickets/worker.ts"
+    "worker:tickets": "tsx src/integrations/tickets/worker.ts",
+    "worker:tickets-poll": "tsx src/integrations/tickets/pollWorker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sns": "3.1088.x",

@@ -59,6 +59,18 @@ export interface JiraOAuthClient {
   refresh(refreshToken: string): Promise<JiraTokenSet>;
   listAccessibleResources(accessToken: string): Promise<JiraAccessibleResource[]>;
   getCurrentUser(accessToken: string): Promise<JiraOAuthUser>;
+  /**
+   * Issue keys updated at/after `since`, via the per-connection API gateway
+   * base (`${JIRA_OAUTH_API_BASE_URL}/ex/jira/${cloudId}` -- the caller
+   * resolves this, same base the sync adapter's `request()` uses; this client
+   * never reconstructs it). Used by the Jira ticket poll loop, NOT the OAuth
+   * dance itself.
+   */
+  searchRecentIssueKeys(
+    accessToken: string,
+    apiBaseUrl: string,
+    since: Date,
+  ): Promise<string[]>;
 }
 
 interface TokenResponseBody {
@@ -114,6 +126,26 @@ function parseAccessibleResources(body: unknown): JiraAccessibleResource[] {
       : [];
     return { id, url, name, scopes };
   });
+}
+
+/** Jira JQL absolute-date literal: `"yyyy-MM-dd HH:mm"` (UTC — a generous poll window makes the difference from the instance's local time irrelevant). */
+function formatJqlDate(date: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return (
+    `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` +
+    ` ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`
+  );
+}
+
+function parseSearchIssueKeys(body: unknown): string[] {
+  const record = isRecord(body) ? body : null;
+  const issues = record !== null && Array.isArray(record.issues) ? record.issues : null;
+  if (issues === null) {
+    throw new JiraOAuthError('Jira search response is malformed.');
+  }
+  return issues
+    .map((issue) => (isRecord(issue) ? stringOrNull(issue.key) : null))
+    .filter((key): key is string => key !== null);
 }
 
 function parseCurrentUser(body: unknown): JiraOAuthUser {
@@ -230,6 +262,41 @@ class AtlassianJiraOAuthClient implements JiraOAuthClient {
       throw new JiraOAuthError('Jira accessible-resources response was not valid JSON.');
     }
     return parseAccessibleResources(payload);
+  }
+
+  async searchRecentIssueKeys(
+    accessToken: string,
+    apiBaseUrl: string,
+    since: Date,
+  ): Promise<string[]> {
+    // `GET/POST /rest/api/3/search` is retired (410 Gone, confirmed live) —
+    // Atlassian's replacement is `POST /rest/api/3/search/jql`.
+    const jql = `updated >= "${formatJqlDate(since)}" order by updated asc`;
+    const url = `${apiBaseUrl}/rest/api/3/search/jql`;
+    let response: Response;
+    try {
+      response = await this.fetcher(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jql, fields: ['key'], maxResults: 100 }),
+      });
+    } catch {
+      throw new JiraOAuthError('Jira search request could not be sent.');
+    }
+    if (!response.ok) {
+      throw new JiraOAuthError(`Jira search request returned ${response.status}.`);
+    }
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new JiraOAuthError('Jira search response was not valid JSON.');
+    }
+    return parseSearchIssueKeys(payload);
   }
 
   async getCurrentUser(accessToken: string): Promise<JiraOAuthUser> {
