@@ -252,3 +252,64 @@ describe('getCurrentUser', () => {
     await expect(client.getCurrentUser('token')).rejects.toBeInstanceOf(JiraOAuthError);
   });
 });
+
+describe('searchRecentIssueKeys', () => {
+  it('POSTs the search/jql endpoint (the retired GET/POST /search is 410 Gone in production) with a bearer token, JQL updated>= filter, and fields=[key]', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ issues: [{ key: 'PROJ-1' }, { key: 'PROJ-2' }] }),
+    );
+
+    const since = new Date(Date.UTC(2026, 6, 27, 12, 30));
+    const keys = await client.searchRecentIssueKeys(
+      'access-token-1',
+      'https://api.atlassian.test/ex/jira/cloud-1',
+      since,
+    );
+
+    expect(keys).toEqual(['PROJ-1', 'PROJ-2']);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.atlassian.test/ex/jira/cloud-1/rest/api/3/search/jql');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer access-token-1');
+    const body = JSON.parse(init.body as string) as { jql: string; fields: string[]; maxResults: number };
+    expect(body.jql).toBe('updated >= "2026-07-27 12:30" order by updated asc');
+    expect(body.fields).toEqual(['key']);
+    expect(body.maxResults).toBe(100);
+  });
+
+  it('returns an empty array when no issues match', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ issues: [] }));
+    const keys = await client.searchRecentIssueKeys(
+      'token',
+      'https://api.atlassian.test/ex/jira/cloud-1',
+      new Date(),
+    );
+    expect(keys).toEqual([]);
+  });
+
+  it('throws JiraOAuthError on a non-2xx response', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 410 }));
+    await expect(
+      client.searchRecentIssueKeys('token', 'https://api.atlassian.test/ex/jira/cloud-1', new Date()),
+    ).rejects.toBeInstanceOf(JiraOAuthError);
+  });
+
+  it('throws JiraOAuthError when the response has no issues array', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ not: 'expected shape' }));
+    await expect(
+      client.searchRecentIssueKeys('token', 'https://api.atlassian.test/ex/jira/cloud-1', new Date()),
+    ).rejects.toBeInstanceOf(JiraOAuthError);
+  });
+
+  it('skips malformed issue entries rather than throwing (missing/non-string key)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ issues: [{ key: 'PROJ-1' }, { notKey: 'x' }, { key: 42 }, null] }),
+    );
+    const keys = await client.searchRecentIssueKeys(
+      'token',
+      'https://api.atlassian.test/ex/jira/cloud-1',
+      new Date(),
+    );
+    expect(keys).toEqual(['PROJ-1']);
+  });
+});
