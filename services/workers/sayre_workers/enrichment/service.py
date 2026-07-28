@@ -58,6 +58,10 @@ from .state_store import (
     ProviderJobStatus,
     ProviderJobSurface,
 )
+from sayre_workers.tickets.reference_match import (
+    TicketReferenceMatcher,
+    TicketReferenceMatchResult,
+)
 
 
 class GenerationConfigStore(Protocol):
@@ -75,6 +79,7 @@ class EnrichmentService:
         config_store: GenerationConfigStore,
         state_store: ProviderJobStateStore,
         style_classifier: StyleClassifier | None = None,
+        ticket_reference_matcher: TicketReferenceMatcher | None = None,
     ) -> None:
         self._graph_store = graph_store
         self._model_provider_factory = model_provider_factory
@@ -85,8 +90,24 @@ class EnrichmentService:
         self._config_store = config_store
         self._state_store = state_store
         self._style_classifier = style_classifier or ModelStyleClassifier()
+        self._ticket_reference_matcher = ticket_reference_matcher
 
-    async def handle(self, envelope: MessageEnvelope) -> EnrichmentResult:
+    async def handle(
+        self, envelope: MessageEnvelope
+    ) -> EnrichmentResult | TicketReferenceMatchResult:
+        # Hands-on gap-fix (docs/post-mvp-backlog.md): a `ticket.reference_match`
+        # request is architecturally unrelated to the LLM-generation pipeline
+        # below (different config surface, no graph structural context, no
+        # GraphifyAdapter shaping) -- branch BEFORE parse_enrichment_envelope
+        # rather than forcing it through that parser.
+        if envelope.type == "ticket.reference_match":
+            if self._ticket_reference_matcher is None:
+                raise RuntimeError(
+                    "received a ticket.reference_match envelope but no "
+                    "TicketReferenceMatcher was configured"
+                )
+            return await self._ticket_reference_matcher.handle(envelope)
+
         job = parse_enrichment_envelope(envelope)
         return await self.process(job)
 

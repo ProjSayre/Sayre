@@ -14,6 +14,19 @@ export interface TicketCacheWrite {
 
 export interface TicketCacheStore {
   upsert(input: TicketCacheWrite): Promise<void>;
+  /**
+   * The AI-inferred file match a prior poll cycle's `TicketReferenceMatcher`
+   * computed for this ticket (Python-written, see migration 0018), if any.
+   * Returns null when there's no ticket_cache row yet or no inferred match has
+   * been written. The Python side only writes a value once its similarity
+   * score has already cleared its threshold — this is a read-only lookup, no
+   * second threshold check here.
+   */
+  resolveInferredReferenceNodeId(input: {
+    orgId: string;
+    provider: string;
+    externalTicketId: string;
+  }): Promise<string | null>;
 }
 
 export class PostgresTicketCacheStore implements TicketCacheStore {
@@ -83,6 +96,26 @@ export class PostgresTicketCacheStore implements TicketCacheStore {
             updatedAt: new Date(),
           },
         });
+    });
+  }
+
+  async resolveInferredReferenceNodeId(input: {
+    orgId: string;
+    provider: string;
+    externalTicketId: string;
+  }): Promise<string | null> {
+    const db = await this.getDb();
+    return withOrgContext(db, input.orgId, async (transaction) => {
+      const rows = await transaction
+        .select({ inferredReferenceNodeId: ticketCache.inferredReferenceNodeId })
+        .from(ticketCache)
+        .where(and(
+          eq(ticketCache.orgId, input.orgId),
+          eq(ticketCache.provider, input.provider),
+          eq(ticketCache.externalTicketId, input.externalTicketId),
+        ))
+        .limit(1);
+      return rows[0]?.inferredReferenceNodeId ?? null;
     });
   }
 }

@@ -1,6 +1,10 @@
 import type { Worker } from 'bullmq';
 import { createWorker } from '../../queue/bullmq';
-import { syncTicket, type TicketSyncDependencies } from '../../services/ticketSyncService';
+import {
+  defaultRequestReferenceMatch,
+  syncTicket,
+  type TicketSyncDependencies,
+} from '../../services/ticketSyncService';
 import { createTicketGraphStore } from './graphTicketStore';
 import { JiraProviderAdapter } from './providers/jira';
 import { LinearProviderAdapter } from './providers/linear';
@@ -26,6 +30,7 @@ async function defaultDependencies(): Promise<TicketSyncDependencies> {
     ]),
     cache: new PostgresTicketCacheStore(),
     graph: await createTicketGraphStore(),
+    requestReferenceMatch: defaultRequestReferenceMatch,
   };
 }
 

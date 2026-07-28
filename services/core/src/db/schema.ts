@@ -28,6 +28,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  real,
   text,
   timestamp,
   unique,
@@ -194,6 +195,20 @@ export const ticketCache = pgTable(
     graphNodeId: text("graph_node_id"),
     payload: jsonb("payload"), // raw cached ticket fields
     syncedAt: timestamp("synced_at", { withTimezone: true }),
+    // AI-inferred file match (hands-on build, see docs/post-mvp-backlog.md):
+    // written by the Python `TicketReferenceMatcher` (embedding similarity
+    // search against `code_embeddings`) ONLY when the ticket has no explicit
+    // `[sayre:file:...]`/`[sayre:feature:...]` tag. Node's `syncTicket()`
+    // merges a non-null `inferredReferenceNodeId` in as a `node_id`
+    // `TicketReference` on the NEXT sync cycle before calling `graph.apply()`.
+    // A stored value already cleared the Python-side similarity threshold —
+    // Node does not re-check `inferredReferenceScore` before using it; the
+    // score is retained for observability/debugging only.
+    inferredReferenceNodeId: text("inferred_reference_node_id"),
+    inferredReferenceScore: real("inferred_reference_score"),
+    inferredReferenceComputedAt: timestamp("inferred_reference_computed_at", {
+      withTimezone: true,
+    }),
     ...timestamps,
   },
   (table) => [
