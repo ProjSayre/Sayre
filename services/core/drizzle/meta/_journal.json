@@ -127,6 +127,13 @@
       "when": 1785384100000,
       "tag": "0017_jira_active_org_resolver",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785384200000,
+      "tag": "0018_ticket_cache_inferred_reference",
+      "breakpoints": true
     }
   ]
 }

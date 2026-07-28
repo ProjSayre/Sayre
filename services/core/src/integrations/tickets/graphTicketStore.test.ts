@@ -92,4 +92,35 @@ describe('Neo4jTicketGraphStore', () => {
     })).resolves.toEqual({ linkedNodes: 0 });
     expect(executor.run).toHaveBeenCalledTimes(2);
   });
+
+  it('links an AI-inferred node_id reference by File.uid, not by path/name', async () => {
+    const run = vi.fn(async () => ({ records: [{ get: () => 1 }] }));
+    const store = new Neo4jTicketGraphStore({ run, close: vi.fn(async () => undefined) });
+
+    await store.apply({
+      orgId: 'org',
+      repositoryId: 'repo',
+      refName: 'refs/heads/main',
+      ticket: {
+        ...ticket,
+        references: [{ kind: 'node_id', value: 'abc123uid' }],
+      },
+    });
+
+    expect(run).toHaveBeenNthCalledWith(
+      3,
+      'org',
+      LINK_TICKET_REFERENCES_CYPHER,
+      expect.objectContaining({
+        references: [{ kind: 'node_id', value: 'abc123uid' }],
+      }),
+      'linked_nodes',
+    );
+    expect(LINK_TICKET_REFERENCES_CYPHER).toContain("reference.kind = 'node_id'");
+    expect(LINK_TICKET_REFERENCES_CYPHER).toContain('target.uid = reference.value');
+    // Regression guard: File nodes' external "id" (CanvasNode.id, MCP tool
+    // responses) is a read-side Cypher alias (`node.uid AS id`,
+    // graph-query/index.ts) -- the stored property is `uid`, never `id`.
+    expect(LINK_TICKET_REFERENCES_CYPHER).not.toContain('target.id = reference.value');
+  });
 });

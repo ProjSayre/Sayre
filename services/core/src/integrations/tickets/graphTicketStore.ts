@@ -44,6 +44,7 @@ MATCH (ticket:Ticket {org_id: $org_id, uid: $ticket_uid})
 MATCH (target {org_id: $org_id, repo_id: $repo_id, ref_name: $ref_name})
 WHERE (reference.kind = 'file' AND target:File AND target.path = reference.value)
    OR (reference.kind = 'feature' AND target:Feature AND target.name = reference.value)
+   OR (reference.kind = 'node_id' AND target:File AND target.uid = reference.value)
 MERGE (ticket)-[link:REFERENCES]->(target)
 SET link.org_id = $org_id
 RETURN count(DISTINCT target) AS linked_nodes

@@ -29,6 +29,15 @@ import type { MessageEnvelope } from './envelope';
 // envelope's org_id, never in the queue name.
 export const INGESTION_QUEUE = 'ingestion.fifo';
 
+// Matches `ENRICHMENT_DEFAULT_QUEUE` in services/workers/messaging/sqs_client.py.
+// A second, narrower exception to the fleet-split CONSUME direction (see this
+// module's header): `services/core` PRODUCES a `ticket.reference_match` request
+// here when a synced ticket has no explicit `[sayre:file:...]` tag, and the
+// Python enrichment worker's `TicketReferenceMatcher` is the exclusive consumer
+// (hands-on gap-fix build, see docs/post-mvp-backlog.md). Standard (non-FIFO)
+// queue — no messageGroupId/messageDeduplicationId.
+export const ENRICHMENT_DEFAULT_QUEUE = 'enrichment-default';
+
 let client: SQSClient | null = null;
 let clientPending: Promise<SQSClient> | null = null;
 const queueUrlCache = new Map<string, string>();
@@ -229,6 +238,27 @@ export async function publishInitialParseEvent(
     messageGroupId: ingestionGroupId(envelope.org_id, repo.provider_repo_id, ref),
     messageDeduplicationId: envelope.idempotency_key,
   });
+}
+
+export interface TicketReferenceMatchRequest {
+  repository_id: string;
+  ref_name: string;
+  provider: 'jira' | 'linear';
+  external_ticket_id: string;
+  title: string;
+  description: string | null;
+}
+
+/**
+ * Publishes a request for the Python `TicketReferenceMatcher` to embed a
+ * ticket's title+description and find its most similar file via
+ * `code_embeddings` cosine search, only when the ticket has no explicit
+ * reference tag. Standard queue — no FIFO grouping.
+ */
+export async function publishTicketReferenceMatchEvent(
+  envelope: MessageEnvelope<TicketReferenceMatchRequest>,
+): Promise<string> {
+  return publish(ENRICHMENT_DEFAULT_QUEUE, envelope);
 }
 
 /** Graceful shutdown / test teardown. */

@@ -7,6 +7,11 @@ from sayre_workers.config import get_secret
 from sayre_workers.db import assert_runtime_role_rls_safe
 from sayre_workers.model_provider import ModelProviderFactory
 
+from sayre_workers.tickets.reference_match import (
+    PostgresTicketReferenceMatchStore,
+    TicketReferenceMatcher,
+)
+
 from .config_store import PostgresGenerationConfigStore
 from .enrichment_graph import Neo4jEnrichmentGraphStore
 from .graphify_adapter import GraphifyAdapterFactory
@@ -26,4 +31,7 @@ async def build_enrichment_service() -> EnrichmentService:
         config_store=await PostgresGenerationConfigStore.from_config(),
         style_classifier=ModelStyleClassifier(),
         state_store=await PostgresProviderJobStateStore.from_config(),
+        ticket_reference_matcher=TicketReferenceMatcher(
+            await PostgresTicketReferenceMatchStore.from_config()
+        ),
     )
