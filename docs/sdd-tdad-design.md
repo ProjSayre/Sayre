@@ -56,20 +56,31 @@ A tracked `.sdd/` directory holds the methodology once, runtime-neutral:
 ```
 .sdd/
   stages/{planner,red,dev,tester,review,security,pr-review}.md
+  pipeline.md        # stage sequence, routing, loop caps
   bounds.md          # named lane vocabulary the pr-review agent checks against
-  runtimes.yml       # per-agent tool grants and model tier
+  runtimes.yml       # per-stage tool grants, model tier, hook wiring
   ledger/            # one committed entry per completed run
   README.md          # entry point — also Victor's documentation
 ```
 
-Runtime files become ~10-line shims. `.claude/agents/planner.md` keeps its frontmatter (tools,
-model, hooks) plus a pointer to `.sdd/stages/planner.md`; `.codex/agents/planner.toml` keeps its
-TOML and points at the same file. Methodology lives once; only what genuinely differs is
-duplicated.
+**Surfaces are pared to three:** `.sdd/` (neutral, the source of truth), `AGENTS.md` (entry point for
+any AGENTS.md-reading tool — Codex, Cursor, others), and `.claude/` (generated shims). `.codex/` and
+`.agents/` are deleted rather than generated: maintaining tool-specific mirrors is the drift this
+design exists to remove, and `AGENTS.md` is the emerging cross-tool convention. `.claude/` survives
+because it is the runtime with subagent and hook machinery worth wiring — its
+`.claude/agents/planner.md` keeps frontmatter (tools, model, hooks) plus a pointer to
+`.sdd/stages/planner.md`.
 
-**Generator.** One script emits the shims from `.sdd/runtimes.yml`. CI fails if committed shims
-don't match regenerated output — D-018's "collection as generated, versioned artifact." Output is
-small enough to eyeball, which is what pure-generator approaches lose.
+*Accepted costs of the pare-down, recorded so they stay recoverable:* non-Claude runtimes lose
+per-stage `sandbox_mode` (runtime-boundary enforcement stronger than Claude's hook) and per-stage
+context isolation — a single agent reading the stage files in sequence means the reviewer shares
+context with the implementer. The first is consistent with this design's standing principle that
+cross-runtime guarantees are verification-based. The second is the real loss, and re-adding
+`.codex/agents/` later restores it without touching `.sdd/`.
+
+**Generator.** One script emits the `.claude/` shims from `.sdd/runtimes.yml`. CI fails if committed
+shims don't match regenerated output — D-018's "collection as generated, versioned artifact." Output
+is small enough to eyeball, which is what pure-generator approaches lose.
 
 **Secondary benefit that is not secondary:** Victor can read `.sdd/stages/planner.md` and understand
 the methodology without knowing what a Claude Code subagent is. The neutral layer doubles as his
@@ -77,7 +88,11 @@ documentation, which is most of the "easy to use" requirement.
 
 **Folded in, because they are prerequisites rather than extras:**
 
-- Move `AGENTS.md`, `.agents/`, `.codex/` out of `.git/info/exclude` and commit them.
+- Commit `AGENTS.md`; delete `.agents/` and `.codex/agents/`. **Not `.codex/` itself** — despite the
+  name it is a 1.4 GB design workspace (the Blender hero pipeline feeding
+  `scripts/render-anime-hero.mjs`, design direction docs, UI reference assets), never in git and
+  unrecoverable if deleted. Its ignore rule moves from `.git/info/exclude` to `.gitignore` so it
+  protects every cofounder rather than one machine — D-007 already flags repo weight as a watch item.
 - Rewrite `AGENTS.md`. It currently states *"the current checkout is a Vite/React site"* — half-true
   (the root is Vite; the monorepo is also there) and the first thing Victor would read. Make it a
   pointer to `.sdd/README.md`, the pattern D-019 noted in `genesis/infra/aws`.
