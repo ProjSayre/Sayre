@@ -360,8 +360,20 @@ resolver is Python, needing the workers' Poetry environment with Tree-sitter's n
 even a pure-frontend ticket drags in the Python toolchain.
 
 This promotes **D-004's devcontainer from nice-to-have to the delivery mechanism for Victor's
-environment**, and makes D-016's containerization a hard prerequisite rather than a parallel track.
-D-022 already sequenced containerize-first; this is a second, more concrete reason.
+environment**.
+
+**Scope of that dependency, stated precisely, because it is easy to overstate.** Only the
+*Victor-facing rollout* needs it. Sections 1–4 — the `.sdd/` layer, the impact resolver, the stage
+changes, the `pr-review` agent — depend on nothing here: they are files, plus the Python and Node
+toolchains the repo already requires (`poetry run pytest` is a documented command). They are
+buildable today and pay off immediately regardless of onboarding, since the `.claude/` ↔ `.agents/`
+drift and `tester` ratifying implementations are both costing us now.
+
+The requirement for Section 5 is "Victor can run the repo," which `BOOTSTRAP.md` (PL-02) can satisfy
+with manual setup steps; containerization (PL-01) is the better delivery mechanism for it, not a
+precondition of it. D-022's containerize-first sequencing still holds, but on **product** grounds
+(Render, BYOC, image scanning) — a separate argument from this one, and the two should not be
+collapsed.
 
 ---
 
@@ -397,15 +409,18 @@ Explicitly not ported: multi-repo staging, the 109-spec index, GitLab hooks.
 
 ## Build order
 
-Containerization and `BOOTSTRAP.md` sit in front of all of it and are **out of this design's
-scope** — tracked as PL-01 and PL-02.
+**Steps 1–4 have no dependency on containerization and can run in parallel with PL-01/PL-02.** Only
+step 5 waits, and it waits on Victor having a working environment (PL-02), not on containers
+specifically.
 
-1. Cross-runtime foundation (Section 1) — unblocks everything, and is the only part that helps
-   Victor before containerization lands
+1. Cross-runtime foundation (Section 1) — unblocks everything else here, stops the active drift
 2. Impact resolver v1 (Section 2)
 3. Pipeline stage changes (Section 3) — depends on 2
 4. `pr-review` agent (Section 4) — depends on 1 and 3
-5. Victor's surface (Section 5) — depends on all, and on PL-01/PL-02
+5. Victor's surface (Section 5) — depends on 1–4, and on PL-02 for his environment
+
+Each of 1–4 is large enough to warrant its own spec pass rather than one combined implementation
+run; they are tracked as PL-03a…PL-03d.
 
 ---
 

@@ -520,7 +520,9 @@ D-014's acceptance test — *"can a new cofounder go `git clone` → running sta
 
 ### **PL-03 — SDD/TDAD methodology: `.sdd/` layer, impact resolver, `red` stage, `pr-review` agent**
 
-**Depends on:** PL-01, PL-02 · **Executor:** Pair (methodology: human-directed; implementation: AI agent)
+**Depends on:** none — PL-03a…PL-03d are files plus the Node/Python toolchains the repo already requires; only the Victor-facing rollout (PL-03e) is gated, on PL-02 for his environment · **Executor:** Pair (methodology: human-directed; implementation: AI agent)
+
+**Split for execution:** PL-03a cross-runtime foundation · PL-03b impact resolver · PL-03c pipeline stage changes (needs PL-03b) · PL-03d `pr-review` agent (needs PL-03a, PL-03c) · PL-03e Victor's rollout (needs PL-03a–d, PL-02). Each gets its own spec pass; the combined scope is too large for one implementation run.
 
 Implements `docs/sdd-tdad-design.md` in five steps: the tracked runtime-neutral `.sdd/` layer plus shim generator (closing the drift between `.claude/` and `.agents/`, and the fact that `AGENTS.md`/`.agents/`/`.codex/` are excluded via `.git/info/exclude` and therefore reach no one who clones); the `affected_tests.py` impact resolver over the pure `sayre_workers.parsing` modules; a `red` stage authoring all behavioral tests from spec before `dev` runs; `tester` rewired off `changes.md` (D-018's finding that tests currently ratify the implementation); and a `pr-review` agent with deterministic lane-bounds checking. Also closes D-005's action item — `review` and `security-checker` are documented read-only but carry `Bash` with no matcher, so `sed -i`, `tee`, and `python -c` write past the guard.
 
@@ -615,7 +617,11 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 ||reliability bar)||
 |PL-01|none|Platform|
 |PL-02|PL-01|Platform|
-|PL-03|PL-01, PL-02|Platform|
+|PL-03a|none|Platform|
+|PL-03b|none|Platform|
+|PL-03c|PL-03b|Platform|
+|PL-03d|PL-03a, PL-03c|Platform|
+|PL-03e|PL-03a-d, PL-02|Platform|
 |PL-04|W2-07, W4-03, W4-06|Platform|
 |PL-05|PL-04 (gate)|Platform|
 |PL-06|W4-06|Platform|
