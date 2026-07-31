@@ -495,6 +495,77 @@ Executes the later secret-manager/write phase W0-07's loader was designed for: t
 
 Extends the MCP surface beyond read-only context: tools letting agents propose changes back through the platform (e.g., draft a change plan validated against Agent/Skill MD guardrails, style rules, and covering tests before any code is written). Deliberately post-MVP: agents making wrong routing decisions ship wrong code, so this waits for measured adoption, demand, and a reliability standard — not enthusiasm. 
 
+## **Platform & methodology** **_(new 2026-07-31 — from the SDD/TDAD design session; see `docs/sdd-tdad-design.md`)_**
+
+Tickets in this section are not product features. They are the apparatus that lets a small team
+operate what it builds (D-017's framing) plus four findings about shipped contracts that surfaced
+while designing the methodology. PL-01 and PL-02 are prerequisites for onboarding a nontechnical
+cofounder at all.
+
+### **PL-01 — Containerize the four services, hardened** **_(from D-016 — the blocking gap)_**
+
+**Depends on:** none · **Executor:** Pair (build design: agent; base-image and registry decisions: human)
+
+`git ls-files | grep -i dockerfile` returns nothing. `infra/docker-compose.yml` runs only dependencies (postgres, redis, localstack, prometheus); `apps/web`, `services/core`, `services/gateway`, and `services/workers` have never been containerized and run via `npm run dev` / `poetry run`. Everything is blocked on this: D-011 Phase 2 (Render), D-013's Helm chart, BYOC, image scanning, reproducible builds, and — newly — a nontechnical cofounder being able to run the stack at all. Build hardened from the start rather than shipping naive images and retrofitting: multi-stage, non-root, no build toolchain in the runtime layer, base images pinned **by digest not tag** (`pgvector/pgvector:pg16` is mutable), security errata patched at build time, setuid/setgid stripped, app content owned by GID 0 with group perms for arbitrary-UID safety, docs/man/locales stripped.
+
+**Acceptance criteria:** all four services build and run as containers; no image runs as root; every base image is digest-pinned; `docker compose up` from a fresh clone boots the full stack with health checks green; image sizes and a Trivy HIGH/CRITICAL scan are recorded as the baseline for PL-01's follow-on gate.
+
+### **PL-02 — BOOTSTRAP.md + devcontainer: clone-to-running with no human in the loop** **_(from D-014, D-016 #8, D-004)_**
+
+**Depends on:** PL-01 · **Executor:** Pair
+
+D-014's acceptance test — *"can a new cofounder go `git clone` → running stack using only their own credentials, with no human in the loop?"* — fails today. Manual steps are scattered: GitHub App registration, Doppler setup, and the `DEV_ORG_ID` seeding SQL buried in an `.env.example` comment. Genesis's gitops repo keeps "the definitive record of the manual prerequisites and every gotcha that caused a real failure"; this is that document, plus the devcontainer D-004 recommended, which stops being a nice-to-have and becomes the delivery mechanism for a cofounder's environment. Note the Python dependency is unavoidable even for frontend work: the PL-03 impact resolver needs the workers' Poetry environment with Tree-sitter's native grammars.
+
+**Acceptance criteria:** a cofounder on macOS with no prior context reaches a running stack using only credentials they can obtain themselves; every manual prerequisite is named in `BOOTSTRAP.md` with its failure symptom; the devcontainer produces an identical Linux environment on macOS and Windows hosts; onboarding acceleration being the product, this test is re-run on every change to setup.
+
+### **PL-03 — SDD/TDAD methodology: `.sdd/` layer, impact resolver, `red` stage, `pr-review` agent**
+
+**Depends on:** PL-01, PL-02 · **Executor:** Pair (methodology: human-directed; implementation: AI agent)
+
+Implements `docs/sdd-tdad-design.md` in five steps: the tracked runtime-neutral `.sdd/` layer plus shim generator (closing the drift between `.claude/` and `.agents/`, and the fact that `AGENTS.md`/`.agents/`/`.codex/` are excluded via `.git/info/exclude` and therefore reach no one who clones); the `affected_tests.py` impact resolver over the pure `sayre_workers.parsing` modules; a `red` stage authoring all behavioral tests from spec before `dev` runs; `tester` rewired off `changes.md` (D-018's finding that tests currently ratify the implementation); and a `pr-review` agent with deterministic lane-bounds checking. Also closes D-005's action item — `review` and `security-checker` are documented read-only but carry `Bash` with no matcher, so `sed -i`, `tee`, and `python -c` write past the guard.
+
+**Acceptance criteria:** a fresh clone gives a Codex user a working pipeline with no machine-local setup; regenerating shims produces no diff in CI; the resolver reports truncation, unanalyzable files, and no-adapter files as three distinct outcomes; a behavioral test with no `@spec` reference fails review; a diff touching a path outside the ticket's declared lane is reported by a script, not an LLM judgment; a run's ledger entry survives in git after `.pipeline/` is cleared.
+
+### **PL-04 — COVERS edge weighting + ranked, bounded `get_covering_tests`** **_(contract fix)_**
+
+**Depends on:** W2-07, W4-03, W4-06 · **Executor:** AI agent (contract change reviewed by human)
+
+`get_covering_tests` returns *all* authorized tests connected through `COVERS`, with no weight, no ranking, and no limit. On a hub file that is a large fraction of the suite. An MCP tool that hands an agent 80 test references burns the context budget the product exists to conserve — it is anti-70x, in the single asset D-002 calls both strongest and most fragile. TDAD (arXiv 2603.17973) additionally measured *unranked* test context as the configuration that made regressions worse than no intervention at all. Add call-depth/coupling weight to `COVERS`, rank the response, apply a bounded default, and state truncation explicitly rather than silently capping. Fix this before the D-002 benchmark exists to expose it.
+
+**Acceptance criteria:** `COVERS` carries a weight derived from call depth and coupling; `get_covering_tests` returns ranked results with a documented default limit; any truncation is stated in the response with the omitted count and reason; a hub-file query returns a bounded, ordered set rather than an unordered dump; the MCP tool contract is versioned to reflect the change (see PL-06's note on §4.11 clients).
+
+### **PL-05 — First measured edge as an onboarding milestone + time-to-first-measured-edge metric**
+
+**Gated by:** PL-04 · **Executor:** Pair (metric definition: human; instrumentation: AI agent)
+
+`inferred` COVERS edges are import resolution — any agent can reproduce them locally with a parser in seconds, for free. On day one a new customer's `get_covering_tests` therefore returns something they could compute themselves. The edge becomes non-reproducible only at `measured`, which requires W4-03's nightly against an operator-configured coverage-instrumented CI adapter — a nontrivial setup step currently framed as optional background hygiene. This is D-021's commoditization warning one layer deeper: the structural tier of COVERS is commodity, the measured tier is not. If that holds, reaching the first measured edge is the moment the product stops being reproducible by a script, and it belongs in onboarding rather than in a nightly. §4.6 measures TTFC (time to first *context*); this adds time-to-first-*measured*-edge. It also carries a packaging implication for the GTM cofounder: do not build the business case on the tier that is free elsewhere.
+
+**Acceptance criteria:** connecting a coverage-instrumented CI adapter is a first-class step in the onboarding flow, not a post-setup task; time-to-first-measured-edge is instrumented alongside TTFC; the distinction between `inferred` and `measured` is legible in the product surface, not only in the API response.
+
+### **PL-06 — MCP tool audit: every tool states why it beats grep**
+
+**Depends on:** W4-06 · **Executor:** Pair
+
+A deliberate pass asking, for each MCP tool, what the graph knows that a local static analyzer does not. First-pass reading: `get_agent_skill_md` (human-authored, versioned, RBAC-gated) is unreproducible and strongest; `find_relevant_nodes` and `get_feature_cluster` earn it through semantics; `get_covering_tests` earns it only at `measured` (PL-04, PL-05); `get_recent_changes` earns it only via RBAC filtering and cross-repo scope, since `git log` covers the rest. This operationalizes D-022's Position B thesis at the tool level — **enrichment and governance are the moat, structure is commodity** — so every tool description should lead with the first two. Also the natural place to settle D-017 #5: §4.11 commits to an MCP contract good enough for customers to build their own clients, and those clients need to know when it changes, but the repo has no version, changelog, or tags at 218 commits.
+
+**Acceptance criteria:** each tool in `MCP_TOOL_CONTRACT.md` carries a one-line statement of what it provides that local analysis cannot; any tool that cannot answer it is either changed or documented as a convenience rather than a differentiator; the contract carries a version and a changelog.
+
+### **PL-07 — Uniform freshness/confidence envelope across the MCP contract**
+
+**Depends on:** W4-06 · **Executor:** AI agent
+
+`get_covering_tests` already returns `freshness: inferred|fresh|stale` — the right instinct, currently reinvented per tool. D-015 reached the same rule independently for the secrets feature: *"report confidence, not certainty, and name the files that defeated analysis."* Make it a standard envelope field across every tool that derives an answer from analysis rather than reading a stored fact. The dangerous output in a governance-adjacent product is a quiet false "you're covered," and a uniform field is what makes its absence conspicuous.
+
+**Acceptance criteria:** a documented envelope shape carrying freshness/confidence plus a named list of inputs that defeated analysis; every analysis-derived tool populates it; a tool that cannot determine confidence says so rather than omitting the field.
+
+### **PL-08 — Investigation: is the ingestion pipeline earning its cost over the parsing modules it wraps?** **_(open question, not a build ticket)_**
+
+**Gated by:** PL-01 · **Executor:** Human (architecture judgment)
+
+D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the best use of founder time. The SDD/TDAD design pushed the opposite way: `sayre_workers.parsing` is pure, in-memory, graph-free, already covers Python/JS/TS/Go, and turned out to be directly reusable standalone — a useful tool was designed around it while skipping the graph entirely. The expensive and still-unproven part is the distributed pipeline wrapped around it (D-017 #1: no end-to-end test across webhook → SQS → parse → Neo4j → SNS → WebSocket). So the sharper question is not whether to outsource structural parsing but whether the ingestion pipeline earns its cost relative to the modules it wraps. Multi-tenancy, incremental delta updates, and scale probably justify it — but for a single-tenant BYOC deployment (D-013) a much thinner path may exist, and that is worth knowing before quoting a BYOC deal rather than during one.
+
+**Acceptance criteria:** a written answer naming which pipeline capabilities are load-bearing for multi-tenant SaaS and which are not required for single-tenant BYOC; either a recorded decision that the current architecture stands, or a scoped follow-up ticket; the answer lands in the founder decision log, not only here.
+
 ## **Quick-reference dependency table** 
 
 |**Ticket**|**Depends on**|**Wave**|
@@ -542,6 +613,14 @@ Extends the MCP surface beyond read-only context: tools letting agents propose c
 |PM-07|W0-07 (external-customer trigger)|Post-MVP|
 |PM-08|W4-06 (adoption baseline + demand +|Post-MVP|
 ||reliability bar)||
+|PL-01|none|Platform|
+|PL-02|PL-01|Platform|
+|PL-03|PL-01, PL-02|Platform|
+|PL-04|W2-07, W4-03, W4-06|Platform|
+|PL-05|PL-04 (gate)|Platform|
+|PL-06|W4-06|Platform|
+|PL-07|W4-06|Platform|
+|PL-08|PL-01 (gate)|Platform|
 
 
 
