@@ -125,6 +125,11 @@ function createFixture() {
       ['audit-contract', registry.contract],
       ['progress-orchestrator', registry.orchestrator],
       ['agent-registry', 'security-attacker-agents/agent-registry.json'],
+      // PL-03a review fix 3: the manifest now hashes both the neutral procedure the security
+      // stage actually follows (.sdd/stages/security.md) and the generated shim that still
+      // carries the tool grants/hook wiring (.claude/agents/security-checker.md) — see
+      // scripts/validate-security-audit-run.mjs's requiredSources.
+      ['security-stage', '.sdd/stages/security.md'],
       ['security-checker', '.claude/agents/security-checker.md']
     ].map(([agent_id, source]) => ({ agent_id, source, sha256: sha256(read(source)) })),
     limitations: ['Synthetic fixture; no security claim']

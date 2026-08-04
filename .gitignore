@@ -15,6 +15,16 @@ scripts/.shots/
 *.pem
 *.key
 
+# infra/ is allowlisted, not denylisted: secret-bearing scratch files there have
+# repeatedly been named things no pattern above matches (e.g. a stray .txt).
+# Anything new under infra/ must be added here explicitly to become trackable.
+infra/*
+!infra/.env.example
+!infra/docker-compose.yml
+!infra/github-app/
+!infra/localstack/
+!infra/prometheus/
+
 # Build / tooling caches
 .turbo/
 coverage/
@@ -34,3 +44,24 @@ CLAUDE.local.md
 .claude/settings.local.json
 .pipeline/**
 !.pipeline/README.md
+
+# PL-03c: .sdd/ledger/ is deliberately NOT covered by the .pipeline/** rule above, even though it
+# holds artifacts per completed pipeline run. It lives under .sdd/ (fully tracked since PL-03a)
+# specifically so it survives a `.pipeline/` wipe — the durable spec.md + entry.md per run, plus
+# (round 3) a *copy* of that run's security-history/<run-id>/{manifest.json,results.json,report.md},
+# are promoted here; every other working file (changes.md, test-results.md, review.md, red.md, and
+# the .pipeline/security-history/ source directory itself) stays ephemeral/local under .pipeline/**.
+# See .sdd/ledger/README.md. Do not add a .sdd/ledger ignore rule here "for consistency" with
+# .pipeline/ — that would defeat the entire point of this directory.
+
+# PL-03a: .codex/ is NOT a Codex agent scaffold (that lived only in .codex/agents/, deleted this
+# ticket) — it is a ~1.4 GB local design workspace (Blender hero-animation pipeline, design refs,
+# imagegen, vendor assets) that has never been in git. This rule used to live only in
+# .git/info/exclude (machine-local, protecting Phillip's checkout only); moving it here protects
+# every cofounder's checkout from accidentally staging it via `git add -A`. This line must exist
+# here BEFORE the equivalent .git/info/exclude line is ever removed — see PL-03a's changes.md for
+# why the ordering matters (a `git add -A` in the gap would stage 1.4 GB).
+.codex/
+
+# Agent worktrees (transient, created by isolated subagent runs)
+.claude/worktrees/

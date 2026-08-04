@@ -1,0 +1,95 @@
+# Sayre — agent entry point
+
+This file is the entry point for any AGENTS.md-reading tool (Codex, Cursor, or anything else). It
+is tracked and committed — every clone of this repository gets the same instructions, the same way
+a Claude Code checkout gets `.claude/`. There is no machine-local setup step to reach this content
+anymore.
+
+## Read first, in this order
+
+1. `README.md` and the relevant `package.json` before choosing any command — see "Repo shape"
+   below before assuming which one applies.
+2. `CLAUDE.md` for product architecture, stack, structure, and invariants.
+3. `.sdd/README.md`, then `.sdd/pipeline.md` — the runtime-neutral pipeline methodology. This is
+   the actual procedure for every stage described below; it is not repeated in this file.
+4. The matching `.claude/rules/*.md` file before changing a covered component:
+   - `service-layer.md` for core API or gateway TypeScript.
+   - `graph-schema.md` for graph schema, Cypher, or core service changes.
+   - `async-messaging.md` for Python workers and queue behavior.
+   - `security-multitenancy.md` for auth, tenant data, secrets, webhooks, ingestion, or
+     persistence.
+
+When documentation and the checked-out implementation disagree about an executable command or
+path, verify against the files on disk and report the mismatch; do not invent missing scripts or
+directories.
+
+## Repo shape
+
+**Both of these are true at once, not either/or:** the repository root is a Vite/React marketing
+site (`package.json`'s `dev`/`build`/`preview` scripts, `apps/web` as a separate workspace), *and*
+the larger platform monorepo CLAUDE.md describes (`services/core`, `services/gateway`,
+`services/workers`, `packages/*`) is present in the same checkout. Neither statement supersedes the
+other. Confirm which one applies to a given task by reading `package.json`/`turbo.json`, not by
+assuming from a first impression of the directory listing.
+
+CLAUDE.md's own "Commands" section (`npm run dev` / `build` / `test` / `lint`) describes the
+platform-wide target shape; the root `package.json` does not yet define bare `test` or `lint`
+scripts — only `test:workspaces` / `lint:workspaces` (via turbo, scoped to the workspace packages)
+and a set of narrower root scripts (`test:waitlist`, `check:secret-access`,
+`check:security-audit-agents`, `check:agent-shims`, and others — see `package.json` for the current
+list). Run the narrowest relevant one for what you're actually changing rather than guessing at a
+`test`/`lint` script that doesn't exist at the root today.
+
+## The pipeline
+
+Sayre's delivery pipeline is six stages — `planner` → `red` → `dev` → `tester` → `review` →
+`security` — defined once, runtime-neutral, in `.sdd/`, plus a ledger-append step once a run reaches
+terminal `PASS`. Four commands compose the stages:
+
+- `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
+- `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
+- `/pipeline-status` — report the current pipeline state without changing it.
+- `/security-recheck` — repeat only the final security assessment.
+
+Each command's exact procedure is defined in `.sdd/pipeline.md`, not here — read it before running
+one. Do not skip a missing stage or let a stage invent a replacement for a missing input; if a
+required `.pipeline/` artifact doesn't exist, say which stage needs to run first. Pipeline artifacts
+live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history) —
+except the one thing that's durable by design: `.sdd/ledger/<run-id>/{spec.md,entry.md}`, committed
+once a run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the
+file→spec query path.
+
+Architecture rules, the service-layer boundary, RBAC/tenant-isolation requirements, and the
+project's "Don't" list are defined once in `CLAUDE.md` and are not restated here — copying them into
+a second file is exactly the kind of drift this file exists to stop causing.
+
+## Long-running and multi-ticket branch policy
+
+- Before planning or implementing tickets, fetch `origin/main` and read the current PRD and backlog
+  from that fetched revision. On the current repository, `docs/prd.md` and `docs/PRD_Tickets.md`
+  are authoritative; `docs/backlog.md` is an older backlog and must not override them. If the user
+  supplies a newer ticket file, read it in full and report any mismatch. Do not rely on a stale
+  local `main` or an earlier ticket description.
+- Until the tracked companion docs are reconciled, where product scope or tooling in `CLAUDE.md`,
+  `docs/architecture.md`, `docs/migration-triggers.md`, `DEPENDENCIES.md`, or `docs/backlog.md`
+  conflicts with PRD v5 / `docs/PRD_Tickets.md`, follow the newer PRD/ticket source and call out the
+  drift in the ticket spec. Continue to enforce the unchanged security, multi-tenancy,
+  service-layer, graph, and queue boundaries.
+- Keep the user's active/dirty checkout untouched. Use a separate Git worktree for autonomous
+  ticket work.
+- Create one branch and one worktree per ticket. Never combine multiple tickets on one
+  implementation branch, even when they are requested in one session.
+- Start a ticket branch from the latest `origin/main` when all of its dependencies are merged
+  there.
+- If a ticket has exactly one required predecessor that is implemented but not merged, branch the
+  dependent ticket from that predecessor's branch so the Git ancestry records the dependency.
+- If a ticket would require two or more unmerged predecessor branches, do not implement it. Report
+  that it is not safely branchable and wait for the prerequisites to merge.
+- Do not fold dependency implementation into the dependent ticket. Missing prerequisite work
+  remains its own ticket, branch, pipeline, and review history.
+- For overnight autonomous runs, read the entire current ticket backlog first and classify
+  candidates by dependency readiness, security sensitivity, human-decision requirements, external
+  credentials/services, testability, and likely merge conflicts. Implement only tickets that are
+  explicitly selected after that assessment.
+- Leave each completed ticket on its own branch with pipeline artifacts summarized for morning
+  human review. Do not merge ticket branches; the human owner performs merges.

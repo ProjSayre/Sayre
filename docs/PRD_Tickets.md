@@ -495,6 +495,257 @@ Executes the later secret-manager/write phase W0-07's loader was designed for: t
 
 Extends the MCP surface beyond read-only context: tools letting agents propose changes back through the platform (e.g., draft a change plan validated against Agent/Skill MD guardrails, style rules, and covering tests before any code is written). Deliberately post-MVP: agents making wrong routing decisions ship wrong code, so this waits for measured adoption, demand, and a reliability standard — not enthusiasm. 
 
+## **Platform & methodology** **_(new 2026-07-31 — from the SDD/TDAD design session; see `docs/sdd-tdad-design.md`)_**
+
+Tickets in this section are not product features. They are the apparatus that lets a small team
+operate what it builds (D-017's framing) plus four findings about shipped contracts that surfaced
+while designing the methodology. PL-01 and PL-02 are prerequisites for onboarding a nontechnical
+cofounder at all.
+
+### **PL-01 — Containerize the four services, hardened** **_(from D-016 — the blocking gap)_**
+
+**Depends on:** none · **Executor:** Pair (build design: agent; base-image and registry decisions: human)
+
+`git ls-files | grep -i dockerfile` returns nothing. `infra/docker-compose.yml` runs only dependencies (postgres, redis, localstack, prometheus); `apps/web`, `services/core`, `services/gateway`, and `services/workers` have never been containerized and run via `npm run dev` / `poetry run`. Everything is blocked on this: D-011 Phase 2 (Render), D-013's Helm chart, BYOC, image scanning, reproducible builds, and — newly — a nontechnical cofounder being able to run the stack at all. Build hardened from the start rather than shipping naive images and retrofitting: multi-stage, non-root, no build toolchain in the runtime layer, base images pinned **by digest not tag** (`pgvector/pgvector:pg16` is mutable), security errata patched at build time, setuid/setgid stripped, app content owned by GID 0 with group perms for arbitrary-UID safety, docs/man/locales stripped.
+
+**Acceptance criteria:** all four services build and run as containers; no image runs as root; every base image is digest-pinned; `docker compose up` from a fresh clone boots the full stack with health checks green; image sizes and a Trivy HIGH/CRITICAL scan are recorded as the baseline for PL-01's follow-on gate.
+
+### **PL-02 — BOOTSTRAP.md + devcontainer: clone-to-running with no human in the loop** **_(from D-014, D-016 #8, D-004)_**
+
+**Depends on:** PL-01 · **Executor:** Pair
+
+D-014's acceptance test — *"can a new cofounder go `git clone` → running stack using only their own credentials, with no human in the loop?"* — fails today. Manual steps are scattered: GitHub App registration, Doppler setup, and the `DEV_ORG_ID` seeding SQL buried in an `.env.example` comment. Genesis's gitops repo keeps "the definitive record of the manual prerequisites and every gotcha that caused a real failure"; this is that document, plus the devcontainer D-004 recommended, which stops being a nice-to-have and becomes the delivery mechanism for a cofounder's environment. Note the Python dependency is unavoidable even for frontend work: the PL-03 impact resolver needs the workers' Poetry environment with Tree-sitter's native grammars.
+
+**Acceptance criteria:** a cofounder on macOS with no prior context reaches a running stack using only credentials they can obtain themselves; every manual prerequisite is named in `BOOTSTRAP.md` with its failure symptom; the devcontainer produces an identical Linux environment on macOS and Windows hosts; onboarding acceleration being the product, this test is re-run on every change to setup.
+
+### **PL-03 — SDD/TDAD methodology: `.sdd/` layer, impact resolver, `red` stage, `pr-review` agent**
+
+**Depends on:** none — PL-03a…PL-03d are files plus the Node/Python toolchains the repo already requires; only the Victor-facing rollout (PL-03e) is gated, on PL-02 for his environment · **Executor:** Pair (methodology: human-directed; implementation: AI agent)
+
+**Split for execution:** PL-03a cross-runtime foundation · PL-03b impact resolver · PL-03c pipeline stage changes (needs PL-03a; `red`/`tester` degrade cleanly without PL-03b and disclose its absence rather than depending on it — see PL-03c's own spec.md) · PL-03d `pr-review` agent (needs PL-03a, PL-03c) · PL-03e Victor's rollout (needs PL-03a–d, PL-02) · PL-03f and PL-03g, opened during PL-03a execution · PL-03h, opened during PL-03c execution (needs PL-03c). Each gets its own spec pass; the combined scope is too large for one implementation run.
+
+Implements `docs/sdd-tdad-design.md` in five steps: the tracked runtime-neutral `.sdd/` layer plus shim generator, paring the agent surface to `.sdd/` + `AGENTS.md` + generated `.claude/` shims and deleting the `.codex/` and `.agents/` mirrors (closing the drift between them, and the fact that all three were excluded via `.git/info/exclude` and therefore reached no one who cloned — including a Codex `security-checker` reduced to a 13-line paraphrase of the 99-line original, missing the attacker registry, checklist IDs, `UNVERIFIED` semantics, and content-hashed manifests, while still emitting `PASS`); the `affected_tests.py` impact resolver over the pure `sayre_workers.parsing` modules; a `red` stage authoring all behavioral tests from spec before `dev` runs; `tester` rewired off `changes.md` (D-018's finding that tests currently ratify the implementation); and a `pr-review` agent with deterministic lane-bounds checking. D-005's action item is **not** closed here, and is worse than D-005 recorded. D-005 assumed the `Write` matcher worked and only the unmatched `Bash` tool bypassed it; a 2026-07-31 diagnostic showed `PreToolUse` hooks declared in *subagent frontmatter* never fire at all (settings-file hooks do, including for subagent tool calls), so both agents have always been unenforced for `Write` as well as `Bash`. PL-03a corrected the false "enforced by hook" claims and removed the inert guard; real enforcement is PL-03g.
+
+**Acceptance criteria:** a fresh clone gives a Codex user a working pipeline with no machine-local setup; regenerating shims produces no diff in CI; the resolver reports truncation, unanalyzable files, and no-adapter files as three distinct outcomes; a behavioral test with no `@spec` reference fails review; a diff touching a path outside the ticket's declared lane is reported by a script, not an LLM judgment; a run's ledger entry survives in git after `.pipeline/` is cleared.
+
+### **PL-03f — `dev` stage reads `security-report.md` on re-invocation** **_(parity fix surfaced by PL-03a)_**
+
+**Depends on:** PL-03a · **Executor:** AI agent
+
+While extracting the three prior agent mirrors into `.sdd/` (PL-03a), two places where the old,
+deleted Codex copy (`.codex/agents/dev.toml`) was actually *ahead* of Claude Code's surfaced — see
+`docs/sdd-drift-corrections-pl-03a.md` item 4. It read `.pipeline/security-report.md` "for
+required fixes" on re-invocation; Claude's copy (now `.sdd/stages/dev.md`) only re-reads
+`review.md`. It also said to "preserve unrelated user changes," which neither copy states today.
+PL-03a left both unfixed since stage-content changes were out of scope for that ticket, and
+`.sdd/pipeline.md`'s routing section already asserts *"dev's own procedure already reads
+[review.md] automatically"* with no equivalent claim for `security-report.md`. This ticket closes
+that gap directly in `.sdd/stages/dev.md`, so the fix is universal (every runtime) rather than
+something only the old Codex copy happened to do right, and makes an explicit decision on the
+second behavior rather than leaving it undecided indefinitely.
+
+**Acceptance criteria:** `.sdd/stages/dev.md`'s re-invocation section requires reading
+`.pipeline/security-report.md` (not only `review.md`) when present, consistent with the
+`NEEDS_FIXES`/`BLOCKED` routing `.sdd/pipeline.md` already describes; "preserve unrelated user
+changes" is either codified as an explicit `dev` instruction or explicitly decided against with a
+recorded reason; none of PL-03a's existing acceptance criteria regress.
+
+### **PL-03g — Real read-only enforcement for `review`/`security-checker`** **_(supersedes the Bash-guard allowlist approach; from the PL-03a loop-3 diagnostic)_**
+
+**Depends on:** PL-03a · **Executor:** Pair (mechanism design/scope decision: human; implementation: AI agent)
+
+PL-03a's D-005 action item — "`review`/`security-checker` are documented read-only but carry `Bash`
+with no matcher, so `sed -i`/`tee`/`python -c` write past the `Write`-only guard" — was never
+actually closed, across three review rounds of patching `scripts/validate-pipeline-only-bash.sh`'s
+allowlist. A diagnostic run at the end of PL-03a's loop 3 established why: a `PreToolUse` hook
+declared in `.claude/settings.json` fires, including for subagent tool calls (confirmed: the log
+recorded the main session's write plus both of a subagent's writes) — but the identical hook
+declared in subagent frontmatter (`.claude/agents/review.md`'s generated `hooks:` block) does not
+fire at all. `review` was asked to write `hook-probe-frontmatter.txt` at repo root, outside
+`.pipeline/`, which its frontmatter guard should have blocked; the write succeeded with no error.
+So `review` and `security-checker` have never been read-only with respect to either `Write` or
+`Bash` — both guard scripts were dead code the whole time, and three rounds of allowlist hardening
+were spent making a mechanism that was never actually invoked internally consistent. PL-03a loop 3
+deleted the Bash guard outright, reverted the Write guard to its pre-ticket state, and corrected
+every "enforced by a hook" claim in `CLAUDE.md` / `.sdd/stages/review.md` / `.sdd/stages/security.md`
+to state the true, weaker guarantee (a convention, checked at review time and in CI, not a runtime
+enforcement). This ticket is where real enforcement gets designed.
+
+**First task — the open question that decides everything else:** does the `PreToolUse` payload
+Claude Code delivers to a settings-level hook carry enough agent/subagent identity for a hook
+declared in `.claude/settings.json` to scope itself to `review` and `security-checker` specifically,
+without also matching `dev` (which must legitimately write source code) or `planner`/`tester`? If
+the payload carries no such field, a settings-level `Write`/`Bash` matcher is necessarily global and
+can't be stage-scoped, and this ticket's answer is either (a) a different mechanism entirely (e.g. a
+wrapper `dev`/`tester` never invoke, or running `review`/`security-checker` in a separate, more
+restricted execution context), or (b) an explicit escalation that Claude Code has no first-party way
+to scope a hook to one subagent today, rather than another round of shell-script cleverness. If a
+scoping field does exist, implement the hook at the settings.json level (not frontmatter, which is
+now proven inert), and design its confinement check as a closed, testable problem — normalize both
+the target path and `.pipeline/` to absolute form, compare with a separator boundary, and either
+reject symlink escapes or state them explicitly out of scope — rather than another open-ended
+command-string allowlist.
+
+**Rejected-approach catalogue (preserved here since the tests that documented it,
+`scripts/validate-pipeline-only-bash.test.mjs`, were deleted in PL-03a loop 3 along with the guard
+they tested).** Three review/test rounds found the following distinct bypass classes in the
+command-string-allowlist design; they are the evidence base for why a denylist/allowlist over Bash
+command strings was rejected on the merits — not merely because the hook carrying it never fired —
+and must not be reintroduced as "the fix" for whatever mechanism replaces it:
+
+- `find ... -delete` / `find ... -exec ...` / `-fprintf` (closed by dropping `find` from the
+  allowlist entirely, not by patching the exec-flag hole — the character class excluding shell
+  operators structurally can't also exclude every exec-shaped flag by shape alone)
+- `git diff --output=<path>` (and the same flag on `git log`/`show`/`blame`) — a write disguised as
+  a read-only command
+- `poetry run ruff check --fix` — rewrites source in place
+- `poetry run ruff check --config fix=true` (or `--config /tmp/evil.toml`) — **the finding that
+  settled the architectural question.** Re-enables autofix through a config value without the token
+  `--fix` ever appearing in the command string, so no flag-name denylist can close it; the
+  capability is reachable through a value, not a name, and values can't be enumerated
+- `poetry run pytest --junitxml=`/`--cov-report=`/`--result-log=` (report files to an arbitrary
+  path), `pytest --basetemp=<dir>` (pytest's own docs warn its contents may be deleted), and bare
+  `poetry run pytest` (executes `conftest.py` and every collected test file — arbitrary code
+  execution is pytest's purpose, not an edge case of it)
+- `poetry run mypy --python-executable=<path>` (spawns the given path as a subprocess — code
+  execution) and `mypy --cache-dir=<dir>` / `--install-types` (writes to a caller-chosen directory /
+  runs `pip install`)
+- `npm run build:workspaces` / `npx turbo run build --filter=...` — building writes `dist/`,
+  `.next/`, `*.tsbuildinfo` and executes every workspace's `build` script; allowlisted since round 1
+  without that being noticed
+- the shim generator's own write-mode invocation (`npm run generate:agent-shims`, bare
+  `node scripts/generate-agent-shims.mjs`) — allowlisted for "convention consistency" with its
+  `--check` sibling, without distinguishing that the bare form's entire purpose is to write
+  `.claude/agents/*.md`, including `review`'s and `security-checker`'s own hook-wiring frontmatter
+- `cat ../../../.ssh/id_rsa` / `git diff --no-index /dev/null <secret file>` — not a write, but an
+  exfiltration path through an allowlisted "read-only" command, reading credentials a subsequent
+  legitimate `.pipeline/` write could then leak
+
+**Also carry forward, unfixed:** the path-traversal bug in
+`scripts/validate-pipeline-only-write.sh`'s `.pipeline/` confinement check —
+`case "$FILE_PATH" in .pipeline/*|*/.pipeline/*)` is a textual prefix match, not a normalized-path
+check, so `.pipeline/../../etc/passwd`, `.pipeline/../../.git/hooks/pre-commit`, and
+`foo/.pipeline/../../../src/app.ts` are all wrongly ALLOWED (reproduced directly against the real
+script). The same script also blocks the native Windows backslash path form
+(`C:\...\.pipeline\review.md`) while allowing the equivalent forward-slash form — an availability
+bug in the opposite direction. Both bugs are pre-existing (not introduced by PL-03a) and were left
+unfixed in PL-03a loop 3 on the reasoning that a hook that never fires doesn't need a correct
+confinement check yet — but whatever mechanism this ticket lands must fix both before relying on it.
+
+**Founder decision log note (cannot be edited from this repository):** D-005 in the founder
+decision log (tracked outside this repo) records its action item against the Bash-hook mechanism as
+though it runs; it does not, and never did on this checkout. D-005 should be amended to reflect that
+"review/security-checker are read-only, enforced by hook" was never true, and that this ticket is
+the real fix. Recording the need here since the log itself isn't reachable from this checkout to
+edit directly.
+
+**Acceptance criteria:** a documented, tested answer to whether `PreToolUse` carries scoping
+identity; if yes, a working settings.json-level hook that blocks a real out-of-`.pipeline/`
+`Write`/`Bash` call from `review`/`security-checker` while leaving `dev`/`tester`/`planner`
+unaffected, verified by actually driving the guarded tool call from within each stage's own session
+(not by invoking a guard script standalone with synthetic stdin, which is all three PL-03a review
+rounds ever did); the `.pipeline/` confinement check passes both the traversal-blocked and
+Windows-backslash-allowed cases; none of the rejected-approach catalogue's bypass classes is
+reintroduced in any form that addresses only a single command or flag name; if the answer is no, a
+written escalation of the platform gap plus whichever alternative (a different mechanism, or a
+documented decision to keep this convention-only) is chosen instead.
+
+### **PL-03h — Fence/comment-aware markdown parsing for the ledger + spec-trace/hash checks** **_(deferred scope from PL-03c round 3's narrow count-check fix)_**
+
+**Depends on:** PL-03c · **Executor:** AI agent
+
+PL-03c round 3 closed the three vectors tester's adversarial sweep found in `extractSection`
+(`scripts/build-ledger-index.mjs`) — a fabricated `## Verdict` heading inside a fenced code block,
+one inside an HTML comment, and a genuine duplicate `## Verdict` heading — with a deliberately
+narrow fix: count every line that is exactly a `## <heading>` ATX heading and refuse whenever the
+count isn't exactly one (zero: heading genuinely absent, unchanged behavior; two or more: refuse,
+naming the count and every matching line number so it's debuggable). That closes the failure mode
+("a ledger entry recording `review: PASS` for a run whose real verdict is `NEEDS_FIXES`") for all
+three vectors at once, because each is structurally a second matching line — but it is a **refusal,
+not a resolution**: it cannot tell a document that legitimately needs one specific heading of two
+apart from an attack, and its only tool is failing closed. That is deliberate and correct as a
+stopgap (review's own repro remains dead, and the one case the count check doesn't catch — a
+document containing solely a fake verdict and no real one — is one where refusing is the correct
+outcome regardless), but it is not the complete fix. A full fence/comment-aware markdown parse (or a
+pre-pass that strips fenced code blocks and HTML comments before any heading regex runs) would let
+`extractSection` resolve to the one real heading instead of refusing outright, and would also close
+two related, structurally identical gaps tester found in the same sweep, both explicitly deferred
+out of round 3's narrowed scope:
+
+- **`scripts/check-red-integrity.mjs`'s `@spec` trace check can be laundered by a code example.**
+  `extractKnownSpecIds` greps raw `spec.md` section text for `AC-*`/`EC-*` tokens with no
+  fenced-code-block awareness, so an ID that appears only inside a fenced illustrative example in
+  the Acceptance-criteria/Edge-cases sections (e.g. `` ```\n// @spec AC-77\n``` `` documenting the
+  marker format, not a real criterion) resolves as if it were a genuine, citable item. Reproduced
+  directly: `scripts/check-red-integrity.test.mjs`'s skipped `OPEN GAP: an @spec ID that appears in
+  spec.md's Acceptance criteria section only inside a fenced code example...` test.
+- **`scripts/check-red-integrity.mjs` crashes on a directory-shaped hash path.** A path recorded in
+  `red.md`'s `## Content hashes (SHA-256)` that has since become a directory causes `existsSync()`
+  to return `true` and `readFileSync()` to throw an uncaught `EISDIR` — the process does exit
+  non-zero (nothing is silently accepted), but it crashes with a raw Node stack trace before printing
+  the JSON report the script's own contract promises, breaking "review adjudicates the printed
+  report." Reproduced directly: `scripts/check-red-integrity.test.mjs`'s skipped `OPEN GAP: a hash
+  recorded for a path that has since become a directory...` test.
+
+Given how the round-2 fix for the original bug turned out to be real but incomplete (review's own
+"fixture monoculture" diagnosis), this ticket should design the fence/comment-aware parse (or
+pre-pass) once, generally, rather than patch each of these three sites — and any further shape
+tester explicitly did not exhaustively sweep (a blockquote, a table cell, a backslash-escaped
+`\## Verdict`) — individually.
+
+**Acceptance criteria:** a markdown-structure-aware parsing layer (full parser or a fence/comment-
+stripping pre-pass) that `extractSection` uses in place of round 3's count-only refusal, and that
+resolves — rather than refuses on — a heading shadowed by a fenced code block, an HTML comment, or
+(where determinable, e.g. "the last one wins") a genuine duplicate, verified against tester's exact
+three round-3 reproductions plus at least one further shape tester named as unswept (blockquote,
+table cell, or backslash-escaped `\##`); `extractKnownSpecIds` in `check-red-integrity.mjs` resolves
+`@spec` IDs only from real acceptance-criteria/edge-case items, not from fenced code examples in the
+same section, verified against tester's `AC-77`-in-a-code-example reproduction; a directory-shaped
+path recorded in `red.md`'s content hashes produces a controlled violation message in the script's
+own JSON report rather than an uncaught `EISDIR` crash; the three tests marked skipped in
+`scripts/build-ledger-index.test.mjs` and `scripts/check-red-integrity.test.mjs` (each referencing
+this ticket) are un-skipped and pass unmodified.
+
+### **PL-04 — COVERS edge weighting + ranked, bounded `get_covering_tests`** **_(contract fix)_**
+
+**Depends on:** W2-07, W4-03, W4-06 · **Executor:** AI agent (contract change reviewed by human)
+
+`get_covering_tests` returns *all* authorized tests connected through `COVERS`, with no weight, no ranking, and no limit. On a hub file that is a large fraction of the suite. An MCP tool that hands an agent 80 test references burns the context budget the product exists to conserve — it is anti-70x, in the single asset D-002 calls both strongest and most fragile. TDAD (arXiv 2603.17973) additionally measured *unranked* test context as the configuration that made regressions worse than no intervention at all. Add call-depth/coupling weight to `COVERS`, rank the response, apply a bounded default, and state truncation explicitly rather than silently capping. Fix this before the D-002 benchmark exists to expose it.
+
+**Acceptance criteria:** `COVERS` carries a weight derived from call depth and coupling; `get_covering_tests` returns ranked results with a documented default limit; any truncation is stated in the response with the omitted count and reason; a hub-file query returns a bounded, ordered set rather than an unordered dump; the MCP tool contract is versioned to reflect the change (see PL-06's note on §4.11 clients).
+
+### **PL-05 — First measured edge as an onboarding milestone + time-to-first-measured-edge metric**
+
+**Gated by:** PL-04 · **Executor:** Pair (metric definition: human; instrumentation: AI agent)
+
+`inferred` COVERS edges are import resolution — any agent can reproduce them locally with a parser in seconds, for free. On day one a new customer's `get_covering_tests` therefore returns something they could compute themselves. The edge becomes non-reproducible only at `measured`, which requires W4-03's nightly against an operator-configured coverage-instrumented CI adapter — a nontrivial setup step currently framed as optional background hygiene. This is D-021's commoditization warning one layer deeper: the structural tier of COVERS is commodity, the measured tier is not. If that holds, reaching the first measured edge is the moment the product stops being reproducible by a script, and it belongs in onboarding rather than in a nightly. §4.6 measures TTFC (time to first *context*); this adds time-to-first-*measured*-edge. It also carries a packaging implication for the GTM cofounder: do not build the business case on the tier that is free elsewhere.
+
+**Acceptance criteria:** connecting a coverage-instrumented CI adapter is a first-class step in the onboarding flow, not a post-setup task; time-to-first-measured-edge is instrumented alongside TTFC; the distinction between `inferred` and `measured` is legible in the product surface, not only in the API response.
+
+### **PL-06 — MCP tool audit: every tool states why it beats grep**
+
+**Depends on:** W4-06 · **Executor:** Pair
+
+A deliberate pass asking, for each MCP tool, what the graph knows that a local static analyzer does not. First-pass reading: `get_agent_skill_md` (human-authored, versioned, RBAC-gated) is unreproducible and strongest; `find_relevant_nodes` and `get_feature_cluster` earn it through semantics; `get_covering_tests` earns it only at `measured` (PL-04, PL-05); `get_recent_changes` earns it only via RBAC filtering and cross-repo scope, since `git log` covers the rest. This operationalizes D-022's Position B thesis at the tool level — **enrichment and governance are the moat, structure is commodity** — so every tool description should lead with the first two. Also the natural place to settle D-017 #5: §4.11 commits to an MCP contract good enough for customers to build their own clients, and those clients need to know when it changes, but the repo has no version, changelog, or tags at 218 commits.
+
+**Acceptance criteria:** each tool in `MCP_TOOL_CONTRACT.md` carries a one-line statement of what it provides that local analysis cannot; any tool that cannot answer it is either changed or documented as a convenience rather than a differentiator; the contract carries a version and a changelog.
+
+### **PL-07 — Uniform freshness/confidence envelope across the MCP contract**
+
+**Depends on:** W4-06 · **Executor:** AI agent
+
+`get_covering_tests` already returns `freshness: inferred|fresh|stale` — the right instinct, currently reinvented per tool. D-015 reached the same rule independently for the secrets feature: *"report confidence, not certainty, and name the files that defeated analysis."* Make it a standard envelope field across every tool that derives an answer from analysis rather than reading a stored fact. The dangerous output in a governance-adjacent product is a quiet false "you're covered," and a uniform field is what makes its absence conspicuous.
+
+**Acceptance criteria:** a documented envelope shape carrying freshness/confidence plus a named list of inputs that defeated analysis; every analysis-derived tool populates it; a tool that cannot determine confidence says so rather than omitting the field.
+
+### **PL-08 — Investigation: is the ingestion pipeline earning its cost over the parsing modules it wraps?** **_(open question, not a build ticket)_**
+
+**Gated by:** PL-01 · **Executor:** Human (architecture judgment)
+
+D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the best use of founder time. The SDD/TDAD design pushed the opposite way: `sayre_workers.parsing` is pure, in-memory, graph-free, already covers Python/JS/TS/Go, and turned out to be directly reusable standalone — a useful tool was designed around it while skipping the graph entirely. The expensive and still-unproven part is the distributed pipeline wrapped around it (D-017 #1: no end-to-end test across webhook → SQS → parse → Neo4j → SNS → WebSocket). So the sharper question is not whether to outsource structural parsing but whether the ingestion pipeline earns its cost relative to the modules it wraps. Multi-tenancy, incremental delta updates, and scale probably justify it — but for a single-tenant BYOC deployment (D-013) a much thinner path may exist, and that is worth knowing before quoting a BYOC deal rather than during one.
+
+**Acceptance criteria:** a written answer naming which pipeline capabilities are load-bearing for multi-tenant SaaS and which are not required for single-tenant BYOC; either a recorded decision that the current architecture stands, or a scoped follow-up ticket; the answer lands in the founder decision log, not only here.
+
 ## **Quick-reference dependency table** 
 
 |**Ticket**|**Depends on**|**Wave**|
@@ -542,6 +793,21 @@ Extends the MCP surface beyond read-only context: tools letting agents propose c
 |PM-07|W0-07 (external-customer trigger)|Post-MVP|
 |PM-08|W4-06 (adoption baseline + demand +|Post-MVP|
 ||reliability bar)||
+|PL-01|none|Platform|
+|PL-02|PL-01|Platform|
+|PL-03a|none|Platform|
+|PL-03b|none|Platform|
+|PL-03c|PL-03a|Platform|
+|PL-03d|PL-03a, PL-03c|Platform|
+|PL-03e|PL-03a-d, PL-02|Platform|
+|PL-03f|PL-03a|Platform|
+|PL-03g|PL-03a|Platform|
+|PL-03h|PL-03c|Platform|
+|PL-04|W2-07, W4-03, W4-06|Platform|
+|PL-05|PL-04 (gate)|Platform|
+|PL-06|W4-06|Platform|
+|PL-07|W4-06|Platform|
+|PL-08|PL-01 (gate)|Platform|
 
 
 

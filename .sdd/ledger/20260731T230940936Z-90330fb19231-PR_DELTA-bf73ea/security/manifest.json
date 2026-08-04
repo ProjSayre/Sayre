@@ -1,0 +1,342 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-07-31T23:09:40.936Z",
+  "completed_at": "2026-07-31T23:12:07.738Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre"
+  },
+  "target": {
+    "commit_sha": "90330fb19231113ac57f35f2c45bbe31e5447d93",
+    "branch": "feat/sdd-cross-runtime-foundation",
+    "dirty": true,
+    "environment": "local development checkout — static analysis + local test/validator suites only; no live/staging/production target, no runtime penetration test",
+    "base_urls": [],
+    "changed_paths": [
+      ".claude/agents/dev.md",
+      ".claude/agents/planner.md",
+      ".claude/agents/review.md",
+      ".claude/agents/security-checker.md",
+      ".claude/agents/tester.md",
+      ".claude/skills/pipeline-status/SKILL.md",
+      ".claude/skills/pipeline/SKILL.md",
+      ".claude/skills/security-recheck/SKILL.md",
+      ".claude/skills/spec-only/SKILL.md",
+      ".gitattributes",
+      ".github/workflows/ci.yml",
+      ".gitignore",
+      ".pipeline/README.md",
+      ".sdd/README.md",
+      ".sdd/bounds.md",
+      ".sdd/ledger/README.md",
+      ".sdd/pipeline.md",
+      ".sdd/runtimes.yml",
+      ".sdd/stages/dev.md",
+      ".sdd/stages/planner.md",
+      ".sdd/stages/review.md",
+      ".sdd/stages/security.md",
+      ".sdd/stages/tester.md",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "docs/PRD_Tickets.md",
+      "docs/sdd-drift-corrections-pl-03a.md",
+      "package-lock.json",
+      "package.json",
+      "scripts/generate-agent-shims.mjs",
+      "scripts/generate-agent-shims.test.mjs",
+      "scripts/sdd-completeness.test.mjs",
+      "scripts/validate-security-audit-agents.mjs",
+      "scripts/validate-security-audit-run.mjs",
+      "scripts/validate-security-audit-run.test.mjs"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No prior run exists under .pipeline/security-history/ (directory did not exist before this run). This is the first-ever security-checker run recorded under the registered progress-audit framework for this repository.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "PL-03a — cross-runtime foundation (.sdd/ framework + AGENTS.md)",
+    "phase": "Pre-merge security gate (PR_DELTA), review.md verdict PASS (loop 3 of 3)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      "docs/PRD_Tickets.md#PL-03a"
+    ],
+    "documentation_code_drift": [
+      "This same diff corrects a prior documentation/code drift it discovered: CLAUDE.md, .sdd/stages/review.md, .sdd/stages/security.md, .sdd/README.md, .sdd/pipeline.md, and .pipeline/README.md previously asserted that review/security-checker's read-only property was enforced by a PreToolUse hook. A loop-3 diagnostic established that a hook declared in subagent frontmatter never fires on this checkout; the false claims are corrected within this diff to state the true, weaker guarantee (convention, checked at review time and in CI), and the inert guard script (scripts/validate-pipeline-only-bash.sh) was deleted rather than left in place. See this report's \"Security-stage self-integrity\" section."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json / audit-contract.md.",
+      "rationale": "Tenant isolation (org_id stamping/RLS) is implemented in services/core (Postgres RLS + org-scoped connections) and has a dedicated penetration suite. This diff touches no application, service-layer, or database code — CHANGED_PATHS contains no services/** entries — so this run does not re-derive PASS/FAIL for the boundary itself; it is out of this PR_DELTA's blast radius.",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts",
+        "services/workers/tests/ (test_tenant_isolation.py referenced by CI)",
+        "services/core/drizzle/** (RLS policies, per .github/workflows/ci.yml \"core — RLS isolation tests\")"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json / audit-contract.md.",
+      "rationale": "Node-level RBAC/traversal filtering is implemented service-side (Graph Query Service / *TreeService modules). This diff adds no route, resolver, or graphology code and touches nothing under services/core/src or apps/web, so this run does not re-derive the boundary's current state.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts",
+        "services/core/src/services/productTreeService.ts",
+        "services/core/src/services/onboardingTreeService.test.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json / audit-contract.md.",
+      "rationale": "A central secret-access loader convention exists and is enforced by scripts/check-secret-access.mjs (run in CI as a pre-install boundary step). This diff's own new/changed files were directly inspected and contain no direct env/credential access, no hardcoded secrets (verified by full diff grep); check:secret-access / check:org-secret-access were run fresh and reported only 3 pre-existing, out-of-diff findings (jiraConnectionStore.rls.test.ts, orgSecrets.ts, pollWorker.ts — confirmed untouched by `git status --porcelain -- services/`).",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-org-secret-access.mjs (per npm run check:org-secret-access)"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json / audit-contract.md.",
+      "rationale": "GitHub webhook signature validation exists (services/core/src/webhooks/githubSignature.ts, using an HMAC compare). This diff touches no webhook receiver code.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts",
+        "services/core/src/routes/githubWebhook.test.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json / audit-contract.md.",
+      "rationale": "Scratch-clone lifecycle management exists in the Python ingestion worker (tempfile/shutil-based cleanup). This diff touches no services/workers code.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/tests/test_ingestion.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json / audit-contract.md.",
+      "rationale": "Parameterized-query conventions exist across the Node/Python data-access layers (Drizzle ORM for Postgres, an openCypher query-builder package for graph access). This diff touches no query-construction code; a full-repository sweep for string-concatenated queries was not performed this run (that is a MILESTONE/FULL-scope activity).",
+      "code_references": [
+        "packages/graph-schema/** (query builders, per CLAUDE.md conventions)",
+        "services/core/drizzle/** (parameterized ORM layer)"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path in this PR_DELTA matches any of this brief's registered trigger_paths (services/workers/**, packages/graph-schema/**, **/*embedding*, **/*retriev*, **/*prompt*).",
+      "rationale": "No file under this surface's trigger paths changed in this diff; existence/readiness recorded from a lightweight repository inventory check only, not re-audited this run.",
+      "code_references": [
+        "services/workers/sayre_workers/retrieval/** (referenced by CI mypy target list)"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path in this PR_DELTA matches any of this brief's registered trigger_paths (services/workers/**, services/core/**, infra/**, **/*provider*, **/*egress*).",
+      "rationale": "No file under this surface's trigger paths changed in this diff; existence/readiness recorded from a lightweight repository inventory check only, not re-audited this run.",
+      "code_references": [
+        "services/workers/sayre_workers/model_provider/** (referenced by CI mypy target list)"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path in this PR_DELTA matches any of this brief's registered trigger_paths (services/core/src/mcp/**, **/*mcp*, **/*api-key*).",
+      "rationale": "No file under this surface's trigger paths changed in this diff; existence/readiness recorded from a lightweight repository inventory check only, not re-audited this run.",
+      "code_references": [
+        "services/core/src/mcp/** (per CLAUDE.md structure)",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path in this PR_DELTA matches any of this brief's registered trigger_paths (services/gateway/**, services/core/**/*realtime*, **/*websocket*, **/*redis*).",
+      "rationale": "No file under this surface's trigger paths changed in this diff; existence/readiness recorded from a lightweight repository inventory check only, not re-audited this run.",
+      "code_references": [
+        "services/gateway/** (per CLAUDE.md structure)"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path in this PR_DELTA matches any of this brief's registered trigger_paths (services/workers/**, services/core/**/*queue*, services/core/**/*webhook*, services/core/**/*integration*, **/*sqs*, **/*bullmq*).",
+      "rationale": "No file under this surface's trigger paths changed in this diff; existence/readiness recorded from a lightweight repository inventory check only, not re-audited this run.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts",
+        "services/core/src/queue/sqs.ts",
+        "services/workers/sayre_workers/ingestion/**"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path in this PR_DELTA matches any of this brief's registered trigger_paths (apps/web/**, src/**, services/core/src/routes/**, services/core/src/http/**).",
+      "rationale": "No file under this surface's trigger paths changed in this diff; existence/readiness recorded from a lightweight repository inventory check only, not re-audited this run.",
+      "code_references": [
+        "apps/web/** (per CLAUDE.md structure)",
+        "services/core/src/routes/**"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "PR_DELTA trigger-path match: changed_paths include .github/**, infra/**, scripts/**, **/*secret*, **/*audit*, **/*backup*, **/*delet*-shaped paths (.github/workflows/ci.yml, scripts/*, package.json, package-lock.json).",
+      "rationale": "Selected because this diff changes CI workflow, scripts/, and package manifest/lock files that fall within this brief's registered trigger paths.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/validate-security-audit-run.mjs",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "PR_DELTA trigger-path match: changed_paths include .github/**, infra/**, Dockerfile*, **/Dockerfile*, **/package.json, **/package-lock.json, **/pyproject.toml, **/poetry.lock-shaped paths (.github/workflows/ci.yml, scripts/*, package.json, package-lock.json).",
+      "rationale": "Selected because this diff changes CI workflow, scripts/, and package manifest/lock files that fall within this brief's registered trigger paths.",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "package.json",
+        "package-lock.json"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "progress-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "security-stage",
+      "source": ".sdd/stages/security.md",
+      "sha256": "1d23bb9594243ebd518cc6ec618831c966d062a5845270adf6bb4d2c0c2a5997"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle-attacker",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure-attacker",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "CORE-01, CORE-02, CORE-04, CORE-05 are UNVERIFIED this run: this diff touches no services/** code, and a full system-wide re-verification of tenant isolation, RBAC boundaries, webhook trust, or ingestion ephemerality is a MILESTONE/FULL-scope activity not attempted here.",
+    "CORE-06 (injection boundaries) is scoped only to this diff's own two executable scripts; a full-repository sweep for string-concatenated queries was not performed.",
+    "SC-03's manual `npm audit` pass is a one-time snapshot, not a recurring CI gate; the 15 flagged advisories were not individually triaged for real-world exploitability in this pass.",
+    "No dynamic/runtime security testing was performed (authorization.runtime_tests_authorized is false) — every observation this run is STATIC or a local test-suite execution (BOTH), never live-target DYNAMIC evidence.",
+    "This security-checker session itself has no PreToolUse hook enforcing its own read-only property (see this report's \"Security-stage self-integrity\" section) — the same control gap documented for review/security-checker generally applies to this very run."
+  ]
+}

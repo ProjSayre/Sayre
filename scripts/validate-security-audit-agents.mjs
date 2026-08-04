@@ -93,7 +93,11 @@ for (const term of [
   assert(contract.includes(term), `Audit contract is missing progress requirement: ${term}`);
 }
 
-const checker = read('.claude/agents/security-checker.md');
+// PL-03a moved the security stage's authoritative procedure to .sdd/stages/security.md;
+// .claude/agents/security-checker.md is now a generated pointer (see
+// scripts/generate-agent-shims.mjs) with no procedural content of its own, so the integration
+// check below has to read the neutral file instead.
+const checker = read('.sdd/stages/security.md');
 for (const reference of [
   registry.contract,
   registry.orchestrator,
@@ -102,7 +106,7 @@ for (const reference of [
   registry.results_schema,
   '.pipeline/security-history/'
 ]) {
-  assert(checker.includes(reference), `Security checker is not integrated with ${reference}`);
+  assert(checker.includes(reference), `Security stage definition (.sdd/stages/security.md) is not integrated with ${reference}`);
 }
 
 console.log(`Security audit agent validation passed: ${registry.agents.length} surface briefs, ${allCheckIds.length} unique checks, 2 schemas.`);

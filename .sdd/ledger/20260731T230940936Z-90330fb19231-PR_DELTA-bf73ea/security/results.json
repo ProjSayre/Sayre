@@ -1,0 +1,876 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+  "baseline_run_id": null,
+  "generated_at": "2026-07-31T23:12:07.738Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "UNVERIFIED": 5,
+      "PASS": 10,
+      "NOT_APPLICABLE": 17,
+      "FAIL": 2
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 34
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 34
+    },
+    "finding_statuses": {
+      "OPEN": 2
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any tenant/org_id stamping, RLS policy, or persistence-boundary code.",
+      "evidence": [
+        "git diff --cached --name-only / git status --porcelain -- services/ returned no output: this diff touches zero files under services/",
+        "CORE-01's implementing surfaces (tenantIsolation.penetration.test.ts, RLS migrations) exist and are unchanged"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed; re-verification of this boundary requires a MILESTONE/FULL run or a PR that actually touches services/core persistence code.",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces any route/resolver/graphology code that could duplicate server-side RBAC filtering.",
+      "evidence": [
+        "Diff contains no apps/web, services/core/src/routes, or graphology-adjacent changes"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed; out of this PR_DELTA's blast radius.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)",
+      "attack_path_version": "v1",
+      "attempt": "Grepped the full staged diff for credential/secret patterns (api key, password, token, PEM/private-key headers); ran check:secret-access and check:org-secret-access fresh.",
+      "evidence": [
+        "`git diff --cached | grep -iE \"api[_-]?key|secret|password|token|-----BEGIN\"` returned only prose/documentation matches (security-rule references, checklist prose) — no live credential",
+        "npm run check:secret-access / check:org-secret-access both ran clean of any new finding; the only findings reported (jiraConnectionStore.rls.test.ts, orgSecrets.ts, pollWorker.ts) are confirmed pre-existing and outside this diff"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No secret handling introduced by this diff; nothing to clean up.",
+      "code_references": [
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff adds or modifies any webhook receiver.",
+      "evidence": [
+        "No services/core/src/webhooks or routes/*Webhook* files appear in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed; out of this PR_DELTA's blast radius.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches ingestion scratch-clone handling.",
+      "evidence": [
+        "No services/workers/** files appear in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed; out of this PR_DELTA's blast radius.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-03a diff (.claude/, .sdd/, AGENTS.md, CLAUDE.md, scripts/*, docs/*, .github/workflows/ci.yml, package.json)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces any Cypher/SQL/shell string concatenation from untrusted input.",
+      "evidence": [
+        "This diff's only executable code is scripts/generate-agent-shims.mjs and scripts/validate-security-audit-*.mjs, which construct no queries at all (file/YAML/JSON parsing only); no shell command is built by string concatenation from external input in either script (verified by reading both files in full)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No injection surface introduced; nothing to clean up.",
+      "code_references": [
+        "scripts/generate-agent-shims.mjs",
+        "scripts/validate-security-audit-run.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Searched every new/changed script in this diff for direct secret/credential reads outside the designated loader.",
+      "evidence": [
+        "Read scripts/generate-agent-shims.mjs, scripts/validate-security-audit-run.mjs, scripts/validate-security-audit-agents.mjs in full: none reads process.env, credential files, or any secret store",
+        "check:secret-access / check:org-secret-access re-run fresh: only pre-existing, out-of-diff findings reported"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        "scripts/generate-agent-shims.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Grepped the full staged diff for hardcoded/historical secret patterns.",
+      "evidence": [
+        "`git diff --cached` grep sweep for api key/secret/password/token/PEM headers found only documentation prose (e.g. security-rule references, PL-03g's narrative mention of `.ssh/id_rsa` as an example exfiltration path, not a live path) — no live secret"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing frontend secret exposure (no apps/web changes).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to frontend secret exposure (no apps/web changes) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing log/metric/trace secret leakage (no logging/telemetry code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to log/metric/trace secret leakage (no logging/telemetry code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing secret storage/access controls (no secret-store code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to secret storage/access controls (no secret-store code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing secret rotation/cache invalidation (no rotation code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to secret rotation/cache invalidation (no rotation code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing worker/sandbox exposure (no services/workers changes).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to worker/sandbox exposure (no services/workers changes) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Read the full .github/workflows/ci.yml (262 lines) and the exact diff hunk added by this PR (3 new steps) for fork/PR secret exposure.",
+      "evidence": [
+        "The 3 new steps (`check:agent-shims`, `test:agent-shims`, `test:sdd-completeness`) are plain `npm run` invocations with no artifact upload, no secret env var, and run under the same pre-existing `on: push, pull_request` triggers (no `pull_request_target`) as every other step in the file"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches application-level audit logging (permission/org-membership/integration/MCP-key changes).",
+      "evidence": [
+        "No services/core audit-log code is in this diff's changed-paths list. The one audit-trail mechanism this diff does modify — the security-history manifest's own content-hash tamper-evidence — is evaluated separately in this report's narrative (see \"Security-stage self-integrity\" section), not under this application-audit-log checklist item."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches application-level audit-log tamper/repudiation controls.",
+      "evidence": [
+        "No services/core audit-log code is in this diff's changed-paths list. See this report's narrative section on security-history immutability/manifest hashing for the closest in-scope equivalent, verified separately."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing tenant deletion/offboarding (no data-lifecycle code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to tenant deletion/offboarding (no data-lifecycle code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing backup/restore isolation (no backup code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to backup/restore isolation (no backup code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing export/support tooling (no export code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to export/support tooling (no export code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .github/workflows/ci.yml, package.json/-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any code implementing detection/response (no alerting code changed).",
+      "evidence": [
+        "This diff's changed-paths list contains no file relevant to detection/response (no alerting code changed) (no frontend bundle, logging/telemetry, secret storage, rotation, worker/sandbox, tenant-deletion, backup, export, or detection code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Verified the one new dependency this diff adds (js-yaml@4.3.0) has a complete, enforced lockfile entry.",
+      "evidence": [
+        "package-lock.json's node_modules/js-yaml entry has a concrete `resolved` registry URL and a `sha512` integrity hash",
+        "package.json pins js-yaml with a caret range (^4.3.0), the same convention already used by every other root devDependency in this file"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        "package-lock.json",
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked js-yaml's own package.json for npm lifecycle scripts (preinstall/install/postinstall), and read generate-agent-shims.mjs for any exec of untrusted content.",
+      "evidence": [
+        "node_modules/js-yaml/package.json's \"scripts\" field contains only lint/test/build/coverage/gh-demo/prepack entries — no preinstall/install/postinstall hook",
+        "scripts/generate-agent-shims.mjs only reads/writes repo-local files via node:fs and calls `execFileSync('git', ['status', '--porcelain', ...])` with a fixed argument array (no shell, no string interpolation of untrusted input)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        "scripts/generate-agent-shims.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for an automated dependency-vulnerability/SBOM scanning gate in CI, then ran `npm audit --omit=dev` manually as a substitute to see what such a gate would currently surface.",
+      "evidence": [
+        "Read the full .github/workflows/ci.yml (262 lines): no `npm audit`, no Dependabot/Renovate config, no SBOM-generation step exists anywhere in CI",
+        "`npm audit --omit=dev --json` was run directly against this checkout and reports 15 existing advisories (8 moderate, 7 high) across @hono/node-server, @modelcontextprotocol/sdk, body-parser, bullmq, drizzle-orm, express, fast-uri, next, path-to-regexp, postcss, qs, react-router, react-router-dom, uuid, ws",
+        "Confirmed the newly added dependency (js-yaml) is not among the 15 flagged packages, and none of the 15 flagged packages appear in this diff's changed-paths list — all 15 are pre-existing, unrelated to PL-03a"
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-4cad365ba4d1",
+        "status": "OPEN",
+        "first_seen_run_id": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+        "first_seen_commit": "90330fb19231113ac57f35f2c45bbe31e5447d93",
+        "last_seen_run_id": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+        "last_seen_commit": "90330fb19231113ac57f35f2c45bbe31e5447d93",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Recommend new ticket: CI-integrated dependency vulnerability scanning (no existing ticket ID; not part of PL-03a's scope)",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Reproduce with `npm audit --omit=dev` from repo root. No cleanup needed (read-only command). Recommend a follow-up ticket adding an `npm audit`/Dependabot CI gate; the 7 HIGH advisories currently have zero automated detection.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed ci.yml's trigger configuration and the 3 newly added steps for fork/PR write-token or secret exposure.",
+      "evidence": [
+        "`on: push, pull_request` (unchanged by this diff) — no `pull_request_target`, `workflow_dispatch`, or `issue_comment` trigger exists anywhere in the file",
+        "The 3 new steps consume no secrets and request no elevated permissions"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Searched the full ci.yml for `${{ github.event... }}` or other attacker-influenceable values interpolated directly into a `run:` shell block.",
+      "evidence": [
+        "No `${{ github.event.* }}`, branch-name, or commit-message interpolation appears anywhere in ci.yml's `run:` blocks (checked the full file, not just the diff hunk)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether third-party GitHub Actions used in ci.yml are pinned to an immutable commit SHA/digest rather than a mutable tag.",
+      "evidence": [
+        "`actions/checkout@v4`, `actions/setup-node@v4`, `actions/setup-python@v5` are all pinned to major-version tags, not commit SHAs — pre-existing across the whole file, not introduced or modified by this diff (confirmed: none of these lines appear in `git diff --cached -- .github/workflows/ci.yml`, which shows only the 18-line addition)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-023dd3a498c5",
+        "status": "OPEN",
+        "first_seen_run_id": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+        "first_seen_commit": "90330fb19231113ac57f35f2c45bbe31e5447d93",
+        "last_seen_run_id": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+        "last_seen_commit": "90330fb19231113ac57f35f2c45bbe31e5447d93",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Reproduce by reading ci.yml lines 34, 37, 156. Fix by pinning to a commit SHA (e.g. `actions/checkout@<sha> # v4.x.x`). Pre-existing, unrelated to this ticket; not blocking.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff adds or modifies any Dockerfile or container configuration.",
+      "evidence": [
+        "No Dockerfile, docker-compose.yml, or infra/** file appears in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes CI service-container network exposure (redis/postgres ports).",
+      "evidence": [
+        "ci.yml's `services:` blocks (redis/postgres port mappings) are unchanged by this diff — the added hunk is only 3 new steps inside the existing `node` job"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes any cloud IAM role/policy definition.",
+      "evidence": [
+        "No infra/**, IAM, or cloud-role file appears in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the 3 new CI steps introduce any new environment variable or endpoint that could cross local/test/staging/production boundaries.",
+      "evidence": [
+        "The 3 new steps run bare `npm run` scripts against tracked repo files only; no new env var, URL, or credential reference is introduced by this diff's ci.yml hunk"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes any TLS/configuration posture.",
+      "evidence": [
+        "No TLS, cipher, or debug-mode configuration file appears in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes availability/recovery configuration (quotas, autoscaling, backups).",
+      "evidence": [
+        "No such configuration file appears in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes any database/graph migration.",
+      "evidence": [
+        "No drizzle/migration/graph_migrations file appears in this diff's changed-paths list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-03a diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the SC-06 (action pinning) and SC-03 (no scanning gate) findings have a tracked owner/deadline.",
+      "evidence": [
+        "Neither finding currently has a ticket, owner, or due date; both are new OPEN findings from this first-ever security run"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed; recommend opening tracked follow-up tickets for SC-03 and SC-06.",
+      "code_references": []
+    }
+  ]
+}
