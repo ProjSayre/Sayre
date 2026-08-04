@@ -38,10 +38,25 @@
  * is covered by scripts/guard-checker-readonly.test.mjs, which CI runs. Do not rely on reading
  * this file to know it works.
  *
+ * WHY THIS PARSES THE STDIN PAYLOAD WITH parseJsonOrThrow, NOT PLAIN JSON.parse (security round 6 /
+ * the SEC-10 audit's "check every remaining JSON.parse call site" pass):
+ * This payload is generated once per tool call by the trusted harness process, not read back from a
+ * per-run artifact an earlier, less-trusted stage wrote to disk — it is not the same class of risk
+ * `security-history/<run-id>/{manifest,results}.json` was (SEC-10), where a duplicate key let a
+ * later, forged value silently override an earlier, real one written by a prior, distinct process.
+ * There is no known way for a duplicate top-level key to reach this stdin payload today. This switch
+ * is defense-in-depth and consistency, not a demonstrated exploit here: every JSON parse in the
+ * security-relevant script surface now goes through the same duplicate-key-rejecting parser, so a
+ * future change to how this payload is assembled inherits the same protection automatically rather
+ * than needing its own audit later. Failure behavior is unchanged either way — this file already
+ * fails closed (BLOCKED) on any parse error, and `parseJsonOrThrow`'s errors are ordinary `Error`s
+ * the existing `catch` already handles.
+ *
  * Exit 0 = allow. Exit 2 = block, with the reason on stderr.
  */
 
 import { resolve, relative, isAbsolute, sep } from 'node:path';
+import { parseJsonOrThrow } from './pipeline-contracts.mjs';
 
 /** Stage names that are read-only with respect to source code. Both spellings of the security
  * stage are listed because the runtime shim name and the neutral `.sdd/` stage name differ.
@@ -74,7 +89,7 @@ function isContainedIn(root, target) {
 function main(raw) {
   let payload;
   try {
-    payload = JSON.parse(raw);
+    payload = parseJsonOrThrow(raw, 'PreToolUse payload');
   } catch {
     block(
       'could not parse the PreToolUse payload, so the calling agent could not be identified. ' +

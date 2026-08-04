@@ -17,23 +17,50 @@
 // What has NO equivalent to construct anymore, and why (the constraint this file's task explicitly
 // asked to honor — migrate intent, state plainly when a premise is gone, never silently drop
 // coverage): every "append a second, later block below the real one" attack (a duplicate "##
-// Verdict"/"## Files changed" heading, a fenced/commented shadow) required a document with more than
-// one candidate location for the same fact. `review.json`/`security.json`/`changes.json` each hold
-// exactly one value for the fact in question (one `verdict` string, one `filesChanged` array) — there
-// is no second position in the JSON for an appended block to occupy, so there is nothing left for
-// those tests to construct. The intent — "a run whose real verdict is not PASS must never be read as
-// PASS" — is retargeted at direct enum-validation tests below (a near-miss literal, a missing field,
-// a sentence containing the word PASS) and is the exact same assertion, minus the markdown-shaped
-// attack vector. `findCompletedSecurityRun`'s old substring-scan fallback (for recovering a run id
-// when the structured "Run ID:" line was absent or malformed) has no equivalent either: there is no
-// fallback path once the field is a required, strictly-typed JSON string — see the "run id
+// Verdict"/"## Files changed" heading, a fenced/commented shadow) required a *markdown* document with
+// more than one candidate heading location for the same fact. There is no heading, fence, or comment
+// left in `review.json`/`security.json`/`changes.json` for that specific attack shape to occupy.
+//
+// CORRECTED (round 5 / review Critical 1) — this is the part that matters most: an earlier version of
+// this comment went on to claim "`review.json`/`security.json`/`changes.json` each hold exactly one
+// value for the fact in question... there is no second position in the JSON for an appended block to
+// occupy, so there is nothing left for those tests to construct." That premise was believed rather
+// than tested, and was false: a *duplicate JSON key* — `{"verdict":"NEEDS_FIXES","verdict":"PASS"}` —
+// is exactly a second position for the same fact, one layer down from a duplicate markdown heading,
+// and it reproduced the identical target outcome (a durable `review: PASS` / `security: PASS` ledger
+// entry for a run whose real, first-written verdict was `NEEDS_FIXES` / `BLOCKED`) end to end against
+// this real script. The "C1 regression" tests below restore exactly that coverage, retargeted at the
+// JSON contract's own remaining ambiguity (a duplicate object key, closed by
+// scripts/pipeline-contracts.mjs's `parseJsonOrThrow`) rather than at the markdown mechanism that used
+// to carry it. The broader intent — "a run whose real verdict is not PASS must never be read as
+// PASS" — is covered by both: the enum-validation tests below (a near-miss literal, a missing field,
+// a sentence containing the word PASS) for the shape-of-value class, and the C1-regression tests for
+// the duplicate-key class. `findCompletedSecurityRun`'s old substring-scan fallback (for recovering a
+// run id when the structured "Run ID:" line was absent or malformed) has no equivalent either: there
+// is no fallback path once the field is a required, strictly-typed JSON string — see the "run id
 // resolution" section below for what replaces that suite.
 //
-// The script computes its own repoRoot as resolve(<its own directory>, '..') and imports its
-// sibling build-ledger-index.mjs/pipeline-contracts.mjs by relative path, so exercising it in
-// isolation means copying all three files into a throwaway fixture repo and running it there — same
-// approach as scripts/generate-agent-shims.test.mjs, whose fixture-repo/afterEach-cleanup
-// conventions this file follows.
+// CORRECTED (round 6 / security SEC-10) — the same shape as the round-5 correction directly above,
+// one layer down: "closed by scripts/pipeline-contracts.mjs's parseJsonOrThrow" was true of
+// `review.json`/`security.json`/`changes.json` themselves, but was read as "closed, full stop," which
+// was false. `findCompletedSecurityRun` reads `security-history/<run-id>/manifest.json` and
+// `results.json` directly (not through `readSecurityJson` or any of the five sidecar readers
+// `parseJsonOrThrow` was wired into that round), and kept using plain `JSON.parse` — so the identical
+// duplicate-key forgery still worked end to end, one layer under `security.json`, surviving the round
+// this comment claimed had closed it. The "SEC-10 regression" tests below (in the same section as the
+// C1-regression ones, immediately following) are that restored coverage — for `results.json`'s
+// `verdict` and `manifest.json`'s `status` — now that `findCompletedSecurityRun` also reads through
+// `pipeline-contracts.mjs`'s `readJsonFile`. The lesson generalizes: "closed by parseJsonOrThrow" is a
+// claim about whichever call sites actually call it, never about "this class of bug, everywhere,"
+// and needs re-checking against the actual call graph every time a new reader of the same kind of file
+// is added — the "audit every JSON.parse call site" step this round adds is exactly that re-check.
+//
+// The script computes its own repoRoot as resolve(<its own directory>, '..') and imports its sibling
+// build-ledger-index.mjs/pipeline-contracts.mjs/check-bounds.mjs by relative path, so exercising it in
+// isolation means copying all four files (plus .sdd/bounds.yml, which check-bounds.mjs's `readBounds`
+// reads — see GAP-01) into a throwaway fixture repo and running it there — same approach as
+// scripts/generate-agent-shims.test.mjs, whose fixture-repo/afterEach-cleanup conventions this file
+// follows.
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -56,6 +83,11 @@ const repoRoot = resolve(scriptsDir, '..');
 const ledgerAppendSource = readFileSync(resolve(scriptsDir, 'ledger-append.mjs'), 'utf8');
 const buildIndexSource = readFileSync(resolve(scriptsDir, 'build-ledger-index.mjs'), 'utf8');
 const contractsSource = readFileSync(resolve(scriptsDir, 'pipeline-contracts.mjs'), 'utf8');
+// GAP-01: --hotfix now imports scripts/check-bounds.mjs directly (readBounds/matchesAny) to enforce
+// its lane and barred-path gates, so the fixture repo below must carry a copy of it, and of the real
+// .sdd/bounds.yml it reads, the same way it already carries build-ledger-index.mjs/pipeline-contracts.mjs.
+const checkBoundsSource = readFileSync(resolve(scriptsDir, 'check-bounds.mjs'), 'utf8');
+const boundsYmlSource = readFileSync(resolve(repoRoot, '.sdd', 'bounds.yml'), 'utf8');
 
 const roots = [];
 afterEach(() => {
@@ -155,9 +187,11 @@ function fixtureRepo({ pipeline = {}, git = true } = {}) {
   writeFileSync(join(root, 'scripts', 'ledger-append.mjs'), ledgerAppendSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), checkBoundsSource, 'utf8');
 
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
+  writeFileSync(join(root, '.sdd', 'bounds.yml'), boundsYmlSource, 'utf8');
 
   for (const [relPath, contents] of Object.entries(pipeline)) {
     const dest = join(root, '.pipeline', relPath);
@@ -195,12 +229,18 @@ function runLedgerAppend(root) {
   return spawnSync(process.execPath, [join(root, 'scripts', 'ledger-append.mjs')], { cwd: root, encoding: 'utf8' });
 }
 
+// Indices 0-9 (the five --flag/value pairs) are relied on positionally by several tests below
+// (HOTFIX_ARGS[1], [3], [5], [7], [9]) — GAP-01's new `--lane full` is appended AFTER them,
+// deliberately, so those existing indices stay valid. `full` is the real, unfenced lane
+// .sdd/hotfix.md's "who may use it" gate requires; see the dedicated lane-gate tests below for the
+// fenced/unknown/missing-lane cases this constant does not exercise.
 const HOTFIX_ARGS = [
   '--what-broke', 'Prod 500s on GET /api/repos since the 14:02 deploy.',
   '--what-changed', 'Reverted the null org_id guard removed in the same deploy.',
   '--why-skipped', 'Incident in progress; full pipeline would have taken longer than the outage.',
   '--not-verified', 'No new automated test added; only manually re-checked the one endpoint.',
   '--follow-up-ticket', 'PL-99z-followup',
+  '--lane', 'full',
 ];
 
 function runLedgerAppendHotfix(root, args = HOTFIX_ARGS) {
@@ -428,6 +468,72 @@ test('refuses when security.json\'s verdict is a near-miss string ("PASSED") rat
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /field "verdict" must be exactly one of/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+// --- C1 regression (review round 4): a duplicate JSON key is a real, end-to-end exploitable --------
+// forgery, not a hypothetical. Restored per review's explicit instruction after the migration wrongly
+// retired this class of coverage on a premise ("no second position in the JSON") that was never
+// tested and turned out to be false — see the file-header comment above.
+
+test('[C1 regression] refuses when review.json has a duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was NEEDS_FIXES — the exact forgery review.md\'s round-4 report demonstrated end to end against this script', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline['review.json'] = '{"verdict":"NEEDS_FIXES","verdict":"PASS"}';
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate key "verdict"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry — a durable review: PASS entry for a real NEEDS_FIXES run is exactly the outcome this check exists to prevent');
+});
+
+test('[C1 regression] refuses when security.json has a duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was BLOCKED', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline['security.json'] = `{"verdict":"BLOCKED","runId":"${RUN_ID}","verdict":"PASS"}`;
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate key "verdict"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[C1 regression] refuses when changes.json has a duplicate "filesChanged" key, even though the working tree is otherwise clean (the fallback path this forgery would have to go through)', () => {
+  const pipeline = terminalPassPipeline({ includeChanges: false });
+  pipeline['changes.json'] = '{"filesChanged":["app/real.ts"],"redTestChanges":[],"filesChanged":["app/laundered.ts"]}';
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate key "filesChanged"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+// --- SEC-10 (security round 6): the C1-regression class above was retargeted at review.json/
+// security.json/changes.json but never reached findCompletedSecurityRun's OWN reads of
+// security-history/<run-id>/manifest.json and results.json — the immutable audit-trail files
+// security.json's runId points at, one layer under security.json itself. That gap is why the exact
+// same forgery review round 4 demonstrated against security.json still worked end to end against the
+// immutable copy, surviving the round-5 fix entirely (see .pipeline/security-history/ SEC-10). These
+// two tests are the coverage that gap's own absence made invisible — restored here, not deleted,
+// per this round's explicit instruction never to drop a regression class on an untested premise.
+
+test('[SEC-10 regression] refuses when security-history/<run-id>/results.json has a duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was BLOCKED — the one call site (findCompletedSecurityRun) that review round 5\'s parseJsonOrThrow fix never reached, even though review.json/security.json/changes.json all were', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline[`security-history/${RUN_ID}/results.json`] = `{"schema_version":"1.0.0","run_id":"${RUN_ID}","verdict":"BLOCKED","verdict":"PASS"}`;
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate key "verdict"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry — a durable security: PASS entry for a real BLOCKED security run is exactly the outcome this check exists to prevent');
+});
+
+test('[SEC-10 regression] refuses when security-history/<run-id>/manifest.json has a duplicate "status" key whose LAST occurrence is COMPLETE but whose real, first-written status was not', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline[`security-history/${RUN_ID}/manifest.json`] =
+    `{"schema_version":"1.0.0","run_id":"${RUN_ID}","status":"IN_PROGRESS","status":"COMPLETE",` +
+    `"completed_at":"2026-08-03T12:05:00.000Z","target":{"commit_sha":"${'a'.repeat(40)}","dirty":false}}`;
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate key "status"/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
@@ -732,8 +838,10 @@ test('AC10: the real .gitignore keeps freshly-written ledger content trackable (
   writeFileSync(join(root, 'scripts', 'ledger-append.mjs'), ledgerAppendSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), checkBoundsSource, 'utf8');
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
+  writeFileSync(join(root, '.sdd', 'bounds.yml'), boundsYmlSource, 'utf8');
 
   for (const [relPath, contents] of Object.entries(terminalPassPipeline())) {
     const dest = join(root, '.pipeline', relPath);
@@ -830,7 +938,11 @@ test('--hotfix requires none of the normal .pipeline/ artifacts and writes only 
 
 test('--hotfix fails closed and writes nothing when a required field is missing, naming which flag', () => {
   const root = hotfixFixtureRepo();
-  const incomplete = HOTFIX_ARGS.slice(0, HOTFIX_ARGS.length - 2); // drop --follow-up-ticket and its value
+  // Drop exactly the --follow-up-ticket/value pair, by flag name rather than position — HOTFIX_ARGS
+  // now also carries a trailing --lane full (GAP-01), so a positional slice from the end would drop
+  // the wrong pair.
+  const ticketFlagIndex = HOTFIX_ARGS.indexOf('--follow-up-ticket');
+  const incomplete = [...HOTFIX_ARGS.slice(0, ticketFlagIndex), ...HOTFIX_ARGS.slice(ticketFlagIndex + 2)];
   const result = runLedgerAppendHotfix(root, incomplete);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /--follow-up-ticket/);
@@ -845,6 +957,79 @@ test('--hotfix fails closed when a required field is present but empty', () => {
   const result = runLedgerAppendHotfix(root, args);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /--what-broke/);
+});
+
+// --- GAP-01 (security round 6): the two mechanically-checkable eligibility gates from .sdd/hotfix.md
+// are now enforced — "who may use it" (an unfenced "full" lane) and the "Honest limits" barred-path
+// list (org_id/RBAC/secrets/webhook/Graph Query Service). "Is production actually broken" and "is
+// rollback better" remain human judgment, documented in .sdd/hotfix.md and not asserted here — there
+// is nothing on disk those two gates could be mechanically checked against.
+
+function hotfixArgsWithLane(lane) {
+  const laneFlagIndex = HOTFIX_ARGS.indexOf('--lane');
+  return [...HOTFIX_ARGS.slice(0, laneFlagIndex), '--lane', lane];
+}
+
+function hotfixArgsWithoutLane() {
+  const laneFlagIndex = HOTFIX_ARGS.indexOf('--lane');
+  return HOTFIX_ARGS.slice(0, laneFlagIndex);
+}
+
+test('[GAP-01] --hotfix requires --lane, and writes nothing without it', () => {
+  const root = hotfixFixtureRepo();
+  const result = runLedgerAppendHotfix(root, hotfixArgsWithoutLane());
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--lane/);
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
+  assert.equal(runIds.length, 0, 'must write no run directory when --lane is missing');
+});
+
+test('[GAP-01] --hotfix refuses an unknown lane name, rather than silently granting eligibility', () => {
+  const root = hotfixFixtureRepo();
+  const result = runLedgerAppendHotfix(root, hotfixArgsWithLane('nonexistent-lane'));
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unknown lane/);
+});
+
+test('[GAP-01] --hotfix refuses a fenced lane — .sdd/hotfix.md\'s "who may use it" gate', () => {
+  const root = hotfixFixtureRepo();
+  mkdirSync(join(root, 'apps', 'web'), { recursive: true });
+  writeFileSync(join(root, 'apps', 'web', 'page.tsx'), 'export default function Page() { return null; }\n', 'utf8');
+  const result = runLedgerAppendHotfix(root, hotfixArgsWithLane('frontend'));
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /not available to a fenced lane/);
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
+  assert.equal(runIds.length, 0, 'must write no run directory for a fenced lane');
+});
+
+test('[GAP-01] --hotfix on the unfenced "full" lane still succeeds — the lane gate does not block the legitimate case', () => {
+  const root = hotfixFixtureRepo();
+  const result = runLedgerAppendHotfix(root, [...HOTFIX_ARGS, '--files', 'app/legit-hotfix.ts']);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('[GAP-01] --hotfix refuses when a touched file matches .sdd/bounds.yml\'s hotfix_barred_paths list — .sdd/hotfix.md\'s "Honest limits" gate (org_id/RBAC/secrets/webhook/Graph Query Service)', () => {
+  const root = hotfixFixtureRepo();
+  const args = [...HOTFIX_ARGS, '--files', 'services/core/src/security/graphOrgGuard.ts'];
+  const result = runLedgerAppendHotfix(root, args);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Honest limits/);
+  assert.match(result.stderr, /services\/core\/src\/security\/graphOrgGuard\.ts/);
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
+  assert.equal(runIds.length, 0, 'must write no run directory when a barred path is touched');
+});
+
+test('[GAP-01] --hotfix refuses when a barred path is detected via the live git diff, not only via explicit --files', () => {
+  const root = hotfixFixtureRepo();
+  mkdirSync(join(root, 'services', 'core', 'src', 'webhooks'), { recursive: true });
+  writeFileSync(join(root, 'services', 'core', 'src', 'webhooks', 'githubSignature.ts'), '// hotfix attempt\n', 'utf8');
+  const result = runLedgerAppendHotfix(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Honest limits/);
+  assert.match(result.stderr, /services\/core\/src\/webhooks\/githubSignature\.ts/);
 });
 
 test('a hotfix entry\'s files are excluded from index.json\'s file->spec map entirely — the core safety property', () => {
@@ -880,6 +1065,11 @@ test('a hotfix entry coexists with a normal terminal-PASS entry: both are writte
 
 test('refuses to overwrite an existing hotfix run directory (defensive — ids are randomized, but the guard exists)', () => {
   const root = hotfixFixtureRepo();
+  // An uncommitted file, so this run's own files-touched detection has something to find under the
+  // W1 fail-loud fix below (a clean tree with no --files now fails loudly, which is not what this
+  // test exists to check — see the "fails loudly" test for that).
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'collision-test.ts'), 'export const x = 1;\n', 'utf8');
   const runId = generateHotfixRunId({ cwd: root });
   // Pre-seed a COMPLETE, valid (if unrelated) prior hotfix entry at the guessed id — a partial one
   // (e.g. entry.md with no entry.json) would make the *next* run's own writeIndex() call fail
@@ -901,6 +1091,36 @@ test('refuses to overwrite an existing hotfix run directory (defensive — ids a
   const result = runLedgerAppendHotfix(root);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(readFileSync(join(root, '.sdd', 'ledger', runId, 'entry.md'), 'utf8'), 'PRE-EXISTING\n');
+});
+
+// --- W1 (review): a hotfix run must never silently record an empty file list -------------------
+//
+// The realistic incident flow commits the fix *before* running --hotfix, leaving the working tree
+// clean (no git diff, no untracked files) and no changes.json to fall back on — filesTouched(null)
+// then returns [] and the old code silently wrote "(none could be determined automatically)." Fixed:
+// fail loudly, naming --files, unless the caller explicitly supplies one.
+
+test('[W1] --hotfix fails loudly, and writes nothing, when the working tree is already clean and no --files was supplied — the realistic "fix already committed" incident flow', () => {
+  const root = hotfixFixtureRepo(); // fixtureRepo() commits everything — the tree starts clean
+  const result = runLedgerAppendHotfix(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--files/);
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
+  assert.equal(runIds.length, 0, 'must write no run directory when no files-touched data could be determined at all');
+});
+
+test('[W1] --hotfix records an explicit --files list even when the working tree is already clean', () => {
+  const root = hotfixFixtureRepo();
+  const args = [...HOTFIX_ARGS, '--files', 'app/already-committed-fix.ts', 'infra/config.yml'];
+  const result = runLedgerAppendHotfix(root, args);
+  assert.equal(result.status, 0, result.stderr);
+
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  assert.equal(runIds.length, 1);
+  const entryJson = JSON.parse(readFileSync(join(ledgerDir, runIds[0], 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.filesTouched, ['app/already-committed-fix.ts', 'infra/config.yml']);
 });
 
 test('generateHotfixRunId produces a sortable, HOTFIX-tagged, collision-resistant id', () => {

@@ -29,17 +29,24 @@ the markdown. This replaced three rounds of patching a hand-rolled markdown bloc
 and HTML-comment state well enough to close one document-formatting exploit per round while
 introducing or leaving open another — see `.pipeline/review.md`'s round-3 "On convergence" section
 and `scripts/pipeline-contracts.mjs`'s own header comment for the full argument. `JSON.parse` either
-succeeds or throws, so there is no heading, fence, comment, or ambiguity surface left for an
-adversarial or malformed document to exploit; `scripts/pipeline-contracts.mjs` validates each
-sidecar's shape strictly on top of that (required keys present, verdict/classification literals
-restricted to their enum, arrays checked to be arrays, ids checked against the `AC-n`/`EC-n` shape,
-duplicate ids/paths within one array refused). The markdown reports are not decorative — they remain
-the documents a human reads, and each stage's own file still requires them — but no script parses
-their prose for a decision anymore. **Honest limit, stated plainly:** this removes a *third party's*
-ability to inject a false reading through document formatting (which is what every demonstrated
-exploit against the old scanner did); it does not, and cannot, stop a stage from writing a false value
-into its own JSON in the first place — a stage that lies about its own verdict still lies, exactly as
-much as it could by lying in markdown prose.
+succeeds or throws, so the *markdown-structural* ambiguity surface (a heading, a fence, an HTML
+comment, a setext heading, an ATX closing sequence) is gone outright; `scripts/pipeline-contracts.mjs`
+validates each sidecar's shape strictly on top of that (required keys present, verdict/classification
+literals restricted to their enum, arrays checked to be arrays, ids checked against the `AC-n`/`EC-n`
+shape, duplicate ids/paths within one array refused, **and, as of round 5, a duplicate key within one
+JSON object refused** — plain `JSON.parse` permits repeating a key and resolves it "last value wins,"
+the identical resolution rule the markdown round's duplicate-heading exploit used, one layer down;
+review's round-4 report reproduced it end to end, so `scripts/pipeline-contracts.mjs`'s
+`parseJsonOrThrow` now runs a strict, duplicate-key-rejecting parser instead of `JSON.parse` directly —
+see that file's header for why a strict parser is achievable for JSON's closed grammar and was not for
+markdown's unbounded one). The markdown reports are not decorative — they remain the documents a human
+reads, and each stage's own file still requires them — but no script parses their prose for a decision
+anymore. **Honest limit, stated plainly:** this removes a *third party's* ability to inject a false
+reading through document formatting or through a duplicate-key resolution rule (which is what every
+demonstrated exploit against the old scanner, and the round-4 duplicate-key exploit, did); it does
+not, and cannot, stop a stage from writing a false value into its own JSON in the first place — a
+stage that lies about its own verdict still lies, exactly as much as it could by lying in markdown
+prose.
 
 ## Stage sequence
 
@@ -49,9 +56,11 @@ much as it could by lying in markdown prose.
    `red` cites these on every test it authors, so they have to exist before it runs, and
    `check-red-integrity.mjs`'s spec-trace check resolves against `spec.json`'s copy of them, not
    `spec.md`'s prose.
-2. **red** — reads `spec.md`/`spec.json`, and the impact map if PL-03b's test-impact resolver exists
-   (it does not yet — `red` states that absence explicitly, via `red.json`'s required
-   `impactMapPresent` boolean, rather than silently proceeding). Authors a behavioral test for every
+2. **red** — reads `spec.md`/`spec.json`, and the impact map from PL-03b's test-impact resolver when
+   it's usable in the current checkout (it is wired in; usability depends on the workers' Poetry
+   environment — Python 3.12 + Tree-sitter's native grammars — being available). `red` states the
+   resolver's usable/unavailable status explicitly either way, via `red.json`'s required
+   `impactMapPresent` boolean, rather than silently proceeding. Authors a behavioral test for every
    `AC-*`/`EC-*` item **before `dev` runs**, so no test can have been shaped by the diff it will later
    verify. Classifies each as `RED-CORRECT`, `RED-DEFERRED` (an item that needs infrastructure this
    checkout doesn't have, e.g. a live Neo4j), or — only transiently, never in a finished `red.md`/
@@ -141,9 +150,10 @@ say which stage needs to run first.
 ## Review persistence — the resolved divergence
 
 The two prior mirrors disagreed on *who writes* `.pipeline/review.md`: the Claude Code skill had
-the `review` subagent write it directly (intended to be confined to `.pipeline/` by a hook guard —
-see `.sdd/README.md`'s note on why that guard is not currently load-bearing); the other mirror had
-its coordinator save the subagent's returned markdown verbatim. Both are the same contract
+the `review` subagent write it directly, confined to `.pipeline/` by a hook guard (real and
+load-bearing for Claude Code since PL-03g — see `.sdd/README.md`'s "Note on hook enforcement"); the
+other mirror had its coordinator save the subagent's returned markdown verbatim, with no equivalent
+guard (Codex has no subagent-isolation mechanism to hang one on). Both are the same contract
 implemented two different ways, and the contract is what's neutral:
 
 > `review` (and `security`) produce a report in the shape their stage file defines; that report is
@@ -189,9 +199,11 @@ the boundary were real:
 
 ## Entry points
 
-Four commands compose the stages above. Each is documented at the neutral level here; each
-runtime's shim (`.claude/skills/<name>/SKILL.md`, or the equivalent invocation in a runtime without
-a skills mechanism) is a thin pointer to the matching section below.
+Five commands compose the stages above and below — four that run some or all of the stage sequence
+(`/pipeline`, `/spec-only`, `/pipeline-status`, `/security-recheck`), and `/hotfix`, which
+deliberately runs none of them (see this file's intro and `.sdd/hotfix.md`). Each is documented at
+the neutral level here; each runtime's shim (`.claude/skills/<name>/SKILL.md`, or the equivalent
+invocation in a runtime without a skills mechanism) is a thin pointer to the matching section below.
 
 ### `/pipeline <ticket>`
 

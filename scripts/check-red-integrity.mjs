@@ -5,6 +5,21 @@
 //
 // Usage:
 //   node scripts/check-red-integrity.mjs
+//   node scripts/check-red-integrity.mjs --dir <path>
+//
+// `--dir` (review Critical 3 / PL-03h round 5) points this script at a directory other than
+// `.pipeline/` for its three JSON inputs (`red.json`, `spec.json`, `changes.json`) — added so
+// `pr-review` (.sdd/stages/pr-review.md) can run the exact same mechanical check against a
+// *committed* copy once `.pipeline/` itself is unavailable. `.pipeline/` is gitignored, per-run
+// scratch: it does not exist on a fresh checkout of a PR branch, so a `pr-review` run that only ever
+// looked at `.pipeline/red.json` there would *always* hit the "no red.json — nothing to check" path
+// and get reported as a clean lens, which is worse than no lens at all (a check that always passes
+// teaches a reader nothing). `.sdd/ledger/<run-id>/` holds a verbatim copy of the same three files
+// (scripts/ledger-append.mjs's copySidecarsIntoLedger) once a run has reached terminal PASS — durable
+// and committed, unlike `.pipeline/`. `--dir .sdd/ledger/<run-id>` points this script there instead.
+// The "candidate new tests in the diff" check is unaffected either way — it always reads the live
+// working-tree diff, independent of which JSON directory is in use, because a candidate-new-test
+// report is about what changed on disk right now, not about a specific archived run.
 //
 // PL-03h round 4 (architectural — see .pipeline/review.md's round-3 "On convergence" section and
 // scripts/pipeline-contracts.mjs's own header): this script used to read `.pipeline/red.md`,
@@ -37,9 +52,20 @@ import { isDeclaredInChanges, knownSpecIds, readChangesJson, readRedJson, readSp
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
-const pipelineDir = join(repoRoot, '.pipeline');
 
 const TEST_FILE_PATTERN = /\.test\.(m?js|ts|tsx)$|(^|\/)test_[^/]+\.py$/;
+
+/** `--dir <path>` overrides the default `.pipeline/` directory this script reads its three JSON
+ * inputs from — see the file header for why (`pr-review` on a fresh PR checkout, where `.pipeline/`
+ * never existed). Absent, defaults to `.pipeline/`, unchanged from every prior version of this
+ * script. */
+function parseArgs(argv) {
+  let dir = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--dir') dir = argv[++i];
+  }
+  return { dir };
+}
 
 /** Every `@spec <ID> [<ID> ...]` marker occurring anywhere in a test file's actual content — the
  * project's comment idiom per .sdd/stages/red.md ("// @spec AC-3 EC-1" for TS/JS, "# @spec AC-3"
@@ -95,6 +121,12 @@ function diffCandidateFiles() {
 }
 
 function main() {
+  const { dir } = parseArgs(process.argv.slice(2));
+  const pipelineDir = dir ? resolve(repoRoot, dir) : join(repoRoot, '.pipeline');
+  // Used only in human-readable messages below, so a --dir run's output names the directory it
+  // actually read from rather than always saying ".pipeline" regardless of what was checked.
+  const dirLabel = dir ? dir.replace(/[/\\]+$/, '') : '.pipeline';
+
   const redJsonPath = join(pipelineDir, 'red.json');
   const redMdPath = join(pipelineDir, 'red.md');
 
@@ -102,23 +134,26 @@ function main() {
     if (!existsSync(redMdPath)) {
       // Legitimate absence, not a violation — a ticket that predates the `red` stage (PL-03a-style),
       // or a review re-invocation with no red stage this run. Mirrors ledger-append.mjs's own
-      // no-red-artifacts handling. Nothing to check; nothing to block on.
-      console.log(JSON.stringify({ status: 'no-red-json', violations: [], notes: ['No .pipeline/red.json for this run — nothing to check.'] }, null, 2));
-      console.log('check-red-integrity: no .pipeline/red.json for this run — nothing to check.');
+      // no-red-artifacts handling. Nothing to check; nothing to block on. Note for a `--dir` caller
+      // (pr-review, review Critical 3): this status means "nothing was checked," never "checked and
+      // clean" — a caller that cannot find red.json in either `.pipeline/` or a ledger copy must
+      // report this lens as unverified, not as passing.
+      console.log(JSON.stringify({ status: 'no-red-json', violations: [], notes: [`No ${dirLabel}/red.json for this run — nothing to check.`] }, null, 2));
+      console.log(`check-red-integrity: no ${dirLabel}/red.json for this run — nothing to check.`);
       process.exit(0);
     }
-    // .pipeline/red.md exists but .pipeline/red.json does not: under the JSON-first contract (PL-03h
-    // round 4), every control decision reads red.json, so this is not the same "no red stage ran"
-    // state as neither file existing — a red stage DID run, and it did not emit the sidecar its own
-    // stage contract (.sdd/stages/red.md) now requires. Treating this as a free pass would silently
-    // reopen the exact bypass the JSON contract exists to close (a stage that simply omits its
-    // sidecar would otherwise sail through as "nothing to check").
+    // <dir>/red.md exists but <dir>/red.json does not: under the JSON-first contract (PL-03h round
+    // 4), every control decision reads red.json, so this is not the same "no red stage ran" state as
+    // neither file existing — a red stage DID run, and it did not emit the sidecar its own stage
+    // contract (.sdd/stages/red.md) now requires. Treating this as a free pass would silently reopen
+    // the exact bypass the JSON contract exists to close (a stage that simply omits its sidecar would
+    // otherwise sail through as "nothing to check").
     console.log(JSON.stringify({
       status: 'violations-found',
-      violations: ['.pipeline/red.md exists but .pipeline/red.json does not — under the JSON-first pipeline contract (see .sdd/stages/red.md), red must emit both. This is not the "no red stage for this run" state; it is an incomplete red-stage output.'],
+      violations: [`${dirLabel}/red.md exists but ${dirLabel}/red.json does not — under the JSON-first pipeline contract (see .sdd/stages/red.md), red must emit both. This is not the "no red stage for this run" state; it is an incomplete red-stage output.`],
       notes: [],
     }, null, 2));
-    process.stderr.write('check-red-integrity: violation: .pipeline/red.md exists but .pipeline/red.json does not.\n');
+    process.stderr.write(`check-red-integrity: violation: ${dirLabel}/red.md exists but ${dirLabel}/red.json does not.\n`);
     process.exit(1);
   }
 

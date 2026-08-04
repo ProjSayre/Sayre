@@ -39,7 +39,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseJsonOrThrow, requireArray, requireObject, requireString } from './pipeline-contracts.mjs';
+import { readJsonFile, requireArray, requireObject, requireString } from './pipeline-contracts.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
@@ -91,7 +91,7 @@ function readEntryJson(runId) {
   const label = `.sdd/ledger/${runId}/entry.json`;
   const path = join(ledgerDir, runId, 'entry.json');
   if (!existsSync(path)) fail(`${label} does not exist.`);
-  const raw = parseJsonOrThrow(readFileSync(path, 'utf8'), label);
+  const raw = readJsonFile(path, label); // size-capped (SC-12) as well as strict/duplicate-key-safe
   requireObject(raw, label);
 
   const runIdField = requireString(raw.runId, label, 'runId');

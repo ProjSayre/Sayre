@@ -109,8 +109,8 @@ function fixtureRepo({ tests = [], pipeline = {}, commit = true } = {}) {
   return root;
 }
 
-function runCheck(root) {
-  return spawnSync(process.execPath, [join(root, 'scripts', 'check-red-integrity.mjs')], { cwd: root, encoding: 'utf8' });
+function runCheck(root, args = []) {
+  return spawnSync(process.execPath, [join(root, 'scripts', 'check-red-integrity.mjs'), ...args], { cwd: root, encoding: 'utf8' });
 }
 
 /** A single well-formed test file's content: a real @spec marker in the file's own native comment
@@ -589,6 +589,52 @@ test('[integration, frozen fixture] a real (frozen, committed) spec.json\'s actu
   });
   const result = runCheck(root);
   assert.equal(result.status, 0, result.stderr);
+});
+
+// --- --dir override (review Critical 3): pr-review's ledger fallback --------------------------------
+//
+// pr-review runs on a fresh PR checkout, where .pipeline/ — gitignored, per-run scratch — never
+// existed. Without an alternate source, this script always hits the "no red.json — nothing to check"
+// path there, which pr-review would otherwise report as a clean lens; a lens that always reports
+// clean is worse than no lens. `--dir` lets a caller point this same script at a durable, committed
+// copy instead (e.g. `.sdd/ledger/<run-id>/`, which scripts/ledger-append.mjs already populates with
+// the same red.json/spec.json/changes.json shape .pipeline/ has).
+
+test('--dir reads red.json/spec.json/changes.json from an alternate directory instead of .pipeline/', () => {
+  const t = oneTestFixture();
+  const root = fixtureRepo({ tests: [t] }); // no .pipeline/ directory at all
+  const ledgerRunDir = join(root, '.sdd', 'ledger', 'sample-run');
+  mkdirSync(ledgerRunDir, { recursive: true });
+  writeFileSync(join(ledgerRunDir, 'spec.json'), JSON.stringify(specJson({ acItems: ['AC-1'] })), 'utf8');
+  writeFileSync(join(ledgerRunDir, 'red.json'), JSON.stringify(redJson({ tests: [t] })), 'utf8');
+
+  // Without --dir, there is nothing under .pipeline/ to find — the exact structural no-op review
+  // found: reachable, but reports "nothing to check," never "clean."
+  const withoutDir = runCheck(root);
+  assert.equal(withoutDir.status, 0, withoutDir.stderr);
+  assert.match(withoutDir.stdout, /nothing to check/);
+
+  const withDir = runCheck(root, ['--dir', '.sdd/ledger/sample-run']);
+  assert.equal(withDir.status, 0, withDir.stderr);
+  assert.match(withDir.stdout, /no violations found/);
+});
+
+test('--dir\'s messages name the directory actually checked, not a hardcoded ".pipeline" — so a caller can tell "checked, nothing found" apart from "the wrong location was checked"', () => {
+  const root = fixtureRepo({});
+  const result = runCheck(root, ['--dir', '.sdd/ledger/nonexistent-run']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /No \.sdd\/ledger\/nonexistent-run\/red\.json for this run/);
+});
+
+test('--dir still fails closed when spec.json is missing at the alternate location — the same required-input guarantee as the default .pipeline/ path', () => {
+  const t = oneTestFixture();
+  const root = fixtureRepo({ tests: [t] });
+  const ledgerRunDir = join(root, '.sdd', 'ledger', 'sample-run');
+  mkdirSync(ledgerRunDir, { recursive: true });
+  writeFileSync(join(ledgerRunDir, 'red.json'), JSON.stringify(redJson({ tests: [t] })), 'utf8');
+  const result = runCheck(root, ['--dir', '.sdd/ledger/sample-run']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /spec\.json does not exist/);
 });
 
 // --- Required input: spec.json must exist ----------------------------------------------------------

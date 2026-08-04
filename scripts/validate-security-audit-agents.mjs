@@ -12,6 +12,14 @@ function read(path) {
   return readFileSync(resolve(root, path), 'utf8');
 }
 
+// SEC-10 follow-up (security round 6, "audit every remaining JSON.parse call site, or state why it
+// is not a control input"): this file only ever parses `security-attacker-agents/agent-registry.json`
+// and the two JSON Schema files it points at (`registry.manifest_schema`/`registry.results_schema`)
+// — static, git-tracked repository configuration, reviewed the normal way through a diff, exactly
+// like `.sdd/bounds.yml` or `package.json`. None of it is per-run output an agent process writes
+// (unlike `security-history/<run-id>/{manifest,results}.json`, which SEC-10 was about, and which
+// `scripts/validate-security-audit-run.mjs` reads through `pipeline-contracts.mjs`'s
+// `readJsonFile` instead, for exactly that reason). Left on plain `JSON.parse` deliberately.
 function parseJson(path) {
   try {
     return JSON.parse(read(path));

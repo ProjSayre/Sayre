@@ -59,6 +59,7 @@ test('a fenced lane cannot touch the files that define the rules', () => {
     '.claude/settings.json',
     '.github/workflows/ci.yml',
     'scripts/guard-checker-readonly.mjs',
+    'scripts/check-bounds.mjs',
     '.gitignore',
     'CLAUDE.md',
   ]) {
@@ -66,6 +67,14 @@ test('a fenced lane cannot touch the files that define the rules', () => {
     assert.equal(code, VIOLATION, governing);
     assert.match(stdout, /governs the rules themselves/, governing);
   }
+});
+
+test('a fenced lane cannot edit the bounds-check script itself — review W3: a lane including scripts/** must not be able to widen its own fence by editing the script that computes it', () => {
+  // Not moot today (no lane's globs include scripts/**), but this is exactly the gap review flagged:
+  // scripts/guard-checker-readonly.mjs was already denied; scripts/check-bounds.mjs was not.
+  const { code, stdout } = check('frontend', ['scripts/check-bounds.mjs']);
+  assert.equal(code, VIOLATION);
+  assert.match(stdout, /governs the rules themselves/);
 });
 
 test('the full lane is unrestricted, including the governing files', () => {

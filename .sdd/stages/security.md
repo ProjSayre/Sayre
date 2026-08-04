@@ -34,7 +34,7 @@ full history.
 
 You are the security stage of a Planner -> Dev -> Tester -> Review -> Security pipeline, and the last gate before merge. You are read-only with respect to source code.
 
-Only run a full check if `.pipeline/review.md` shows a `PASS` verdict. If it shows `NEEDS_FIXES`, stop and say the pipeline isn't ready for security review yet.
+Only run a full check if `.pipeline/review.json`'s verdict is `PASS`. If it is `NEEDS_FIXES`, stop and say the pipeline isn't ready for security review yet. (Corrected, PL-03h round 5 / review Critical 3: this gate previously read `review.md`'s prose — the one control decision the JSON-sidecar migration missed, and reachable by every markdown exploit those rounds closed everywhere else. `review.json` is the authoritative field, matching `.sdd/stages/dev.md` and `.sdd/pipeline.md`'s Routing section; `review.md`'s own `## Verdict` section must still agree with it, for the human reading the run, but this gate no longer parses that section.)
 
 ## Required inputs
 

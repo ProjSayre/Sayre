@@ -11,10 +11,10 @@
 
 ## Why lanes
 
-A future gate (`pr-review`, PL-03d) will need to check whether a change stayed inside the area a
-ticket or contributor was authorized to touch. Named lanes, checked once and reused, beat a fresh
-per-ticket path list: less to get wrong per run, and a lane's definition only needs updating in one
-place when the repo's layout changes.
+`pr-review` (PL-03d) checks whether a change stayed inside the area a ticket or contributor was
+authorized to touch, via `scripts/check-bounds.mjs`. Named lanes, checked once and reused, beat a
+fresh per-ticket path list: less to get wrong per run, and a lane's definition only needs updating
+in one place when the repo's layout changes.
 
 ## Lane vocabulary
 
@@ -26,8 +26,10 @@ A lane is a name plus a set of path globs. A ticket or contributor is assigned e
 | `full` | everything | No lane restriction — the default for contributors and tickets not explicitly fenced. |
 
 This list is expected to grow (e.g. a narrower lane for integration-worker or Graph Query Service
-work) as soon as a second fenced contributor exists. Adding a lane means adding a row here; it does
-not require touching any enforcement code, because none exists yet.
+work) as soon as a second fenced contributor exists. Adding a lane means adding a row here (and the
+matching row in `bounds.yml`, which is authoritative — see the status note at the top of this file);
+`scripts/check-bounds.mjs` reads the lane list generically, so adding one does not require touching
+the enforcement script itself.
 
 ## What "in bounds" means
 
@@ -47,8 +49,8 @@ node scripts/check-bounds.mjs --lane frontend --base main --json
 ## Files a fenced lane may never touch
 
 `bounds.yml`'s `deny_for_fenced_lanes` list applies to every lane except `full`, regardless of that
-lane's own globs. It covers `.sdd/`, `.claude/`, CI workflows, the read-only guard, `.gitignore`,
-`CLAUDE.md`, and `AGENTS.md`.
+lane's own globs. It covers `.sdd/`, `.claude/`, CI workflows, the read-only guard, the bounds-check
+script itself, `.gitignore`, `CLAUDE.md`, and `AGENTS.md`.
 
 The reason is narrow and worth stating: these files define the rules. A fenced contributor who can
 edit them can widen their own fence, disable the guard constraining the checker stages, or rewrite a

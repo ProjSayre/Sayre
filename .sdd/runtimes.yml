@@ -9,15 +9,17 @@
 # `.claude` is the only runtime target with subagent/hook machinery worth generating for; a future
 # runtime target would add its own top-level key here (e.g. `codex:`) rather than a new file.
 #
-# Hook shorthand (currently unused — see below): had any stage declared one, each hooks entry
-# would be `{ matcher, command }`, and the generator would expand it into Claude Code's actual
-# frontmatter hook schema (a `hooks:` array of `{ type: command, command }` per matcher). No stage
-# below declares a hooks: block right now. A diagnostic run (PL-03a loop 3) established that a
+# Hook shorthand (still unused here — see below): had any stage declared one via this file, each
+# hooks entry would be `{ matcher, command }`, and the generator would expand it into Claude Code's
+# actual frontmatter hook schema (a `hooks:` array of `{ type: command, command }` per matcher). No
+# stage below declares a hooks: block. A diagnostic run (PL-03a loop 3) established that a
 # PreToolUse hook declared in subagent frontmatter — exactly the form this file used to wire onto
 # review/security below — never fires; only a hook declared under a top-level `hooks:` key in
-# .claude/settings.json does, and this repo's settings.json has no such key. Re-adding a hooks:
-# entry here without also confirming it is wired at the settings.json level would reintroduce the
-# same false assurance. See PL-03g (docs/PRD_Tickets.md) for the real-enforcement follow-up.
+# .claude/settings.json does, and at that point this repo's settings.json had no such key either.
+# **PL-03g has since landed the real fix at the settings.json level** — see the review/security
+# blocks below for the full history — so re-adding a per-stage hooks: entry here would be redundant
+# with, not a replacement for, that mechanism; the shorthand stays unused rather than duplicating a
+# guarantee `.claude/settings.json` + `scripts/guard-checker-readonly.mjs` already provide.
 
 version: 1
 

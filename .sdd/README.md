@@ -42,7 +42,7 @@ belongs in `.sdd/`. If it depends on the specific tool, it belongs in that tool'
 |---|---|
 | Required inputs and read order | Tool grants |
 | Procedure and checks | Model tier |
-| Output contract and section names | Hook wiring (attempted for read-only enforcement; see note below — not currently load-bearing) |
+| Output contract and section names | Hook wiring (real, load-bearing read-only enforcement for Claude Code since PL-03g — see note below) |
 | Verdict vocabulary (`PASS` / `NEEDS_FIXES` / `BLOCKED` / `UNVERIFIED`) | Subagent name |
 | Which `.pipeline/` artifact is produced | Whether a subagent writes that artifact directly, or a coordinator saves it |
 
@@ -50,18 +50,21 @@ Concretely: `.sdd/stages/review.md` says *"produce a report in this shape; it is
 `.pipeline/review.md`"* and stops there. It does not say whether a Claude Code subagent writes
 that file directly (it does) or a Codex-style coordinator saves the subagent's returned markdown
 (because Codex has no subagent-isolation equivalent at all). Both are the same contract; the
-mechanism is runtime detail and lives in `.sdd/runtimes.yml`. Neither runtime currently confines
-that write to `.pipeline/` with a runtime-enforced guard — see the note under "The generated
-surfaces" below.
+mechanism is runtime detail and lives in `.sdd/runtimes.yml`. As of PL-03g, Claude Code confines
+that write to `.pipeline/` with a real, runtime-enforced guard (a `PreToolUse` hook running
+`scripts/guard-checker-readonly.mjs`, covering `Write`/`Edit`/`NotebookEdit`, not `Bash`) — see the
+note under "The generated surfaces" below. Codex, having no subagent-isolation mechanism at all
+(and having been deleted from this repo — see "Accepted costs" below), never had an equivalent and
+has none now.
 
 ## Directory map
 
 ```
 .sdd/
   README.md          — this file
-  pipeline.md         — stage sequence, routing, loop caps, and the four entry-point commands
+  pipeline.md         — stage sequence, routing, loop caps, and the five entry-point commands
   runtimes.yml         — per-stage tool grants / model tier / hook wiring for .claude/
-  bounds.md            — named lane vocabulary (defined only — nothing enforces it yet, see below)
+  bounds.md            — named lane vocabulary, enforced by scripts/check-bounds.mjs (PL-03d)
   stages/
     planner.md
     red.md
@@ -74,7 +77,11 @@ surfaces" below.
     index.json         — generated file->run-id index; never hand-edited (see below)
     <run-id>/
       spec.md          — verbatim spec.md from a completed, terminal-PASS run
-      entry.md         — that run's metadata (date, ticket, files touched, verdicts, red-test paths)
+      spec.json        — verbatim spec.json for that run
+      entry.md         — that run's metadata, human-facing (date, ticket, files touched, verdicts, red-test paths)
+      entry.json       — the same metadata, machine-facing and authoritative (see .sdd/ledger/README.md)
+      security/        — copy of that run's .pipeline/security-history/<run-id>/ audit record
+      red.json, changes.json, review.json, security.json — copied verbatim when present for that run
 ```
 
 ## The generated surfaces: `.claude/agents/*.md` and `.sdd/ledger/index.json`
@@ -137,8 +144,10 @@ themselves committed, durable content, not per-runtime configuration — see "Th
 
 Unlike everything above, `.sdd/ledger/` is not runtime configuration — it's the one place this
 pipeline keeps a permanent record after `.pipeline/`'s working files are overwritten by the next run.
-`scripts/ledger-append.mjs` writes `.sdd/ledger/<run-id>/{spec.md,entry.md}` once a run reaches
-**terminal `PASS`** (both `review.md` and `security-report.md` show `PASS`), reusing that run's own
+`scripts/ledger-append.mjs` writes `.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}`
+(plus a verbatim copy of `red.json`/`changes.json`/`review.json`/`security.json` when present for the
+run — `entry.json` is the machine-facing, authoritative half; see `.sdd/ledger/README.md`) once a run
+reaches **terminal `PASS`** (both `review.json` and `security.json` show `PASS`), reusing that run's own
 security run id so a ledger entry and its security-history directory are trivially correlatable, and
 regenerates `index.json` itself. Full rationale, the entry format, and the "why reuse the run id"
 reasoning live in `.sdd/ledger/README.md` — this section only documents the query path a human or a

@@ -74,17 +74,34 @@ function globToRegExpSource(glob) {
   return globToRegExp(glob).source.replace(/^\^|\$$/g, '');
 }
 
-function matchesAny(path, globs) {
+/** Exported (GAP-01) alongside `readBounds` so `scripts/ledger-append.mjs`'s `--hotfix` path can
+ * check a touched-file list against `hotfixBarredPaths` using the exact same glob semantics this
+ * file's own lane-matching uses — one implementation of "does this path match one of these globs,"
+ * not a second regex-writing pass. */
+export function matchesAny(path, globs) {
   return globs.some((glob) => globToRegExp(glob).test(path));
 }
 
 /** Minimal reader for the shape .sdd/bounds.yml actually uses. Kept dependency-free on purpose;
- * if this file's shape outgrows it, add js-yaml rather than growing this. */
-function readBounds() {
+ * if this file's shape outgrows it, add js-yaml rather than growing this.
+ *
+ * Exported (GAP-01 / security round 6) so `scripts/ledger-append.mjs`'s `--hotfix` path can reuse
+ * this exact lane vocabulary and glob-matching logic — imported and called directly, the same
+ * "exactly one implementation" convention `ledger-append.mjs` already uses for
+ * `build-ledger-index.mjs`'s `writeIndex` — rather than re-parsing `.sdd/bounds.yml` a second,
+ * independent way that could silently drift from this one. `.sdd/hotfix.md`'s "who may use it" gate
+ * ("anyone on an unfenced (`full`) lane... not available to a fenced contributor") is exactly a
+ * question this function's own `lanes` map already answers (a lane other than `full` is fenced); the
+ * `hotfixBarredPaths` list below is a second, hotfix-specific gate from that same document's "Honest
+ * limits" section and is intentionally NOT the same list as `denyForFenced` above (that one is about
+ * who may edit the pipeline's own governance files; this one is about which product-code paths a
+ * bypass — which skips the security stage entirely — may never touch, regardless of lane). */
+export function readBounds() {
   if (!existsSync(BOUNDS_FILE)) die(`${BOUNDS_FILE} not found`);
   const text = readFileSync(BOUNDS_FILE, 'utf8');
   const lanes = {};
   const denyForFenced = [];
+  const hotfixBarredPaths = [];
   let currentLane = null;
   let section = null;
 
@@ -94,11 +111,17 @@ function readBounds() {
 
     if (/^lanes:\s*$/.test(line)) { section = 'lanes'; currentLane = null; continue; }
     if (/^deny_for_fenced_lanes:\s*$/.test(line)) { section = 'deny'; currentLane = null; continue; }
+    if (/^hotfix_barred_paths:\s*$/.test(line)) { section = 'hotfixBarred'; currentLane = null; continue; }
     if (/^[a-z_]+:/.test(line)) { section = null; currentLane = null; continue; }
 
     if (section === 'deny') {
       const item = line.match(/^\s*-\s*(.+)$/);
       if (item) denyForFenced.push(unquote(item[1]));
+      continue;
+    }
+    if (section === 'hotfixBarred') {
+      const item = line.match(/^\s*-\s*(.+)$/);
+      if (item) hotfixBarredPaths.push(unquote(item[1]));
       continue;
     }
     if (section !== 'lanes') continue;
@@ -111,7 +134,7 @@ function readBounds() {
   }
 
   if (Object.keys(lanes).length === 0) die('no lanes parsed from .sdd/bounds.yml');
-  return { lanes, denyForFenced };
+  return { lanes, denyForFenced, hotfixBarredPaths };
 }
 
 function unquote(value) {
@@ -182,4 +205,10 @@ function main() {
   process.exit(violations.length === 0 ? 0 : 1);
 }
 
-main();
+// Only run as a CLI entry point (GAP-01) — `readBounds`/`matchesAny` are now also imported as a
+// library by scripts/ledger-append.mjs's `--hotfix` path, and importing a module must never also
+// trigger this file's own argv-driven `main()`/`process.exit()` side effects against the importer's
+// own argv. Same guard, same reasoning, as scripts/ledger-append.mjs and scripts/build-ledger-index.mjs.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

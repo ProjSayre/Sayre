@@ -635,6 +635,14 @@ def _compute_cache_key(state_hash: str, changed_paths: list[str], max_shown: int
 
 
 def _read_cache(cache_dir: Path, key: str) -> AffectedTestsResult | None:
+    # Not a control input in SEC-10's sense (security round 6's "audit every remaining JSON.parse /
+    # json.loads call site" pass): this is a same-tool, same-machine performance cache this script
+    # wrote to itself on a prior run, not a persisted artifact a distinct, less-trusted process
+    # produces for a later trust decision. json.loads's own last-key-wins behavior on a duplicate key
+    # has no analog to exploit here -- there is no security verdict or attribution decision riding on
+    # this value, only which tests get selected to run. A corrupt or unexpected shape already falls
+    # back to a full recompute below (never a crash, never a silently wrong "trusted" answer), so no
+    # stricter parser is used or needed.
     cache_file = cache_dir / f"{key}.json"
     if not cache_file.is_file():
         return None

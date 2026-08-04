@@ -15,24 +15,72 @@
 // The fix is to stop asking a markdown parser to make the decision at all. Every field a control
 // decision depends on (a verdict, a content hash, a file-path list, a spec-ID mapping) moves to a
 // small JSON sidecar the owning stage writes next to its markdown. `JSON.parse` either succeeds or
-// throws — there is no heading, no fence, no HTML comment, no setext heading, no ATX closing
-// sequence, no ambiguity surface of any kind for an attacker to exploit through document formatting.
-// What remains here is strict shape validation on top of that already-unambiguous parse: every
-// required key must be present, every literal must be exactly one of its allowed values, every array
-// must be an array. A sidecar that doesn't validate fails closed, by construction, the same way
-// JSON.parse itself fails closed on truncated or invalid JSON — there is no "best effort" reading
-// path anywhere in this file.
+// throws, so the *markdown-structural* ambiguity surface (a heading, a fence, an HTML comment, a
+// setext heading, an ATX closing sequence — every construct the three prior rounds fought) is gone
+// outright, not merely narrowed. What remains here is strict shape validation on top of that
+// unambiguous parse: every required key must be present, every literal must be exactly one of its
+// allowed values, every array must be an array. A sidecar that doesn't validate fails closed, by
+// construction, the same way JSON.parse itself fails closed on truncated or invalid JSON.
+//
+// CORRECTED (PL-03h round 5 / review Critical 1): this file previously claimed "no ambiguity surface
+// of any kind" and "no best-effort reading path anywhere in this file." Both were false. `JSON.parse`
+// (and the JSON grammar itself, ECMA-404 / RFC 8259) permits an object to repeat the same key more
+// than once and leaves the resolution parser-defined; V8 resolves to the LAST occurrence — the
+// identical "last one wins" defect the markdown round's duplicate-heading exploit used, one layer
+// down. `{"verdict":"NEEDS_FIXES","verdict":"PASS"}` parsed with plain `JSON.parse` reads as `PASS`.
+// review.md's round-4 report reproduced this end to end against the real `ledger-append.mjs`: a
+// durable `review: PASS` / `security: PASS` ledger entry for a run whose real, first-written verdict
+// was `NEEDS_FIXES` / `BLOCKED`. `parseJsonOrThrow` below no longer delegates to the native
+// `JSON.parse` — it runs `parseStrictJson`, a small recursive-descent parser that tracks the set of
+// keys seen so far *within each individual object literal* and throws the moment a second occurrence
+// of the same key appears in that same object, before the value is ever handed back to a caller. A
+// `JSON.parse` *reviver* function cannot do this (verified while building this fix): the reviver is
+// invoked once per key, with only the surviving (last) value — the shadowed occurrence is never
+// passed to it at all, so there is nothing for a reviver to reject. Rejecting a duplicate key
+// therefore requires an actual tokenizing pass over the raw text, not a callback bolted onto the
+// engine's own parse.
+//
+// The honest, asymmetric reason a *strict parser* is achievable here and was not for markdown:
+// JSON's grammar is closed and fully specified (ECMA-404 / RFC 8259) — every valid document has a
+// finite, enumerable set of constructs (object, array, string, number, boolean, null), so "reject
+// anything that isn't exactly one of those, with no duplicate object keys" is a decidable, total
+// check. Markdown's ambiguity surface was unbounded by construction — headings, fences, HTML
+// comments, setext underlines, ATX closers, and whatever the next round would have found, with no
+// fixed grammar to close against. That is why three rounds of patching the markdown scanner each
+// closed one exploit and left another open, while this file's JSON-only remaining ambiguity (the one
+// case the grammar itself leaves parser-defined) is closed completely, in one pass, by one check.
+// What THIS round removes, precisely: not "all ambiguity" — the *markdown-structural* class, in full,
+// plus the one narrower JSON-native ambiguity (duplicate keys) the migration itself introduced by
+// moving control decisions into JSON in the first place. See `parseStrictJson` below.
 //
 // What this file does NOT do, stated plainly rather than overclaimed (.pipeline/review.md's
 // "Honest limits" framing): it does not verify that a stage told the truth. A review stage that
 // writes `{ "verdict": "PASS" }` into review.json when the diff is actually broken still produces a
 // PASS here — that is exactly the same trust already placed in every stage's own markdown report,
 // unchanged by this contract. What this eliminates is a THIRD PARTY's ability to inject a false
-// reading through document formatting rather than through the stage's own (trusted) say-so — every
-// one of review round 3's demonstrated exploits worked by exploiting the markdown *parser*, not by
-// lying in a field the parser read correctly.
+// reading through document formatting, or through a duplicate-key resolution rule buried inside the
+// parser, rather than through the stage's own (trusted) say-so — every one of review round 3's
+// demonstrated markdown exploits, and review round 4's duplicate-key exploit, worked by exploiting
+// the *parser*, not by lying in a field the parser read correctly.
+//
+// CORRECTED (round 6 / security SEC-10 and SC-12): this file's own header, and
+// `scripts/pipeline-contracts.test.mjs`'s duplicate-key section, previously said the fix at
+// `parseJsonOrThrow` meant "every caller inherits it automatically." That was false: it is only true
+// of callers that actually call `parseJsonOrThrow` (or `readJsonSidecar`, which does). One real call
+// site never became a caller — `scripts/ledger-append.mjs`'s `findCompletedSecurityRun` kept reading
+// `security-history/<run-id>/manifest.json` and `results.json` with plain `JSON.parse`, one layer
+// under `security.json` (which DID read through this file), which is exactly why the same
+// duplicate-key forgery this round-5 fix was built to close still worked end to end against the
+// immutable audit trail. Fixed by routing that call site (and `build-ledger-index.mjs`'s
+// `readEntryJson`) through this file's `readJsonFile`/`readJsonSidecar`, same as everything else —
+// see SEC-10 in `.pipeline/security-history/`. Separately, SC-12's benchmark found `parseString`
+// below quadratic-ish at real-world adversarial string sizes; see that function's own comment and
+// `readJsonFile`'s `MAX_JSON_FILE_BYTES` ceiling for the fix. Neither claim is restored to an
+// absolute one here: "inherits it automatically" is true only of code that is actually a caller, and
+// whether a given script IS a caller is exactly the kind of fact that must be checked per call site,
+// not assumed from the existence of a shared primitive elsewhere in the file.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** Thrown by every validator in this file. A plain Error subclass (not a special control-flow
@@ -44,14 +92,41 @@ function fail(message) {
   throw new SidecarError(message);
 }
 
-/** Reads and JSON.parses `<dir>/<fileName>`. Returns `null` (not an error) only when the file does
- * not exist at all — every caller decides for itself whether absence is legitimate (see each
- * `read*Json` function's own `required` option). Any other failure (unreadable file, invalid JSON)
- * always throws, regardless of `required` — a file that exists but cannot be parsed is never treated
- * as "absent." */
-export function readJsonSidecar(dir, fileName, label) {
-  const path = join(dir, fileName);
-  if (!existsSync(path)) return null;
+/** Refuses to read (let alone parse) a JSON file larger than this many bytes — see SC-12 (round 6,
+ * the security-checker session that benchmarked `parseStrictJson` at real-world adversarial sizes):
+ * `parseString` below used to accumulate a string value one character at a time (`out += ch`),
+ * measured at roughly 250x slower than native `JSON.parse` at 80MB, with a super-linear (worse than
+ * proportional) growth curve as size increased. `parseString` no longer does that — see its own
+ * comment — which removes the super-linear blowup, but a real pipeline JSON artifact (a verdict, a
+ * short file-path list, a handful of short text fields) is still always small. This ceiling exists to
+ * bound the cost of a pathological file outright, not to accommodate any known legitimate shape, and
+ * it is checked via `statSync` before the file is ever read into memory. */
+export const MAX_JSON_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+
+/** Reads and strictly parses (see `parseJsonOrThrow`) the file at `path`, refusing anything over
+ * `MAX_JSON_FILE_BYTES` first. Shared by every reader in this codebase that already knows the file
+ * exists — `readJsonSidecar` below, and, after SEC-10, `scripts/ledger-append.mjs`'s
+ * `findCompletedSecurityRun` (which reads `security-history/<run-id>/{manifest,results}.json`) and
+ * `scripts/build-ledger-index.mjs`'s `readEntryJson` (which reads `.sdd/ledger/<run-id>/entry.json`)
+ * — so the size ceiling and the "read or throw" shape are each defined exactly once, not
+ * re-implemented per call site the way SEC-10's missing `parseJsonOrThrow` call was. Unlike
+ * `readJsonSidecar`, this function does not treat a missing file as a legitimate `null` — every
+ * current caller has already decided absence is an error before calling this. */
+export function readJsonFile(path, label) {
+  let stats;
+  try {
+    stats = statSync(path);
+  } catch (error) {
+    fail(`${label}: could not be read (${error.message}).`);
+  }
+  if (stats.size > MAX_JSON_FILE_BYTES) {
+    fail(
+      `${label}: is ${stats.size} bytes, over this reader's ${MAX_JSON_FILE_BYTES}-byte ceiling (see ` +
+      'SC-12) — refused before being read into memory or parsed. A pipeline JSON artifact is a small, ' +
+      'structured document (a verdict, a short path list, a handful of short text fields); a file this ' +
+      'large is refused outright, not merely parsed more cheaply than before.',
+    );
+  }
   let raw;
   try {
     raw = readFileSync(path, 'utf8');
@@ -61,16 +136,221 @@ export function readJsonSidecar(dir, fileName, label) {
   return parseJsonOrThrow(raw, label);
 }
 
-/** `JSON.parse`, wrapped so every caller in this codebase reports the same failure shape. Exported
- * so scripts/build-ledger-index.mjs can apply it to `entry.json` (a ledger-internal sidecar, not one
- * of the five `.pipeline/` contracts below, but held to the identical "parse or throw, then validate
- * strictly" standard — see that file). */
+/** Reads and JSON.parses `<dir>/<fileName>`. Returns `null` (not an error) only when the file does
+ * not exist at all — every caller decides for itself whether absence is legitimate (see each
+ * `read*Json` function's own `required` option). Any other failure (unreadable file, invalid JSON,
+ * or over `MAX_JSON_FILE_BYTES`) always throws, regardless of `required` — a file that exists but
+ * cannot be parsed (or is refused as oversized) is never treated as "absent." */
+export function readJsonSidecar(dir, fileName, label) {
+  const path = join(dir, fileName);
+  if (!existsSync(path)) return null;
+  return readJsonFile(path, label);
+}
+
+/** A strict, duplicate-key-rejecting JSON parser — see this file's header comment for why a plain
+ * `JSON.parse` (or a `JSON.parse` reviver, which cannot see a shadowed duplicate at all) is not
+ * enough. This is a small hand-rolled recursive-descent parser over the JSON grammar (ECMA-404 /
+ * RFC 8259): object, array, string, number, `true`, `false`, `null`. It is deliberately NOT a
+ * general-purpose JSON library — it exists to add exactly one check plain `JSON.parse` cannot
+ * express (reject a repeated key within one object literal) while otherwise parsing every
+ * syntactically valid document the same way `JSON.parse` would.
+ *
+ * Duplicate-key rejection is scoped to a single object literal, not to the document as a whole: the
+ * same key name may appear once each in two different, unrelated objects (e.g. two different
+ * `red.json` test entries both having a "path" field) without conflict — only a second occurrence of
+ * the identical key *within the same `{...}`* is rejected, matching what "a duplicate heading" meant
+ * in the markdown-era version of this same invariant (one document, one section, two competing
+ * values for the same fact).
+ *
+ * `__proto__` is written via `Object.defineProperty` rather than plain assignment, so a JSON document
+ * containing that key produces an ordinary own, enumerable property — never a prototype swap. Plain
+ * `JSON.parse` already has this property; a hand-rolled parser needs to preserve it deliberately or
+ * it would introduce a new class of bug this rewrite did not have before. */
+function parseStrictJson(text) {
+  const n = text.length;
+  let i = 0;
+
+  function syntaxError(message) {
+    const consumed = text.slice(0, i);
+    const line = consumed.split('\n').length;
+    const column = i - consumed.lastIndexOf('\n');
+    throw new Error(`${message} (at position ${i}, line ${line}, column ${column})`);
+  }
+
+  function skipWhitespace() {
+    while (i < n) {
+      const ch = text[i];
+      if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') i++;
+      else break;
+    }
+  }
+
+  function setOwn(obj, key, value) {
+    // Matches JSON.parse's own behavior: a "__proto__" key becomes a normal own property, never the
+    // object's actual prototype. Every other key is a plain assignment.
+    if (key === '__proto__') {
+      Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true });
+    } else {
+      obj[key] = value;
+    }
+  }
+
+  function parseValue() {
+    skipWhitespace();
+    if (i >= n) syntaxError('unexpected end of input');
+    const ch = text[i];
+    if (ch === '{') return parseObject();
+    if (ch === '[') return parseArray();
+    if (ch === '"') return parseString();
+    if (ch === '-' || (ch >= '0' && ch <= '9')) return parseNumber();
+    if (text.startsWith('true', i)) { i += 4; return true; }
+    if (text.startsWith('false', i)) { i += 5; return false; }
+    if (text.startsWith('null', i)) { i += 4; return null; }
+    syntaxError(`unexpected character ${JSON.stringify(ch)}`);
+  }
+
+  function parseObject() {
+    i++; // consume '{'
+    const obj = {};
+    const seenKeys = new Set();
+    skipWhitespace();
+    if (text[i] === '}') { i++; return obj; }
+    for (;;) {
+      skipWhitespace();
+      if (text[i] !== '"') syntaxError('expected a double-quoted key in object');
+      const key = parseString();
+      if (seenKeys.has(key)) {
+        syntaxError(
+          `duplicate key ${JSON.stringify(key)} in a JSON object — a well-formed JSON object may not ` +
+          'repeat a key; the JSON grammar leaves resolution parser-defined (typically "last one wins," ' +
+          'which is exactly the ambiguity this contract exists to close), so this parser refuses the ' +
+          'document outright rather than silently picking a value',
+        );
+      }
+      seenKeys.add(key);
+      skipWhitespace();
+      if (text[i] !== ':') syntaxError('expected ":" after object key');
+      i++;
+      const value = parseValue();
+      setOwn(obj, key, value);
+      skipWhitespace();
+      if (text[i] === ',') { i++; continue; }
+      if (text[i] === '}') { i++; break; }
+      syntaxError('expected "," or "}" in object');
+    }
+    return obj;
+  }
+
+  function parseArray() {
+    i++; // consume '['
+    const arr = [];
+    skipWhitespace();
+    if (text[i] === ']') { i++; return arr; }
+    for (;;) {
+      arr.push(parseValue());
+      skipWhitespace();
+      if (text[i] === ',') { i++; continue; }
+      if (text[i] === ']') { i++; break; }
+      syntaxError('expected "," or "]" in array');
+    }
+    return arr;
+  }
+
+  /** SC-12 (round 6): this used to append one character at a time (`out += ch` on every iteration,
+   * even for the common case of a long run of plain, unescaped characters), which is quadratic-ish
+   * in V8 at real-world sizes — measured ~250x slower than native `JSON.parse` and super-linear
+   * (a roughly 4x time increase for a 2x size increase at 40MB -> 80MB) on an 80MB single-string
+   * value, entirely inside this function. Fixed by tracking `runStart`, the index where the current
+   * contiguous run of unescaped characters began, and appending that whole run in one `text.slice(...)`
+   * call only when the run ends (at a closing quote or an escape sequence) — one slice per escape
+   * (or one, for a string with none), never one append per character. This is the same value for the
+   * same input, just accumulated in O(runs) string operations instead of O(characters). */
+  function parseString() {
+    i++; // consume opening quote
+    let out = '';
+    let runStart = i;
+    for (;;) {
+      if (i >= n) syntaxError('unterminated string');
+      const ch = text[i];
+      if (ch === '"') {
+        out += text.slice(runStart, i);
+        i++;
+        break;
+      }
+      if (ch === '\\') {
+        out += text.slice(runStart, i);
+        i++;
+        const esc = text[i];
+        switch (esc) {
+          case '"': out += '"'; break;
+          case '\\': out += '\\'; break;
+          case '/': out += '/'; break;
+          case 'b': out += '\b'; break;
+          case 'f': out += '\f'; break;
+          case 'n': out += '\n'; break;
+          case 'r': out += '\r'; break;
+          case 't': out += '\t'; break;
+          case 'u': {
+            const hex = text.slice(i + 1, i + 5);
+            if (!/^[0-9a-fA-F]{4}$/.test(hex)) syntaxError('invalid \\u escape');
+            out += String.fromCharCode(parseInt(hex, 16));
+            i += 4;
+            break;
+          }
+          default:
+            syntaxError(`invalid escape character "\\${esc}"`);
+        }
+        i++;
+        runStart = i;
+      } else if (ch.charCodeAt(0) < 0x20) {
+        syntaxError('unescaped control character in string');
+      } else {
+        i++;
+      }
+    }
+    return out;
+  }
+
+  function parseNumber() {
+    const start = i;
+    if (text[i] === '-') i++;
+    if (text[i] === '0') {
+      i++;
+    } else if (text[i] >= '1' && text[i] <= '9') {
+      while (i < n && text[i] >= '0' && text[i] <= '9') i++;
+    } else {
+      syntaxError('invalid number');
+    }
+    if (text[i] === '.') {
+      i++;
+      if (!(text[i] >= '0' && text[i] <= '9')) syntaxError('invalid number (no digits after decimal point)');
+      while (i < n && text[i] >= '0' && text[i] <= '9') i++;
+    }
+    if (text[i] === 'e' || text[i] === 'E') {
+      i++;
+      if (text[i] === '+' || text[i] === '-') i++;
+      if (!(text[i] >= '0' && text[i] <= '9')) syntaxError('invalid number (no digits in exponent)');
+      while (i < n && text[i] >= '0' && text[i] <= '9') i++;
+    }
+    return Number(text.slice(start, i));
+  }
+
+  const value = parseValue();
+  skipWhitespace();
+  if (i < n) syntaxError('unexpected trailing content after JSON value');
+  return value;
+}
+
+/** Parses `raw` with the strict, duplicate-key-rejecting parser above, wrapped so every caller in
+ * this codebase reports the same failure shape. Exported so scripts/build-ledger-index.mjs can apply
+ * it to `entry.json` (a ledger-internal sidecar, not one of the five `.pipeline/` contracts below,
+ * but held to the identical "parse or throw, then validate strictly" standard — see that file). */
 export function parseJsonOrThrow(raw, label) {
   try {
-    return JSON.parse(raw);
+    return parseStrictJson(raw);
   } catch (error) {
     fail(
-      `${label} is not valid JSON (${error.message}). JSON.parse either succeeds or throws — this ` +
+      `${label} is not valid JSON (${error.message}). This parser either succeeds or throws — this ` +
       'file must be regenerated by the stage that owns it, never hand-patched into a "close enough" shape.',
     );
   }

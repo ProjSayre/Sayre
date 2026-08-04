@@ -4,7 +4,14 @@
 // Usage:
 //   node scripts/ledger-append.mjs
 //   node scripts/ledger-append.mjs --hotfix --what-broke <text> --what-changed <text> \
-//     --why-skipped <text> --not-verified <text> --follow-up-ticket <text>
+//     --why-skipped <text> --not-verified <text> --follow-up-ticket <text> \
+//     [--files <path...>]
+//
+// `--files` is optional and, when given, must be the LAST flag (it consumes every remaining
+// argument, the same convention scripts/check-bounds.mjs's own `--files` uses) — see "D-005 #3 /
+// `/hotfix`" below for why it exists: the realistic incident flow commits the fix *before* running
+// this command, which leaves the working tree clean and no changes.json to fall back on, so the
+// git-diff-based detection this script otherwise prefers finds nothing to report.
 //
 // Preconditions (all re-verified here, never assumed from the caller): .pipeline/review.json and
 // .pipeline/security.json both show a `verdict` of `PASS`, and the run security.json cites actually
@@ -47,6 +54,14 @@
 // through the stage's own say-so. Where an independent cross-check already existed (security.json's
 // claimed run is re-verified against its own immutable manifest.json/results.json under
 // .pipeline/security-history/, not merely trusted), that cross-check is preserved unchanged below.
+//
+// CORRECTED (round 6 / SEC-10): that cross-check was, in fact, changed once, silently — the round-5
+// duplicate-key fix (parseJsonOrThrow) never reached findCompletedSecurityRun's own manifest.json/
+// results.json reads below, which kept using plain JSON.parse. Fixed; see that function's own
+// comment. GAP-01 (same round): --hotfix now also enforces its own two mechanically-checkable
+// eligibility gates from .sdd/hotfix.md (an unfenced "full" lane, and no touched file under a
+// curated sensitive-path list) — see the "D-005 #3 / `/hotfix`" section below for what is, and is
+// not, enforced.
 
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -54,7 +69,8 @@ import { randomBytes } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeIndex } from './build-ledger-index.mjs';
-import { readChangesJson, readRedJson, readReviewJson, readSecurityJson, readSpecJson } from './pipeline-contracts.mjs';
+import { readChangesJson, readJsonFile, readRedJson, readReviewJson, readSecurityJson, readSpecJson } from './pipeline-contracts.mjs';
+import { matchesAny, readBounds } from './check-bounds.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
@@ -86,7 +102,18 @@ function readPipelineFile(name, { required = true } = {}) {
  * independent check against the immutable audit record, not a markdown parse, and stays exactly as
  * skeptical of security.json's own say-so as it was before (see this file's header "Honest limits"
  * note — a stage that lies in its own JSON still lies; this cross-check is what catches a
- * security.json that claims PASS while its own immutable run history disagrees). */
+ * security.json that claims PASS while its own immutable run history disagrees).
+ *
+ * CORRECTED (round 6 / security SEC-10): until this fix, the two lines below read manifest.json/
+ * results.json with plain `JSON.parse`, not `pipeline-contracts.mjs`'s strict, duplicate-key-
+ * rejecting `parseJsonOrThrow` — the one call site the round-5 fix (which retargeted
+ * `readReviewJson`/`readSecurityJson`/`readChangesJson`/etc. at that parser) never reached, because
+ * this function reads the *security-history* copy directly rather than through one of those five
+ * `.pipeline/*.json` readers. Security reproduced the exact round-4 duplicate-key forgery here, one
+ * layer under `security.json`: a `results.json` whose real verdict was BLOCKED with a duplicate,
+ * appended `"verdict":"PASS"` key made this function (and therefore a durable ledger entry) read
+ * `PASS`. Fixed by routing both reads through `readJsonFile` (scripts/pipeline-contracts.mjs), the
+ * same size-capped, strict-parsing primitive `readJsonSidecar` uses — see that file's own comment. */
 function findCompletedSecurityRun(runId) {
   if (!existsSync(securityHistoryDir)) {
     fail('.pipeline/security-history/ does not exist — security has not produced a run yet.');
@@ -104,10 +131,10 @@ function findCompletedSecurityRun(runId) {
   let manifest;
   let results;
   try {
-    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    results = JSON.parse(readFileSync(resultsPath, 'utf8'));
+    manifest = readJsonFile(manifestPath, `.pipeline/security-history/${runId}/manifest.json`);
+    results = readJsonFile(resultsPath, `.pipeline/security-history/${runId}/results.json`);
   } catch (error) {
-    fail(`.pipeline/security-history/${runId}/ has invalid JSON: ${error.message}`);
+    fail(error.message);
   }
   if (manifest.status !== 'COMPLETE') fail(`Security run ${runId} is not COMPLETE (status: ${manifest.status}).`);
   if (results.verdict !== 'PASS') fail(`Security run ${runId}'s verdict is ${results.verdict}, not PASS.`);
@@ -290,6 +317,21 @@ export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files
 // reads it to exclude a hotfix's files from the file->spec index entirely — see that file's own
 // comment for why exclusion, not a differently-labeled inclusion, is what "must never satisfy a query
 // asking which spec governs a file" actually requires.
+//
+// GAP-01 (security round 6): .sdd/hotfix.md lists four eligibility gates ("is production actually
+// broken and the fix small and obvious," "who may use it" [unfenced/`full` lane only], the "Honest
+// limits" barred-path list [org_id/RBAC/secrets/webhook/Graph-Query-Service], and "is rollback
+// better"), and until this fix this script enforced none of them — only that the five text fields
+// below were non-empty. Two of the four are irreducibly human judgment ("is production actually
+// broken," "is rollback better than a fast follow-up") and stay exactly that: documented in
+// .sdd/hotfix.md, never mechanically checked here, because there is no artifact on disk that could
+// answer them. The other two ARE mechanically checkable from a lane name and a file list, and are now
+// enforced in runHotfix() below: `--lane` is required and must resolve to the unfenced (`full`) lane
+// (scripts/check-bounds.mjs's own `readBounds()`, imported directly rather than re-parsed a second,
+// independent way), and none of the resolved touched-files may match `.sdd/bounds.yml`'s
+// `hotfix_barred_paths` list. Enforcing exactly the checkable half, and saying so here, is the point —
+// silently claiming this covers all four gates would recreate the same "documented but unenforced" gap
+// this round closes.
 
 const HOTFIX_REQUIRED_FLAGS = {
   whatBroke: '--what-broke',
@@ -301,12 +343,37 @@ const HOTFIX_REQUIRED_FLAGS = {
 
 function parseHotfixArgs(argv) {
   const flagToKey = new Map(Object.entries(HOTFIX_REQUIRED_FLAGS).map(([key, flag]) => [flag, key]));
-  const args = {};
+  const args = { files: null, lane: null };
   for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--files') { args.files = argv.slice(i + 1); break; } // consumes the rest of argv, same convention as check-bounds.mjs's own --files
+    if (argv[i] === '--lane') { args.lane = argv[++i]; continue; }
     const key = flagToKey.get(argv[i]);
     if (key) args[key] = argv[++i];
   }
   return args;
+}
+
+/** W1 (review): the realistic incident flow commits the fix *before* running `--hotfix` (production
+ * was broken, the fix landed, and the ledger entry documents it afterward), which leaves
+ * `filesTouched(null)` with an empty git diff and no `changes.json` to fall back on — so it silently
+ * returned `[]` and `entry.md` read "(none could be determined automatically)". Since a bypass
+ * entry's entire value is "an unspecced change, and here is what it touched," a hotfix entry with no
+ * file list is close to worthless. Fixed the same way the normal path already fails loudly on the
+ * analogous "changes.json exists but reports nothing" case (see filesTouched() above): prefer an
+ * explicit `--files` list when the caller supplies one, otherwise fall back to git detection, and
+ * fail loudly — naming `--files` as the fix — rather than writing an entry with an empty list. */
+function resolveHotfixFilesTouched(explicitFiles) {
+  if (explicitFiles && explicitFiles.length > 0) return [...new Set(explicitFiles)].sort();
+  const detected = filesTouched(null);
+  if (detected.length > 0) return detected;
+  fail(
+    '--hotfix could not determine any files touched: the working tree is already clean (the fix is ' +
+    'already committed — the realistic incident flow) and no --files was supplied. A hotfix entry ' +
+    'with no file list is close to worthless — its entire value is "an unspecced change, and here is ' +
+    'what it touched." Pass --files <path...> as the LAST flag (it consumes every remaining ' +
+    'argument), e.g. the output of `git show --stat --name-only HEAD`. Refusing to silently write an ' +
+    'entry with an empty file list.',
+  );
 }
 
 /** A fresh, sortable, collision-safe run id for a hotfix entry — there is no security run to reuse
@@ -420,13 +487,59 @@ function runHotfix(argv) {
     );
   }
 
+  // --- GAP-01: the one mechanically-checkable eligibility gate that does not depend on the file ----
+  // list ("who may use it"). The other mechanically-checkable gate (the barred-path list) depends on
+  // touchedFiles, computed further down, so it is checked there instead — see that check's own comment.
+  if (!args.lane || !args.lane.trim()) {
+    fail(
+      '--hotfix requires --lane <name> — .sdd/hotfix.md restricts this bypass to an unfenced ("full") ' +
+      'lane ("Who may use it": "Not available to a fenced contributor... escalates to someone with ' +
+      '`full`"). See .sdd/bounds.yml for the lane vocabulary.',
+    );
+  }
+  const { lanes, hotfixBarredPaths } = readBounds();
+  if (!lanes[args.lane]) {
+    fail(
+      `--hotfix: unknown lane "${args.lane}". Known lanes: ${Object.keys(lanes).join(', ')}. Refusing ` +
+      'rather than defaulting — a typo must not silently grant hotfix eligibility.',
+    );
+  }
+  if (args.lane !== 'full') {
+    fail(
+      `--hotfix is not available to a fenced lane ("${args.lane}") — see .sdd/hotfix.md's "Who may use ` +
+      'it": a fenced lane exists because someone\'s changes get a human check before they land, and a ' +
+      'bypass that removes the check would make the fence decorative. A fenced contributor facing a ' +
+      'genuine emergency escalates to someone on the unfenced ("full") lane instead of using this flag ' +
+      'themselves.',
+    );
+  }
+
   const runId = generateHotfixRunId();
   const runDir = join(ledgerDir, runId);
   if (existsSync(runDir)) {
     fail(`.sdd/ledger/${runId}/ already exists — refusing to overwrite. Run this command again; a fresh id is generated each time.`);
   }
 
-  const touchedFiles = filesTouched(null);
+  const touchedFiles = resolveHotfixFilesTouched(args.files);
+
+  // --- GAP-01: the second mechanically-checkable eligibility gate ("Honest limits") ----------------
+  // .sdd/hotfix.md: "If the change touches org_id handling, RBAC filtering, secrets, webhook
+  // validation, or the Graph Query Service, it is not eligible for hotfix." `hotfixBarredPaths`
+  // (.sdd/bounds.yml, read above alongside the lane check) is a curated, best-effort glob list for
+  // exactly those categories — not a complete classifier of "every security-sensitive line of code."
+  // Checked against every touched file regardless of how it was determined (git diff or explicit
+  // --files), because the eligibility gate applies to the change itself, not to how this script
+  // happened to learn about it.
+  const barredMatches = touchedFiles.filter((file) => matchesAny(file, hotfixBarredPaths));
+  if (barredMatches.length > 0) {
+    fail(
+      '--hotfix touches path(s) .sdd/hotfix.md\'s "Honest limits" bars from this bypass (org_id ' +
+      `handling, RBAC filtering, secrets, webhook validation, or the Graph Query Service): ` +
+      `${barredMatches.join(', ')}. Fix forward through the normal pipeline, or roll back — see ` +
+      '.sdd/hotfix.md.',
+    );
+  }
+
   const date = new Date().toISOString().slice(0, 10);
   const { sha: commitSha, dirty } = currentCommitInfo();
   const commitLine = dirty

@@ -222,6 +222,21 @@ test('fails loudly on invalid JSON in entry.json (truncated) rather than crashin
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')));
 });
 
+// CORRECTED (round 5 / review Critical 1): entry.json is parsed via pipeline-contracts.mjs's
+// parseJsonOrThrow, same as every .pipeline/*.json sidecar — this pins the fix directly at the
+// ledger's own entry point, the file review.md's round-4 report demonstrated the exploit against
+// (a duplicate "verdicts" key laundering a false PASS into the durable ledger record).
+test('fails loudly on a duplicate "verdicts" key in entry.json — the BLOCKED/NEEDS_FIXES -> PASS forgery relocated one layer down from the old markdown duplicate-heading exploit, now closed by parseJsonOrThrow', () => {
+  const raw = '{"runId":"run-a","date":"2026-08-03","ticket":"PL-03c","filesTouched":["x.ts"],' +
+    '"verdicts":{"review":"NEEDS_FIXES","security":"NEEDS_FIXES"},' +
+    '"verdicts":{"review":"PASS","security":"PASS"}}';
+  const root = fixture({ 'run-a': { rawEntryJson: raw } });
+  const result = run(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate key "verdicts"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')));
+});
+
 test('fails loudly when entry.json\'s "runId" field does not match its own directory name', () => {
   const root = fixture({ 'run-a': { entryJson: sampleEntryJson('some-other-run-id', ['x.ts']) } });
   const result = run(root);
