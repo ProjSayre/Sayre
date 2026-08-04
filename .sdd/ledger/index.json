@@ -199,6 +199,14 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  "DEPENDENCIES.md": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
   "docs/PRD_Tickets.md": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -221,6 +229,12 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
     }
   ],
   "package.json": [
@@ -229,6 +243,22 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/dependency-baseline.test.mjs": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "scripts/dependency-install.test.mjs": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
     }
   ],
   "scripts/generate-agent-shims.mjs": [
@@ -277,6 +307,38 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "services/core/package.json": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/core/src/mcp/gateway.ts": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/workers/poetry.lock": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/workers/pyproject.toml": [
+    {
+      "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+      "ticket": "W0-00",
+      "date": "2026-08-04",
+      "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
     }
   ]
 }

@@ -27,8 +27,11 @@ build/test support** rather than using an ambiguous dash.
 | `react-dom` | apps/web (dep) | React DOM renderer | `docs/prd.md` §3 | — |
 | `@xyflow/react` | apps/web (dep) | React Flow renderer for fewer than about 500 visible nodes | `docs/prd.md` §2.2, §3; `docs/architecture.md` | Permanent dual-renderer boundary with Sigma.js |
 | `sigma` | apps/web (dep) | WebGL renderer above the ~500-visible-node threshold | `docs/prd.md` §2.2, §3; `docs/architecture.md`; `docs/migration-triggers.md` | Permanent dual-renderer boundary with React Flow |
+| `@sigma/node-border` | apps/web (dep) | Sigma node-border rendering program (`createNodeBorderProgram`, used by `SigmaCanvas.tsx`) for the approved graph visual language | Not named in PRD; Sigma rendering support | — |
 | `graphology` | apps/web (dep) | Client-side graph data structure backing Sigma + local algorithms | `docs/prd.md` §2.2; `docs/migration-triggers.md` (Client Rendering boundary) | — |
 | `graphology-layout` | apps/web (dep) | Client-side layout algorithms (local pre-processing only, never RBAC/traversal) | `.claude/rules/security-multitenancy.md` | — |
+| `@sayre/config` | apps/web (dep) | Shared non-secret config / secret-reference loader consumed by the web client (server routes under `app/api/**`) | W0-07; `docs/wave0-foundation-contracts.md` | — |
+| `@sayre/shared-types` | apps/web (dep) | Cross-package wire/type contracts, imported directly by `apps/web`'s workspace/provider-settings/realtime modules | W0-01 D-4 | — |
 | `typescript` | apps/web (devDep) | Type checking | `CLAUDE.md` Stack | — |
 | `@types/react` | apps/web (devDep) | React type defs | Not named in PRD; build/test support | — |
 | `@types/react-dom` | apps/web (devDep) | React-DOM type defs | Not named in PRD; build/test support | — |
@@ -40,6 +43,8 @@ build/test support** rather than using an ambiguous dash.
 | `eslint` | apps/web (devDep) | Lint engine | `CLAUDE.md` Commands (`npm run lint`) | — |
 | `eslint-config-next` | apps/web (devDep) | Next.js lint ruleset (pinned to `next`'s 14.2 minor) | Not named in PRD; build/test support | — |
 | `vitest` | apps/web (devDep) | Test runner for `apps/web` (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Commands (`npm run test`) | — |
+| `react-test-renderer` | apps/web (devDep) | React component test renderer backing `apps/web`'s vitest component tests | Not named in PRD; build/test support | — |
+| `@types/react-test-renderer` | apps/web (devDep) | Type defs for `react-test-renderer` | Not named in PRD; build/test support | — |
 
 ## `packages/shared-types` — cross-package TypeScript contracts
 
@@ -48,12 +53,26 @@ build/test support** rather than using an ambiguous dash.
 | `typescript` | packages/shared-types (devDep) | Type checking / `tsc` build to `dist/` | `CLAUDE.md` Stack | — |
 
 `@sayre/shared-types` (the package itself, `version 0.1.0`, `private`) defines the `HealthStatus`/
-`ServiceName` contract consumed by `services/core` (and mirrored by convention in `apps/web` and
-`services/workers`, which don't import it directly due to the Node/Python split). Introduced by
-W0-01 (D-4) as the first npm-workspace member alongside `apps/web` and `services/core`; resolved
-into `services/core` via plain npm workspace symlinking (`"@sayre/shared-types": "^0.1.0"`), not a
-`file:` path — see W0-01 D-3. `packages/graph-schema` is explicitly **not** created this ticket
-(D-4) — it belongs to a future graph-specific ticket.
+`ServiceName` contract, and by now (this W0-00 re-derivation) both `apps/web` and `services/core`
+declare and directly import `@sayre/shared-types` themselves (`services/workers` still doesn't,
+mirroring it by convention only, due to the Node/Python split). Introduced by W0-01 (D-4) as the
+first npm-workspace member alongside `apps/web` and `services/core`; resolved via plain npm
+workspace symlinking (`"@sayre/shared-types": "^0.1.0"`), not a `file:` path — see W0-01 D-3.
+`packages/graph-schema` is explicitly **not** created this ticket (D-4) — it belongs to a future
+graph-specific ticket.
+
+## `packages/config` — shared non-secret config / secret-reference loader
+
+| Package | Runtime/Location | Purpose | Reference | Future swap |
+|---|---|---|---|---|
+| `@types/node` | packages/config (devDep) | Node type defs (Node 20 LTS target) | `.nvmrc` | — |
+| `typescript` | packages/config (devDep) | Type checking / `tsc` build | `CLAUDE.md` Stack | — |
+| `vitest` | packages/config (devDep) | Test runner | `CLAUDE.md` Commands (`npm run test`) | — |
+
+`@sayre/config` (the package itself, `version 0.1.0`, `private`) is the single non-secret
+config / secret-reference loader called for by the MVP secrets posture, consumed directly by
+`apps/web`, `services/core`, and `services/gateway`. Reference: W0-07;
+`.claude/rules/security-multitenancy.md`.
 
 ## `services/core` — Node/TypeScript API, service layer, Graph Query Service, BullMQ integration workers
 
@@ -61,7 +80,7 @@ into `services/core` via plain npm workspace symlinking (`"@sayre/shared-types":
 |---|---|---|---|---|
 | `express` | services/core (dep) | REST facade for the Core App Service | `docs/prd.md` §3 (Core API), §4.2 (API Gateway/Core App Service) | REST → GraphQL; see below |
 | `@modelcontextprotocol/sdk` | services/core (dep) | MCP streamable-HTTP server primitives for thin MCP handlers | `docs/prd.md` §2.6, §4.2; W0-00/W4-06 | — |
-| `zod` | services/core (dep) | Runtime schema validation for MCP and message boundaries | W0-00; `docs/wave0-foundation-contracts.md` | — |
+| `zod` | services/core (dep) | Runtime schema validation for MCP and message boundaries. Manifest pins `4.4.x`, matching the PRD's named `zod 4.4.x` line (W0-00 re-derivation bumped this from a stale `3.25.76` pin — see `.pipeline/changes.md`). | `docs/prd.md` W0-00 (`zod 4.4.x`); `docs/wave0-foundation-contracts.md` | — |
 | `@aws-sdk/client-sqs` | services/core (dep) | Typed access to approved SQS event/queue boundaries from Node-owned orchestration points | W0-04; `docs/wave0-foundation-contracts.md` | — |
 | `@aws-sdk/client-sns` | services/core (dep) | Typed access to accepted `graph.updated` SNS fanout | W0-04; `docs/wave0-foundation-contracts.md` | — |
 | `@opentelemetry/api` | services/core (dep) | Stable metrics API for sanctioned graph calls | W0-08; `docs/migration-triggers.md` | Exporter remains swappable |
@@ -81,6 +100,7 @@ into `services/core` via plain npm workspace symlinking (`"@sayre/shared-types":
 | `@types/jsonwebtoken` | services/core (devDep) | JWT type defs | Not named in PRD; build/test support | — |
 | `@types/pg` | services/core (devDep) | Postgres client type defs | Not named in PRD; build/test support | — |
 | `@sayre/shared-types` | services/core (dep) | Cross-package `HealthStatus`/`ServiceName` contract, resolved via npm workspace symlinking (W0-01 D-3/D-4) | `.pipeline/spec.md` W0-01 D-3, D-4; `.claude/rules/service-layer.md` | — |
+| `@sayre/config` | services/core (dep) | Shared non-secret config / secret-reference loader — same loader package as `services/gateway` | W0-07; `docs/wave0-foundation-contracts.md` | — |
 | `eslint` | services/core (devDep) | Lint engine, pinned to `apps/web`'s 8.57 minor to avoid cross-runtime drift | `.pipeline/spec.md` W0-01 D-6 | — |
 | `@typescript-eslint/parser` | services/core (devDep) | TypeScript parser for eslint | `.pipeline/spec.md` W0-01 D-6 | — |
 | `@typescript-eslint/eslint-plugin` | services/core (devDep) | TypeScript-aware lint rules | `.pipeline/spec.md` W0-01 D-6 | — |
@@ -145,12 +165,13 @@ spec.md's Affected-files note.
 | `pgvector` | services/workers (dep) | Vector store client for 1024-dimensional cosine embeddings with provider/model/dimension metadata | `docs/prd.md` §2.5 (Hybrid Storage Engine), §4.3 (Vector Store); W0-05/W1-05 | pgvector → Amazon OpenSearch; see below |
 | `neo4j` | services/workers (dep) | Python Bolt driver for the Graph Store — used only by `sayre_workers/graph_migrations/runner.py` (W0-02) to apply the openCypher migration scripts under `services/workers/graph-migrations/`; the Ingestion Worker (W1-01+) will reuse the same driver for real graph writes. Manifest pins `5.24.*` (matches the `neo4j:5.24-community` server image major.minor pinned in `infra/docker-compose.yml`); resolved `5.24.0`. Distinct from `neo4j-driver` (the Node/TS driver already pinned in `services/core`, used only by the Graph Query Service) — this is the Python-fleet driver, since the fleet owns all graph writes per `.claude/rules/async-messaging.md`/`CLAUDE.md` Structure. | `docs/prd.md` §4.3/§4.10 (Graph Store); `.claude/rules/graph-schema.md`; `.pipeline/spec.md` (W0-02) | Neo4j → Amazon Neptune; same trigger as `neo4j-driver` below — the Python runner's `--target neptune` flag already skips the one Neo4j-only DDL file (`003_constraints_and_indexes.cypher`) in anticipation |
 | `anthropic` | services/workers (dep) | Anthropic SDK reserved for the concrete Anthropic `ModelProvider` adapter | `docs/prd.md` §2.7; W3-07 | No direct use outside provider adapters |
+| `PyJWT[crypto]` | services/workers (dep) | JWT signing for GitHub App installation-token minting (`sayre_workers/ingestion/github_installation.py`) | W1-06 (GitHub App: registration, install flow & initial-parse trigger) | — |
+| `httpx` | services/workers (dep) | Main `[project.dependencies]` entry — HTTP client for outbound calls (e.g. GitHub App installation-token requests in `github_installation.py`); also satisfies Starlette's `TestClient` in `tests/test_health.py`, but is no longer merely a dev-group transitive | `.pipeline/spec.md` W0-01 (Affected files, `services/workers`); W1-06 | — |
 | `pydantic` | services/workers (dep) | Data validation (FastAPI 0.115 requires Pydantic v2) | Not named in PRD; build/test support | — |
 | `pytest` | services/workers (dev group) | Test runner | `CLAUDE.md` Commands (`poetry run pytest`) | — |
 | `pytest-asyncio` | services/workers (dev group) | Async test support for FastAPI/async code paths | Not named in PRD; build/test support | — |
 | `ruff` | services/workers (dev group) | Lint (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Commands (`poetry run ruff check .`) | — |
 | `mypy` | services/workers (dev group) | Typecheck (W0-01 D-6) | `.pipeline/spec.md` W0-01 D-6; `CLAUDE.md` Verification | — |
-| `httpx` | services/workers (dev group) | Required transitively by Starlette's `TestClient` (used in `tests/test_health.py`) | `.pipeline/spec.md` W0-01 (Affected files, `services/workers`) | — |
 | `opentelemetry-api` | services/workers (dep) | Vendor-neutral metrics API — the only surface `vector_metrics.py` and future call sites import (resolved `1.29.0`) | `docs/migration-triggers.md` (Vector Store trigger); W0-06 spec | — (this *is* the swap point's stable surface) |
 | `opentelemetry-sdk` | services/workers (dep) | MeterProvider/View/Resource implementation behind the API — same minor as `opentelemetry-api` (resolved `1.29.0`) | W0-06 spec (`sayre_workers/telemetry/otel.py`) | — |
 | `opentelemetry-exporter-prometheus` | services/workers (dep) | Pull-based Prometheus exporter for `/metrics` — pinned to the release paired with the `1.29.x` api/sdk minor (resolved `0.50b0`, which also pins `opentelemetry-semantic-conventions==0.50b0` transitively) | W0-06 spec | Swapped for an OTLP/vendor reader in prod — see `otel.py`'s `init_metrics()` docstring; zero call-site changes |
