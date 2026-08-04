@@ -522,7 +522,7 @@ D-014's acceptance test — *"can a new cofounder go `git clone` → running sta
 
 **Depends on:** none — PL-03a…PL-03d are files plus the Node/Python toolchains the repo already requires; only the Victor-facing rollout (PL-03e) is gated, on PL-02 for his environment · **Executor:** Pair (methodology: human-directed; implementation: AI agent)
 
-**Split for execution:** PL-03a cross-runtime foundation · PL-03b impact resolver · PL-03c pipeline stage changes (needs PL-03b) · PL-03d `pr-review` agent (needs PL-03a, PL-03c) · PL-03e Victor's rollout (needs PL-03a–d, PL-02) · PL-03f and PL-03g, opened during PL-03a execution. Each gets its own spec pass; the combined scope is too large for one implementation run.
+**Split for execution:** PL-03a cross-runtime foundation · PL-03b impact resolver · PL-03c pipeline stage changes (needs PL-03a; `red`/`tester` degrade cleanly without PL-03b and disclose its absence rather than depending on it — see PL-03c's own spec.md) · PL-03d `pr-review` agent (needs PL-03a, PL-03c) · PL-03e Victor's rollout (needs PL-03a–d, PL-02) · PL-03f and PL-03g, opened during PL-03a execution · PL-03h, opened during PL-03c execution (needs PL-03c). Each gets its own spec pass; the combined scope is too large for one implementation run.
 
 Implements `docs/sdd-tdad-design.md` in five steps: the tracked runtime-neutral `.sdd/` layer plus shim generator, paring the agent surface to `.sdd/` + `AGENTS.md` + generated `.claude/` shims and deleting the `.codex/` and `.agents/` mirrors (closing the drift between them, and the fact that all three were excluded via `.git/info/exclude` and therefore reached no one who cloned — including a Codex `security-checker` reduced to a 13-line paraphrase of the 99-line original, missing the attacker registry, checklist IDs, `UNVERIFIED` semantics, and content-hashed manifests, while still emitting `PASS`); the `affected_tests.py` impact resolver over the pure `sayre_workers.parsing` modules; a `red` stage authoring all behavioral tests from spec before `dev` runs; `tester` rewired off `changes.md` (D-018's finding that tests currently ratify the implementation); and a `pr-review` agent with deterministic lane-bounds checking. D-005's action item is **not** closed here, and is worse than D-005 recorded. D-005 assumed the `Write` matcher worked and only the unmatched `Bash` tool bypassed it; a 2026-07-31 diagnostic showed `PreToolUse` hooks declared in *subagent frontmatter* never fire at all (settings-file hooks do, including for subagent tool calls), so both agents have always been unenforced for `Write` as well as `Bash`. PL-03a corrected the false "enforced by hook" claims and removed the inert guard; real enforcement is PL-03g.
 
@@ -650,6 +650,62 @@ reintroduced in any form that addresses only a single command or flag name; if t
 written escalation of the platform gap plus whichever alternative (a different mechanism, or a
 documented decision to keep this convention-only) is chosen instead.
 
+### **PL-03h — Fence/comment-aware markdown parsing for the ledger + spec-trace/hash checks** **_(deferred scope from PL-03c round 3's narrow count-check fix)_**
+
+**Depends on:** PL-03c · **Executor:** AI agent
+
+PL-03c round 3 closed the three vectors tester's adversarial sweep found in `extractSection`
+(`scripts/build-ledger-index.mjs`) — a fabricated `## Verdict` heading inside a fenced code block,
+one inside an HTML comment, and a genuine duplicate `## Verdict` heading — with a deliberately
+narrow fix: count every line that is exactly a `## <heading>` ATX heading and refuse whenever the
+count isn't exactly one (zero: heading genuinely absent, unchanged behavior; two or more: refuse,
+naming the count and every matching line number so it's debuggable). That closes the failure mode
+("a ledger entry recording `review: PASS` for a run whose real verdict is `NEEDS_FIXES`") for all
+three vectors at once, because each is structurally a second matching line — but it is a **refusal,
+not a resolution**: it cannot tell a document that legitimately needs one specific heading of two
+apart from an attack, and its only tool is failing closed. That is deliberate and correct as a
+stopgap (review's own repro remains dead, and the one case the count check doesn't catch — a
+document containing solely a fake verdict and no real one — is one where refusing is the correct
+outcome regardless), but it is not the complete fix. A full fence/comment-aware markdown parse (or a
+pre-pass that strips fenced code blocks and HTML comments before any heading regex runs) would let
+`extractSection` resolve to the one real heading instead of refusing outright, and would also close
+two related, structurally identical gaps tester found in the same sweep, both explicitly deferred
+out of round 3's narrowed scope:
+
+- **`scripts/check-red-integrity.mjs`'s `@spec` trace check can be laundered by a code example.**
+  `extractKnownSpecIds` greps raw `spec.md` section text for `AC-*`/`EC-*` tokens with no
+  fenced-code-block awareness, so an ID that appears only inside a fenced illustrative example in
+  the Acceptance-criteria/Edge-cases sections (e.g. `` ```\n// @spec AC-77\n``` `` documenting the
+  marker format, not a real criterion) resolves as if it were a genuine, citable item. Reproduced
+  directly: `scripts/check-red-integrity.test.mjs`'s skipped `OPEN GAP: an @spec ID that appears in
+  spec.md's Acceptance criteria section only inside a fenced code example...` test.
+- **`scripts/check-red-integrity.mjs` crashes on a directory-shaped hash path.** A path recorded in
+  `red.md`'s `## Content hashes (SHA-256)` that has since become a directory causes `existsSync()`
+  to return `true` and `readFileSync()` to throw an uncaught `EISDIR` — the process does exit
+  non-zero (nothing is silently accepted), but it crashes with a raw Node stack trace before printing
+  the JSON report the script's own contract promises, breaking "review adjudicates the printed
+  report." Reproduced directly: `scripts/check-red-integrity.test.mjs`'s skipped `OPEN GAP: a hash
+  recorded for a path that has since become a directory...` test.
+
+Given how the round-2 fix for the original bug turned out to be real but incomplete (review's own
+"fixture monoculture" diagnosis), this ticket should design the fence/comment-aware parse (or
+pre-pass) once, generally, rather than patch each of these three sites — and any further shape
+tester explicitly did not exhaustively sweep (a blockquote, a table cell, a backslash-escaped
+`\## Verdict`) — individually.
+
+**Acceptance criteria:** a markdown-structure-aware parsing layer (full parser or a fence/comment-
+stripping pre-pass) that `extractSection` uses in place of round 3's count-only refusal, and that
+resolves — rather than refuses on — a heading shadowed by a fenced code block, an HTML comment, or
+(where determinable, e.g. "the last one wins") a genuine duplicate, verified against tester's exact
+three round-3 reproductions plus at least one further shape tester named as unswept (blockquote,
+table cell, or backslash-escaped `\##`); `extractKnownSpecIds` in `check-red-integrity.mjs` resolves
+`@spec` IDs only from real acceptance-criteria/edge-case items, not from fenced code examples in the
+same section, verified against tester's `AC-77`-in-a-code-example reproduction; a directory-shaped
+path recorded in `red.md`'s content hashes produces a controlled violation message in the script's
+own JSON report rather than an uncaught `EISDIR` crash; the three tests marked skipped in
+`scripts/build-ledger-index.test.mjs` and `scripts/check-red-integrity.test.mjs` (each referencing
+this ticket) are un-skipped and pass unmodified.
+
 ### **PL-04 — COVERS edge weighting + ranked, bounded `get_covering_tests`** **_(contract fix)_**
 
 **Depends on:** W2-07, W4-03, W4-06 · **Executor:** AI agent (contract change reviewed by human)
@@ -741,11 +797,12 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 |PL-02|PL-01|Platform|
 |PL-03a|none|Platform|
 |PL-03b|none|Platform|
-|PL-03c|PL-03b|Platform|
+|PL-03c|PL-03a|Platform|
 |PL-03d|PL-03a, PL-03c|Platform|
 |PL-03e|PL-03a-d, PL-02|Platform|
 |PL-03f|PL-03a|Platform|
 |PL-03g|PL-03a|Platform|
+|PL-03h|PL-03c|Platform|
 |PL-04|W2-07, W4-03, W4-06|Platform|
 |PL-05|PL-04 (gate)|Platform|
 |PL-06|W4-06|Platform|

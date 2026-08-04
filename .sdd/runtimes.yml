@@ -33,6 +33,18 @@ stages:
       tools: [Read, Grep, Glob, Write]
       model: opus
 
+  red:
+    neutral: stages/red.md
+    claude:
+      name: red
+      description: >-
+        Authors every behavioral test for spec.md's AC-*/EC-* items before dev runs, so tests
+        describe the spec rather than the diff. Classifies each test RED-CORRECT/RED-DEFERRED and
+        refuses to finish with any RED-BROKEN test. Use after planner writes .pipeline/spec.md and
+        before dev starts implementing.
+      tools: [Read, Write, Edit, Grep, Glob, Bash]
+      model: opus
+
   dev:
     neutral: stages/dev.md
     claude:

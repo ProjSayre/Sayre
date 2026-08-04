@@ -9,5 +9,5 @@ Run only the planning stage for: $ARGUMENTS
 
 Follow `.sdd/pipeline.md`'s "`/spec-only <ticket>`" section exactly — it is the authoritative,
 runtime-neutral definition of this command. Invoke the `planner` subagent for the planning step;
-do not continue to `dev`, `tester`, `review`, or `security-checker` — this command stops after
-planning, on purpose.
+do not continue to `red`, `dev`, `tester`, `review`, or `security-checker` — this command stops
+after planning, on purpose.

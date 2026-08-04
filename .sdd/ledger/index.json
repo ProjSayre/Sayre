@@ -1,0 +1,282 @@
+{
+  ".claude/agents/dev.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/agents/planner.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/agents/review.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/agents/security-checker.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/agents/tester.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/skills/pipeline-status/SKILL.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/skills/pipeline/SKILL.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/skills/security-recheck/SKILL.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".claude/skills/spec-only/SKILL.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".gitattributes": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".github/workflows/ci.yml": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".gitignore": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".pipeline/README.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/README.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/bounds.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/ledger/README.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/pipeline.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/runtimes.yml": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/stages/dev.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/stages/planner.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/stages/review.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/stages/security.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/stages/tester.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "AGENTS.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "CLAUDE.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "docs/PRD_Tickets.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "docs/sdd-drift-corrections-pl-03a.md": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "package-lock.json": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "package.json": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/generate-agent-shims.mjs": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/generate-agent-shims.test.mjs": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/sdd-completeness.test.mjs": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/validate-security-audit-agents.mjs": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/validate-security-audit-run.mjs": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/validate-security-audit-run.test.mjs": [
+    {
+      "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
+      "ticket": "PL-03a",
+      "date": "2026-07-31",
+      "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ]
+}

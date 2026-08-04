@@ -42,8 +42,9 @@ list). Run the narrowest relevant one for what you're actually changing rather t
 
 ## The pipeline
 
-Sayre's delivery pipeline is five stages — `planner` → `dev` → `tester` → `review` → `security` —
-defined once, runtime-neutral, in `.sdd/`. Four commands compose them:
+Sayre's delivery pipeline is six stages — `planner` → `red` → `dev` → `tester` → `review` →
+`security` — defined once, runtime-neutral, in `.sdd/`, plus a ledger-append step once a run reaches
+terminal `PASS`. Four commands compose the stages:
 
 - `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
 - `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
@@ -53,9 +54,10 @@ defined once, runtime-neutral, in `.sdd/`. Four commands compose them:
 Each command's exact procedure is defined in `.sdd/pipeline.md`, not here — read it before running
 one. Do not skip a missing stage or let a stage invent a replacement for a missing input; if a
 required `.pipeline/` artifact doesn't exist, say which stage needs to run first. Pipeline artifacts
-live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history —
-see `.sdd/ledger/README.md` for the one thing that will eventually be committed per run, once a
-later ticket populates it).
+live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history) —
+except the one thing that's durable by design: `.sdd/ledger/<run-id>/{spec.md,entry.md}`, committed
+once a run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the
+file→spec query path.
 
 Architecture rules, the service-layer boundary, RBAC/tenant-isolation requirements, and the
 project's "Don't" list are defined once in `CLAUDE.md` and are not restated here — copying them into

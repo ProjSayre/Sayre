@@ -21,10 +21,21 @@ When invoked:
    - **Affected files** — exact file paths that will be created or modified, not just directory names. If a file doesn't exist yet, say so and give its intended path.
    - **Interfaces / signatures** — exact function/method signatures, types, API route shapes, or Cypher query shapes involved. Be concrete: `async function getFeatureNodes(repoId: string, orgId: string): Promise<FeatureNode[]>`, not "a function to get features."
    - **Approach** — the implementation plan, concise, bullet-form, in the order Dev should build it
-   - **Acceptance criteria** — specific, verifiable statements Review will check against
-   - **Edge cases** — an exhaustive list for Tester to cover: empty/missing data, RBAC-denied access, malformed input, concurrent/partial-failure states, and anything specific to this feature (e.g. node-count thresholds, queue redelivery, webhook replay)
+   - **Acceptance criteria** — specific, verifiable statements Review will check against. Give each
+     one a stable ID in presentation order: `AC-1`, `AC-2`, ... . These IDs are not cosmetic — `red`
+     (the stage that authors behavioral tests before Dev runs) cites them via a `@spec <ID>` marker
+     on every test, and Review resolves those markers back to this list. An acceptance criterion with
+     no ID has nothing for a test to point at.
+   - **Edge cases** — an exhaustive list for Tester to cover: empty/missing data, RBAC-denied access, malformed input, concurrent/partial-failure states, and anything specific to this feature (e.g. node-count thresholds, queue redelivery, webhook replay). Give each one a stable ID the same way: `EC-1`, `EC-2`, ... in presentation order, for the same reason as Acceptance criteria.
    - **Open questions** — anything ambiguous in the ticket/PRD that needs a human answer before Dev proceeds on that part
 
 If the ticket conflicts with the PRD or an architectural rule (e.g. it implies client-side RBAC filtering, or bypassing the service layer), flag this explicitly in Open Questions rather than silently resolving it or silently complying with a bad request.
+
+If spec.md is later amended after `red` has already authored tests against it (for example, Dev
+discovers a signature in Interfaces/signatures can't work as written) — **preserve every existing
+`AC-*`/`EC-*` ID**. Tests already cite them by ID; renumbering would silently break those references
+without anything failing loudly. Append new items under the next unused number instead of
+renumbering, and let the amendment itself (and the reason for it) be recorded where Dev declares it,
+not by quietly shifting IDs here.
 
 The bar for "done": another engineer with zero context on the ticket should be able to implement it correctly from spec.md alone, without asking you a clarifying question.

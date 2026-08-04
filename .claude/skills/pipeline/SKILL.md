@@ -12,11 +12,14 @@ runtime-neutral definition of this command's procedure, the stage sequence, rout
 This file only maps that procedure onto Claude Code's subagents:
 
 1. **planner** → the `planner` subagent
-2. **dev** → the `dev` subagent
-3. **tester** → the `tester` subagent
-4. **review** → the `review` subagent (writes `.pipeline/review.md` directly — see
+2. **red** → the `red` subagent (writes `.pipeline/red.md` directly, before `dev` runs)
+3. **dev** → the `dev` subagent
+4. **tester** → the `tester` subagent
+5. **review** → the `review` subagent (writes `.pipeline/review.md` directly — see
    `.sdd/runtimes.yml`)
-5. **security** → the `security-checker` subagent (writes `.pipeline/security-report.md` directly)
+6. **security** → the `security-checker` subagent (writes `.pipeline/security-report.md` directly)
+7. **ledger** → not a subagent; on a terminal `PASS`, run `node scripts/ledger-append.mjs` directly
+   (it regenerates `.sdd/ledger/index.json` itself)
 
 Do not restate or duplicate `.sdd/pipeline.md`'s procedure here — read it fresh each time this
 command runs, the same way any other runtime would.

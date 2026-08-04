@@ -1,9 +1,10 @@
 # `.sdd/` — the pipeline methodology, runtime-neutral
 
-This directory is the single source of truth for Sayre's five-stage delivery pipeline
-(`planner` → `dev` → `tester` → `review` → `security`). Any AI coding tool that can read files in
-this repository — Claude Code, Codex, Cursor, or anything else — reads the same methodology from
-here. There is no second, tool-specific copy of *what each stage does*.
+This directory is the single source of truth for Sayre's six-stage delivery pipeline
+(`planner` → `red` → `dev` → `tester` → `review` → `security`), plus the ledger step that follows a
+terminal `PASS`. Any AI coding tool that can read files in this repository — Claude Code, Codex,
+Cursor, or anything else — reads the same methodology from here. There is no second, tool-specific
+copy of *what each stage does*.
 
 If you've never touched this pipeline before, read `.sdd/pipeline.md` first (the stage sequence and
 the four ways to invoke it), then whichever `.sdd/stages/*.md` file matches the stage you're
@@ -49,8 +50,8 @@ Concretely: `.sdd/stages/review.md` says *"produce a report in this shape; it is
 that file directly (it does) or a Codex-style coordinator saves the subagent's returned markdown
 (because Codex has no subagent-isolation equivalent at all). Both are the same contract; the
 mechanism is runtime detail and lives in `.sdd/runtimes.yml`. Neither runtime currently confines
-that write to `.pipeline/` with a runtime-enforced guard — see the note under "The only generated
-surface" below.
+that write to `.pipeline/` with a runtime-enforced guard — see the note under "The generated
+surfaces" below.
 
 ## Directory map
 
@@ -62,15 +63,20 @@ surface" below.
   bounds.md            — named lane vocabulary (defined only — nothing enforces it yet, see below)
   stages/
     planner.md
+    red.md
     dev.md
     tester.md
     review.md
     security.md
   ledger/
-    README.md          — entry format for a future committed run history (empty — nothing writes here yet)
+    README.md          — entry format and the file->spec query path
+    index.json         — generated file->run-id index; never hand-edited (see below)
+    <run-id>/
+      spec.md          — verbatim spec.md from a completed, terminal-PASS run
+      entry.md         — that run's metadata (date, ticket, files touched, verdicts, red-test paths)
 ```
 
-## The only generated surface: `.claude/`
+## The generated surfaces: `.claude/agents/*.md` and `.sdd/ledger/index.json`
 
 `.claude/agents/*.md` are generated, not hand-authored. `scripts/generate-agent-shims.mjs` reads
 `.sdd/runtimes.yml` and writes each stage's frontmatter (tools, model, hooks, subagent name) plus a
@@ -110,6 +116,38 @@ settings.json-level hook can even be scoped to one subagent without also blockin
 `/pipeline-status`, `/security-recheck`) are hand-authored but intentionally thin: each one points
 at its matching section of `.sdd/pipeline.md` rather than restating the procedure.
 
+**The second generated surface, added in PL-03c:** `.sdd/ledger/index.json` is generated the same
+way, from a different source. `scripts/build-ledger-index.mjs` reads every `.sdd/ledger/<run-id>/entry.md`
+on disk and writes the file->run-id index; `--check` (CI-gated, same contract as the shim generator's)
+fails if it's stale. Never hand-edit `index.json` — regenerate it after adding or hand-authoring a
+ledger entry. Unlike the `.claude/` shims, the *inputs* here (`entry.md`/`spec.md` per run) are
+themselves committed, durable content, not per-runtime configuration — see "The ledger" below.
+
+## The ledger — durable spec history and the file→spec query path
+
+Unlike everything above, `.sdd/ledger/` is not runtime configuration — it's the one place this
+pipeline keeps a permanent record after `.pipeline/`'s working files are overwritten by the next run.
+`scripts/ledger-append.mjs` writes `.sdd/ledger/<run-id>/{spec.md,entry.md}` once a run reaches
+**terminal `PASS`** (both `review.md` and `security-report.md` show `PASS`), reusing that run's own
+security run id so a ledger entry and its security-history directory are trivially correlatable, and
+regenerates `index.json` itself. Full rationale, the entry format, and the "why reuse the run id"
+reasoning live in `.sdd/ledger/README.md` — this section only documents the query path a human or a
+future `pr-review` agent actually uses:
+
+```
+a file misbehaves in production
+  → .sdd/ledger/index.json[<repo-relative path>]
+  → one or more { runId, ticket, date, spec } entries
+  → .sdd/ledger/<runId>/spec.md — the spec that file was actually reviewed and merged against
+```
+
+This answers, mechanically, the question D-005 records Sayre as having no answer to except memory
+("which code realizes PRD §4.5?") at file granularity — a `symbol_to_spec.yml`-shaped mapping without
+building `symbol_to_spec.yml`. `.sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/` is
+entry #1: PL-03a's own spec, migrated by hand as part of this ticket since it predates both the
+ledger and `ledger-append.mjs` — its `entry.md` says so directly rather than implying a `red` stage
+ran for a ticket that predates `red`'s own existence.
+
 ## Accepted costs of this design (recorded so they're recoverable, not forgotten)
 
 Paring the pipeline down to `.sdd/` + `AGENTS.md` + `.claude/` (deleting the Codex and skills
@@ -121,8 +159,9 @@ mirrors rather than also generating them) has two real costs:
    fired here. This is consistent with a standing principle of this design: cross-runtime guarantees
    are verification-based, not enforcement-based, because not every runtime has hooks — and, as it
    turned out, the one that nominally does didn't get one working for this property either. Nothing
-   about the red-hash, spec-trace, or bounds checks planned for later tickets depends on this. Real
-   enforcement for the Claude Code side is tracked as `PL-03g`.
+   about the red-hash and spec-trace checks (landed in PL-03c, see `.sdd/stages/review.md`) or the
+   bounds checks planned for a later ticket depends on this. Real enforcement for the Claude Code
+   side is tracked as `PL-03g`.
 2. **Loses per-stage context isolation in Codex.** A Codex run executes `.sdd/stages/*.md`
    sequentially in one continuous context, so its `review` stage shares context with whatever
    `dev` was just thinking, and is weaker for it. This is the real loss — see
@@ -135,20 +174,19 @@ open question, worth watching on the first several real runs rather than decidin
 
 ## What's here and what's deliberately not (yet)
 
-This directory currently covers the five existing stages and nothing past them. Specifically **not**
+This directory now covers six stages (`red` landed in PL-03c) plus the ledger. Specifically **not**
 in scope here, even though `docs/sdd-tdad-design.md` describes them as later steps of the same
 design:
 
-- **No `red` stage.** The stage sequence is still `planner → dev → tester → review → security`,
-  not `planner → red → dev → tester → review → security`.
 - **No `pr-review` agent**, and nothing in this repository enforces `.sdd/bounds.md`'s lane
   vocabulary yet — that file defines names and path globs only.
-- **No impact resolver** (`get_affected_tests` / `affected_tests.py`).
-- **No ledger population.** `.sdd/ledger/README.md` defines the entry format a future ticket will
-  write; nothing writes an entry today.
+- **No impact resolver** (`get_affected_tests` / `affected_tests.py`, PL-03b). `red` and `tester`
+  both work without it today — each states its absence explicitly in `.pipeline/red.md` /
+  `.pipeline/test-results.md` rather than silently implying coverage neither one actually has (see
+  `.sdd/stages/red.md` and `.sdd/stages/tester.md`).
 
-These land in follow-on tickets (tracked as PL-03b/c/d in the design doc). Building this foundation
-first is what unblocks them without requiring another rewrite of the stage files.
+These land in follow-on tickets (tracked as PL-03b/d in the design doc). Building this foundation
+first is what unblocked them without requiring another rewrite of the stage files.
 
 ## For more context
 

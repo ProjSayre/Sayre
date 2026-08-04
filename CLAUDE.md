@@ -60,15 +60,18 @@ Run `/pipeline <ticket description or path to ticket file>` to chain the full pi
 - `/pipeline-status` — reports which stage a run is currently at, without running anything
 - `/security-recheck` — re-runs just `security-checker` against current disk state, for a fast check after a hand-edit (doesn't redo tester/review)
 
-Feature/ticket work runs through five subagents in sequence, coordinating via shared files in `.pipeline/` (not `.claude/`, gitignored):
+Feature/ticket work runs through six subagents in sequence, coordinating via shared files in `.pipeline/` (not `.claude/`, gitignored), plus a ledger-append step once a run reaches terminal `PASS`:
 
-1. `planner` (Opus) — turns a vague ticket into a detailed spec with exact file paths/signatures/edge cases, writes `.pipeline/spec.md`
-2. `dev` (Sonnet) — reads spec.md, implements (can spawn its own subagents for independent sub-tasks), writes `.pipeline/changes.md`
-3. `tester` — reads changes.md, writes/runs tests for happy path + edge cases, writes `.pipeline/test-results.md`
-4. `review` — **read-only, cannot edit code by convention, verified at review** (not enforced by a hook — see below) — checks the diff against spec.md/PRD alignment and test-results.md's coverage, writes `.pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES`
-5. `security-checker` — **read-only, cannot edit code by convention, verified at review** (not enforced by a hook — see below) — runs only after review.md is `PASS`; applies the registered progress-based attacker briefs, writes immutable audit artifacts under `.pipeline/security-history/<run-id>/`, and writes `.pipeline/security-report.md` with verdict `PASS` or `BLOCKED`
+1. `planner` (Opus) — turns a vague ticket into a detailed spec with exact file paths/signatures/edge cases and stable `AC-*`/`EC-*` IDs, writes `.pipeline/spec.md`
+2. `red` (Opus) — authors every behavioral test for spec.md's `AC-*`/`EC-*` items **before `dev` runs**, so tests describe the spec rather than the diff; classifies each `RED-CORRECT`/`RED-DEFERRED` and refuses to finish with any `RED-BROKEN` test; writes `.pipeline/red.md`
+3. `dev` (Sonnet) — reads spec.md, implements (can spawn its own subagents for independent sub-tasks), writes `.pipeline/changes.md`
+4. `tester` — reads spec.md and red.md (not changes.md, for deriving assertions), runs the red suite, adds only non-behavioral coverage, and reports rather than fills any behavioral gap it spots, writes `.pipeline/test-results.md`
+5. `review` — **read-only, cannot edit code by convention, verified at review** (not enforced by a hook — see below) — checks the diff against spec.md/PRD alignment, test-results.md's coverage, red-test integrity (rehashed against red.md), and `@spec` trace, writes `.pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES`
+6. `security-checker` — **read-only, cannot edit code by convention, verified at review** (not enforced by a hook — see below) — runs only after review.md is `PASS`; applies the registered progress-based attacker briefs, writes immutable audit artifacts under `.pipeline/security-history/<run-id>/`, and writes `.pipeline/security-report.md` with verdict `PASS` or `BLOCKED`
 
-If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline routes back to `dev` with the fix list, then re-runs the downstream stages — capped at 3 loops before stopping to ask a human.
+On a **terminal `PASS`** (review and security both `PASS`), `node scripts/ledger-append.mjs` writes a durable, tracked entry — `.sdd/ledger/<run-id>/{spec.md,entry.md}` — and regenerates `.sdd/ledger/index.json`. This is the one thing that survives `.pipeline/` being wiped; see `.sdd/ledger/README.md`.
+
+If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline routes back to `dev` with the fix list, then re-runs the downstream stages — capped at 3 loops before stopping to ask a human. `red` does not re-run in this loop.
 
 Each stage reads the previous stage's file before starting. Don't skip a stage or let `dev` invent its own spec — if `.pipeline/spec.md` is missing, run `planner` first.
 
