@@ -24,13 +24,46 @@ this ticket, that evidence was destroyed on a cadence of roughly one ticket; now
 
 ```
 .sdd/ledger/<run-id>/
-  spec.md     — verbatim copy of that run's .pipeline/spec.md at the moment it reached terminal PASS
-  entry.md    — run metadata (see "Entry format" below)
-  security/   — copy of that run's .pipeline/security-history/<run-id>/ (round 3 — see below)
+  spec.md      — verbatim copy of that run's .pipeline/spec.md at the moment it reached terminal PASS
+  spec.json    — verbatim copy of that run's .pipeline/spec.json (PL-03h round 4 — see below)
+  entry.md     — run metadata, human-facing (see "Entry format" below)
+  entry.json   — the SAME run metadata, machine-facing and authoritative (see "entry.json is
+                 authoritative" below) — scripts/build-ledger-index.mjs reads only this file
+  red.json     — copy of that run's .pipeline/red.json, if one existed for this run
+  changes.json — copy of that run's .pipeline/changes.json
+  review.json  — copy of that run's .pipeline/review.json
+  security.json — copy of that run's .pipeline/security.json
+  security/    — copy of that run's .pipeline/security-history/<run-id>/ (round 3 — see below)
     manifest.json
     results.json
     report.md
 ```
+
+### `entry.json` is authoritative (PL-03h round 4)
+
+Every field `scripts/build-ledger-index.mjs` uses to decide whether a run may be indexed, and which
+files it touched, now comes from `entry.json`, not from parsing `entry.md`'s markdown. This is not a
+cosmetic rename — it is the architectural fix for a defect that survived three rounds of
+markdown-parser patching (see `.pipeline/review.md`'s round-3 "On convergence" section and
+`scripts/pipeline-contracts.mjs`'s own header for the full argument): a hand-rolled block scanner
+tracking fenced-code-block and HTML-comment state closed one exploit per round and, at least once,
+introduced a new instance of the same class in the process of closing the last one. `entry.json`
+removes the ambiguity surface outright rather than narrowing it further — `JSON.parse` either
+succeeds or throws, and `build-ledger-index.mjs`'s own reader validates the result strictly (required
+keys present, the `verdicts` object byte-for-byte `{ "review": "PASS", "security": "PASS" }`, every
+array actually an array) before a run is ever indexed.
+
+`entry.md` is still written by `scripts/ledger-append.mjs`, from the exact same in-memory data used
+to build `entry.json`, and remains the human-facing rendering of a ledger entry — nothing reads it
+for a control decision anymore. `.sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/`'s
+`entry.json` was backfilled by hand from that run's own `entry.md` (the exact same one-time migration
+affordance `entry.md` itself already used, since that run predates both `ledger-append.mjs` and the
+JSON sidecar contract) — see that file's own `_comment` field.
+
+`entry.json`'s shape: `{ runId, date, ticket, filesTouched: [...], verdicts: { review, security } }`.
+`runId` must equal the entry's own directory name; `verdicts.review`/`verdicts.security` must both be
+exactly the literal string `"PASS"` (an entry only exists because both gates already passed — see
+"Entry format" below for why this is still checked byte-for-byte, not merely well-formed).
 
 **`<run-id>` is reused from the security run that produced this run's terminal `PASS`** — the same id
 already at `.pipeline/security-history/<run-id>/`. This is deliberate, not a shortcut: security-checker
@@ -73,16 +106,17 @@ replace immutable audit history.
 
 ## Entry format
 
-Every `entry.md` uses exactly these headings, in this order — `scripts/build-ledger-index.mjs`
-parses them with plain `## Heading` splitting, not a markdown parser. The PL-03a migration
-(`scripts/ledger-append.mjs` didn't exist yet) is a **one-time migration affordance**, not a general
-invitation to hand-author future entries — every ordinary run's entry should come from
-`scripts/ledger-append.mjs` itself, which re-verifies its own preconditions before writing anything.
-If a hand-authored entry is ever needed again, it must match this shape exactly, including the one
-line `build-ledger-index.mjs --check` actually enforces (review Warning 1): the "Verdicts" section
-must read exactly `- review: PASS` / `- security: PASS`, nothing else — `buildIndex()` refuses to
-index (and `--check` fails loudly on) any entry whose "## Verdicts" section doesn't match that
-literally, so a hand-authored entry can never claim a pass the tooling didn't itself verify:
+`entry.md` and `entry.json` carry the same information — one for humans, one for
+`scripts/build-ledger-index.mjs` (see "`entry.json` is authoritative" above). `entry.md` uses exactly
+these headings, in this order, purely for human legibility; nothing parses its markdown for a control
+decision anymore. The PL-03a migration (`scripts/ledger-append.mjs` didn't exist yet) is a **one-time
+migration affordance**, not a general invitation to hand-author future entries — every ordinary run's
+entry should come from `scripts/ledger-append.mjs` itself, which re-verifies its own preconditions
+before writing anything. If a hand-authored entry is ever needed again, both `entry.md` and
+`entry.json` must be authored, matching each other, and `entry.json`'s `verdicts` must read exactly
+`{ "review": "PASS", "security": "PASS" }` — `buildIndex()` refuses to index (and `--check` fails
+loudly on) any entry whose `entry.json` doesn't match that literally, so a hand-authored entry can
+never claim a pass the tooling didn't itself verify:
 
 - **Date** — the date the run reached terminal `PASS` (from the security run's own timestamp).
 - **Ticket** — a short ticket id on its own first line (what `index.json` records), then the full

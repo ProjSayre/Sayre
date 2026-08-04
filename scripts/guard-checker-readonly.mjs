@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+/**
+ * PreToolUse guard: the checker stages (`review`, `security-checker`) may write only inside
+ * `.pipeline/`. Every other agent — `planner`, `red`, `dev`, `tester`, and the main session —
+ * is unaffected.
+ *
+ * WHY THIS LIVES IN settings.json AND NOT IN SUBAGENT FRONTMATTER (PL-03g):
+ * A 2026-07-31 diagnostic established that a `PreToolUse` hook declared in a subagent's own
+ * frontmatter never fires, while the same hook declared in a settings file does — including for
+ * subagent tool calls. So for the entire life of this repo, `review` and `security-checker` were
+ * documented as "read-only, enforced by hook" and were in fact unenforced, for `Write` as well as
+ * `Bash`. D-005 caught the `Bash` half and assumed the `Write` matcher worked; it did not.
+ *
+ * WHY PER-AGENT SCOPING IS POSSIBLE (the open question PL-03g was blocked on):
+ * A 2026-08-04 payload probe showed `PreToolUse` receives `agent_type` (and `agent_id`) alongside
+ * `tool_name`/`tool_input`. That is what lets one settings-level hook enforce against the checker
+ * stages without also blocking `dev`, which must write code. Before that was known, the only
+ * options looked like "block everyone" or "block no one".
+ *
+ * FAIL-CLOSED POSTURE:
+ * An unparseable payload, or a checker write whose target path cannot be determined, is BLOCKED.
+ * We cannot rule out that the caller is a checker, and a loud error is recoverable where a silent
+ * bypass is not. A parse failure here should be impossible in normal operation; if it starts
+ * happening, that is a bug worth surfacing rather than tolerating.
+ *
+ * PATH CONTAINMENT IS DELIBERATELY NOT A GLOB.
+ * The predecessor script used a shell glob alternation over the raw path (matching `.pipeline`
+ * either at the start or after any directory prefix). That allowed
+ * `.pipeline/../../etc/passwd` (resolves outside) and blocked `C:\...\.pipeline\review.md` (the
+ * native Windows form the tools actually pass). Both bugs come from pattern-matching a path
+ * instead of resolving it. Here the target and the allowed root are both resolved to absolute
+ * form and compared by containment, which is a closed problem: two paths, one prefix test.
+ *
+ * A NOTE ON THIS FILE'S OWN FAILURE MODE:
+ * A PreToolUse hook blocks on exit 2; any other non-zero exit is treated as a non-blocking error.
+ * So if this script fails to load at all — a syntax error, a missing import — it exits 1 and
+ * enforces nothing, silently. That is the same shape as the bug this ticket exists to fix, so it
+ * is covered by scripts/guard-checker-readonly.test.mjs, which CI runs. Do not rely on reading
+ * this file to know it works.
+ *
+ * Exit 0 = allow. Exit 2 = block, with the reason on stderr.
+ */
+
+import { resolve, relative, isAbsolute, sep } from 'node:path';
+
+/** Stage names that are read-only with respect to source code. Both spellings of the security
+ * stage are listed because the runtime shim name and the neutral `.sdd/` stage name differ. */
+const READ_ONLY_AGENTS = new Set(['review', 'security-checker', 'security_checker', 'security']);
+
+/** The only directory a checker stage may write to. */
+const WRITABLE_SUBTREE = '.pipeline';
+
+function block(reason) {
+  process.stderr.write(`Blocked: ${reason}\n`);
+  process.exit(2);
+}
+
+function allow() {
+  process.exit(0);
+}
+
+/** True when `target` is `root` itself or lives beneath it, after both are fully resolved.
+ * Uses path.relative rather than string prefixing so that `.pipeline-notes/` is not treated as
+ * being inside `.pipeline/`, and so `..` segments cannot escape. */
+function isContainedIn(root, target) {
+  const rel = relative(root, target);
+  if (rel === '') return true;
+  return !rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel);
+}
+
+function main(raw) {
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    block(
+      'could not parse the PreToolUse payload, so the calling agent could not be identified. ' +
+      'Failing closed — see scripts/guard-checker-readonly.mjs.',
+    );
+    return;
+  }
+
+  const agentType = typeof payload?.agent_type === 'string' ? payload.agent_type : null;
+
+  // The main session reports no agent_type. Only the checker stages are constrained; everyone
+  // else — including `dev`, which must write code — passes straight through.
+  if (!agentType || !READ_ONLY_AGENTS.has(agentType)) allow();
+
+  const input = payload?.tool_input ?? {};
+  const targetPath = input.file_path ?? input.notebook_path ?? null;
+
+  if (typeof targetPath !== 'string' || targetPath.trim() === '') {
+    block(
+      `agent "${agentType}" is read-only with respect to source code, and this ` +
+      `${payload?.tool_name ?? 'tool'} call has no resolvable target path. Failing closed.`,
+    );
+    return;
+  }
+
+  const cwd = typeof payload?.cwd === 'string' && payload.cwd ? payload.cwd : process.cwd();
+  const allowedRoot = resolve(cwd, WRITABLE_SUBTREE);
+  const resolvedTarget = resolve(cwd, targetPath);
+
+  if (isContainedIn(allowedRoot, resolvedTarget)) allow();
+
+  block(
+    `agent "${agentType}" is read-only with respect to source code. It may only write under ` +
+    `${WRITABLE_SUBTREE}/. Attempted: ${targetPath} (resolves to ${resolvedTarget}).`,
+  );
+}
+
+let raw = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => { raw += chunk; });
+process.stdin.on('end', () => main(raw));

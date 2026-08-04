@@ -4,27 +4,49 @@
 // Usage:
 //   node scripts/ledger-append.mjs
 //
-// Preconditions (all re-verified here, never assumed from the caller): .pipeline/review.md and
-// .pipeline/security-report.md both show a `PASS` Verdict, and there is exactly one COMPLETE,
-// PASS-verdict run under .pipeline/security-history/ that security-report.md actually references.
-// That run's own id becomes the ledger directory name — see .sdd/ledger/README.md for why reusing
-// it (rather than minting a new id) is what makes a ledger entry and its security run trivially
-// correlatable, and why it is deterministic/collision-safe for free: security-checker already
-// refuses to reuse or overwrite a run id, so this script inherits that guarantee rather than
-// re-implementing timestamp+nonce collision-avoidance a second time.
+// Preconditions (all re-verified here, never assumed from the caller): .pipeline/review.json and
+// .pipeline/security.json both show a `verdict` of `PASS`, and the run security.json cites actually
+// exists, is COMPLETE, and its own results.json independently confirms PASS under
+// .pipeline/security-history/.
 //
-// Writes .sdd/ledger/<run-id>/spec.md (a verbatim copy of .pipeline/spec.md),
-// .sdd/ledger/<run-id>/entry.md (run metadata), and .sdd/ledger/<run-id>/security/
-// (a *copy*, never a move, of .pipeline/security-history/<run-id>/{manifest.json,results.json,
-// report.md} — PL-03c round 3), then regenerates .sdd/ledger/index.json via
-// build-ledger-index.mjs's exported writeIndex() — imported and called directly, not spawned as a
-// subprocess, so there is exactly one implementation of "how the index is built."
+// PL-03h round 4 (architectural — see .pipeline/review.md's round-3 "On convergence" section and
+// scripts/pipeline-contracts.mjs's own header): every field this script used to read by parsing
+// `.pipeline/review.md`/`security-report.md`/`spec.md`/`changes.md`/`red.md` markdown — the two
+// verdicts that gate whether a ledger entry may be written at all, the security run id, the ticket
+// id/title, the spec goal, the files-touched list, and the red-test path list — now comes from that
+// stage's JSON sidecar instead (`review.json`, `security.json`, `spec.json`, `changes.json`,
+// `red.json`; see scripts/pipeline-contracts.mjs). The old `parseCitedRunId`/`isBaselineOnlyMention`/
+// substring-scan fallback chain existed only to recover a run id from prose when a structured
+// "## Run and baseline" field was absent or malformed; that problem cannot occur once the field
+// (`security.json`'s `runId`) is a required, strictly-typed JSON string, so that whole chain is
+// deleted, not merely simplified.
+//
+// Writes .sdd/ledger/<run-id>/spec.md (a verbatim copy of .pipeline/spec.md, unchanged — still
+// human-facing, never parsed by anything downstream), .sdd/ledger/<run-id>/{spec.json,red.json,
+// changes.json,review.json,security.json} (verbatim copies of the JSON sidecars that were actually
+// read to write this entry — red.json/changes.json only if they existed for this run), the ledger's
+// own entry.md (human) and entry.json (machine — see .sdd/ledger/README.md's "entry.json is
+// authoritative"), and .sdd/ledger/<run-id>/security/ (a *copy*, never a move, of
+// .pipeline/security-history/<run-id>/{manifest.json,results.json,report.md} — PL-03c round 3), then
+// regenerates .sdd/ledger/index.json via build-ledger-index.mjs's exported writeIndex() — imported
+// and called directly, not spawned as a subprocess, so there is exactly one implementation of "how
+// the index is built."
+//
+// Honest limits (stated plainly, not overclaimed — see .pipeline/changes.md): this script still
+// trusts each stage's own JSON at face value for facts a stage is simply asserting about itself
+// (e.g. review.json's verdict). A stage that lies in its JSON still lies — that is the same trust
+// already placed in every stage's markdown report, unchanged by this round. What this round removes
+// is a THIRD PARTY's ability to inject a false reading through document formatting rather than
+// through the stage's own say-so. Where an independent cross-check already existed (security.json's
+// claimed run is re-verified against its own immutable manifest.json/results.json under
+// .pipeline/security-history/, not merely trusted), that cross-check is preserved unchanged below.
 
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extractSection, writeIndex } from './build-ledger-index.mjs';
+import { writeIndex } from './build-ledger-index.mjs';
+import { readChangesJson, readRedJson, readReviewJson, readSecurityJson, readSpecJson } from './pipeline-contracts.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
@@ -46,80 +68,25 @@ function readPipelineFile(name, { required = true } = {}) {
   return readFileSync(path, 'utf8');
 }
 
-function extractVerdict(markdown, label) {
-  const section = extractSection(markdown, 'Verdict');
-  if (!section) fail(`${label} has no "## Verdict" section to read.`);
-  const verdict = section.split(/\r?\n/)[0].replace(/\*/g, '').trim();
-  // No second "is the section empty" check here: extractSection already .trim()s, so a
-  // whitespace-only section is already the empty string and the `if (!section)` check above has
-  // already caught it — a second `fail()` for "empty" could never be reached. Confirmed by
-  // tester (test-results.md, Priority 1) and review (Warning 4); removed as dead code.
-  return verdict;
-}
-
-/** Reads the run id security-report.md itself cites, from its "## Run and baseline" section's
- * "Run ID:" line — the exact format .sdd/stages/security.md's Required artifacts section already
- * requires every report to carry, and the format ledger-append.test.mjs's own fixture already
- * emits. Returns null (not a failure) if that structured line is absent, so the caller can fall
- * back to the older substring scan for a report that predates this convention. */
-function parseCitedRunId(reportMarkdown) {
-  const section = extractSection(reportMarkdown, 'Run and baseline');
-  if (!section) return null;
-  const match = section.match(/^-[ \t]*Run ID:[ \t]*`([^`]+)`/im);
-  return match ? match[1].trim() : null;
-}
-
-/** True if every line of `reportMarkdown` that mentions `name` is a "Baseline: ..." line (an
- * optional leading "-" bullet and optional bold `**Baseline**` both tolerated) — never any other
- * kind of line. Used solely by the substring-scan fallback below, so that a report legitimately
- * citing its own baseline (required by .sdd/stages/security.md from the second run onward) doesn't
- * make that baseline's directory name look like a second candidate for "the run this report is
- * about." Checked per-name against actual lines (not by extracting backtick-wrapped tokens) so it
- * doesn't depend on the baseline id happening to be backtick-quoted, the same way security.md's own
- * real report writes a plain "Baseline: none - ..." line. */
-function isBaselineOnlyMention(reportMarkdown, name) {
-  const matchingLines = reportMarkdown.split(/\r?\n/).filter((line) => line.includes(name));
-  if (matchingLines.length === 0) return false;
-  return matchingLines.every((line) => /^[ \t]*-?[ \t]*\*{0,2}Baseline\*{0,2}:/i.test(line));
-}
-
-/** Locates the one completed, PASS-verdict security run that .pipeline/security-report.md actually
- * references. Prefers the structured "## Run and baseline" / "Run ID:" line security.md's contract
- * already requires (parseCitedRunId) — reading a named field rather than scanning prose is what
- * makes this correct from the *second* security run onward, once a report legitimately also cites
- * its own baseline's run id in the same document (Critical 2: the report.includes(manifest.run_id)
- * substring-scan invariant scripts/validate-security-audit-run.mjs enforces is still true, but a
- * *reverse* scan — "which of these directory names appears in the report" — stops being unique the
- * moment two runs' ids both appear, one as Run ID and one as Baseline). Falls back to the substring
- * scan, excluding baseline-only mentions, only when the structured line is absent (an
- * older-format report). */
-function findCompletedSecurityRun(reportMarkdown) {
+/** Locates the one completed, PASS-verdict security run `.pipeline/security.json` cites via its
+ * required `runId` field. Replaces the old `findCompletedSecurityRun`'s prose-scanning fallback
+ * chain entirely — there is no "structured field absent or malformed" case left to fall back from,
+ * since `readSecurityJson` (scripts/pipeline-contracts.mjs) already refuses to return a `security`
+ * object missing that field. `manifest.json`/`results.json` were, and remain, already JSON — this
+ * function's own re-verification of them (COMPLETE status, PASS verdict, run_id matching the
+ * directory name) is unchanged and is not part of what this round retires: it is a second,
+ * independent check against the immutable audit record, not a markdown parse, and stays exactly as
+ * skeptical of security.json's own say-so as it was before (see this file's header "Honest limits"
+ * note — a stage that lies in its own JSON still lies; this cross-check is what catches a
+ * security.json that claims PASS while its own immutable run history disagrees). */
+function findCompletedSecurityRun(runId) {
   if (!existsSync(securityHistoryDir)) {
     fail('.pipeline/security-history/ does not exist — security has not produced a run yet.');
   }
-  const dirNames = readdirSync(securityHistoryDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
-
-  const citedRunId = parseCitedRunId(reportMarkdown);
-  let runId;
-  if (citedRunId !== null) {
-    if (!dirNames.includes(citedRunId)) {
-      fail(`.pipeline/security-report.md's "## Run and baseline" section cites Run ID \`${citedRunId}\`, but .pipeline/security-history/${citedRunId}/ does not exist.`);
-    }
-    runId = citedRunId;
-  } else {
-    const candidates = dirNames.filter((name) => reportMarkdown.includes(name) && !isBaselineOnlyMention(reportMarkdown, name));
-    if (candidates.length === 0) {
-      fail('.pipeline/security-report.md does not reference any run directory under .pipeline/security-history/ (checked for a structured "## Run and baseline" / "Run ID:" line first, then fell back to a substring scan) — cannot determine which run to reuse as the ledger run id.');
-    }
-    if (candidates.length > 1) {
-      fail(`.pipeline/security-report.md ambiguously matches more than one run under .pipeline/security-history/, even after excluding baseline-only mentions: ${candidates.join(', ')}`);
-    }
-    runId = candidates[0];
-  }
-
   const runDir = join(securityHistoryDir, runId);
+  if (!existsSync(runDir)) {
+    fail(`.pipeline/security.json cites runId "${runId}", but .pipeline/security-history/${runId}/ does not exist.`);
+  }
   const manifestPath = join(runDir, 'manifest.json');
   const resultsPath = join(runDir, 'results.json');
   if (!existsSync(manifestPath) || !existsSync(resultsPath)) {
@@ -171,18 +138,44 @@ export function copySecurityHistoryIntoLedger(runId) {
   return destDir;
 }
 
+/** Copies whichever of the five `.pipeline/*.json` sidecars exist for this run into
+ * `.sdd/ledger/<runId>/`, verbatim (byte-for-byte, like spec.md's own copy) — not re-serialized from
+ * the already-validated in-memory object, so the ledger's copy is provably identical to what the
+ * owning stage actually wrote, not a reconstruction of it. `red.json`/`changes.json` are optional
+ * (a ticket that predates `red`, or one implemented directly without a separate `dev` sidecar this
+ * run); `spec.json`/`review.json`/`security.json` are always present by the time this function runs,
+ * since main() already required all three to compute the entry itself. */
+function copySidecarsIntoLedger(runId) {
+  const destDir = join(ledgerDir, runId);
+  for (const name of ['spec.json', 'red.json', 'changes.json', 'review.json', 'security.json']) {
+    const sourcePath = join(pipelineDir, name);
+    if (!existsSync(sourcePath)) continue; // red.json/changes.json only — see doc comment above
+    copyFileSync(sourcePath, join(destDir, name));
+  }
+}
+
 /** Prefers the live working-tree diff (staged + unstaged + untracked), since ledger-append.mjs
- * typically runs before the human commits this run's own work — falls back to parsing
- * changes.md's "Files changed" section only if the tree is already clean (e.g. this run's commit
- * already landed) or git isn't available at all. Never silently returns nothing without saying so
- * — the caller records an explicit note when both sources come up empty. */
-function filesTouched() {
+ * typically runs before the human commits this run's own work — falls back to `changes.json`'s
+ * `filesChanged` array only if the tree is already clean (e.g. this run's commit already landed) or
+ * git isn't available at all. Never silently returns nothing without saying so — the caller records
+ * an explicit note when both sources come up empty.
+ *
+ * PL-03h round 4: the markdown-fallback version of this function used to regex backtick-quoted paths
+ * out of changes.md's raw "## Files changed" section text (a markdown table in some real runs, a
+ * bullet list in others) — the "path list" category scripts/pipeline-contracts.mjs's own header
+ * calls out as one of the things that must never come from prose. `changes.json`'s `filesChanged` is
+ * already a plain array of strings; there is no shape left to regex out of it. The "changes.json
+ * exists but has an empty filesChanged array, and the working tree is already clean" case still fails
+ * loudly rather than silently recording an empty list — the same reasoning as before (dev.md's
+ * changes.json output contract always includes this field with real content when there is a real
+ * change to report), just checked against an array's length instead of a section's presence/emptiness. */
+function filesTouched(changesJson) {
   const fromGit = new Set();
   try {
     const diffOutput = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' });
     for (const line of diffOutput.split(/\r?\n/)) if (line.trim()) fromGit.add(line.trim());
   } catch {
-    // Not a git repo, no HEAD yet, or git unavailable — fall through to the changes.md fallback.
+    // Not a git repo, no HEAD yet, or git unavailable — fall through to the changes.json fallback.
   }
   try {
     const untrackedOutput = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: repoRoot, encoding: 'utf8' });
@@ -192,41 +185,31 @@ function filesTouched() {
   }
   if (fromGit.size > 0) return [...fromGit].sort();
 
-  const changes = readPipelineFile('changes.md', { required: false });
-  if (!changes) return [];
-  const section = extractSection(changes, 'Files changed') ?? extractSection(changes, 'Files [Cc]hanged');
-  if (!section) return [];
-  const paths = new Set();
-  for (const match of section.matchAll(/`([^`\s]+\.[A-Za-z0-9]+)`/g)) paths.add(match[1]);
-  return [...paths].sort();
+  if (!changesJson) return [];
+  if (changesJson.filesChanged.length === 0) {
+    fail('.pipeline/changes.json exists but "filesChanged" is empty, and the working tree is already clean — dev.md\'s changes.json output contract always includes this field with real content when there is a real change to report. Refusing to silently record an empty list.');
+  }
+  return [...new Set(changesJson.filesChanged)].sort();
 }
 
-function extractTicketId(specMarkdown) {
-  const titleMatch = specMarkdown.match(/^#[ \t]+(.+)$/m);
-  if (!titleMatch) return '(unknown ticket)';
-  const title = titleMatch[1].trim();
-  const idMatch = title.match(/\b[A-Z]{1,6}[0-9]*-[0-9]+[a-z]?\b/);
-  return idMatch ? idMatch[0] : title;
-}
-
-function specTitle(specMarkdown) {
-  const titleMatch = specMarkdown.match(/^#[ \t]+(.+)$/m);
-  return titleMatch ? titleMatch[1].trim() : '(untitled spec)';
-}
-
-function parseRedTestPaths(redMarkdown) {
-  const section = extractSection(redMarkdown, 'Test paths');
-  if (!section) return [];
-  return [...section.matchAll(/^-[ \t]+(\S.*)$/gm)].map((match) => match[1].trim());
+/** Regexes the short ticket id (e.g. "W3-10") out of `specJson.ticket` — an already-authoritative
+ * plain string field `planner` writes directly into spec.json, not derived by parsing spec.md's raw
+ * title line at read time (see scripts/pipeline-contracts.mjs's readSpecJson doc comment). This is
+ * plain string manipulation on one already-validated field, not a markdown-structure parse: there is
+ * no heading, fence, or comment for an adversarial value to hide behind, and a garbled or unusual
+ * ticket string simply falls back to the full string, exactly as before. */
+function extractTicketId(ticket) {
+  const match = ticket.match(/\b[A-Z]{1,6}[0-9]*-[0-9]+[a-z]?\b/);
+  return match ? match[0] : ticket;
 }
 
 function formatBulletList(items) {
   return items.map((item) => `- ${item}`).join('\n');
 }
 
-/** `redTestPaths` is the list `red.md`'s own "## Test paths" section reported; `redAbsenceNote` is
- * only used when there is no such list to report (either `red.md` doesn't exist at all, or it
- * exists but lists no tests) — the section always says something, never sits blank. */
+/** `redTestPaths` is the list `red.json`'s own `tests` array reported; `redAbsenceNote` is only used
+ * when there is no such list to report (either `red.json` doesn't exist at all, or it exists but
+ * lists no tests) — the section always says something, never sits blank. */
 export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict }) {
   const lines = [];
   lines.push(`# Ledger entry — ${runId}`);
@@ -240,17 +223,15 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
   lines.push(ticketTitle);
   lines.push('');
   lines.push('## Spec Goal');
-  lines.push(goal || '(spec.md has no "## Goal" section)');
+  lines.push(goal || '(spec.json has no "goal" field)');
   lines.push('');
   lines.push('## Files touched');
-  lines.push(files.length > 0 ? formatBulletList(files) : '(none could be determined automatically — see this run\'s own changes.md, not preserved here)');
+  lines.push(files.length > 0 ? formatBulletList(files) : '(none could be determined automatically — see this run\'s own changes.json, not preserved here)');
   lines.push('');
   lines.push('## Verdicts');
-  // Echoes the strings extractVerdict actually read from review.md/security-report.md — never a
-  // hardcoded literal. By the time this runs, main() has already exited unless both equal exactly
-  // 'PASS' (see the two checks in main()), so this can never write a value main() didn't itself
-  // verify — Critical 1's second half: a hardcoded literal here meant a bug in extractSection could
-  // make the check pass on a bad input while the *entry* still asserted PASS/PASS regardless.
+  // Echoes the strings readReviewJson/readSecurityJson actually read — never a hardcoded literal. By
+  // the time this runs, main() has already exited unless both equal exactly 'PASS' (see the two
+  // checks in main()), so this can never write a value main() didn't itself verify.
   lines.push(`- review: ${reviewVerdict}`);
   lines.push(`- security: ${securityVerdict}`);
   lines.push('');
@@ -266,46 +247,68 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
   return lines.join('\n');
 }
 
+/** The machine-facing twin of buildEntryMarkdown, built from the exact same already-computed values
+ * — see .sdd/ledger/README.md's "entry.json is authoritative": scripts/build-ledger-index.mjs reads
+ * only this shape, never entry.md's prose. Building both from one shared set of values (rather than
+ * one deriving from the other, or each being independently assembled) is what makes them
+ * structurally unable to disagree on the facts, even though they are two separate files on disk. */
+export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict }) {
+  return {
+    runId,
+    date,
+    ticket: ticketId,
+    ticketTitle,
+    goal: goal || null,
+    filesTouched: files,
+    verdicts: { review: reviewVerdict, security: securityVerdict },
+    redTestPaths,
+    redAbsenceNote: redTestPaths.length > 0 ? null : redAbsenceNote,
+    securityRunId,
+    commit,
+  };
+}
+
 function main() {
-  const reviewMarkdown = readPipelineFile('review.md');
-  const securityReportMarkdown = readPipelineFile('security-report.md');
-  const specMarkdown = readPipelineFile('spec.md');
-  const redMarkdown = readPipelineFile('red.md', { required: false });
-
-  const reviewVerdict = extractVerdict(reviewMarkdown, '.pipeline/review.md');
-  if (reviewVerdict !== 'PASS') {
-    fail(`.pipeline/review.md's verdict is ${reviewVerdict}, not PASS — this is not a terminal PASS. Route back to dev instead of appending a ledger entry.`);
+  const reviewJson = readReviewJson(pipelineDir);
+  if (reviewJson.verdict !== 'PASS') {
+    fail(`.pipeline/review.json's verdict is ${reviewJson.verdict}, not PASS — this is not a terminal PASS. Route back to dev instead of appending a ledger entry.`);
   }
-  const securityVerdict = extractVerdict(securityReportMarkdown, '.pipeline/security-report.md');
-  if (securityVerdict !== 'PASS') {
-    fail(`.pipeline/security-report.md's verdict is ${securityVerdict}, not PASS — this is not a terminal PASS. Route back to dev instead of appending a ledger entry.`);
+  const securityJson = readSecurityJson(pipelineDir);
+  if (securityJson.verdict !== 'PASS') {
+    fail(`.pipeline/security.json's verdict is ${securityJson.verdict}, not PASS — this is not a terminal PASS. Route back to dev instead of appending a ledger entry.`);
   }
 
-  const { runId, manifest } = findCompletedSecurityRun(securityReportMarkdown);
+  const specJson = readSpecJson(pipelineDir);
+  const specMarkdown = readPipelineFile('spec.md'); // still copied verbatim into the ledger — never parsed
+  const redJson = readRedJson(pipelineDir, { required: false });
+  const changesJson = readChangesJson(pipelineDir, { required: false });
+
+  const { runId, manifest } = findCompletedSecurityRun(securityJson.runId);
 
   const runDir = join(ledgerDir, runId);
   if (existsSync(runDir)) {
     fail(`.sdd/ledger/${runId}/ already exists — refusing to overwrite an existing ledger entry. (A run id is only ever reused if security-checker's own run-id collision guard is violated, which it refuses to do.)`);
   }
 
-  const ticketId = extractTicketId(specMarkdown);
-  const ticketTitle = specTitle(specMarkdown);
-  const goal = extractSection(specMarkdown, 'Goal');
-  const touchedFiles = filesTouched();
-  const redTestPaths = redMarkdown ? parseRedTestPaths(redMarkdown) : [];
+  const ticketId = extractTicketId(specJson.ticket);
+  const ticketTitle = specJson.ticket;
+  const goal = specJson.goal;
+  const touchedFiles = filesTouched(changesJson);
+  const redTestPaths = redJson ? redJson.tests.map((test) => test.path) : [];
 
   const date = typeof manifest.completed_at === 'string' && manifest.completed_at.length >= 10
     ? manifest.completed_at.slice(0, 10)
     : new Date().toISOString().slice(0, 10);
 
   const commitSha = manifest.target?.commit_sha ?? '(unknown)';
-  const commitLine = manifest.target?.dirty
+  const dirty = Boolean(manifest.target?.dirty);
+  const commitLine = dirty
     ? `${commitSha} (worktree was dirty when the security run audited it — the commit that actually lands this work may differ once it's committed)`
     : commitSha;
 
-  const redAbsenceNote = redMarkdown
-    ? '(`red.md` exists for this run but its "## Test paths" section lists no tests)'
-    : 'No `red.md` present for this run — either it predates the `red` stage (introduced in PL-03c) or this run genuinely produced no ledger-relevant tests. Stated explicitly rather than left blank.';
+  const redAbsenceNote = redJson
+    ? '(`red.json` exists for this run but its "tests" list is empty)'
+    : 'No `red.json` present for this run — either it predates the `red` stage (introduced in PL-03c) or this run genuinely produced no ledger-relevant tests. Stated explicitly rather than left blank.';
 
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, 'spec.md'), specMarkdown, 'utf8');
@@ -321,15 +324,33 @@ function main() {
     redAbsenceNote,
     securityRunId: runId,
     commitLine,
-    reviewVerdict,
-    securityVerdict,
+    reviewVerdict: reviewJson.verdict,
+    securityVerdict: securityJson.verdict,
   });
   writeFileSync(join(runDir, 'entry.md'), entryMarkdown, 'utf8');
+
+  const entryJson = buildEntryJson({
+    runId,
+    date,
+    ticketId,
+    ticketTitle,
+    goal,
+    files: touchedFiles,
+    redTestPaths,
+    redAbsenceNote,
+    securityRunId: runId,
+    commit: { sha: commitSha, dirty },
+    reviewVerdict: reviewJson.verdict,
+    securityVerdict: securityJson.verdict,
+  });
+  writeFileSync(join(runDir, 'entry.json'), JSON.stringify(entryJson, null, 2) + '\n', 'utf8');
+
+  copySidecarsIntoLedger(runId);
   copySecurityHistoryIntoLedger(runId);
 
   const index = writeIndex();
 
-  console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,entry.md,security/}`);
+  console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,entry.md,entry.json,security/}`);
   console.log(`ledger-append: regenerated .sdd/ledger/index.json (${Object.keys(index).length} file(s) indexed)`);
 }
 
@@ -337,10 +358,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     main();
   } catch (error) {
-    // extractSection (via extractVerdict/parseCitedRunId/filesTouched's changes.md fallback) throws
-    // rather than exiting directly when a heading is ambiguous (see its own comment in
-    // build-ledger-index.mjs) — catch it here so the CLI still prints one clean, prefixed message
-    // and exits 1, instead of a raw Node stack trace.
+    // readReviewJson/readSecurityJson/readSpecJson/readRedJson/readChangesJson throw SidecarError on
+    // malformed JSON or a failed strict-shape check (see scripts/pipeline-contracts.mjs); this catch
+    // turns that (and any other unexpected error) into one clean, prefixed message and exit 1,
+    // instead of a raw Node stack trace.
     fail(error.message);
   }
 }

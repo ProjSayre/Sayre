@@ -89,6 +89,28 @@ jobs:
       - name: Red-test integrity check — tests
         run: npm run test:red-integrity
 
+      # PL-03h round 4: scripts/pipeline-contracts.mjs is the shared JSON-sidecar contract
+      # build-ledger-index.mjs/check-red-integrity.mjs/ledger-append.mjs now read for every control
+      # decision (spec.json/red.json/changes.json/review.json/security.json), replacing the markdown
+      # block scanner those three suites above used to exercise directly. Its own strict-validation
+      # suite runs here, independent of whether any real .pipeline/*.json exists on this runner.
+      - name: Pipeline JSON-sidecar contract — tests
+        run: npm run test:pipeline-contracts
+
+      # PL-03d: the lane-bounds verdict is computed by a script rather than judged by pr-review,
+      # so an LLM cannot hallucinate a pass. Its own suite runs here; `check:bounds` needs a lane
+      # and a diff base, which are per-PR inputs the pr-review stage supplies.
+      - name: Lane bounds check — tests
+        run: npm run test:bounds
+
+      # PL-03g: this guard is what actually makes review/security-checker read-only, wired as a
+      # PreToolUse hook in .claude/settings.json. It matters that CI runs this suite: a hook that
+      # fails to load exits 1, and a PreToolUse hook only BLOCKS on exit 2 — so a broken guard
+      # silently enforces nothing, which is indistinguishable from having no guard at all. That is
+      # the exact failure this control was built to end, so it is not left to inspection.
+      - name: Checker read-only guard — tests
+        run: npm run test:readonly-guard
+
       - name: config — typecheck
         run: npm run typecheck --workspace @sayre/config
 

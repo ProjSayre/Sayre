@@ -209,12 +209,23 @@ test('.sdd/stages/review.md checks red-test integrity and spec trace', () => {
   const review = read('.sdd/stages/review.md');
   assert.ok(review.includes('Red-test integrity'), 'review.md must check red-test integrity');
   assert.ok(review.includes('Spec trace'), 'review.md must check the @spec trace');
-  assert.ok(review.includes('SHA-256 content hash of every file listed under'), 'review.md must rehash red.md\'s content-hash table');
+  // PL-03h moved the content-hash table out of red.md's prose and into red.json, because reading
+  // a control input out of a markdown document is the defect that ticket exists to remove. The
+  // assertion's intent is unchanged — review must still recompute hashes over the full set red
+  // recorded — so it is retargeted at the JSON contract rather than dropped.
+  assert.match(
+    review,
+    /recomputes the SHA-256 content hash of every file `red\.json`'s `tests` array lists/,
+    'review.md must rehash every file red.json records, not a subset and not a prose table',
+  );
   assert.ok(review.includes('@spec'), 'review.md must reference the @spec marker convention');
   // AC 3 / AC 4: both checks must be wired to the fail-closed verdict, not left as an observation
   // with no consequence — an undeclared hash mismatch or an unresolvable @spec ID must produce
   // NEEDS_FIXES, and the passing exception (declared in changes.md) must be named explicitly.
-  assert.match(review, /mismatch is `NEEDS_FIXES`\s*\*\*unless\*\*\s*`changes\.md`\s*declares the change/, 'review.md must make an undeclared red-test hash mismatch NEEDS_FIXES, with the declared-in-changes.md exception named');
+  // PL-03h: the declaration moved from changes.md's prose to changes.json's structured
+  // redTestChanges array. The property asserted is unchanged — an undeclared hash mismatch must
+  // force NEEDS_FIXES, and the one passing exception must be named rather than left implicit.
+  assert.match(review, /mismatch is `NEEDS_FIXES`\s*\*\*unless\*\*\s*`changes\.json`\s*declares the change/, 'review.md must make an undeclared red-test hash mismatch NEEDS_FIXES, with the declared-in-changes.json exception named');
   assert.match(review, /citing no `@spec` marker at all, is `NEEDS_FIXES`/, 'review.md must make an uncited new behavioral test NEEDS_FIXES');
   assert.match(review, /uncited\/unresolvable `@spec` reference/, 'review.md\'s Critical list must name the uncited/unresolvable @spec case explicitly');
 });

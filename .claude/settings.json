@@ -1,5 +1,18 @@
 {
   "permissions": {
     "deny": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/guard-checker-readonly.mjs"
+          }
+        ]
+      }
+    ]
   }
 }

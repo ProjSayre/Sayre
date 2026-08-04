@@ -111,4 +111,28 @@ After validation, write `.pipeline/security-report.md` last as a copy of the pip
 - **Verified clean** — what was affirmatively tested and passed.
 - **Limitations** — every unverified, not-applicable, or incompatible boundary.
 
+Also write `.pipeline/security.json` alongside `security-report.md` — PL-03h round 4's JSON-sidecar
+contract (see `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence). This, not
+`security-report.md`'s prose, is what `scripts/ledger-append.mjs` reads to confirm a terminal `PASS`
+and to locate the completed run under `.pipeline/security-history/` — `security-report.md` remains
+the human-facing record and is never parsed for either decision anymore. Exact shape:
+
+```
+{ "verdict": "PASS", "runId": "<the same <run-id> this stage just created under .pipeline/security-history/>" }
+```
+
+or
+
+```
+{ "verdict": "BLOCKED", "runId": "<run-id>" }
+```
+
+`verdict` must be exactly one of those two literal strings. `runId` is required in both cases — the
+immutable run directory under `.pipeline/security-history/` is created every time this stage runs,
+win or lose, so there is always a run id to cite, and `ledger-append.mjs` reads this field directly
+with no fallback path (there is no "the field was absent or malformed, so fall back to scanning the
+report's prose" case left to handle). Both fields must agree with what `security-report.md` and
+`report.md`/`manifest.json`/`results.json` under `.pipeline/security-history/<run-id>/` already say —
+a reader auditing a run later has all of them, and they must tell the same story.
+
 If `BLOCKED`, say so clearly in your final response so the calling agent routes the findings back to dev. Never edit production source during this stage.

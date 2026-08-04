@@ -1,0 +1,43 @@
+# Lane definitions — the machine-readable half of .sdd/bounds.md.
+#
+# WHY THIS IS DATA AND NOT THE MARKDOWN TABLE (PL-03d):
+# bounds.md originally carried the lane vocabulary as a prose table. Reading it would have meant
+# parsing a natural-language document to reach a control decision — precisely the defect PL-03h
+# spent four rounds removing from the ledger and integrity gates. Lane globs live here; bounds.md
+# explains them for humans. If the two disagree, this file is authoritative and that disagreement
+# is a bug.
+#
+# A lane is a name plus path globs. A ticket carries exactly one lane. A change is in-bounds when
+# every path in `git diff --name-only base...head` matches at least one glob in the assigned lane.
+# The verdict is computed by scripts/check-bounds.mjs, never judged by an agent.
+
+version: 1
+
+lanes:
+  frontend:
+    description: >-
+      The visualization client and documentation. No access implied to services/, packages/,
+      or infra/ — a change there from this lane is a violation even when it is a good change.
+    allow:
+      - apps/web/**
+      - docs/**
+
+  full:
+    description: >-
+      No restriction. The default for contributors and tickets that are not explicitly fenced.
+    allow:
+      - "**"
+
+# Paths that are never in-bounds for a fenced (non-`full`) lane, regardless of that lane's globs.
+# These govern who may change the rules themselves: a fenced contributor must not be able to widen
+# their own lane, alter the guard that constrains the checker stages, or edit the pipeline's stage
+# definitions as part of an ordinary ticket. Doing any of those is legitimate work — it just is not
+# fenced work, and it needs a human deciding rather than a lane glob permitting.
+deny_for_fenced_lanes:
+  - .sdd/**
+  - .claude/**
+  - .github/workflows/**
+  - scripts/guard-checker-readonly.mjs
+  - .gitignore
+  - CLAUDE.md
+  - AGENTS.md

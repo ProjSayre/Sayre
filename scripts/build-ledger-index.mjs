@@ -1,4 +1,5 @@
-// Regenerates .sdd/ledger/index.json from every .sdd/ledger/<run-id>/entry.md on disk (PL-03c).
+// Regenerates .sdd/ledger/index.json from every .sdd/ledger/<run-id>/entry.json on disk (PL-03c;
+// re-pointed from entry.md to entry.json by PL-03h round 4 — see the file header note below).
 //
 // Usage:
 //   node scripts/build-ledger-index.mjs            # writes .sdd/ledger/index.json
@@ -10,13 +11,35 @@
 // spec(s) that mandated it (the same shape as generate-agent-shims.mjs's --check contract — never
 // hand-edit index.json, regenerate it and commit the result).
 //
-// entry.md is parsed with plain `## Heading` section splitting, not a markdown parser — the shape
-// is fixed by this script and by ledger-append.mjs together (see .sdd/ledger/README.md), so a
-// hand-authored entry (e.g. the PL-03a migration) just has to follow the same headings.
+// PL-03h round 4 (architectural — see .pipeline/review.md's round-3 "On convergence" section and
+// scripts/pipeline-contracts.mjs's own header for the full argument): this file used to parse
+// entry.md with a hand-rolled markdown block scanner (`scanBlockState`/`extractSection`), tracking
+// fenced-code-block and HTML-comment state so a heading fabricated inside either couldn't shadow the
+// real one. Three rounds of that approach each closed one exploit and produced (or left open)
+// another — a false `review: PASS` ledger entry built from a fenced shadow, a comment shadow, a
+// mid-line comment bypass, an ATX closing sequence, and a setext heading, the last two needing no
+// fence or comment at all. The fix is not a fourth round of shape-patching: every field this file
+// used to derive from entry.md's prose (the two verdicts that gate whether a run may be indexed at
+// all, and the file-path list that IS the index) now comes from `.sdd/ledger/<run-id>/entry.json`, a
+// small JSON sidecar `scripts/ledger-append.mjs` writes next to entry.md. `JSON.parse` either
+// succeeds or throws — there is no heading, no fence, no comment, no ambiguity surface for a
+// malformed or adversarial entry to exploit. `extractSection`, `scanBlockState`, and
+// `stripFencedAndCommentedBlocks` are deleted outright, not left in place unused: every call site
+// that used to read markdown for a control decision now reads JSON instead (see
+// scripts/check-red-integrity.mjs and scripts/ledger-append.mjs), and there is no remaining
+// "purely descriptive" use for a general markdown-section extractor anywhere in this codebase — see
+// .pipeline/changes.md for the full accounting of what was retired and why nothing calls it anymore.
+//
+// entry.md is still written, alongside entry.json, by ledger-append.mjs — it remains the
+// human-facing rendering of the same data and is never parsed by this file (or anything else) for a
+// control decision. See .sdd/ledger/README.md for entry.json's exact shape and the one-time PL-03a
+// migration note (that run's entry.json was backfilled by hand from its own entry.md, the same
+// documented affordance entry.md itself already had).
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseJsonOrThrow, requireArray, requireObject, requireString } from './pipeline-contracts.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
@@ -42,132 +65,47 @@ function listRunDirs() {
     .sort();
 }
 
-/** Escapes a string for literal use inside a RegExp — headings passed to extractSection are
- * ordinary words today ("Verdict", "Files touched") but at least one real heading contains regex
- * metacharacters ("Content hashes (SHA-256)", used by check-red-integrity.mjs), so this is not
- * defensive-for-no-reason: without it, the parentheses are interpreted as a capturing group and the
- * literal "(" / ")" in the actual markdown are never matched at all. */
-function escapeForRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+/** Reads and strictly validates `.sdd/ledger/<runId>/entry.json` — the ONLY thing this file reads
+ * to decide whether a run may be indexed and which files it touched. Built from the same shared
+ * validation primitives (`requireObject`/`requireString`/`requireArray`) every `.pipeline/*.json`
+ * reader in scripts/pipeline-contracts.mjs uses, so there is exactly one definition of "a required
+ * non-empty string" in this codebase, not one per file that could quietly drift from another (the
+ * PL-03c round-4 Critical 1 lesson — a heading counter and a heading extractor silently disagreeing —
+ * applies just as much between two JSON validators as it did between two regexes).
+ *
+ * `verdicts` is checked byte-for-byte against `{ review: "PASS", security: "PASS" }` — not merely
+ * "is a well-formed verdicts object" — because a ledger entry only exists at all because
+ * `ledger-append.mjs` already re-verified both gates showed PASS; an entry.json claiming anything
+ * else is malformed or corrupted, and must never be indexed (round-2/3's `assertVerdictsAreClean`,
+ * carried forward at the JSON layer rather than dropped). */
+function readEntryJson(runId) {
+  const label = `.sdd/ledger/${runId}/entry.json`;
+  const path = join(ledgerDir, runId, 'entry.json');
+  if (!existsSync(path)) fail(`${label} does not exist.`);
+  const raw = parseJsonOrThrow(readFileSync(path, 'utf8'), label);
+  requireObject(raw, label);
 
-/** Returns the 1-based line numbers of every line that is *exactly* an ATX "## <heading>" line
- * (line-start, exactly two `#`, at least one space/tab, optional trailing whitespace, nothing
- * else). Splitting on `\r?\n` first (rather than a `^`/`m`-flag regex over the whole string) means
- * each candidate line is tested in isolation, so counting is unaffected by anything upstream or
- * downstream of it on the page — including a fenced code block or an HTML comment the line happens
- * to sit inside, since this function has no concept of either. That is deliberate: see
- * extractSection's own comment for why counting occurrences (not parsing markdown structure) is
- * this round's fix. */
-function findHeadingLineNumbers(markdown, escapedHeading) {
-  const headingLinePattern = new RegExp(`^##[ \\t]+${escapedHeading}[ \\t]*$`);
-  const lines = markdown.split(/\r?\n/);
-  const lineNumbers = [];
-  lines.forEach((line, index) => {
-    if (headingLinePattern.test(line)) lineNumbers.push(index + 1);
-  });
-  return lineNumbers;
-}
-
-/** Returns the text between "## <heading>" (a heading, not a substring — see below) and the next
- * "## " heading (or end of file), or null if the heading isn't present. Deliberately simple
- * line-based parsing, not a markdown parser — see file header. Exported so ledger-append.mjs
- * (which writes and needs to re-derive parts of entry.md/spec.md/review.md/security-report.md) and
- * check-red-integrity.mjs share one implementation rather than a second, possibly-drifting copy.
- *
- * The heading is located by findHeadingLineNumbers — the exact same line-by-line, exactly-two-`#`-
- * plus-whitespace test used to *count* occurrences (below) — and the section is then sliced out by
- * line index: everything after that heading's line, up to (but not including) the next line that is
- * itself an ATX "## " heading of any name, or end of document. Locating and slicing through one
- * shared predicate is load-bearing, not a style choice (PL-03c round 4, review Critical 1): this
- * function used to run a second, independently-configured `RegExp` here (`im` flags, matched over
- * the whole document rather than line-by-line) that disagreed with the counter in two ways a
- * document's author never has to think about — case (the old extractor was case-insensitive; the
- * counter was not) and line terminators (the old extractor's `^`, under `m`, also matched after a
- * lone `\r`, `U+2028`, or `U+2029`; the counter only ever split on `\r?\n`). A heading shadow
- * exploiting either mismatch was invisible to the counter (which still saw exactly one heading — the
- * real one — and so never refused) while still fully matchable by the old extractor, which silently
- * resolved to the shadow instead of the real section. Reproduced end-to-end: a live
- * ledger-append.mjs run recorded `review: PASS` for a review.md whose real `## Verdict` was
- * `NEEDS_FIXES`, through exactly that gap. The fix removes the second regex rather than patching it
- * to match the first one's flags/splitting — one function decides what a heading line is, for both
- * jobs, so there is nothing left to drift. The invariant this establishes is **"the counter and the
- * extractor share a single predicate for what counts as a heading line,"** not "a count check closes
- * the class of shadowing bugs" — the latter was this round's incorrect reasoning, and is exactly what
- * let the case/line-terminator gap through unnoticed while every count-based test still passed.
- *
- * The shared predicate anchors to the true start of a line and requires exactly two `#` followed by
- * whitespace (unchanged since round 2). That is what rules out `### Verdict`/`#### Verdict`
- * subheadings and mid-line prose ("see ## Verdict" followed by a line reading "PASS") from ever
- * counting as a match, and it is also why a nested `### Subsection` inside the real section is
- * correctly treated as content rather than a terminator — only a line-start "## " (any heading) ends
- * the slice.
- *
- * PL-03c round 3: fenced-code-block headings, HTML-comment headings, and genuine duplicate headings
- * are still just "a second matching line" to this predicate — findHeadingLineNumbers has no concept
- * of fences or comments — so any of those still throws (count > 1) rather than silently resolving.
- * Full fence/comment-aware parsing that could instead *resolve* to the one real heading is out of
- * scope here — tracked as PL-03h. */
-export function extractSection(markdown, heading) {
-  const escapedHeading = escapeForRegExp(heading);
-  const headingLines = findHeadingLineNumbers(markdown, escapedHeading);
-  if (headingLines.length > 1) {
-    throw new Error(
-      `extractSection: "## ${heading}" appears ${headingLines.length} times (line(s) ${headingLines.join(', ')}) ` +
-      '— expected exactly one. Refusing rather than guessing which is real (a fenced code block, an ' +
-      'HTML comment, or a genuine duplicate heading can all produce a second match); see PL-03h for ' +
-      'fence/comment-aware parsing that could resolve this instead of refusing.',
-    );
+  const runIdField = requireString(raw.runId, label, 'runId');
+  if (runIdField !== runId) {
+    fail(`${label}: field "runId" ("${runIdField}") must equal this entry's own directory name ("${runId}").`);
   }
-  if (headingLines.length === 0) return null;
+  const ticket = requireString(raw.ticket, label, 'ticket');
+  const date = requireString(raw.date, label, 'date');
+  const filesTouched = requireArray(raw.filesTouched, label, 'filesTouched')
+    .map((item, i) => requireString(item, label, `filesTouched[${i}]`));
 
-  // Slice by line index, using the same `\r?\n` split findHeadingLineNumbers used to find this
-  // heading in the first place — this is what makes counting and extraction agree by construction,
-  // rather than by keeping two separately-configured regexes in sync.
-  const lines = markdown.split(/\r?\n/);
-  const startIndex = headingLines[0]; // 1-based heading line number == 0-based index of the first content line
-  const anyHeadingLinePattern = /^##[ \t]/;
-  let endIndex = lines.length;
-  for (let index = startIndex; index < lines.length; index++) {
-    if (anyHeadingLinePattern.test(lines[index])) {
-      endIndex = index;
-      break;
-    }
-  }
-  return lines.slice(startIndex, endIndex).join('\n').trim();
-}
-
-export function extractFirstLine(markdown, heading) {
-  const section = extractSection(markdown, heading);
-  if (!section) return null;
-  const firstLine = section.split(/\r?\n/)[0].trim();
-  return firstLine.length > 0 ? firstLine : null;
-}
-
-function parseFilesTouched(entryMarkdown) {
-  const section = extractSection(entryMarkdown, 'Files touched');
-  if (!section) return [];
-  return [...section.matchAll(/^-[ \t]+(\S.*)$/gm)].map((match) => match[1].trim());
-}
-
-/** A ledger entry only exists because ledger-append.mjs already re-verified both gates showed
- * `PASS` (or, for the one hand-authored migration, because a human did the equivalent check by
- * hand) — so an entry's own "## Verdicts" section must read exactly this, always. This is the
- * `.sdd/ledger/README.md` Warning 1 fix: hand-authoring is a documented affordance, and this
- * assertion is what stops a hand-authored (or corrupted) entry from ever claiming a pass that
- * didn't happen, closing the last gap left once extractSection's own anchoring bug (above) is
- * fixed. Runs on every buildIndex() call — write and --check alike — not only in --check mode,
- * since an entry this malformed should never make it into index.json at all. */
-function assertVerdictsAreClean(entryMarkdown, runId) {
-  const expected = '- review: PASS\n- security: PASS';
-  const section = extractSection(entryMarkdown, 'Verdicts');
-  if (section !== expected) {
+  requireObject(raw.verdicts, `${label}: verdicts`);
+  const expected = { review: 'PASS', security: 'PASS' };
+  const actual = { review: raw.verdicts.review, security: raw.verdicts.security };
+  if (actual.review !== expected.review || actual.security !== expected.security) {
     fail(
-      `.sdd/ledger/${runId}/entry.md's "## Verdicts" section must read exactly:\n${expected}\n` +
-      `but found: ${section === null ? '(no "## Verdicts" section at all)' : JSON.stringify(section)}\n` +
-      'A ledger entry only exists because both gates passed — this one claims something the script cannot verify, or is malformed, and must not be indexed.',
+      `${label}: field "verdicts" must be exactly ${JSON.stringify(expected)} — got ${JSON.stringify(actual)}. ` +
+      'A ledger entry only exists because both gates passed — this one claims something the tooling ' +
+      'cannot verify, or is malformed, and must not be indexed.',
     );
   }
+
+  return { runId: runIdField, ticket, date, filesTouched };
 }
 
 /** Builds the in-memory index (file path -> sorted array of run references) from every ledger run
@@ -176,20 +114,16 @@ function assertVerdictsAreClean(entryMarkdown, runId) {
 export function buildIndex() {
   const index = {};
   for (const runId of listRunDirs()) {
-    const entryPath = join(ledgerDir, runId, 'entry.md');
     const specPath = join(ledgerDir, runId, 'spec.md');
-    if (!existsSync(entryPath)) fail(`.sdd/ledger/${runId}/ has no entry.md`);
+    const entryMdPath = join(ledgerDir, runId, 'entry.md');
     if (!existsSync(specPath)) fail(`.sdd/ledger/${runId}/ has no spec.md`);
+    if (!existsSync(entryMdPath)) fail(`.sdd/ledger/${runId}/ has no entry.md`);
 
-    const entry = readFileSync(entryPath, 'utf8');
-    assertVerdictsAreClean(entry, runId);
-    const ticket = extractFirstLine(entry, 'Ticket') ?? '(unknown ticket)';
-    const date = extractFirstLine(entry, 'Date') ?? '(unknown date)';
-    const files = parseFilesTouched(entry);
+    const entry = readEntryJson(runId); // fails closed on anything malformed — see its own doc comment
 
-    for (const file of files) {
+    for (const file of entry.filesTouched) {
       if (!index[file]) index[file] = [];
-      index[file].push({ runId, ticket, date, spec: `.sdd/ledger/${runId}/spec.md` });
+      index[file].push({ runId, ticket: entry.ticket, date: entry.date, spec: `.sdd/ledger/${runId}/spec.md` });
     }
   }
 
@@ -232,7 +166,7 @@ function main() {
       process.exit(0);
     }
     process.stderr.write(`build-ledger-index --check: ${relFromRoot(indexPath)} is stale.\n\n`);
-    process.stderr.write(`-- expected (regenerated from .sdd/ledger/*/entry.md) --\n${content}\n`);
+    process.stderr.write(`-- expected (regenerated from .sdd/ledger/*/entry.json) --\n${content}\n`);
     process.stderr.write(`-- actual (on disk) --\n${current ?? '(file does not exist)\n'}\n`);
     process.stderr.write('Run `node scripts/build-ledger-index.mjs` to regenerate, or `npm run generate:ledger-index`.\n');
     process.exit(1);
@@ -249,10 +183,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     main();
   } catch (error) {
-    // extractSection (via assertVerdictsAreClean/parseFilesTouched/extractFirstLine) throws rather
-    // than exiting directly when a heading is ambiguous (see extractSection's own comment) — catch
-    // it here so the CLI still prints one clean, prefixed message and exits 1, instead of a raw
-    // Node stack trace.
+    // readEntryJson/parseJsonOrThrow throw SidecarError on malformed JSON or a failed shape check
+    // (fail closed on ambiguity, now "fail closed on invalid JSON" — see pipeline-contracts.mjs);
+    // this catch is what turns that (and any other unexpected error — an I/O failure, ...) into one
+    // clean, prefixed message and exit 1, instead of a raw Node stack trace.
     fail(error.message);
   }
 }

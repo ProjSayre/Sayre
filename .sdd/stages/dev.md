@@ -38,5 +38,21 @@ You are the implementation stage of a Planner -> Red -> Dev -> Tester -> Review 
    - **Subagents spawned** — what was delegated and why, if applicable
    - **Fixes applied** — if this is a re-invocation after review.md, list exactly which findings from review.md were addressed and how
    - **Not done** — anything in scope you didn't finish, and why
+8. Write `.pipeline/changes.json` alongside `changes.md` — PL-03h round 4's JSON-sidecar contract
+   (see `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence). This is what
+   `check-red-integrity.mjs`'s red-test-integrity check and `ledger-append.mjs`'s files-touched
+   fallback actually read; `changes.md` remains the human-facing record and is never parsed for a
+   control decision. Exact shape:
+   ```
+   { "filesChanged": ["path/a.ts", "path/b.ts"],
+     "redTestChanges": [ { "path": "path/to/red-test.test.ts", "reason": "the spec was wrong; amended and the test updated to match" } ] }
+   ```
+   `filesChanged` is the same set of paths as the "Files changed" section, as a plain array — no
+   markdown table or bullet-list shape for a downstream script to regex apart. `redTestChanges` is
+   the same information as the "Red-test changes" section, as one `{path, reason}` object per
+   declared change; if no red test needed changing, write `"redTestChanges": []` (matching "## Red-test
+   changes"'s own "None." case) — never omit the field. A path counts as declared only if it is the
+   exact `path` value of one of these entries, so declare the exact repo-relative path `red.md`/
+   `red.json` used, not a description of it.
 
 Follow existing project conventions exactly as documented in `.claude/rules/` (service layer pattern, openCypher, SQS/BullMQ split, RBAC boundary) — don't reinvent patterns already established in the codebase.

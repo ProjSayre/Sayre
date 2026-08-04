@@ -105,6 +105,33 @@ No `RED-BROKEN` entry may appear anywhere in a finished `red.md` (see step 5 abo
 rehashes every file listed under "Content hashes" against this table; an undeclared mismatch fails
 review (see `.sdd/stages/review.md`).
 
+7. Write `.pipeline/red.json` alongside `red.md` — PL-03h round 4's JSON-sidecar contract (see
+   `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence). This is what
+   `check-red-integrity.mjs` actually reads for the Red-test integrity and Spec trace checks;
+   `red.md` remains the human-facing record and is never parsed for a control decision. Exact shape:
+   ```
+   { "impactMapPresent": <true if the impact map (PL-03b) exists and was consulted, false if it is
+                           genuinely absent — always one or the other, per step 2 above; never omit
+                           this field to mean "absent," since an omitted field fails validation
+                           rather than being read as false>,
+     "tests": [
+       { "path": "path/to/first.test.ts",
+         "sha256": "<the same hex digest recorded under 'Content hashes'>",
+         "specIds": ["AC-1", "AC-2"],
+         "classification": "RED-CORRECT" },
+       { "path": "path/to/second.test.ts",
+         "sha256": "<hex digest>",
+         "specIds": ["EC-3"],
+         "classification": "RED-DEFERRED" }
+     ] }
+   ```
+   `classification` must be exactly `"RED-CORRECT"` or `"RED-DEFERRED"` — there is no `"RED-BROKEN"`
+   literal to write here at all (step 5's rule is enforced by this field simply not accepting it).
+   Every test you authored appears exactly once in `tests`, in the same order as `red.md`'s own
+   "Test paths" list; a path may not repeat (two entries for one path is refused, the same
+   "fail closed on ambiguity" invariant the old markdown parser used to enforce via duplicate-heading
+   detection, now enforced as a duplicate-array-entry check instead).
+
 Model tier `opus` — this stage runs at low volume and high judgment, the same reasoning as `planner`:
 a wrongly-classified test or a missed acceptance criterion here propagates through every downstream
 stage rather than being caught locally.

@@ -28,6 +28,23 @@ When invoked:
      no ID has nothing for a test to point at.
    - **Edge cases** — an exhaustive list for Tester to cover: empty/missing data, RBAC-denied access, malformed input, concurrent/partial-failure states, and anything specific to this feature (e.g. node-count thresholds, queue redelivery, webhook replay). Give each one a stable ID the same way: `EC-1`, `EC-2`, ... in presentation order, for the same reason as Acceptance criteria.
    - **Open questions** — anything ambiguous in the ticket/PRD that needs a human answer before Dev proceeds on that part
+4. Write `.pipeline/spec.json` alongside `spec.md` — PL-03h round 4's JSON-sidecar contract (see
+   `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence for the full rationale:
+   every field a downstream control decision depends on moved off markdown parsing onto a small,
+   strictly-validated JSON file each stage writes next to its human-facing report). Exact shape:
+   ```
+   { "ticket": "<the full title exactly as it appears on spec.md's '# ' line>",
+     "goal": "<spec.md's Goal, as plain text>",
+     "acceptanceCriteria": [ { "id": "AC-1", "text": "<the criterion, as plain text>" }, ... ],
+     "edgeCases": [ { "id": "EC-1", "text": "<the edge case, as plain text>" }, ... ] }
+   ```
+   `ticket` is authored directly as a plain string field here — never derived by a downstream script
+   parsing spec.md's raw title line — because even a purely cosmetic field (a ledger display column)
+   should not require a markdown-structure read once a JSON sidecar exists at all. Every `id` must
+   match `AC-n`/`EC-n` (optionally one trailing lowercase letter) and be unique across both arrays —
+   `red`'s `@spec` markers, and `check-red-integrity.mjs`'s spec-trace check, resolve against exactly
+   this set, not against any text in `spec.md` itself. `spec.json` is what downstream tooling reads;
+   `spec.md` remains the human-facing document and is never parsed for a control decision.
 
 If the ticket conflicts with the PRD or an architectural rule (e.g. it implies client-side RBAC filtering, or bypassing the service layer), flag this explicitly in Open Questions rather than silently resolving it or silently complying with a bad request.
 
@@ -36,6 +53,9 @@ discovers a signature in Interfaces/signatures can't work as written) — **pres
 `AC-*`/`EC-*` ID**. Tests already cite them by ID; renumbering would silently break those references
 without anything failing loudly. Append new items under the next unused number instead of
 renumbering, and let the amendment itself (and the reason for it) be recorded where Dev declares it,
-not by quietly shifting IDs here.
+not by quietly shifting IDs here. **Update `spec.json` identically, in the same edit** — the two
+files must never diverge, since `spec.json` (not `spec.md`) is what `red`'s spec-trace resolution and
+the ledger actually read; a superseded `AC-*`/`EC-*` item's `text` should say so plainly (e.g. prefix
+it `"[SUPERSEDED — see ...]"`) rather than being deleted, for the same "preserve every ID" reason.
 
 The bar for "done": another engineer with zero context on the ticket should be able to implement it correctly from spec.md alone, without asking you a clarifying question.

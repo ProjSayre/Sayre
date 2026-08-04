@@ -3,11 +3,37 @@
 // ids must be deterministic and collision-free" / "a run that never reaches PASS writes no ledger
 // entry" edge cases).
 //
+// PL-03h round 4 (architectural — see .pipeline/review.md's round-3 "On convergence" section and
+// scripts/pipeline-contracts.mjs's own header): this file used to build markdown fixtures
+// (`reviewMarkdown`, `securityReportMarkdown`, `specMarkdown`, `redMarkdown`, `changesMarkdown`) and
+// probe the script's old `extractSection`/`scanBlockState`-based parsing directly — a `###`/`####`
+// heading shadow, inline prose resembling a heading, a fenced-code-block shadow, an HTML-comment
+// shadow, a genuine duplicate heading appended below the real one (the "false review: PASS ledger
+// entry" attack that motivated this whole ticket), and a multi-candidate substring-scan fallback for
+// recovering a security run id from prose. All of that is deleted outright — see ledger-append.mjs's
+// and scripts/pipeline-contracts.mjs's own header comments. Every markdown fixture below has been
+// replaced by a JSON one (`reviewJson`, `securityJson`, `specJson`, `redJson`, `changesJson`).
+//
+// What has NO equivalent to construct anymore, and why (the constraint this file's task explicitly
+// asked to honor — migrate intent, state plainly when a premise is gone, never silently drop
+// coverage): every "append a second, later block below the real one" attack (a duplicate "##
+// Verdict"/"## Files changed" heading, a fenced/commented shadow) required a document with more than
+// one candidate location for the same fact. `review.json`/`security.json`/`changes.json` each hold
+// exactly one value for the fact in question (one `verdict` string, one `filesChanged` array) — there
+// is no second position in the JSON for an appended block to occupy, so there is nothing left for
+// those tests to construct. The intent — "a run whose real verdict is not PASS must never be read as
+// PASS" — is retargeted at direct enum-validation tests below (a near-miss literal, a missing field,
+// a sentence containing the word PASS) and is the exact same assertion, minus the markdown-shaped
+// attack vector. `findCompletedSecurityRun`'s old substring-scan fallback (for recovering a run id
+// when the structured "Run ID:" line was absent or malformed) has no equivalent either: there is no
+// fallback path once the field is a required, strictly-typed JSON string — see the "run id
+// resolution" section below for what replaces that suite.
+//
 // The script computes its own repoRoot as resolve(<its own directory>, '..') and imports its
-// sibling build-ledger-index.mjs by relative path, so exercising it in isolation means copying
-// both files into a throwaway fixture repo and running it there — same approach as
-// scripts/generate-agent-shims.test.mjs, whose fixture-repo/afterEach-cleanup conventions this
-// file follows.
+// sibling build-ledger-index.mjs/pipeline-contracts.mjs by relative path, so exercising it in
+// isolation means copying all three files into a throwaway fixture repo and running it there — same
+// approach as scripts/generate-agent-shims.test.mjs, whose fixture-repo/afterEach-cleanup
+// conventions this file follows.
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -16,18 +42,20 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, test } from 'node:test';
-import { buildEntryMarkdown } from './ledger-append.mjs';
+import { buildEntryJson, buildEntryMarkdown } from './ledger-append.mjs';
 // Note: copySecurityHistoryIntoLedger is deliberately NOT imported directly here (unlike
-// buildEntryMarkdown, which is a pure string-building function) — it resolves repoRoot/ledgerDir/
-// securityHistoryDir from this module's own import.meta.url at import time, so calling it directly
-// from this test file would operate against the *real* repo's .pipeline/ and .sdd/ledger/, not a
-// fixture. It's exercised exclusively through the subprocess-based fixture tests below instead,
-// where the whole script (including its path resolution) runs against a throwaway fixture root.
+// buildEntryMarkdown/buildEntryJson, which are pure value-building functions) — it resolves
+// repoRoot/ledgerDir/securityHistoryDir from this module's own import.meta.url at import time, so
+// calling it directly from this test file would operate against the *real* repo's .pipeline/ and
+// .sdd/ledger/, not a fixture. It's exercised exclusively through the subprocess-based fixture tests
+// below instead, where the whole script (including its path resolution) runs against a throwaway
+// fixture root.
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
 const ledgerAppendSource = readFileSync(resolve(scriptsDir, 'ledger-append.mjs'), 'utf8');
 const buildIndexSource = readFileSync(resolve(scriptsDir, 'build-ledger-index.mjs'), 'utf8');
+const contractsSource = readFileSync(resolve(scriptsDir, 'pipeline-contracts.mjs'), 'utf8');
 
 const roots = [];
 afterEach(() => {
@@ -36,12 +64,12 @@ afterEach(() => {
 
 const RUN_ID = '20260803T120000000Z-abc123def456-PR_DELTA-f00baa';
 
-function reviewMarkdown(verdict = 'PASS') {
-  return `# Review\n\n## Verdict\n\n**${verdict}**\n\nSample review body.\n`;
+function reviewJson(verdict = 'PASS') {
+  return { verdict };
 }
 
-function securityReportMarkdown(runId, verdict = 'PASS') {
-  return `# Security Report\n\n## Verdict\n\n**${verdict}**\n\n## Run and baseline\n\n- Run ID: \`${runId}\`\n- Mode: \`PR_DELTA\`\n`;
+function securityJson(runId, verdict = 'PASS') {
+  return { verdict, runId };
 }
 
 function manifestJson(runId, { commitSha = 'a'.repeat(40), dirty = false, status = 'COMPLETE', completedAt = '2026-08-03T12:05:00.000Z' } = {}) {
@@ -69,32 +97,36 @@ function specMarkdown(ticket = 'PL-99z') {
   return `# ${ticket} — Sample ticket for ledger-append tests\n\n## Goal\n\nDo the sample thing this fixture exists to verify.\n\n## Scope\n\nIn: sample. Out: everything else.\n`;
 }
 
-function redMarkdown(paths = ['scripts/sample.test.mjs']) {
-  return [
-    '## Impact map',
-    'Absent — PL-03b is unbuilt.',
-    '',
-    '## Test paths',
-    ...paths.map((path) => `- ${path}`),
-    '',
-    '## @spec mapping',
-    `- ${paths[0]}: AC-1`,
-    '',
-    '## Observed failure output',
-    `### ${paths[0]}`,
-    'AssertionError: expected behavior missing',
-    '',
-    '## Classification',
-    `- ${paths[0]}: RED-CORRECT`,
-    '',
-    '## Content hashes (SHA-256)',
-    `- ${paths[0]}: ${'d'.repeat(64)}`,
-    '',
-  ].join('\n');
+function specJson(ticket = 'PL-99z') {
+  return {
+    ticket: `${ticket} — Sample ticket for ledger-append tests`,
+    goal: 'Do the sample thing this fixture exists to verify.',
+    acceptanceCriteria: [{ id: 'AC-1', text: 'Sample acceptance criterion.' }],
+    edgeCases: [],
+  };
 }
 
-function changesMarkdown(files = ['app/existing.ts']) {
-  return `# Changes\n\n## Files changed\n${files.map((file) => `- \`${file}\` — sample reason`).join('\n')}\n\n## Decisions made\nNone.\n`;
+function redJson(paths = ['scripts/sample.test.mjs']) {
+  return {
+    impactMapPresent: false,
+    tests: paths.map((path) => ({ path, sha256: 'd'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' })),
+  };
+}
+
+function changesJson(files = ['app/existing.ts']) {
+  return { filesChanged: files, redTestChanges: [] };
+}
+
+/** Trivial, human-facing placeholders for the markdown counterparts real stages also write
+ * (review.md/security-report.md) — main() never reads either for a control decision anymore (only
+ * review.json/security.json), but they still exist in a real run, and the AC10 gitignore-boundary
+ * test below needs *something* on disk at those paths to assert stays ignored. */
+function reviewMarkdownPlaceholder(verdict = 'PASS') {
+  return `# Review\n\n## Verdict\n\n**${verdict}**\n\n(fixture placeholder — ledger-append.mjs reads review.json, not this file)\n`;
+}
+
+function securityReportMarkdownPlaceholder(verdict = 'PASS') {
+  return `# Security Report\n\n## Verdict\n\n**${verdict}**\n\n(fixture placeholder — ledger-append.mjs reads security.json, not this file)\n`;
 }
 
 function initGit(dir) {
@@ -110,10 +142,11 @@ function commitAll(dir, message) {
   execFileSync('git', ['commit', '--quiet', '-m', message], { cwd: dir });
 }
 
-/** Builds a throwaway fixture repo: the two scripts (ledger-append.mjs imports build-ledger-index.mjs
- * by relative path, so both must be present), a .sdd/ledger/ directory, and caller-supplied
- * .pipeline/ files. `pipeline` maps a path relative to .pipeline/ (or 'security-history/<id>/x.json')
- * to file contents. Commits everything as a baseline unless `git: false`. */
+/** Builds a throwaway fixture repo: the three scripts (ledger-append.mjs imports
+ * build-ledger-index.mjs and pipeline-contracts.mjs by relative path, so all three must be present),
+ * a .sdd/ledger/ directory, and caller-supplied .pipeline/ files. `pipeline` maps a path relative to
+ * .pipeline/ (or 'security-history/<id>/x.json') to file contents — an object is JSON.stringify'd, a
+ * string is written verbatim. Commits everything as a baseline unless `git: false`. */
 function fixtureRepo({ pipeline = {}, git = true } = {}) {
   const root = mkdtempSync(resolve(tmpdir(), 'sayre-ledger-append-'));
   roots.push(root);
@@ -121,6 +154,7 @@ function fixtureRepo({ pipeline = {}, git = true } = {}) {
   mkdirSync(join(root, 'scripts'), { recursive: true });
   writeFileSync(join(root, 'scripts', 'ledger-append.mjs'), ledgerAppendSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
 
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
@@ -128,7 +162,7 @@ function fixtureRepo({ pipeline = {}, git = true } = {}) {
   for (const [relPath, contents] of Object.entries(pipeline)) {
     const dest = join(root, '.pipeline', relPath);
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, contents, 'utf8');
+    writeFileSync(dest, typeof contents === 'string' ? contents : JSON.stringify(contents, null, 2), 'utf8');
   }
 
   if (git) {
@@ -143,14 +177,17 @@ function fixtureRepo({ pipeline = {}, git = true } = {}) {
 function terminalPassPipeline({ runId = RUN_ID, ticket = 'PL-99z', redPaths, changesFiles, manifestOverrides, includeChanges = true, includeRed = true } = {}) {
   const pipeline = {
     'spec.md': specMarkdown(ticket),
-    'review.md': reviewMarkdown('PASS'),
-    'security-report.md': securityReportMarkdown(runId, 'PASS'),
+    'spec.json': specJson(ticket),
+    'review.md': reviewMarkdownPlaceholder('PASS'),
+    'review.json': reviewJson('PASS'),
+    'security-report.md': securityReportMarkdownPlaceholder('PASS'),
+    'security.json': securityJson(runId, 'PASS'),
     [`security-history/${runId}/manifest.json`]: manifestJson(runId, manifestOverrides),
     [`security-history/${runId}/results.json`]: resultsJson(runId, 'PASS'),
     [`security-history/${runId}/report.md`]: securityHistoryReportMarkdown(runId, 'PASS'),
   };
-  if (includeChanges) pipeline['changes.md'] = changesMarkdown(changesFiles);
-  if (includeRed) pipeline['red.md'] = redMarkdown(redPaths);
+  if (includeChanges) pipeline['changes.json'] = changesJson(changesFiles);
+  if (includeRed) pipeline['red.json'] = redJson(redPaths);
   return pipeline;
 }
 
@@ -158,9 +195,9 @@ function runLedgerAppend(root) {
   return spawnSync(process.execPath, [join(root, 'scripts', 'ledger-append.mjs')], { cwd: root, encoding: 'utf8' });
 }
 
-// --- AC 7, 9: writes .sdd/ledger/<run-id>/{spec.md,entry.md} on a terminal PASS -----------------
+// --- AC 7, 9: writes .sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json} on a terminal PASS
 
-test('writes spec.md and entry.md, and regenerates index.json, on a terminal PASS', () => {
+test('writes spec.md, spec.json, entry.md, and entry.json, and regenerates index.json, on a terminal PASS', () => {
   const root = fixtureRepo({ pipeline: terminalPassPipeline() });
   // Simulate dev's actual (uncommitted) change so the git-diff path has something to find.
   mkdirSync(join(root, 'app'), { recursive: true });
@@ -171,10 +208,13 @@ test('writes spec.md and entry.md, and regenerates index.json, on a terminal PAS
 
   const runDir = join(root, '.sdd', 'ledger', RUN_ID);
   assert.ok(existsSync(join(runDir, 'spec.md')));
+  assert.ok(existsSync(join(runDir, 'spec.json')));
   assert.ok(existsSync(join(runDir, 'entry.md')));
+  assert.ok(existsSync(join(runDir, 'entry.json')));
 
   const specCopy = readFileSync(join(runDir, 'spec.md'), 'utf8');
   assert.equal(specCopy, specMarkdown('PL-99z'));
+  assert.deepEqual(JSON.parse(readFileSync(join(runDir, 'spec.json'), 'utf8')), specJson('PL-99z'));
 
   const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
   assert.match(entry, /## Ticket\r?\nPL-99z/);
@@ -182,32 +222,51 @@ test('writes spec.md and entry.md, and regenerates index.json, on a terminal PAS
   assert.match(entry, /## Security run ID\r?\n\.pipeline\/security-history\/20260803T120000000Z-abc123def456-PR_DELTA-f00baa\//);
   assert.match(entry, /app\/newThing\.ts/);
 
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.runId, RUN_ID);
+  assert.equal(entryJson.ticket, 'PL-99z');
+  assert.deepEqual(entryJson.verdicts, { review: 'PASS', security: 'PASS' });
+  assert.ok(entryJson.filesTouched.includes('app/newThing.ts'));
+
   const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
   assert.ok(index['app/newThing.ts']?.some((e) => e.runId === RUN_ID));
 });
 
-test('records the @spec test paths red.md lists', () => {
+test('copies review.json and security.json into .sdd/ledger/<run-id>/, verbatim, alongside spec.json', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppend(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  assert.deepEqual(JSON.parse(readFileSync(join(runDir, 'review.json'), 'utf8')), reviewJson('PASS'));
+  assert.deepEqual(JSON.parse(readFileSync(join(runDir, 'security.json'), 'utf8')), securityJson(RUN_ID, 'PASS'));
+});
+
+test('records the @spec test paths red.json lists', () => {
   const root = fixtureRepo({ pipeline: terminalPassPipeline({ redPaths: ['scripts/one.test.mjs', 'scripts/two.test.mjs'] }) });
   const result = runLedgerAppend(root);
   assert.equal(result.status, 0, result.stderr);
   const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
   assert.match(entry, /## Red-test paths\r?\n- scripts\/one\.test\.mjs\r?\n- scripts\/two\.test\.mjs/);
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  assert.ok(existsSync(join(runDir, 'red.json')), 'red.json must also be copied into the ledger when present for this run');
 });
 
-// --- Edge case (D-006 discipline): no red.md is stated explicitly, never silently blank ---------
+// --- Edge case (D-006 discipline): no red.json is stated explicitly, never silently blank -------
 
-test('states explicitly, rather than silently, when no red.md is present for this run', () => {
+test('states explicitly, rather than silently, when no red.json is present for this run', () => {
   const root = fixtureRepo({ pipeline: terminalPassPipeline({ includeRed: false }) });
   const result = runLedgerAppend(root);
   assert.equal(result.status, 0, result.stderr);
   const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
-  assert.match(entry, /## Red-test paths\r?\nNo `red\.md` present for this run/);
+  assert.match(entry, /## Red-test paths\r?\nNo `red\.json` present for this run/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID, 'red.json')), 'no red.json to copy when this run had none');
 });
 
-// --- Files touched: prefers a live git diff, falls back to changes.md on a clean tree -----------
+// --- Files touched: prefers a live git diff, falls back to changes.json on a clean tree ---------
 
-test('prefers the live working-tree diff over changes.md when the tree is dirty', () => {
-  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/from-changes-md.ts'] }) });
+test('prefers the live working-tree diff over changes.json when the tree is dirty', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/from-changes-json.ts'] }) });
   mkdirSync(join(root, 'app'), { recursive: true });
   writeFileSync(join(root, 'app', 'from-git-diff.ts'), 'export const y = 2;\n', 'utf8'); // uncommitted
 
@@ -217,45 +276,65 @@ test('prefers the live working-tree diff over changes.md when the tree is dirty'
   assert.match(entry, /app\/from-git-diff\.ts/);
 });
 
-test('falls back to parsing changes.md\'s Files changed section when the working tree is already clean', () => {
-  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/from-changes-md.ts', 'scripts/other.mjs'] }) });
-  // fixtureRepo already committed everything, including changes.md itself, so `git diff --name-only
-  // HEAD` and `git ls-files --others` both come up empty here — this is the fallback path.
+test('falls back to changes.json\'s "filesChanged" array when the working tree is already clean', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/from-changes-json.ts', 'scripts/other.mjs'] }) });
+  // fixtureRepo already committed everything, including changes.json itself, so `git diff
+  // --name-only HEAD` and `git ls-files --others` both come up empty here — this is the fallback path.
   const result = runLedgerAppend(root);
   assert.equal(result.status, 0, result.stderr);
   const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
-  assert.match(entry, /app\/from-changes-md\.ts/);
+  assert.match(entry, /app\/from-changes-json\.ts/);
   assert.match(entry, /scripts\/other\.mjs/);
 });
 
 test('states explicitly when no files touched could be determined at all', () => {
   const root = fixtureRepo({ pipeline: terminalPassPipeline({ includeChanges: false }) });
-  // Clean tree (everything committed) and no changes.md to fall back on.
+  // Clean tree (everything committed) and no changes.json to fall back on.
   const result = runLedgerAppend(root);
   assert.equal(result.status, 0, result.stderr);
   const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
   assert.match(entry, /## Files touched\r?\n\(none could be determined automatically/);
 });
 
+// Retired (PL-03h round 4): the three markdown-heading-shape tests that used to live here — a
+// title-case "## Files Changed" heading producing no data via a dead case-insensitive fallback
+// (finding A), a changes.md with no "## Files changed" heading at all, and one where the heading was
+// present but empty — all had the same premise: a markdown heading can be mis-cased, absent, or
+// present-but-empty, three states a regex-based section extractor has to distinguish. `changes.json`
+// has no heading to mis-case, omit, or leave empty in that sense; the equivalent state is
+// `filesChanged` being an empty array while the working tree is clean, which is exactly what the
+// test below asserts. The *intent* (a changes artifact that exists but reports no data, on a clean
+// tree, must fail loudly rather than silently record "[]") is fully preserved.
+
+test('fails loudly (does not silently record an empty list) when changes.json exists on a clean tree with an empty "filesChanged" array', () => {
+  const pipeline = terminalPassPipeline({ includeChanges: false });
+  pipeline['changes.json'] = { filesChanged: [], redTestChanges: [] };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0, 'must not exit 0 by silently treating an empty filesChanged array as "no data"');
+  assert.match(result.stderr, /"filesChanged" is empty/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry when files-touched data could not actually be determined');
+});
+
 // --- Refusal: not a terminal PASS ---------------------------------------------------------------
 
-test('refuses when review.md is NEEDS_FIXES, and writes nothing', () => {
-  const root = fixtureRepo({ pipeline: { ...terminalPassPipeline(), 'review.md': reviewMarkdown('NEEDS_FIXES') } });
+test('refuses when review.json\'s verdict is NEEDS_FIXES, and writes nothing', () => {
+  const root = fixtureRepo({ pipeline: { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') } });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /NEEDS_FIXES/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-test('refuses when security-report.md is BLOCKED, and writes nothing', () => {
-  const root = fixtureRepo({ pipeline: { ...terminalPassPipeline(), 'security-report.md': securityReportMarkdown(RUN_ID, 'BLOCKED') } });
+test('refuses when security.json\'s verdict is BLOCKED, and writes nothing', () => {
+  const root = fixtureRepo({ pipeline: { ...terminalPassPipeline(), 'security.json': securityJson(RUN_ID, 'BLOCKED') } });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /BLOCKED/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-test('refuses when spec.md is missing entirely', () => {
+test('refuses when spec.md is missing entirely (still required — it is copied verbatim into the ledger even though spec.json now supplies the ticket/goal data)', () => {
   const pipeline = terminalPassPipeline();
   delete pipeline['spec.md'];
   const root = fixtureRepo({ pipeline });
@@ -264,137 +343,101 @@ test('refuses when spec.md is missing entirely', () => {
   assert.match(result.stderr, /spec\.md/);
 });
 
-test('refuses when review.md is missing entirely (distinct from a wrong verdict)', () => {
+test('refuses when spec.json is missing entirely', () => {
   const pipeline = terminalPassPipeline();
-  delete pipeline['review.md'];
+  delete pipeline['spec.json'];
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /review\.md does not exist/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+  assert.match(result.stderr, /spec\.json does not exist/);
 });
 
-test('refuses when security-report.md is missing entirely (distinct from a wrong verdict)', () => {
+test('refuses when review.json is missing entirely (distinct from a wrong verdict)', () => {
   const pipeline = terminalPassPipeline();
-  delete pipeline['security-report.md'];
+  delete pipeline['review.json'];
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /security-report\.md does not exist/);
+  assert.match(result.stderr, /review\.json does not exist/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-// --- Hard negative case: a verdict word appearing in prose is not the same as being the verdict -
-
-test('refuses when review.md\'s "## Verdict" section is prose containing the word PASS rather than stating it as the verdict', () => {
+test('refuses when security.json is missing entirely (distinct from a wrong verdict)', () => {
   const pipeline = terminalPassPipeline();
-  // Deliberately adversarial: the literal substring "PASS" appears in the Verdict section, but as
-  // part of a sentence, not as the verdict itself. A substring/regex search for "PASS" anywhere in
-  // this section would wrongly accept this; only exact-match-after-trim is correct.
-  pipeline['review.md'] = '# Review\n\n## Verdict\n\nThis run should probably PASS once minor things are fixed.\n\n## Critical\nNone.\n';
+  delete pipeline['security.json'];
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /not PASS/);
+  assert.match(result.stderr, /security\.json does not exist/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-test('refuses when review.md has no "## Verdict" heading at all, rather than defaulting to a pass', () => {
+// --- Strict verdict validation: a near-miss or malformed verdict fails closed --------------------
+//
+// Retired (PL-03h round 4): the markdown-era versions of this section constructed a "## Verdict"
+// section whose text merely *contained* the word PASS in a sentence ("This run should probably PASS
+// once minor things are fixed"), or that had a "###"/"####" heading shadow, or a fenced/commented
+// shadow, sitting above the real section. None of that has an equivalent under the JSON contract —
+// `review.json`'s `verdict` field is read once, as one literal value; there is no sentence for the
+// word "PASS" to appear inside, and no heading depth or fence/comment state to get confused about.
+// The intent (a verdict must be recognized only when it IS the verdict, never merely resembling one)
+// is fully preserved below, now as a direct enum-validation check.
+
+test('refuses when review.json\'s verdict is a sentence merely containing the word PASS, rather than being exactly the literal "PASS"', () => {
   const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\nLooks fine to me, ship it.\n';
+  pipeline['review.json'] = { verdict: 'This run should probably PASS once minor things are fixed.' };
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /no "## Verdict" section/);
+  assert.match(result.stderr, /field "verdict" must be exactly one of/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-test('refuses when security-report.md\'s verdict is a near-miss string ("PASSED") rather than exactly PASS', () => {
+test('refuses when review.json has no "verdict" field at all, rather than defaulting to a pass', () => {
   const pipeline = terminalPassPipeline();
-  pipeline['security-report.md'] = securityReportMarkdown(RUN_ID, 'PASS').replace('**PASS**', 'PASSED');
+  pipeline['review.json'] = {};
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /PASSED, not PASS/);
+  assert.match(result.stderr, /field "verdict" must be exactly one of/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-// --- Regression (review Critical 1): a ###/#### heading shadow, or inline "## Verdict"-looking ---
-// prose, must never be mistaken for the real "## Verdict" section. Every fixture above this point
-// is well-formed ##-only markdown ("fixture monoculture") — these reproduce review's exact repro.
-
-test('refuses on a terminal PASS attempt when review.md has a "### Verdict" (h3) shadow reporting PASS above the real "## Verdict" reporting NEEDS_FIXES', () => {
+test('refuses when security.json\'s verdict is a near-miss string ("PASSED") rather than exactly PASS', () => {
   const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\n### Verdict\n\nPASS\n\n## Verdict\n\n**NEEDS_FIXES**\n';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0, 'the real ## Verdict says NEEDS_FIXES; the h3 shadow reporting PASS must not be read instead');
-  assert.match(result.stderr, /NEEDS_FIXES, not PASS/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('refuses on a terminal PASS attempt when review.md has a "#### Verdict" (h4) shadow reporting PASS above the real "## Verdict" reporting NEEDS_FIXES', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\n#### Verdict\n\nPASS\n\n## Verdict\n\n**NEEDS_FIXES**\n';
+  pipeline['security.json'] = { verdict: 'PASSED', runId: RUN_ID };
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /NEEDS_FIXES, not PASS/);
+  assert.match(result.stderr, /field "verdict" must be exactly one of/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-test('refuses when review.md\'s only "## Verdict"-looking text is inline prose ("see ## Verdict" then "PASS" on the next line), with no real heading anywhere', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\nSome analysis, see ## Verdict\nPASS\n\n## Critical\nNone found.\n';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0, 'there is no real "## Verdict" heading in this document at all; the inline prose must not be read as one');
-  assert.match(result.stderr, /no "## Verdict" section/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
+// Retired in full (PL-03h round 4): every test in this file's prior "Regression (review Critical 1)"
+// and "Fixed (PL-03h)" sections — a ###/#### heading shadow above the real "## Verdict", inline prose
+// resembling a heading, a "## Verdict" line fabricated inside a fenced code block or an HTML comment,
+// and (the headline finding this whole ticket was opened to fix) a GENUINE, non-shadowed duplicate
+// "## Verdict"/"## Files changed" heading appended below the real one, laundering a false PASS or
+// hiding which files a run actually touched. Every one of those was a markdown *document-formatting*
+// attack: each needed a second candidate location in the text (a different heading depth, a
+// fenced/commented block, a second real heading later in the file) for the parser to be tricked into
+// reading instead of, or in addition to, the real one. `review.json`/`security.json`/`changes.json`
+// each hold exactly one JSON value for the fact in question — there is no second position for a
+// second, later "block" to occupy, appended or otherwise, so there is no exploit left to construct
+// for any of them. This is not a narrower fix that happens to also block these cases; it removes the
+// entire class by removing the surface (parsing a natural-language document for a control decision)
+// those attacks depended on — see .pipeline/review.md's round-3 "On convergence" section for the
+// argument this implements, and .pipeline/changes.md for where this reasoning is restated in full.
+// The specific outcome those tests protected — "a run whose real, final verdict is not PASS must
+// never produce a ledger entry" — remains covered above ("refuses when review.json's verdict is
+// NEEDS_FIXES", "refuses when security.json's verdict is BLOCKED", and the near-miss/missing-field
+// tests immediately above this comment).
 
-// --- Adversarial sweep (tester round 2): vectors the Critical 1 anchor fix does NOT address --------
-// The anchor (`^##[ \t]+`, `m` flag) rules out ###/#### depth and mid-line-prose shadowing. It has no
-// awareness of markdown structure beyond "is this literally the first thing on its line" — so a
-// heading-like line fabricated inside a fenced code block or an HTML comment still satisfies it, and
-// two genuine, equally well-formed "## Verdict" headings are still resolved first-match-wins. All
-// three reproduce Critical 1's exact failure mode (a ledger entry recording review: PASS for a run
-// whose real verdict is NEEDS_FIXES) through vectors review's own repro did not exercise. These
-// assert the SAFE outcome (refusal) and, as of this test run, FAIL against the current
-// implementation — not a test bug. See test-results.md for the full writeup and severity.
-
-test('OPEN GAP: refuses when a "## Verdict" line fabricated inside a fenced code block sits above the real "## Verdict" reporting NEEDS_FIXES', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\n```\n## Verdict\n\nPASS\n```\n\nSome analysis of the failed run.\n\n## Verdict\n\n**NEEDS_FIXES**\n';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0, 'a fenced-code-block "## Verdict" line must not be read as the real section');
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('OPEN GAP: refuses when a "## Verdict" line fabricated inside an HTML comment sits above the real "## Verdict" reporting NEEDS_FIXES', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\n<!--\n## Verdict\n\nPASS\n-->\n\n## Verdict\n\n**NEEDS_FIXES**\n';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0, 'a "## Verdict" line inside an HTML comment must not be read as the real section');
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('OPEN GAP: refuses when review.md has two genuine (non-shadowed) "## Verdict" headings, and the second (final) one reports NEEDS_FIXES', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.md'] = '# Review\n\n## Verdict\n\nPASS\n\n(stray leftover draft text from an earlier revision)\n\n## Verdict\n\n**NEEDS_FIXES**\n';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0, 'the real, final "## Verdict" section says NEEDS_FIXES and must win over an earlier duplicate reporting PASS');
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-// --- Regression (review Critical 1, second half): entry.md's "## Verdicts" section must echo -----
-// what extractVerdict actually read, not a hardcoded literal — verified by calling the exported
-// buildEntryMarkdown directly with values a real run could never actually reach main() with (main()
-// only calls it once both verdicts are already confirmed 'PASS'), to prove the field is genuinely
-// parameterized and not silently ignored in favor of a literal.
+// --- Regression: entry.md/entry.json echo whatever verdict was actually read, never a hardcoded --
+// literal — verified by calling the exported buildEntryMarkdown/buildEntryJson directly with values a
+// real run could never actually reach main() with (main() only calls them once both verdicts are
+// already confirmed 'PASS'), to prove the fields are genuinely parameterized and not silently ignored
+// in favor of a literal.
 
 test('buildEntryMarkdown writes whatever reviewVerdict/securityVerdict it is given, not a hardcoded literal', () => {
   const markdown = buildEntryMarkdown({
@@ -405,7 +448,7 @@ test('buildEntryMarkdown writes whatever reviewVerdict/securityVerdict it is giv
     goal: 'Sample goal.',
     files: [],
     redTestPaths: [],
-    redAbsenceNote: 'No red.md.',
+    redAbsenceNote: 'No red.json.',
     securityRunId: 'sample-run',
     commitLine: 'deadbeef',
     reviewVerdict: 'PASS',
@@ -424,7 +467,7 @@ test('buildEntryMarkdown writes whatever reviewVerdict/securityVerdict it is giv
     goal: 'Sample goal.',
     files: [],
     redTestPaths: [],
-    redAbsenceNote: 'No red.md.',
+    redAbsenceNote: 'No red.json.',
     securityRunId: 'sample-run',
     commitLine: 'deadbeef',
     reviewVerdict: 'HYPOTHETICAL_REVIEW_VALUE',
@@ -433,140 +476,76 @@ test('buildEntryMarkdown writes whatever reviewVerdict/securityVerdict it is giv
   assert.match(hypothetical, /## Verdicts\n- review: HYPOTHETICAL_REVIEW_VALUE\n- security: HYPOTHETICAL_SECURITY_VALUE/);
 });
 
-// --- Regression (review Critical 2): findCompletedSecurityRun must resolve correctly once a ------
-// security report legitimately cites its own baseline (required by .sdd/stages/security.md from
-// the second run onward) — the exact scenario that made this ticket's own security run (#2, with
-// PL-03a as its baseline) unable to reach a terminal PASS as originally delivered.
+test('buildEntryJson writes whatever reviewVerdict/securityVerdict it is given, not a hardcoded literal — the machine-facing twin of the buildEntryMarkdown regression above', () => {
+  const entry = buildEntryJson({
+    runId: 'sample-run',
+    date: '2026-08-03',
+    ticketId: 'PL-99z',
+    ticketTitle: 'PL-99z — sample',
+    goal: 'Sample goal.',
+    files: [],
+    redTestPaths: [],
+    redAbsenceNote: 'No red.json.',
+    securityRunId: 'sample-run',
+    commit: { sha: 'deadbeef', dirty: false },
+    reviewVerdict: 'PASS',
+    securityVerdict: 'PASS',
+  });
+  assert.deepEqual(entry.verdicts, { review: 'PASS', security: 'PASS' });
 
-test('resolves to the report\'s own cited run, not its baseline, when both runs exist on disk and both ids appear in the report', () => {
-  const baselineRunId = '20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea';
-  const pipeline = terminalPassPipeline();
-  // A second, real COMPLETE/PASS run for the baseline, so its directory genuinely exists on disk —
-  // otherwise the old code's plain "does the directory exist" check would already exclude it.
-  pipeline[`security-history/${baselineRunId}/manifest.json`] = manifestJson(baselineRunId, { commitSha: 'e'.repeat(40) });
-  pipeline[`security-history/${baselineRunId}/results.json`] = resultsJson(baselineRunId, 'PASS');
-  pipeline['security-report.md'] = [
-    '# Security Report',
-    '',
-    '## Verdict',
-    '',
-    '**PASS**',
-    '',
-    '## Run and baseline',
-    '',
-    `- Run ID: \`${RUN_ID}\``,
-    '- Mode: `PR_DELTA`',
-    `- Baseline: \`${baselineRunId}\` (previous run)`,
-    '',
-  ].join('\n');
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.equal(result.status, 0, result.stderr);
-  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must resolve to the report\'s own Run ID, not refuse');
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', baselineRunId)), 'must not mistake the baseline for the current run');
+  const hypothetical = buildEntryJson({
+    runId: 'sample-run',
+    date: '2026-08-03',
+    ticketId: 'PL-99z',
+    ticketTitle: 'PL-99z — sample',
+    goal: 'Sample goal.',
+    files: [],
+    redTestPaths: [],
+    redAbsenceNote: 'No red.json.',
+    securityRunId: 'sample-run',
+    commit: { sha: 'deadbeef', dirty: false },
+    reviewVerdict: 'HYPOTHETICAL_REVIEW_VALUE',
+    securityVerdict: 'HYPOTHETICAL_SECURITY_VALUE',
+  });
+  assert.deepEqual(hypothetical.verdicts, { review: 'HYPOTHETICAL_REVIEW_VALUE', security: 'HYPOTHETICAL_SECURITY_VALUE' });
 });
 
-test('falls back to the substring scan, excluding baseline-only mentions, when the "## Run and baseline" section is absent (older-format report)', () => {
-  const baselineRunId = '20260701T000000000Z-000000000000-PR_DELTA-000000';
-  const pipeline = terminalPassPipeline();
-  pipeline[`security-history/${baselineRunId}/manifest.json`] = manifestJson(baselineRunId, { commitSha: 'f'.repeat(40) });
-  pipeline[`security-history/${baselineRunId}/results.json`] = resultsJson(baselineRunId, 'PASS');
-  // No "## Run and baseline" heading at all — an older-format report, exercising the fallback path.
-  // The two ids sit on separate lines, and only the baseline one is a "Baseline:"-prefixed line —
-  // that distinction is exactly what the fallback's exclusion logic keys on.
-  pipeline['security-report.md'] = `# Security Report\n\n## Verdict\n\n**PASS**\n\nCurrent run: ${RUN_ID}\nBaseline: ${baselineRunId}\n`;
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.equal(result.status, 0, result.stderr);
-  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
+// --- Run id resolution: security.json's "runId" field is the sole, required source --------------
+//
+// Retired (PL-03h round 4): the markdown-era `findCompletedSecurityRun` had to recover a run id from
+// security-report.md's prose when a structured "## Run and baseline" / "Run ID:" line was absent
+// (an older-format report) or present-but-malformed (missing backticks) — a substring-scan fallback
+// that had to exclude a report's own cited baseline from looking like a second candidate, and that
+// could still be genuinely ambiguous if two ids both appeared as unprefixed prose. Six tests here
+// used to cover that fallback chain and its edge cases. None of it has an equivalent anymore:
+// `security.json`'s `runId` field is required and strictly typed (scripts/pipeline-contracts.mjs's
+// readSecurityJson) — there is no "the structured field is absent or malformed" state left to fall
+// back from, so there is no fallback chain to test. The two tests below cover what actually replaced
+// it: the cited run id is looked up directly, and an unrelated second run directory on disk (e.g. a
+// legitimate prior baseline) is simply irrelevant, never a source of ambiguity.
 
-test('the fallback substring scan still refuses on genuine ambiguity (two matches, neither excludable as baseline-only)', () => {
-  const secondRunId = '20260702T000000000Z-111111111111-PR_DELTA-111111';
-  const pipeline = terminalPassPipeline();
-  pipeline[`security-history/${secondRunId}/manifest.json`] = manifestJson(secondRunId, { commitSha: 'a'.repeat(40) });
-  pipeline[`security-history/${secondRunId}/results.json`] = resultsJson(secondRunId, 'PASS');
-  pipeline['security-report.md'] = `# Security Report\n\n## Verdict\n\n**PASS**\n\nBoth ${RUN_ID} and ${secondRunId} are mentioned here as plain prose, neither one as a Baseline.\n`;
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /ambiguously matches more than one run/);
-});
-
-// --- Adversarial sweep (tester round 2): Critical 2's fallback path, specifically probed for -----
-// whether a *malformed* (not absent) structured field can make the fallback silently pick the
-// baseline instead of the report's own run — that would attribute a run's ledger entry to the wrong
-// id, which is exactly what Critical 2 exists to prevent from the *report's own run id* being
-// unresolvable. These are distinct from the "older-format report, section absent entirely" test
-// above: here the "## Run and baseline" heading is present, but its "Run ID:" line doesn't match
-// parseCitedRunId's regex (no backticks), so parseCitedRunId returns null and control reaches the
-// same fallback path from a different cause.
-
-test('the fallback correctly resolves to the report\'s own run (not the baseline) when "## Run and baseline" is present but malformed (no backticks around the Run ID value)', () => {
+test('resolves directly to the runId security.json cites, even when an unrelated second run directory (e.g. a legitimate prior baseline) also exists on disk', () => {
   const baselineRunId = '20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea';
   const pipeline = terminalPassPipeline();
   pipeline[`security-history/${baselineRunId}/manifest.json`] = manifestJson(baselineRunId, { commitSha: 'e'.repeat(40) });
   pipeline[`security-history/${baselineRunId}/results.json`] = resultsJson(baselineRunId, 'PASS');
-  pipeline['security-report.md'] = [
-    '# Security Report', '', '## Verdict', '', '**PASS**', '',
-    '## Run and baseline', '',
-    `- Run ID: ${RUN_ID}`, // malformed: no backticks, so parseCitedRunId's regex does not match this line
-    `- Baseline: \`${baselineRunId}\` (previous run)`,
-    '',
-  ].join('\n');
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.equal(result.status, 0, result.stderr);
-  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must fall back and resolve to the report\'s own run, not refuse');
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', baselineRunId)), 'must not silently pick the baseline when the structured field is malformed rather than absent');
+  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must resolve to security.json\'s own cited runId');
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', baselineRunId)), 'must not mistake an unrelated directory on disk for the current run — there is no scanning left to confuse');
 });
 
-test('the fallback still refuses on ambiguity when "## Run and baseline" is present but malformed (no backticks) and both ids appear as unprefixed prose', () => {
-  const secondRunId = '20260702T000000000Z-222222222222-PR_DELTA-222222';
+test('refuses when security.json cites a runId with no matching security-history directory on disk', () => {
   const pipeline = terminalPassPipeline();
-  pipeline[`security-history/${secondRunId}/manifest.json`] = manifestJson(secondRunId, { commitSha: 'a'.repeat(40) });
-  pipeline[`security-history/${secondRunId}/results.json`] = resultsJson(secondRunId, 'PASS');
-  pipeline['security-report.md'] = `# Security Report\n\n## Verdict\n\n**PASS**\n\n## Run and baseline\n\nBoth ${RUN_ID} and ${secondRunId} are mentioned as plain text here, with no backtick-wrapped "Run ID:" line and neither one prefixed as Baseline.\n`;
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0, 'must refuse on genuine ambiguity rather than guess — including not silently picking the baseline');
-  assert.match(result.stderr, /ambiguously matches more than one run/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', secondRunId)));
-});
-
-test('a missing closing backtick around the cited Run ID produces a garbled (multi-line) capture and fails closed rather than resolving to anything, including the baseline', () => {
-  const baselineRunId = '20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea';
-  const pipeline = terminalPassPipeline();
-  pipeline[`security-history/${baselineRunId}/manifest.json`] = manifestJson(baselineRunId, { commitSha: 'e'.repeat(40) });
-  pipeline[`security-history/${baselineRunId}/results.json`] = resultsJson(baselineRunId, 'PASS');
-  // The opening backtick after "Run ID:" is never closed on its own line — [^`]+ (which allows
-  // embedded newlines) greedily consumes through to the *next* backtick anywhere later in the
-  // document, which is the one opening the Baseline line's own value, producing a garbled capture
-  // that matches no real directory name.
-  pipeline['security-report.md'] = `# Security Report\n\n## Verdict\n\n**PASS**\n\n## Run and baseline\n\n- Run ID: \`${RUN_ID}\n- Baseline: \`${baselineRunId}\` (previous run)\n`;
+  pipeline['security.json'] = securityJson('some-other-run-id-not-on-disk', 'PASS');
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', baselineRunId)), 'must not resolve to the baseline even when the primary-path capture is garbled by a missing backtick');
+  assert.match(result.stderr, /cites runId "some-other-run-id-not-on-disk", but/);
 });
 
-// --- Refusal: security-history run doesn't back up the report's claim ---------------------------
-
-test('refuses when the "## Run and baseline" section cites a Run ID with no matching security-history directory on disk', () => {
-  // securityReportMarkdown() always emits the structured "## Run and baseline" / "Run ID:" line, so
-  // this now resolves via the primary (Critical 2 fix) path, not the substring-scan fallback — the
-  // fail message names the cited id explicitly rather than the older, vaguer "does not reference
-  // any run directory" message (still used by the fallback path — see the fallback-specific tests
-  // above).
-  const pipeline = terminalPassPipeline();
-  pipeline['security-report.md'] = securityReportMarkdown('some-other-run-id-not-on-disk', 'PASS');
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /cites Run ID `some-other-run-id-not-on-disk`, but/);
-});
+// --- Refusal: security-history run doesn't back up security.json's claim ------------------------
 
 test('refuses when the matching security-history run is not COMPLETE', () => {
   const root = fixtureRepo({
@@ -577,7 +556,7 @@ test('refuses when the matching security-history run is not COMPLETE', () => {
   assert.match(result.stderr, /not COMPLETE/);
 });
 
-test('refuses when the matching security-history run\'s own results verdict is not PASS', () => {
+test('refuses when the matching security-history run\'s own results verdict is not PASS — an independent cross-check against the immutable audit record, not merely trusting security.json\'s own say-so', () => {
   const pipeline = terminalPassPipeline();
   pipeline[`security-history/${RUN_ID}/results.json`] = resultsJson(RUN_ID, 'BLOCKED');
   const root = fixtureRepo({ pipeline });
@@ -602,7 +581,7 @@ test('refuses to overwrite an existing .sdd/ledger/<run-id>/ directory', () => {
 
 // --- Ticket id extraction -------------------------------------------------------------------------
 
-test('extracts a short ticket id from spec.md\'s title for index.json, keeping the full title in entry.md', () => {
+test('extracts a short ticket id from spec.json\'s "ticket" field for index.json, keeping the full title in entry.md', () => {
   const pipeline = terminalPassPipeline({ ticket: 'W3-10' });
   const root = fixtureRepo({ pipeline });
   const result = runLedgerAppend(root);
@@ -621,6 +600,8 @@ test('records the audited commit and a dirty-worktree note when the security man
   assert.equal(result.status, 0, result.stderr);
   const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
   assert.match(entry, new RegExp(`## Commit\\r?\\n${'b'.repeat(40)} \\(worktree was dirty`));
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.commit, { sha: 'b'.repeat(40), dirty: true });
 });
 
 test('records a bare commit sha with no dirty caveat when the security manifest says clean', () => {
@@ -631,13 +612,16 @@ test('records a bare commit sha with no dirty caveat when the security manifest 
   assert.equal(result.status, 0, result.stderr);
   const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
   assert.match(entry, new RegExp(`## Commit\\r?\\n${'c'.repeat(40)}\\r?\\n`));
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.commit, { sha: 'c'.repeat(40), dirty: false });
 });
 
 // --- Fix 2 (PL-03c round 3): copies .pipeline/security-history/<run-id>/ into ----------------------
 // .sdd/ledger/<run-id>/security/ on a terminal PASS — a *copy*, never a move (security-history/ is
 // immutable and later runs use it as their own progress baseline via findCompletedSecurityRun), and
 // never overwrites an existing .sdd/ledger/<run-id>/security/ directory, the same guard the run
-// directory as a whole already has.
+// directory as a whole already has. Unaffected by the JSON-sidecar migration — these three files were
+// already JSON/plain-copy, never parsed.
 
 test('copies manifest.json, results.json, and report.md into .sdd/ledger/<run-id>/security/ on a terminal PASS', () => {
   const root = fixtureRepo({ pipeline: terminalPassPipeline() });
@@ -723,19 +707,20 @@ test('a full ledger-append.mjs run refuses at the top-level run-directory guard 
 // files), so committing .pipeline/* under a permissive gitignore first, then swapping gitignores
 // after, would silently produce a false pass here. Writing the real rules before the first `git add
 // -A` mirrors the real repository's actual history, where .pipeline/** has never been tracked.
-test('AC10: the real .gitignore keeps freshly-written ledger content trackable while .pipeline/ working files stay ignored', () => {
+test('AC10: the real .gitignore keeps freshly-written ledger content trackable (including the new JSON sidecars) while .pipeline/ working files (markdown AND their JSON sidecars alike) stay ignored', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'sayre-ledger-ac10-'));
   roots.push(root);
   mkdirSync(join(root, 'scripts'), { recursive: true });
   writeFileSync(join(root, 'scripts', 'ledger-append.mjs'), ledgerAppendSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
 
   for (const [relPath, contents] of Object.entries(terminalPassPipeline())) {
     const dest = join(root, '.pipeline', relPath);
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, contents, 'utf8');
+    writeFileSync(dest, typeof contents === 'string' ? contents : JSON.stringify(contents, null, 2), 'utf8');
   }
 
   // initGit() writes its own minimal .gitignore ('node_modules/\n') as part of setup — call it
@@ -755,14 +740,21 @@ test('AC10: the real .gitignore keeps freshly-written ledger content trackable w
   }
 
   assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/spec.md`), false, 'newly-written ledger spec.md must not be gitignored');
+  assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/spec.json`), false, 'newly-written ledger spec.json must not be gitignored');
   assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/entry.md`), false, 'newly-written ledger entry.md must not be gitignored');
+  assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/entry.json`), false, 'newly-written ledger entry.json must not be gitignored');
+  assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/review.json`), false, 'the copied review.json must not be gitignored');
+  assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/security.json`), false, 'the copied security.json must not be gitignored');
+  assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/red.json`), false, 'the copied red.json must not be gitignored');
+  assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/changes.json`), false, 'the copied changes.json must not be gitignored');
   assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/security/manifest.json`), false, 'the copied security/manifest.json must not be gitignored');
   assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/security/results.json`), false, 'the copied security/results.json must not be gitignored');
   assert.equal(isIgnored(`.sdd/ledger/${RUN_ID}/security/report.md`), false, 'the copied security/report.md must not be gitignored');
   assert.equal(isIgnored('.sdd/ledger/index.json'), false, 'regenerated index.json must not be gitignored');
 
   assert.equal(isIgnored('.pipeline/spec.md'), true, '.pipeline/spec.md must stay gitignored');
-  assert.equal(isIgnored('.pipeline/review.md'), true, '.pipeline/review.md must stay gitignored');
-  assert.equal(isIgnored('.pipeline/security-report.md'), true, '.pipeline/security-report.md must stay gitignored');
+  assert.equal(isIgnored('.pipeline/spec.json'), true, '.pipeline/spec.json must stay gitignored — only the ledger\'s COPY of it becomes trackable');
+  assert.equal(isIgnored('.pipeline/review.json'), true, '.pipeline/review.json must stay gitignored');
+  assert.equal(isIgnored('.pipeline/security.json'), true, '.pipeline/security.json must stay gitignored');
   assert.equal(isIgnored('.pipeline/README.md'), false, '.pipeline/README.md is the one documented carve-out and must stay trackable');
 });
