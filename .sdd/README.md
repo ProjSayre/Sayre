@@ -62,9 +62,12 @@ has none now.
 ```
 .sdd/
   README.md          — this file
-  pipeline.md         — stage sequence, routing, loop caps, and the five entry-point commands
+  pipeline.md         — stage sequence, routing, loop caps, and the entry-point commands (PL-04:
+                        the full sequence, six per-stage commands, a status check, /re-gate, and
+                        /hotfix — see pipeline.md's own Entry points section for the current count)
   runtimes.yml         — per-stage tool grants / model tier / hook wiring for .claude/
   bounds.md            — named lane vocabulary, enforced by scripts/check-bounds.mjs (PL-03d)
+  hotfix.md            — the sanctioned bypass (D-005 #3), the one entry point that runs no stage
   stages/
     planner.md
     red.md
@@ -72,6 +75,10 @@ has none now.
     tester.md
     review.md
     security.md
+    pr-review.md       — reviews an open PR; outside the per-ticket sequence (PL-03d/i)
+    CHANGELOG.md        — round-by-round history extracted out of the stage files themselves (PL-04
+                          / C3): each stage file states what to do and why; this file states which
+                          round changed it and when
   ledger/
     README.md          — entry format and the file->spec query path
     index.json         — generated file->run-id index; never hand-edited (see below)

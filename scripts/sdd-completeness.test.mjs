@@ -4,11 +4,22 @@
 // .claude/agents/security-checker.md, which this same ticket turned into a five-line generated
 // pointer. This file checks the .sdd/ tree's static content directly (no subprocess needed) —
 // conventions otherwise follow scripts/check-secret-access.test.mjs (node:test, no new framework).
+//
+// PL-04 rewrite: several assertions below used to pin an exact human-written sentence from a
+// stage file (e.g. the precise wording of a refusal, or of a BLOCKED trigger clause). A later,
+// purely cosmetic rewording of that sentence made every one of those assertions pass or fail on
+// prose rather than on the guarantee it exists to protect, and the pressure in that moment is to
+// weaken the assertion rather than fix the doc. Assertions that were pinning prose are now scoped
+// to the section/bullet the guarantee lives in (a heading or bold-label string — legitimately
+// pinned, since several of these ARE what a script mechanically parses) and check that the
+// load-bearing concepts co-occur there, tolerant of exact wording. A verdict literal, a filename,
+// a JSON field name, a command name, or a content hash on an immutable historical artifact is still
+// pinned exactly — those genuinely are the contract.
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +29,32 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function read(relativePath) {
   return readFileSync(resolve(repoRoot, relativePath), 'utf8');
+}
+
+// --- PL-04 structural-assertion helpers -------------------------------------------------------
+
+// Slices `text` from just after the first occurrence of `startAnchor` to just before the next
+// occurrence of `endAnchor` after that point. Anchors are literal substrings (a heading, a
+// bold-label, a distinctive sentence fragment) — legitimate to pin exactly, since the point is to
+// scope *where* we look, not to pin the sentence we're checking the content of.
+function sectionBetween(text, startAnchor, endAnchor) {
+  const startIdx = text.indexOf(startAnchor);
+  assert.ok(startIdx !== -1, `expected to find "${startAnchor}"`);
+  const from = startIdx + startAnchor.length;
+  if (!endAnchor) return text.slice(from);
+  const endIdx = text.indexOf(endAnchor, from);
+  assert.ok(endIdx !== -1, `expected to find "${endAnchor}" after "${startAnchor}"`);
+  return text.slice(from, endIdx);
+}
+
+// True when patternA and patternB both occur within `window` characters of each other, in either
+// order — tolerant of a sentence being reworded or reordered as long as the two concepts stay
+// close together, which is what actually makes them "the same guarantee" rather than two
+// unrelated mentions.
+function coOccurs(text, patternA, patternB, window = 200) {
+  const forward = new RegExp(`${patternA.source}[\\s\\S]{0,${window}}${patternB.source}`, 'i');
+  const backward = new RegExp(`${patternB.source}[\\s\\S]{0,${window}}${patternA.source}`, 'i');
+  return forward.test(text) || backward.test(text);
 }
 
 // --- AC 4: every .sdd/ file exists and is non-trivially readable -------------------------------
@@ -72,23 +109,49 @@ test('.sdd/stages/security.md retains the substantive markers the security metho
   for (const marker of requiredMarkers) {
     assert.ok(security.includes(marker), `.sdd/stages/security.md is missing required marker: ${marker}`);
   }
+});
 
-  // The exact BLOCKED conditions (progress-classification gate) — a silent truncation of any one
-  // of these during extraction is the highest-cost failure mode this ticket could introduce.
-  const blockedConditions = [
-    'tenant-isolation or RBAC-boundary failure',
-    'CRITICAL or HIGH failure or regression',
-    'lost coverage on a CRITICAL or HIGH boundary',
-    'missing selected-check rows, invalid normalized data, or overwritten run history',
-    'without authorized dynamic evidence',
-  ];
-  for (const condition of blockedConditions) {
-    assert.ok(security.includes(condition), `.sdd/stages/security.md is missing BLOCKED condition: "${condition}"`);
-  }
+// PL-04 (was folded into the test above; split out since it now checks a different thing — section
+// structure and concept co-occurrence rather than literal markers): the exact BLOCKED conditions
+// (progress-classification gate) — a silent truncation of any one of these during a rewrite is the
+// highest-cost failure mode this stage's docs could suffer. Originally five exact clauses and one
+// exact "risk acceptance never converts..." sentence were pinned verbatim; converted here to scope
+// on the real "## Progress classification and gate" heading and require each trigger class's
+// load-bearing concepts to still co-occur there, tolerant of exact wording.
+test('.sdd/stages/security.md\'s Progress classification and gate section still names every BLOCKED trigger class and preserves the risk-acceptance override guarantee', () => {
+  const security = read('.sdd/stages/security.md');
+  const gate = sectionBetween(security, '## Progress classification and gate', '## Required artifacts');
 
+  assert.match(gate, /\bBLOCKED\b/, 'the gate section must still name the BLOCKED verdict');
+
+  // 1: a tenant-isolation or RBAC-boundary failure
+  assert.match(gate, /tenant[- ]isolation/i, 'the gate section must still name a tenant-isolation failure as a trigger');
+  assert.match(gate, /\bRBAC\b/, 'the gate section must still name an RBAC-boundary failure as a trigger');
+  // 2: any current CRITICAL or HIGH failure or regression
+  assert.match(gate, /\bCRITICAL\b/, 'the gate section must still name CRITICAL severity as a trigger');
+  assert.match(gate, /\bHIGH\b/, 'the gate section must still name HIGH severity as a trigger');
+  assert.match(gate, /\b(failure|regression)\b/i, 'the gate section must still name a failure/regression as a trigger');
+  // 3: lost coverage on a CRITICAL or HIGH boundary
   assert.ok(
-    security.includes('Risk acceptance never converts a result to') && security.includes('PASS'),
-    '.sdd/stages/security.md must state that risk acceptance cannot override the tenant/RBAC gate'
+    coOccurs(gate, /\bcoverage\b/i, /\b(lost|loss)\b/i, 60),
+    'the gate section must still name lost coverage on a critical boundary as a trigger',
+  );
+  // 4: missing selected-check rows, invalid normalized data, or overwritten run history
+  assert.match(gate, /selected[- ]check/i, 'the gate section must still name missing selected-check rows as a trigger');
+  assert.match(gate, /\binvalid\b/i, 'the gate section must still name invalid normalized data as a trigger');
+  assert.match(gate, /\bhistory\b/i, 'the gate section must still name overwritten run history as a trigger');
+  // 5: a runtime-dependent critical boundary represented as PASS without authorized dynamic evidence
+  assert.match(gate, /dynamic evidence/i, 'the gate section must still name unauthorized dynamic evidence as a trigger');
+
+  // Risk acceptance never converts a result to PASS and cannot override the tenant/RBAC gate.
+  assert.match(gate, /risk acceptance/i, 'the gate section must still discuss risk acceptance');
+  assert.ok(
+    coOccurs(gate, /risk acceptance/i, /\bPASS\b/, 150),
+    'the gate section must state risk acceptance cannot convert a result to PASS',
+  );
+  assert.ok(
+    coOccurs(gate, /risk acceptance/i, /\b(tenant|RBAC)\b/i, 200),
+    'the gate section must state risk acceptance cannot override the tenant/RBAC gate',
   );
 });
 
@@ -184,31 +247,77 @@ test('.sdd/stages/red.md retains the substantive guarantees this stage exists to
   for (const marker of requiredMarkers) {
     assert.ok(red.includes(marker), `.sdd/stages/red.md is missing required marker: ${marker}`);
   }
-  // AC 2: red must refuse to finish with a RED-BROKEN test left in it. Two independent sentences —
-  // the procedural refusal (step 5) and the output-contract restatement — are both pinned, so a
-  // partial edit that softens one while leaving the other untouched still fails this test.
-  assert.match(red, /may not finish this stage while any test is `RED-BROKEN`/);
-  assert.match(red, /No `RED-BROKEN` entry may appear anywhere in a finished `red\.md`/, 'red.md\'s Output contract must restate the refusal, not just the Procedure section');
-  // AC 6 / D-006: the impact map's (un)availability must be disclosed, never implied away.
-  // Migrated: PL-03b's resolver has since been wired into this stage, so the disclosure is no longer
-  // "the tool does not exist" (a permanent, repo-wide fact) but "the workers' Poetry environment is
-  // not available in this checkout" (a conditional, per-checkout fact) — the same D-006 discipline,
-  // pointed at the honest reason that actually applies now. (Whitespace-tolerant: the source wraps
-  // this phrase across a line break at ~100 columns.)
-  assert.match(red, /Poetry environment is not\s+available in this checkout/, 'red.md must state the resolver\'s unavailability explicitly when the Poetry environment is missing, not silently proceed');
+
+  // AC 2, structural (PL-04): red must refuse to finish with a RED-BROKEN test left in it. The
+  // original test pinned two exact sentences — the procedural refusal in step 5, and the Output
+  // contract's restatement — so a partial edit softening one while leaving the other untouched
+  // still failed. Preserve that "pin both halves" defense structurally: each of the Procedure and
+  // Output contract sections must independently co-occur the RED-BROKEN literal with a refusal
+  // word, tolerant of exact phrasing.
+  const refusal = /\b(may not|must not|cannot|refuses?\b|not allowed|not permitted)\b/i;
+  const procedure = sectionBetween(red, '## Procedure', '## Output contract');
+  const outputContract = sectionBetween(red, '## Output contract', '## Staleness of required inputs (PL-04)');
+  assert.ok(
+    coOccurs(procedure, /RED-BROKEN/, refusal, 250),
+    'red.md\'s Procedure section must state, in refusal language, that this stage cannot finish while a test is RED-BROKEN',
+  );
+  assert.ok(
+    coOccurs(outputContract, /RED-BROKEN/, refusal, 250),
+    'red.md\'s Output contract section must independently restate the RED-BROKEN refusal, not rely solely on the Procedure section',
+  );
+
+  // AC 6 / D-006, structural (PL-04): the impact map's (un)availability must be disclosed, never
+  // implied away. Rather than pinning the exact phrase "Poetry environment is not available in
+  // this checkout" (already reworded/wrapped once by PL-03b's resolver landing), require the tool
+  // name ("Poetry") to co-occur with an availability-negation concept within the Required inputs
+  // section, tolerant of exact wording and line-wrapping.
+  const requiredInputs = sectionBetween(red, '## Required inputs', '## Procedure');
+  assert.ok(
+    coOccurs(requiredInputs, /Poetry/, /\b(not available|unavailable|not set up|isn't available|is not usable)\b/i, 200),
+    'red.md must state the resolver\'s unavailability explicitly when the Poetry environment is missing, not silently proceed',
+  );
 });
 
 test('.sdd/stages/tester.md is rewritten off changes.md per D-018, and does not author behavioral tests', () => {
   const tester = read('.sdd/stages/tester.md');
-  assert.ok(tester.includes('You do not author behavioral tests'), 'tester.md must state the D-018 inversion explicitly');
-  assert.ok(tester.includes('it is not an input for deriving assertions'), 'tester.md must state changes.md is not used to derive assertions');
-  assert.ok(tester.includes('you do not write it'), 'tester.md must state a spotted behavioral gap is reported, not filled');
-  // AC 5, restated: the Output contract must also require the report, not just the Procedure prose —
-  // same "pin both halves" defense as red.md's RED-BROKEN check above.
-  assert.ok(tester.includes('Reported behavioral gaps'), 'tester.md\'s Output contract must have a dedicated section for reported (not authored) behavioral gaps');
-  // Migrated (same reasoning as red.md's equivalent test above): the resolver now exists and is
+
+  // Structural (PL-04): the D-018 inversion statement is this stage's central guarantee — scoped
+  // to the intro (before "## Required inputs") and checked for the concept (a refusal word
+  // co-occurring with "author"/"behavioral test"), tolerant of exact wording.
+  const intro = tester.slice(0, tester.indexOf('## Required inputs'));
+  assert.match(
+    intro,
+    /\b(do not|does not|never|must not)\b[\s\S]{0,60}\bauthor\b[\s\S]{0,80}\bbehavioral tests?\b/i,
+    'tester.md\'s intro must state, in refusal language, that this stage does not author behavioral tests (the D-018 inversion)',
+  );
+
+  const requiredInputs = sectionBetween(tester, '## Required inputs', '## Procedure');
+  // Structural (PL-04): changes.md is read for context only, never for deriving an assertion.
+  assert.ok(
+    coOccurs(requiredInputs, /changes\.md/, /\bnot\b[\s\S]{0,80}\b(deriving|derive)\b[\s\S]{0,40}\bassertions?\b/i, 250),
+    'tester.md must state changes.md is not used to derive assertions',
+  );
+  // Migrated (same reasoning as red.md's equivalent check above): the resolver now exists and is
   // wired into this stage, so the disclosure is conditional on the Poetry environment, not permanent.
-  assert.match(tester, /Poetry environment is not\s+available in this checkout/, 'tester.md must state the resolver\'s unavailability explicitly when the Poetry environment is missing, not silently proceed');
+  assert.ok(
+    coOccurs(requiredInputs, /Poetry/, /\b(not available|unavailable|not set up|isn't available|cannot run)\b/i, 200),
+    'tester.md must state the resolver\'s unavailability explicitly when the Poetry environment is missing, not silently proceed',
+  );
+
+  const procedure = sectionBetween(tester, '## Procedure', '## Output contract');
+  // Structural (PL-04): a spotted behavioral gap is reported, not filled — co-occurrence of
+  // "missing"/gap language with a refusal-to-write word, tolerant of exact phrasing.
+  assert.ok(
+    coOccurs(procedure, /\bmissing\b/i, /\b(do not|does not|never)\b[\s\S]{0,40}\bwrite\b/i, 200),
+    'tester.md must state a spotted behavioral gap is reported, not filled',
+  );
+  assert.match(procedure, /\breport\b[\s\S]{0,80}\bgap\b/i, 'tester.md must instruct reporting the gap rather than silently dropping it');
+
+  // AC 5, restated: the Output contract must also require the report, not just the Procedure prose
+  // — same "pin both halves" defense as red.md's RED-BROKEN check above. These are Output contract
+  // heading names the stage's own report format depends on (structural section-heading markers,
+  // not prose), so they stay pinned literally.
+  assert.ok(tester.includes('Reported behavioral gaps'), 'tester.md\'s Output contract must have a dedicated section for reported (not authored) behavioral gaps');
   assert.ok(tester.includes('Affected-test regression results'), 'tester.md\'s Output contract must have a dedicated section for the impact resolver\'s regression run (the half of TDAD tester now performs)');
 });
 
@@ -216,52 +325,119 @@ test('.sdd/stages/review.md checks red-test integrity and spec trace', () => {
   const review = read('.sdd/stages/review.md');
   assert.ok(review.includes('Red-test integrity'), 'review.md must check red-test integrity');
   assert.ok(review.includes('Spec trace'), 'review.md must check the @spec trace');
+
   // PL-03h moved the content-hash table out of red.md's prose and into red.json, because reading
   // a control input out of a markdown document is the defect that ticket exists to remove. The
   // assertion's intent is unchanged — review must still recompute hashes over the full set red
-  // recorded — so it is retargeted at the JSON contract rather than dropped.
-  assert.match(
-    review,
-    /recomputes the SHA-256 content hash of every file `red\.json`'s `tests` array lists/,
-    'review.md must rehash every file red.json records, not a subset and not a prose table',
-  );
-  assert.ok(review.includes('@spec'), 'review.md must reference the @spec marker convention');
+  // recorded. Structural (PL-04): rather than pinning the exact sentence "recomputes the SHA-256
+  // content hash of every file `red.json`'s `tests` array lists", scope to the mechanical-half
+  // bullet and require the load-bearing concepts (SHA-256, red.json, its `tests` array, hashing)
+  // to all appear there.
+  const mechanicalHalf = sectionBetween(review, 'Red-test integrity, mechanical half (the script):', 'Red-test integrity, judgment half (you):');
+  assert.match(mechanicalHalf, /SHA-256/, 'review.md\'s Red-test integrity mechanical half must name the SHA-256 hash algorithm');
+  assert.match(mechanicalHalf, /red\.json/, 'review.md\'s Red-test integrity mechanical half must name red.json as the source of the file list');
+  assert.match(mechanicalHalf, /`tests`/, 'review.md\'s Red-test integrity mechanical half must name red.json\'s `tests` array specifically');
+  assert.match(mechanicalHalf, /\bhash\b/i, 'review.md\'s Red-test integrity mechanical half must describe hashing, not just listing, those files');
+
   // AC 3 / AC 4: both checks must be wired to the fail-closed verdict, not left as an observation
   // with no consequence — an undeclared hash mismatch or an unresolvable @spec ID must produce
-  // NEEDS_FIXES, and the passing exception (declared in changes.md) must be named explicitly.
-  // PL-03h: the declaration moved from changes.md's prose to changes.json's structured
-  // redTestChanges array. The property asserted is unchanged — an undeclared hash mismatch must
-  // force NEEDS_FIXES, and the one passing exception must be named rather than left implicit.
-  assert.match(review, /mismatch is `NEEDS_FIXES`\s*\*\*unless\*\*\s*`changes\.json`\s*declares the change/, 'review.md must make an undeclared red-test hash mismatch NEEDS_FIXES, with the declared-in-changes.json exception named');
-  assert.match(review, /citing no `@spec` marker at all, is `NEEDS_FIXES`/, 'review.md must make an uncited new behavioral test NEEDS_FIXES');
-  assert.match(review, /uncited\/unresolvable `@spec` reference/, 'review.md\'s Critical list must name the uncited/unresolvable @spec case explicitly');
+  // NEEDS_FIXES, and the passing exception (declared in changes.json) must be named explicitly.
+  // Structural (PL-04): co-occurrence of the verdict literal, the exception keyword, and
+  // changes.json's declaration mechanism within the judgment-half bullet, rather than the exact
+  // original sentence.
+  const judgmentHalf = sectionBetween(review, 'Red-test integrity, judgment half (you):', 'Spec trace, mechanical half (the script):');
+  assert.match(judgmentHalf, /NEEDS_FIXES/, 'review.md\'s Red-test integrity judgment half must name the NEEDS_FIXES verdict');
+  assert.match(judgmentHalf, /\bunless\b/i, 'review.md\'s Red-test integrity judgment half must name the declared-in-changes.json exception');
+  assert.match(judgmentHalf, /changes\.json/, 'review.md\'s Red-test integrity judgment half must name changes.json as where the exception is declared');
+  assert.match(judgmentHalf, /\bdeclar(e|es|ed|ation)\b/i, 'review.md\'s Red-test integrity judgment half must require the change to be declared, not merely present');
+
+  // The uncited/unresolvable @spec case must force NEEDS_FIXES. Structural (PL-04): co-occurrence
+  // of the verdict literal, the @spec marker, and an unresolvable/uncited concept within the
+  // spec-trace judgment bullet.
+  const specTraceJudgment = sectionBetween(review, 'Spec trace, judgment half (you):', '- **Architectural boundaries**');
+  assert.match(specTraceJudgment, /@spec/, 'review.md\'s Spec trace judgment half must reference the @spec marker');
+  assert.match(specTraceJudgment, /\bunresolvable\b/i, 'review.md\'s Spec trace judgment half must name an unresolvable @spec ID as a failure');
+  assert.match(specTraceJudgment, /NEEDS_FIXES/, 'review.md\'s Spec trace judgment half must name the NEEDS_FIXES verdict');
+
+  // review.md's Critical list must name the uncited/unresolvable @spec case explicitly, not just
+  // describe the mechanism above — same "pin both halves" defense used elsewhere in this file.
+  const criticalBullet = sectionBetween(review, '- **Critical**', '- **Warning**');
+  assert.match(criticalBullet, /@spec/, 'review.md\'s Critical list must reference @spec');
+  assert.match(criticalBullet, /\b(uncited|unresolvable)\b/i, 'review.md\'s Critical list must name the uncited/unresolvable @spec case explicitly');
+
+  assert.ok(review.includes('@spec'), 'review.md must reference the @spec marker convention');
 });
 
-test('.sdd/stages/planner.md requires stable AC-*/EC-* IDs', () => {
+test('.sdd/stages/planner.md requires stable AC-*/EC-* IDs, in presentation order, for both Acceptance criteria and Edge cases', () => {
   const planner = read('.sdd/stages/planner.md');
-  assert.match(planner, /`AC-1`, `AC-2`/);
-  assert.match(planner, /`EC-1`, `EC-2`/);
-  assert.ok(planner.includes('preserve every existing'), 'planner.md must require preserving IDs across a spec amendment, not renumbering');
+
+  // Structural (PL-04): rather than matching the literal example text "`AC-1`, `AC-2`" (which
+  // breaks if the doc is reworded to a different example, e.g. "AC-1 and AC-2" or three examples
+  // instead of two), scope to each bullet's own text and require (a) at least two `AC-n`/`EC-n`
+  // -shaped example IDs, showing a numbering scheme rather than one fixed ID, and (b) the phrase
+  // "stable ID" — the actual load-bearing requirement — appears in that bullet specifically, not
+  // just somewhere in the file.
+  const acceptanceCriteria = sectionBetween(planner, '**Acceptance criteria**', '**Edge cases**');
+  const edgeCases = sectionBetween(planner, '**Edge cases**', '**Open questions**');
+
+  const acIds = acceptanceCriteria.match(/`AC-\d+`/g) || [];
+  assert.ok(acIds.length >= 2, 'planner.md\'s Acceptance criteria bullet must show at least two `AC-n` example IDs, documenting the numbering scheme');
+  assert.match(acceptanceCriteria, /stable\s+ID/i, 'planner.md\'s Acceptance criteria bullet must require a stable ID per item');
+
+  const ecIds = edgeCases.match(/`EC-\d+`/g) || [];
+  assert.ok(ecIds.length >= 2, 'planner.md\'s Edge cases bullet must show at least two `EC-n` example IDs, documenting the numbering scheme');
+  assert.match(edgeCases, /stable\s+ID/i, 'planner.md\'s Edge cases bullet must require a stable ID per item');
+
+  // The "don't renumber on amendment, preserve existing IDs" guarantee (originally pinned as the
+  // literal phrase "preserve every existing"). Structural (PL-04): the co-occurrence of a
+  // preserve/retain instruction and the word "renumber" in the amendment-handling paragraph,
+  // rather than one fixed sentence.
+  const amendmentGuidance = sectionBetween(planner, 'If spec.md is later amended', '## Staleness of required inputs (PL-04)');
+  assert.match(amendmentGuidance, /\brenumber(ing)?\b/i, 'planner.md must address renumbering explicitly when spec.md is amended after red has run');
+  assert.ok(
+    coOccurs(amendmentGuidance, /\b(preserve|retain|keep)\b/i, /\b(AC-\*|EC-\*|existing ID|ID)\b/i, 150),
+    'planner.md must instruct preserving/retaining existing AC-*/EC-* IDs, not renumbering them, on a spec amendment',
+  );
 });
 
 // --- PL-03e (wiring pass): spec.md's first section is a plain-English Ticket Check ----------------
 
 test('.sdd/stages/planner.md requires "Ticket Check" as spec.md\'s first section, with exactly its four required items', () => {
   const planner = read('.sdd/stages/planner.md');
-  assert.match(planner, /"Ticket Check" is always first/, 'Ticket Check must be documented as spec.md\'s first section, not merely present somewhere');
+
+  // Structural (PL-04): rather than matching the literal phrase '"Ticket Check" is always first',
+  // verify the actual ordering guarantee directly — every named spec.md section (per planner.md's
+  // own "in this order" instruction) must appear, in planner.md's own presentation order, after
+  // "Ticket Check". This proves the same thing the prose claimed without depending on how the
+  // claim is worded.
+  const sectionNames = ['Ticket Check', 'Goal', 'Scope', 'Affected files', 'Interfaces / signatures', 'Approach', 'Acceptance criteria', 'Edge cases', 'Open questions'];
+  const positions = sectionNames.map((name) => {
+    const marker = `**${name}**`;
+    const idx = planner.indexOf(marker);
+    assert.ok(idx !== -1, `planner.md must list a "${name}" spec.md section`);
+    return idx;
+  });
+  for (let i = 1; i < positions.length; i++) {
+    assert.ok(positions[0] < positions[i], `planner.md must document "Ticket Check" before "${sectionNames[i]}" — spec.md's Ticket Check section must come first`);
+  }
+
   const requiredItems = [
     "What I'm about to build",
     "What I'm explicitly not doing",
     "How you'll know it worked",
     'What I had to guess',
   ];
+  const ticketCheckSection = sectionBetween(planner, '**Ticket Check**', '**Goal**');
   for (const item of requiredItems) {
-    assert.ok(planner.includes(item), `planner.md's Ticket Check must require the item: "${item}"`);
+    assert.ok(ticketCheckSection.includes(item), `planner.md's Ticket Check must require the item: "${item}"`);
   }
-  // The section's whole point is being readable by a non-engineer — pin that constraint explicitly,
-  // not just the four item names, since a planner could satisfy the names while writing them in
-  // full engineering jargon.
-  assert.ok(planner.includes('no signatures, no file paths, no jargon') || planner.includes('no jargon'), 'planner.md must state Ticket Check is written for a non-engineer, with no jargon/paths/signatures');
+  // Structural (PL-04): the section's whole point is being readable by a non-engineer — scoped to
+  // the Ticket Check bullet itself (not the whole file) and checked for the two load-bearing
+  // concepts (an explicit non-engineer audience and a no-jargon constraint) rather than the exact
+  // three-item list "no signatures, no file paths, no jargon", since a planner could satisfy the
+  // item names while writing them in full engineering jargon.
+  assert.match(ticketCheckSection, /non-engineer/i, 'planner.md\'s Ticket Check section must name its audience as a non-engineer');
+  assert.match(ticketCheckSection, /jargon/i, 'planner.md\'s Ticket Check section must state a no-jargon constraint');
 });
 
 test('.sdd/stages/planner.md reads the ticket\'s declared lane and records it in spec.json, defaulting to null when absent', () => {
@@ -273,7 +449,23 @@ test('.sdd/stages/planner.md reads the ticket\'s declared lane and records it in
 
 test('.sdd/pipeline.md documents the six-stage sequence and the ledger step', () => {
   const pipeline = read('.sdd/pipeline.md');
-  assert.match(pipeline, /planner.*red.*dev.*tester.*review.*security/s);
+
+  // Structural (PL-04): rather than the loose regex /planner.*red.*dev.*tester.*review.*security/s
+  // (which only proves the six words appear in that relative order *somewhere* in the whole file,
+  // not that they're the Stage sequence's own stage markers), scope to the "## Stage sequence"
+  // section itself and assert each stage's bolded marker appears there in strictly increasing
+  // order.
+  const stageSequence = sectionBetween(pipeline, '## Stage sequence', '## Routing');
+  const stageMarkers = ['**planner**', '**red**', '**dev**', '**tester**', '**review**', '**security**'];
+  const positions = stageMarkers.map((marker) => {
+    const idx = stageSequence.indexOf(marker);
+    assert.ok(idx !== -1, `.sdd/pipeline.md's Stage sequence section must document ${marker}`);
+    return idx;
+  });
+  for (let i = 1; i < positions.length; i++) {
+    assert.ok(positions[i - 1] < positions[i], `.sdd/pipeline.md's Stage sequence must list ${stageMarkers[i - 1]} before ${stageMarkers[i]}`);
+  }
+
   assert.ok(pipeline.includes('ledger-append.mjs'));
   assert.ok(pipeline.includes('terminal `PASS`') || pipeline.includes('terminal PASS'));
 });
@@ -448,4 +640,118 @@ test('CI runs the ledger-index staleness check and the two new test suites', () 
   assert.ok(ci.includes('check:ledger-index'), 'CI must gate .sdd/ledger/index.json staleness the same way it gates agent shims');
   assert.ok(ci.includes('test:ledger-index'));
   assert.ok(ci.includes('test:ledger-append'));
+});
+
+// PL-04 review pass 1 / Blocker 1: a script this round added (scripts/write-stamp.mjs,
+// scripts/check-stamp-freshness.mjs) is exactly as capable of shipping with no CI step, silently,
+// as the C1 blocker itself was of shipping with no caller — this pins that both suites are actually
+// gated, not merely present in package.json's scripts map.
+test('CI runs the two new stamp-script test suites (write-stamp.mjs, check-stamp-freshness.mjs)', () => {
+  const ci = read('.github/workflows/ci.yml');
+  assert.ok(ci.includes('test:write-stamp'), 'CI must run write-stamp.mjs\'s own test suite');
+  assert.ok(ci.includes('test:stamp-freshness'), 'CI must run check-stamp-freshness.mjs\'s own test suite');
+  const pkg = read('package.json');
+  assert.ok(pkg.includes('"test:write-stamp"'), 'package.json must declare the test:write-stamp script CI runs');
+  assert.ok(pkg.includes('"test:stamp-freshness"'), 'package.json must declare the test:stamp-freshness script CI runs');
+});
+
+// PL-04 review pass 2 / Critical 2: the two pins above name their suites literally — that closed the
+// two instances dev found in pass 1, but could not catch a third. This round's own review found
+// exactly a third and fourth: scripts/validate-security-audit-run.mjs's own test suite
+// (test:security-audit-run) had a package.json script but no CI step at all, and
+// scripts/validate-security-audit-agents.mjs (a script this same round changed — G1's A4) had neither
+// a CI step nor a test suite of any kind. A suite nothing runs is indistinguishable from no tests.
+// This is the generalized version of the two pins above: it enumerates every scripts/*.test.mjs file
+// actually on disk and checks each one, rather than trusting a maintained list of literal names, so it
+// catches the `test:security-audit-run` shape (a real suite with no CI step) again automatically,
+// without anyone naming it.
+//
+// CORRECTED (PL-04 review pass 3 / Warning 1b): this comment, and `.sdd/stages/CHANGELOG.md`'s "Review
+// pass 2" entry, both originally claimed this single assertion "would have caught all three gaps above"
+// (all of pass 2's Blocker 2, plus the two pass-1 stamp-suite gaps). That overclaimed by two thirds of
+// pass 2's own list. Of the three gaps Blocker 2 named: (1) `test:security-audit-run` — a suite on disk
+// with no CI step — is exactly the shape this test enumerates and WAS genuinely caught; but (2)
+// `check:security-audit-agents` — a `check:*` npm script with no CI step, not a `scripts/*.test.mjs`
+// file — and (3) `validate-security-audit-agents.mjs` having no test suite AT ALL are both structurally
+// outside a walk over test files that already exist on disk: there is nothing there to enumerate for
+// either one. The two-thirds this assertion could never have caught are precisely the two shapes that
+// actually bit this round. The test immediately below this one closes shape (3) for real (see its own
+// comment for why shape (2) — a `check:*` script's own CI step, as opposed to its test suite's — is
+// deliberately NOT generalized the same way: several `check:*` scripts legitimately have no CI step of
+// their own at all, because they validate a specific per-run/gitignored `.pipeline/` artifact rather
+// than committed static config, and a blanket rule here would be wrong about them, not merely silent).
+test('every scripts/*.test.mjs suite has both a package.json "test:*" script and a matching CI step — a suite nothing runs is indistinguishable from no tests', () => {
+  const testFiles = readdirSync(resolve(repoRoot, 'scripts'))
+    .filter((name) => name.endsWith('.test.mjs'))
+    .sort();
+  assert.ok(testFiles.length > 0, 'expected at least one scripts/*.test.mjs suite on disk to check — if this fails, the glob below is broken, not that coverage genuinely dropped to zero');
+
+  const pkg = JSON.parse(read('package.json'));
+  const ci = read('.github/workflows/ci.yml');
+
+  // Built from each script's own VALUE (the command it actually runs), never guessed from its KEY via
+  // a filename transform — there is no consistent filename -> key convention in this codebase (e.g.
+  // guard-checker-readonly.test.mjs's own script is named "test:readonly-guard", not
+  // "test:guard-checker-readonly"), so only the command text itself can say which file a script wires.
+  const scriptKeyForFile = new Map();
+  for (const [key, value] of Object.entries(pkg.scripts ?? {})) {
+    if (typeof value !== 'string') continue;
+    const match = value.match(/scripts\/([\w.-]+\.test\.mjs)\b/);
+    if (match) scriptKeyForFile.set(match[1], key);
+  }
+
+  for (const file of testFiles) {
+    const scriptKey = scriptKeyForFile.get(file);
+    assert.ok(scriptKey, `scripts/${file} has no package.json script that actually runs it ("node --test scripts/${file}") — a test suite npm never invokes is dead weight, not coverage`);
+    assert.ok(scriptKey.startsWith('test:'), `scripts/${file}'s own script ("${scriptKey}") does not follow the "test:*" naming convention every other suite's script uses`);
+    assert.ok(ci.includes(scriptKey), `scripts/${file}'s own script ("${scriptKey}") has no step in .github/workflows/ci.yml — CI must actually run "npm run ${scriptKey}", not merely have it declared in package.json`);
+  }
+});
+
+// PL-04 review pass 3 / Warning 1b: the test above enumerates scripts/*.test.mjs files that already
+// exist on disk — it structurally cannot notice a control-plane validator script that has package.json
+// wiring (a "check:*" entry) but no test suite at all, because there is no file for it to walk. That is
+// exactly shape (3) from the comment above: validate-security-audit-agents.mjs had a check:* script
+// (check:security-audit-agents) with no test:* counterpart and no test file, for an entire round, before
+// this same round's fix added both. This test enumerates package.json's own "check:*" scripts instead —
+// the other direction — and requires each to have a paired "test:*" script naming a real file, which
+// (combined with the file-enumeration test above, once that file exists) closes the loop: a control-
+// plane script can no longer ship with package.json wiring but no test suite, and if it does have a
+// suite, that suite's own CI wiring is what the test above already checks.
+//
+// Deliberately narrower than "every check:* script must also have its own CI step" (shape (2), also
+// named in the comment above) — that would be a false rule, not merely an unproven one: check:bounds,
+// check:red-integrity, check:security-audit-run, and check:stamp-freshness all validate a specific
+// per-run artifact under gitignored .pipeline/ working state (a run id, a lane, a diff base) that does
+// not exist on a bare CI checkout, so .github/workflows/ci.yml deliberately runs only their test suites,
+// never the check:* script itself — see that file's own comments at each of those steps. A blanket "has
+// no ci.yml step for its own check:* command" assertion would fail loudly on all four of those, for a
+// reason that is a legitimate design choice, not a gap. Distinguishing the two classes mechanically (is
+// this specific check:* script's target a piece of committed static config, or a per-run/gitignored
+// artifact its own command line doesn't even have the arguments for on a bare checkout?) would need
+// either a maintained exception list — the exact "trusting a maintained list of literal names" shape
+// this whole file's generalization effort exists to move away from — or actually invoking each script
+// and inspecting why it fails, which is a materially different (and heavier) kind of test than this
+// file's other assertions. Left as a narrower, true claim rather than a broader, false one.
+test('every "check:<suffix>" script in package.json has a matching "test:<suffix>" script naming a real scripts/*.test.mjs file — a control-plane validator wired into package.json with no test suite at all is the other structural gap the file-enumeration test above cannot see', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const scripts = pkg.scripts ?? {};
+  const checkKeys = Object.keys(scripts).filter((key) => key.startsWith('check:'));
+  assert.ok(checkKeys.length > 0, 'expected at least one "check:*" script in package.json to check — if this fails, package.json\'s scripts changed shape, not that coverage genuinely dropped to zero');
+
+  for (const checkKey of checkKeys) {
+    const suffix = checkKey.slice('check:'.length);
+    const testKey = `test:${suffix}`;
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(scripts, testKey),
+      `package.json's "${checkKey}" has no matching "${testKey}" script — every existing "check:<suffix>"/"test:<suffix>" pair in this file follows that exact naming convention, and a "check:*" control-plane validator added without its "test:*" counterpart is precisely the "no test suite at all" gap validate-security-audit-agents.mjs shipped with for a full round`,
+    );
+    const testValue = scripts[testKey];
+    const match = typeof testValue === 'string' ? testValue.match(/scripts\/([\w.-]+\.test\.mjs)\b/) : null;
+    assert.ok(match, `package.json's "${testKey}" ("${testValue}") does not run a scripts/*.test.mjs suite via "node --test" — every other "test:*" script in this file points at a real test file the same way`);
+    assert.ok(
+      existsSync(resolve(repoRoot, 'scripts', match[1])),
+      `package.json's "${testKey}" points at scripts/${match[1]}, which does not exist on disk — a declared test script with no backing file is indistinguishable from no test suite at all`,
+    );
+  }
 });

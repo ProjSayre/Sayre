@@ -27,15 +27,33 @@
 // achievable for JSON and was not for markdown" argument. The tests below assert the corrected
 // behavior (throws, naming the duplicated key) rather than the resolution rule that used to be
 // documented as an accepted limit.
+//
+// PL-04 / C2 (test-sediment consolidation): every "malformed sidecar -> fails closed" case across
+// every reader (spec.json, red.json, changes.json, review.json, security.json, and their shared
+// "stamp" field), plus the duplicate-object-key cases, used to each be its own top-level `test()` —
+// same three-line shape (build an invalid sidecar, call the reader, assert it throws a specific,
+// named error) repeated ~25 times. They are now one row each in SIDECAR_VALIDATION_CASES near the
+// end of this file, run by one `test()`. Nothing was dropped: every row is exactly the assertion the
+// standalone test made, under the same name (the row's `name` field carries the same documentation
+// the test name used to). Every *positive*/behavioral test (parses correctly, returns null when
+// optional, lowercases a hash, never launders a prose token into a declared id, ...) is unaffected
+// and stays a standalone test, since collapsing those into a shared table would blur what each one
+// individually proves.
 
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, test } from 'node:test';
 import {
   MAX_JSON_FILE_BYTES,
+  STAMP_FRESH,
+  STAMP_STALE,
+  STAMP_UNKNOWN,
   SidecarError,
+  buildStamp,
+  computeTreeHash,
   isDeclaredInChanges,
   knownSpecIds,
   parseJsonOrThrow,
@@ -51,6 +69,7 @@ import {
   requireEnum,
   requireObject,
   requireString,
+  stampFreshness,
 } from './pipeline-contracts.mjs';
 
 const roots = [];
@@ -67,6 +86,24 @@ function pipelineDir(files) {
     writeFileSync(join(dir, name), typeof contents === 'string' ? contents : JSON.stringify(contents), 'utf8');
   }
   return dir;
+}
+
+/** A throwaway git repo with one committed, tracked file — for `computeTreeHash`/`buildStamp`/
+ * `stampFreshness` (A2), which need a real `git` working tree to observe (unlike every other test in
+ * this file, which never shells out to git at all). Mirrors ledger-append.test.mjs's own
+ * initGit()/commitAll() fixture conventions, duplicated locally rather than imported — a different
+ * test file, and a small enough helper that duplicating it is cheaper than coupling the two files. */
+function gitFixtureRepo() {
+  const root = mkdtempSync(resolve(tmpdir(), 'sayre-pipeline-contracts-git-'));
+  roots.push(root);
+  writeFileSync(join(root, 'tracked.txt'), 'original content\n', 'utf8');
+  execFileSync('git', ['init', '--quiet'], { cwd: root });
+  execFileSync('git', ['config', 'user.email', 'pipeline-contracts-test@example.invalid'], { cwd: root });
+  execFileSync('git', ['config', 'user.name', 'Pipeline Contracts Test'], { cwd: root });
+  execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: root });
+  execFileSync('git', ['add', '-A'], { cwd: root });
+  execFileSync('git', ['commit', '--quiet', '-m', 'initial commit'], { cwd: root });
+  return root;
 }
 
 // --- readJsonSidecar / parseJsonOrThrow: the shared "parse or throw" primitive ------------------
@@ -111,8 +148,10 @@ test('readJsonFile is the same size-capped, strict-parsing primitive readJsonSid
 // a key and leaves resolution parser-defined; V8 resolves to the LAST occurrence. That is the exact
 // "last one wins" resolution rule review round 3's duplicate-`## Verdict`-heading exploit used, one
 // layer down the stack — and review round 4 reproduced it end to end against the real
-// ledger-append.mjs (see .pipeline/review.md). These tests pin the fix directly at the shared
-// primitive every sidecar reader is built from, so every ACTUAL CALLER of it inherits the fix.
+// ledger-append.mjs (see .pipeline/review.md). `parseJsonOrThrow` (below, and every reader built on
+// it — see SIDECAR_VALIDATION_CASES' "PARSE-DUP"/"*-DUP" rows near the end of this file) pins the fix
+// directly at the shared primitive every sidecar reader is built from, so every ACTUAL CALLER of it
+// inherits the fix.
 //
 // CORRECTED (round 6 / security SEC-10): this comment used to say "so every caller inherits it
 // automatically," full stop. That is false as a claim about the codebase as a whole — it is only
@@ -121,27 +160,14 @@ test('readJsonFile is the same size-capped, strict-parsing primitive readJsonSid
 // `security-history/<run-id>/manifest.json` and `results.json` with plain `JSON.parse` and was never
 // such a caller, so the exact duplicate-key forgery these tests pin at the primitive still worked
 // end to end one layer under `security.json` (which is such a caller) — see SEC-10 in
-// `.pipeline/security-history/` for the live reproduction, and `ledger-append.test.mjs`'s C1
-// regression section for the manifest.json/results.json tests added once that call site was fixed.
+// `.pipeline/security-history/` for the live reproduction, and `ledger-append.test.mjs`'s
+// DUPLICATE_KEY_CASES table for the manifest.json/results.json tests added once that call site was
+// fixed.
 // "Automatic" was the word doing the damage here: it read as a property of the codebase, not of the
 // primitive, and made the gap invisible to review until an adversarial pass went looking for it
 // directly. The corrected claim is scoped to what is actually decidable at this file's boundary: this
 // primitive is duplicate-key-safe, and every caller of it is too — whether a given script IS a caller
 // is a fact about that script, checked per site, not something this file can guarantee on its behalf.
-
-test('parseJsonOrThrow rejects a document with a duplicate top-level key, naming the key, rather than silently resolving via "last value wins"', () => {
-  assert.throws(
-    () => parseJsonOrThrow('{"verdict":"NEEDS_FIXES","verdict":"PASS"}', 'test'),
-    (error) => error instanceof SidecarError && /duplicate key "verdict"/.test(error.message),
-  );
-});
-
-test('parseJsonOrThrow rejects a duplicate key nested inside an array element, not only a duplicate at the top level', () => {
-  assert.throws(
-    () => parseJsonOrThrow('{"tests":[{"path":"a.test.mjs","path":"b.test.mjs"}]}', 'test'),
-    (error) => error instanceof SidecarError && /duplicate key "path"/.test(error.message),
-  );
-});
 
 test('parseJsonOrThrow does NOT reject the same key name reused across two different, unrelated objects — duplicate-key rejection is scoped to one object literal, matching what "a duplicate heading" meant under the old markdown contract (one section, two competing values)', () => {
   assert.deepEqual(
@@ -264,6 +290,11 @@ test('requireEnum rejects a near-miss literal ("PASSED" is not "PASS") the same 
 });
 
 // --- spec.json ------------------------------------------------------------------------------------
+//
+// The fail-closed cases (missing file, missing/wrong-type/duplicate field) live in
+// SIDECAR_VALIDATION_CASES near the end of this file, not here — this section keeps only the
+// positive/behavioral tests: parses correctly, returns null when explicitly optional, and never
+// launders a prose-only token into a declared id.
 
 function validSpecJson(overrides = {}) {
   return {
@@ -282,39 +313,9 @@ test('readSpecJson parses a well-formed spec.json and knownSpecIds returns every
   assert.deepEqual(knownSpecIds(spec), new Set(['AC-1', 'EC-1']));
 });
 
-test('readSpecJson fails closed when required and the file does not exist', () => {
-  const dir = pipelineDir({});
-  assert.throws(() => readSpecJson(dir), /spec\.json does not exist/);
-});
-
 test('readSpecJson returns null (not a throw) when explicitly optional and the file does not exist', () => {
   const dir = pipelineDir({});
   assert.equal(readSpecJson(dir, { required: false }), null);
-});
-
-test('readSpecJson fails closed when "goal" is missing', () => {
-  const raw = validSpecJson();
-  delete raw.goal;
-  const dir = pipelineDir({ 'spec.json': raw });
-  assert.throws(() => readSpecJson(dir), /field "goal" must be a non-empty string/);
-});
-
-test('readSpecJson fails closed when "acceptanceCriteria" is not an array (e.g. a single object, the shape an LLM sometimes collapses a one-item list to)', () => {
-  const raw = validSpecJson({ acceptanceCriteria: { id: 'AC-1', text: 'First.' } });
-  const dir = pipelineDir({ 'spec.json': raw });
-  assert.throws(() => readSpecJson(dir), /field "acceptanceCriteria" must be an array/);
-});
-
-test('readSpecJson fails closed when an id does not match the AC-n/EC-n shape', () => {
-  const raw = validSpecJson({ acceptanceCriteria: [{ id: 'AC1', text: 'Missing the dash.' }] });
-  const dir = pipelineDir({ 'spec.json': raw });
-  assert.throws(() => readSpecJson(dir), /does not match the required AC-n \/ EC-n shape/);
-});
-
-test('readSpecJson fails closed on a duplicate id shared between acceptanceCriteria and edgeCases — the JSON-contract equivalent of extractSection\'s old "fail closed on ambiguity" invariant, now a same-array uniqueness check instead of a heading-count check', () => {
-  const raw = validSpecJson({ edgeCases: [{ id: 'AC-1', text: 'Reuses the AC-1 id by mistake.' }] });
-  const dir = pipelineDir({ 'spec.json': raw });
-  assert.throws(() => readSpecJson(dir), /id "AC-1" appears more than once/);
 });
 
 test('readSpecJson never launders an id-shaped token that only appears in prose — unlike the old extractKnownSpecIds, there is no section text to grep at all, only declared {id,text} items', () => {
@@ -330,7 +331,8 @@ test('readSpecJson never launders an id-shaped token that only appears in prose 
 //
 // Unlike every other field on spec.json, "lane" is optional and defaults to null: it did not exist
 // before this ticket, so every spec.json already on disk (and every existing fixture in this test
-// file's own suite) has no "lane" key at all and must keep parsing exactly as before.
+// file's own suite) has no "lane" key at all and must keep parsing exactly as before. The two
+// fail-closed cases (wrong type, empty string) are in SIDECAR_VALIDATION_CASES.
 
 test('readSpecJson returns lane: null when "lane" is absent — every spec.json written before this field existed must keep parsing', () => {
   const dir = pipelineDir({ 'spec.json': validSpecJson() });
@@ -348,16 +350,6 @@ test('readSpecJson returns the declared lane when planner records one', () => {
   const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: 'frontend' }) });
   const spec = readSpecJson(dir);
   assert.equal(spec.lane, 'frontend');
-});
-
-test('readSpecJson fails closed when "lane" is present but not a string (e.g. a number)', () => {
-  const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: 42 }) });
-  assert.throws(() => readSpecJson(dir), /field "lane" must be a non-empty string/);
-});
-
-test('readSpecJson fails closed when "lane" is present but an empty string — an empty lane is not the same as a genuinely undeclared one', () => {
-  const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: '' }) });
-  assert.throws(() => readSpecJson(dir), /field "lane" must be a non-empty string/);
 });
 
 // --- red.json -------------------------------------------------------------------------------------
@@ -382,44 +374,6 @@ test('readRedJson returns null when optional and absent (a ticket that predates 
   assert.equal(readRedJson(dir, { required: false }), null);
 });
 
-test('readRedJson fails closed on "RED-BROKEN" — the literal .sdd/stages/red.md says may never appear in a finished red.md is not in the allowed enum at all, so there is no separate "scan the whole document for this substring" check left to write', () => {
-  const dir = pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'x.test.mjs', sha256: 'a'.repeat(64), specIds: [], classification: 'RED-BROKEN' }] }) });
-  assert.throws(() => readRedJson(dir), /field "classification" must be exactly one of/);
-});
-
-test('readRedJson fails closed when impactMapPresent is missing — omitting the field is not the same as stating its absence, and the type system refuses to treat them alike', () => {
-  const raw = validRedJson();
-  delete raw.impactMapPresent;
-  const dir = pipelineDir({ 'red.json': raw });
-  assert.throws(() => readRedJson(dir), /field "impactMapPresent" must be a boolean/);
-});
-
-test('readRedJson fails closed on a malformed sha256 (wrong length, or containing a non-hex character)', () => {
-  const dir = pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'x.test.mjs', sha256: 'not-a-real-hash', specIds: [], classification: 'RED-CORRECT' }] }) });
-  assert.throws(() => readRedJson(dir), /must be a 64-character hex digest/);
-});
-
-test('readRedJson fails closed when "tests" lists the same path twice — the JSON-contract analog of extractSection\'s old "fail closed on a genuine duplicate heading" invariant: two entries for one path is the same ambiguity (which entry\'s hash/specIds governs?) one level down', () => {
-  const raw = validRedJson({
-    tests: [
-      { path: 'scripts/dup.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' },
-      { path: 'scripts/dup.test.mjs', sha256: 'b'.repeat(64), specIds: ['AC-2'], classification: 'RED-CORRECT' },
-    ],
-  });
-  const dir = pipelineDir({ 'red.json': raw });
-  assert.throws(() => readRedJson(dir), /lists "scripts\/dup\.test\.mjs" more than once/);
-});
-
-test('readRedJson fails closed on a duplicate key WITHIN one tests[] element (distinct from two elements sharing a path, already covered above) — e.g. a duplicate "sha256" key on the same test object, letting a second, later value silently override the recorded hash', () => {
-  const dir = pipelineDir({
-    'red.json': `{"impactMapPresent":false,"tests":[{"path":"x.test.mjs","sha256":"${'a'.repeat(64)}","specIds":[],"classification":"RED-CORRECT","sha256":"${'b'.repeat(64)}"}]}`,
-  });
-  assert.throws(
-    () => readRedJson(dir),
-    (error) => error instanceof SidecarError && /duplicate key "sha256"/.test(error.message),
-  );
-});
-
 test('readRedJson lowercases a recorded sha256 so a case-differing but byte-identical hash is never treated as a mismatch', () => {
   const dir = pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'x.test.mjs', sha256: 'A'.repeat(64), specIds: [], classification: 'RED-CORRECT' }] }) });
   const red = readRedJson(dir);
@@ -441,23 +395,10 @@ test('isDeclaredInChanges returns false for every path when changesJson is null 
   assert.equal(isDeclaredInChanges(null, 'scripts/foo.test.mjs'), false);
 });
 
-test('readChangesJson fails closed when a redTestChanges entry has no "reason"', () => {
-  const dir = pipelineDir({ 'changes.json': { filesChanged: [], redTestChanges: [{ path: 'x.ts' }] } });
-  assert.throws(() => readChangesJson(dir), /field "reason" must be a non-empty string/);
-});
-
 test('readChangesJson tolerates an empty filesChanged array (a legitimately clean sub-task, not the same as changes.json being absent)', () => {
   const dir = pipelineDir({ 'changes.json': { filesChanged: [], redTestChanges: [] } });
   const changes = readChangesJson(dir);
   assert.deepEqual(changes.filesChanged, []);
-});
-
-test('readChangesJson fails closed on a duplicate "filesChanged" key — a fabricated second files-touched list could otherwise launder an out-of-scope change past review', () => {
-  const dir = pipelineDir({ 'changes.json': '{"filesChanged":["a.ts"],"redTestChanges":[],"filesChanged":["b.ts"]}' });
-  assert.throws(
-    () => readChangesJson(dir),
-    (error) => error instanceof SidecarError && /duplicate key "filesChanged"/.test(error.message),
-  );
 });
 
 // --- review.json ----------------------------------------------------------------------------------
@@ -465,28 +406,6 @@ test('readChangesJson fails closed on a duplicate "filesChanged" key — a fabri
 test('readReviewJson parses PASS and NEEDS_FIXES, and nothing else', () => {
   assert.equal(readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS' } })).verdict, 'PASS');
   assert.equal(readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES' } })).verdict, 'NEEDS_FIXES');
-});
-
-test('readReviewJson fails closed on a verdict that merely contains the word PASS as a substring or sentence, the exact adversarial shape ledger-append.test.mjs previously had to construct against markdown prose ("This run should probably PASS once minor things are fixed")', () => {
-  const dir = pipelineDir({ 'review.json': { verdict: 'This run should probably PASS once minor things are fixed.' } });
-  assert.throws(() => readReviewJson(dir), /field "verdict" must be exactly one of/);
-});
-
-test('readReviewJson fails closed when required and review.json does not exist', () => {
-  assert.throws(() => readReviewJson(pipelineDir({})), /review\.json does not exist/);
-});
-
-// CORRECTED (round 5 / review Critical 1): this test used to assert the opposite — that a duplicate
-// "verdict" key resolves via "last value wins" as an accepted "honest limit." That was the exact
-// exploit review round 4 reproduced end to end (a real NEEDS_FIXES run laundered into a durable
-// `review: PASS` ledger entry). Fixed at the shared parseJsonOrThrow primitive (see that function's
-// own tests above), so every reader built on it — including this one — now fails closed instead.
-test('readReviewJson fails closed on a duplicate "verdict" key rather than resolving via "last value wins" — the exact review:PASS forgery review.md\'s round-4 report demonstrated end to end against the real ledger-append.mjs', () => {
-  const dir = pipelineDir({ 'review.json': '{"verdict":"NEEDS_FIXES","verdict":"PASS"}' });
-  assert.throws(
-    () => readReviewJson(dir),
-    (error) => error instanceof SidecarError && /duplicate key "verdict"/.test(error.message),
-  );
 });
 
 // --- security.json ----------------------------------------------------------------------------------
@@ -498,20 +417,241 @@ test('readSecurityJson requires runId even when verdict is BLOCKED — a run id 
   assert.equal(security.runId, 'run-123');
 });
 
-test('readSecurityJson fails closed when runId is missing', () => {
-  const dir = pipelineDir({ 'security.json': { verdict: 'PASS' } });
-  assert.throws(() => readSecurityJson(dir), /field "runId" must be a non-empty string/);
+// --- Freshness stamps (PL-04 / A2) -----------------------------------------------------------------
+//
+// Observed live during this fix round: `.pipeline/review.json` read `NEEDS_FIXES` and
+// `.pipeline/security.json` read `BLOCKED`, both stale leftovers from a prior session, with nothing on
+// either file to say so. `computeTreeHash`/`buildStamp`/`stampFreshness` are the fix; the tests below
+// cover, in order: the hash actually reflects working-tree content (not just HEAD), `buildStamp`'s
+// shape, `stampFreshness`'s three-state contract (fresh/stale/unknown — never a boolean), and that all
+// five `.pipeline/*.json` readers parse an optional `stamp` field identically (the "do not vary the
+// shape" requirement — a separate, stage-side change targets this exact contract).
+
+test('computeTreeHash is deterministic: two calls against the same, unchanged working tree produce the same hash', () => {
+  const root = gitFixtureRepo();
+  assert.equal(computeTreeHash(root), computeTreeHash(root));
 });
 
-test('readSecurityJson fails closed on a verdict outside {PASS, BLOCKED}', () => {
-  const dir = pipelineDir({ 'security.json': { verdict: 'PARTIAL', runId: 'run-123' } });
-  assert.throws(() => readSecurityJson(dir), /field "verdict" must be exactly one of/);
+test('computeTreeHash changes when a tracked file is edited without being committed — a stamp that only tracked HEAD would miss this entirely', () => {
+  const root = gitFixtureRepo();
+  const before = computeTreeHash(root);
+  writeFileSync(join(root, 'tracked.txt'), 'edited, uncommitted content\n', 'utf8');
+  const after = computeTreeHash(root);
+  assert.notEqual(before, after);
 });
 
-test('readSecurityJson fails closed on a duplicate "verdict" key — the same BLOCKED -> PASS forgery as review.json\'s, one sidecar over', () => {
-  const dir = pipelineDir({ 'security.json': '{"verdict":"BLOCKED","runId":"run-123","verdict":"PASS"}' });
-  assert.throws(
-    () => readSecurityJson(dir),
-    (error) => error instanceof SidecarError && /duplicate key "verdict"/.test(error.message),
-  );
+test('computeTreeHash changes when a new untracked file appears', () => {
+  const root = gitFixtureRepo();
+  const before = computeTreeHash(root);
+  writeFileSync(join(root, 'untracked.txt'), 'brand new file\n', 'utf8');
+  const after = computeTreeHash(root);
+  assert.notEqual(before, after);
+});
+
+test('computeTreeHash returns to its original value once an uncommitted edit is reverted back to the committed content — the hash reflects current content, not merely "is something dirty"', () => {
+  const root = gitFixtureRepo();
+  const original = computeTreeHash(root);
+  writeFileSync(join(root, 'tracked.txt'), 'temporarily edited\n', 'utf8');
+  assert.notEqual(computeTreeHash(root), original);
+  writeFileSync(join(root, 'tracked.txt'), 'original content\n', 'utf8');
+  assert.equal(computeTreeHash(root), original);
+});
+
+test('computeTreeHash never throws outside a git repository at all, and stays deterministic there too (git failures are tolerated, never fatal)', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'sayre-pipeline-contracts-nogit-'));
+  roots.push(root);
+  assert.equal(computeTreeHash(root), computeTreeHash(root));
+});
+
+test('buildStamp returns the exact { treeHash, headSha, dirty, writtenAt } shape, with headSha matching git rev-parse HEAD and dirty reflecting an uncommitted change', () => {
+  const root = gitFixtureRepo();
+  const cleanStamp = buildStamp(root);
+  assert.equal(typeof cleanStamp.treeHash, 'string');
+  assert.ok(cleanStamp.treeHash.length > 0);
+  const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  assert.equal(cleanStamp.headSha, headSha);
+  assert.equal(cleanStamp.dirty, false);
+  assert.ok(!Number.isNaN(Date.parse(cleanStamp.writtenAt)), 'writtenAt must be a parseable timestamp');
+
+  writeFileSync(join(root, 'tracked.txt'), 'now dirty\n', 'utf8');
+  const dirtyStamp = buildStamp(root);
+  assert.equal(dirtyStamp.headSha, headSha, 'headSha reflects HEAD, unaffected by an uncommitted change');
+  assert.equal(dirtyStamp.dirty, true);
+  assert.notEqual(dirtyStamp.treeHash, cleanStamp.treeHash);
+});
+
+test('stampFreshness returns "unknown" (never "fresh") for a missing stamp — an artifact with no stamp must never read as trustworthy just because nothing contradicts it', () => {
+  const root = gitFixtureRepo();
+  assert.equal(stampFreshness(null, root), STAMP_UNKNOWN);
+  assert.equal(stampFreshness(undefined, root), STAMP_UNKNOWN);
+});
+
+test('stampFreshness returns "fresh" when a stamp\'s treeHash still matches the current working tree, and "stale" the moment the tree changes underneath it', () => {
+  const root = gitFixtureRepo();
+  const stamp = buildStamp(root);
+  assert.equal(stampFreshness(stamp, root), STAMP_FRESH);
+
+  writeFileSync(join(root, 'tracked.txt'), 'the tree moved on since this stamp was written\n', 'utf8');
+  assert.equal(stampFreshness(stamp, root), STAMP_STALE);
+});
+
+test('stampFreshness is a pure hash comparison, not influenced by dirty/headSha/writtenAt — a stamp with a matching treeHash reads fresh even if its other fields look stale or mismatched', () => {
+  const root = gitFixtureRepo();
+  const stamp = { treeHash: computeTreeHash(root), headSha: 'deadbeef', dirty: true, writtenAt: '2000-01-01T00:00:00.000Z' };
+  assert.equal(stampFreshness(stamp, root), STAMP_FRESH, 'only treeHash equality should matter to this decision');
+});
+
+// --- Every .pipeline/*.json reader parses an optional "stamp" field the same way (do not vary the ---
+// shape): missing is null (back-compat), a well-formed stamp round-trips, and a malformed one fails
+// closed exactly like any other field in this file (the malformed cases are in
+// SIDECAR_VALIDATION_CASES below).
+
+test('readReviewJson returns stamp: null when review.json has no "stamp" field — every review.json on disk before this contract existed must keep parsing', () => {
+  const dir = pipelineDir({ 'review.json': { verdict: 'PASS' } });
+  assert.equal(readReviewJson(dir).stamp, null);
+});
+
+test('readReviewJson parses a well-formed "stamp" field into the exact shape it was given', () => {
+  const stamp = { treeHash: 'a'.repeat(64), headSha: 'b'.repeat(40), dirty: true, writtenAt: '2026-08-04T07:00:00.000Z' };
+  const dir = pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', stamp } });
+  assert.deepEqual(readReviewJson(dir).stamp, stamp);
+});
+
+test('readSecurityJson returns stamp: null when absent, and parses a well-formed stamp when present — same shared contract as readReviewJson\'s', () => {
+  const dirNoStamp = pipelineDir({ 'security.json': { verdict: 'PASS', runId: 'run-1' } });
+  assert.equal(readSecurityJson(dirNoStamp).stamp, null);
+
+  // PL-04 review pass 3 / Warning 1a: 'x'/'y' are not hex characters — readStamp's new hex-shape check
+  // (see its own doc comment) would reject them, so this fixture uses a valid-length hex filler instead
+  // (still an arbitrary value never compared against anything real — see this test's own name).
+  const stamp = { treeHash: 'c'.repeat(64), headSha: 'f'.repeat(40), dirty: false, writtenAt: '2026-08-04T07:00:00.000Z' };
+  const dirWithStamp = pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1', stamp } });
+  assert.deepEqual(readSecurityJson(dirWithStamp).stamp, stamp);
+});
+
+test('readSpecJson, readRedJson, and readChangesJson all return stamp: null when absent — the same back-compat contract applies uniformly across every .pipeline/*.json reader, not only review/security', () => {
+  const specDir = pipelineDir({ 'spec.json': validSpecJson() });
+  assert.equal(readSpecJson(specDir).stamp, null);
+
+  const redDir = pipelineDir({ 'red.json': validRedJson() });
+  assert.equal(readRedJson(redDir).stamp, null);
+
+  const changesDir = pipelineDir({ 'changes.json': { filesChanged: [], redTestChanges: [] } });
+  assert.equal(readChangesJson(changesDir).stamp, null);
+});
+
+test('readSpecJson, readRedJson, and readChangesJson each parse a well-formed "stamp" field the same shape readReviewJson does', () => {
+  const stamp = { treeHash: 'd'.repeat(64), headSha: 'e'.repeat(40), dirty: true, writtenAt: '2026-08-04T08:00:00.000Z' };
+
+  const specDir = pipelineDir({ 'spec.json': validSpecJson({ stamp }) });
+  assert.deepEqual(readSpecJson(specDir).stamp, stamp);
+
+  const redDir = pipelineDir({ 'red.json': validRedJson({ stamp }) });
+  assert.deepEqual(readRedJson(redDir).stamp, stamp);
+
+  const changesDir = pipelineDir({ 'changes.json': { filesChanged: [], redTestChanges: [], stamp } });
+  assert.deepEqual(readChangesJson(changesDir).stamp, stamp);
+});
+
+// === PL-04 / C2: the fail-closed validation matrix =================================================
+//
+// Every row below used to be its own top-level `test()` (same shape every time: build an otherwise-
+// valid sidecar with one field wrong, call the reader, assert it throws a named error). `name` carries
+// the same documentation the original test name did; `run`/`check` make exactly the assertion the
+// original test body made. Rows tagged [DUP-KEY] are the duplicate-object-key class that produced a
+// durable, forged `review: PASS`/`security: PASS` ledger entry end to end (review round 4 / security
+// SEC-10 — see the file header above); nothing here is new, and nothing was dropped.
+
+/** Shallow-copies `obj` without `key` — used below wherever a case is "this required field is
+ * missing", so the row itself stays one line instead of a 5-line delete-and-return closure. */
+function omit(obj, key) {
+  const copy = { ...obj };
+  delete copy[key];
+  return copy;
+}
+
+/** `error instanceof SidecarError` AND its message names the duplicated key — the predicate every
+ * [DUP-KEY] row shares, built once instead of inline per row. */
+function duplicateKey(keyName) {
+  const pattern = new RegExp(`duplicate key "${keyName}"`);
+  return (error) => error instanceof SidecarError && pattern.test(error.message);
+}
+
+const SIDECAR_VALIDATION_CASES = [
+  // spec.json
+  { name: 'spec.json missing entirely (required)', run: () => readSpecJson(pipelineDir({})), check: /spec\.json does not exist/ },
+  { name: 'spec.json "goal" missing', run: () => readSpecJson(pipelineDir({ 'spec.json': omit(validSpecJson(), 'goal') })), check: /field "goal" must be a non-empty string/ },
+  { name: 'spec.json "acceptanceCriteria" not an array (the shape an LLM sometimes collapses a one-item list to)', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ acceptanceCriteria: { id: 'AC-1', text: 'First.' } }) })), check: /field "acceptanceCriteria" must be an array/ },
+  { name: 'spec.json id does not match the AC-n/EC-n shape', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ acceptanceCriteria: [{ id: 'AC1', text: 'Missing the dash.' }] }) })), check: /does not match the required AC-n \/ EC-n shape/ },
+  { name: 'spec.json duplicate id shared between acceptanceCriteria and edgeCases — the JSON-contract equivalent of extractSection\'s old "fail closed on ambiguity" invariant', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ edgeCases: [{ id: 'AC-1', text: 'Reuses AC-1 by mistake.' }] }) })), check: /id "AC-1" appears more than once/ },
+  { name: 'spec.json "lane" present but wrong type (a number)', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ lane: 42 }) })), check: /field "lane" must be a non-empty string/ },
+  { name: 'spec.json "lane" present but an empty string — not the same as genuinely undeclared', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ lane: '' }) })), check: /field "lane" must be a non-empty string/ },
+
+  // red.json
+  { name: 'red.json classification "RED-BROKEN" — not in the enum at all, so no separate substring-scan check is needed', run: () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'x.test.mjs', sha256: 'a'.repeat(64), specIds: [], classification: 'RED-BROKEN' }] }) })), check: /field "classification" must be exactly one of/ },
+  { name: 'red.json "impactMapPresent" missing — omission is not the same as a stated absence', run: () => readRedJson(pipelineDir({ 'red.json': omit(validRedJson(), 'impactMapPresent') })), check: /field "impactMapPresent" must be a boolean/ },
+  { name: 'red.json malformed sha256 (wrong length, or a non-hex character)', run: () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'x.test.mjs', sha256: 'not-a-real-hash', specIds: [], classification: 'RED-CORRECT' }] }) })), check: /must be a 64-character hex digest/ },
+  {
+    name: 'red.json "tests" lists the same path twice — two entries for one path is an ambiguity (which entry\'s hash/specIds governs?) one level below a duplicate heading',
+    run: () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [
+      { path: 'scripts/dup.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' },
+      { path: 'scripts/dup.test.mjs', sha256: 'b'.repeat(64), specIds: ['AC-2'], classification: 'RED-CORRECT' },
+    ] }) })),
+    check: /lists "scripts\/dup\.test\.mjs" more than once/,
+  },
+  { name: '[DUP-KEY] red.json duplicate "sha256" key WITHIN one tests[] element (distinct from two elements sharing a path, above)', run: () => readRedJson(pipelineDir({ 'red.json': `{"impactMapPresent":false,"tests":[{"path":"x.test.mjs","sha256":"${'a'.repeat(64)}","specIds":[],"classification":"RED-CORRECT","sha256":"${'b'.repeat(64)}"}]}` })), check: duplicateKey('sha256') },
+
+  // changes.json
+  { name: 'changes.json redTestChanges entry has no "reason"', run: () => readChangesJson(pipelineDir({ 'changes.json': { filesChanged: [], redTestChanges: [{ path: 'x.ts' }] } })), check: /field "reason" must be a non-empty string/ },
+  { name: '[DUP-KEY] changes.json duplicate "filesChanged" key — a fabricated second files-touched list could otherwise launder an out-of-scope change past review', run: () => readChangesJson(pipelineDir({ 'changes.json': '{"filesChanged":["a.ts"],"redTestChanges":[],"filesChanged":["b.ts"]}' })), check: duplicateKey('filesChanged') },
+
+  // review.json
+  { name: 'review.json verdict merely contains the word PASS in a sentence, not the exact literal ("This run should probably PASS once minor things are fixed")', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'This run should probably PASS once minor things are fixed.' } })), check: /field "verdict" must be exactly one of/ },
+  { name: 'review.json missing entirely (required)', run: () => readReviewJson(pipelineDir({})), check: /review\.json does not exist/ },
+  {
+    // CORRECTED (round 5 / review Critical 1): this case used to assert the opposite ("last value
+    // wins" as an accepted honest limit) — the exact exploit review round 4 reproduced end to end.
+    name: '[DUP-KEY] review.json duplicate "verdict" key, rather than "last value wins" — the exact review:PASS forgery review.md\'s round-4 report demonstrated end to end',
+    run: () => readReviewJson(pipelineDir({ 'review.json': '{"verdict":"NEEDS_FIXES","verdict":"PASS"}' })),
+    check: duplicateKey('verdict'),
+  },
+
+  // security.json
+  { name: 'security.json "runId" missing', run: () => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'PASS' } })), check: /field "runId" must be a non-empty string/ },
+  { name: 'security.json verdict outside {PASS, BLOCKED}', run: () => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'PARTIAL', runId: 'run-123' } })), check: /field "verdict" must be exactly one of/ },
+  { name: '[DUP-KEY] security.json duplicate "verdict" key — the same BLOCKED -> PASS forgery as review.json\'s, one sidecar over', run: () => readSecurityJson(pipelineDir({ 'security.json': '{"verdict":"BLOCKED","runId":"run-123","verdict":"PASS"}' })), check: duplicateKey('verdict') },
+
+  // Every reader's shared, optional "stamp" field
+  // PL-04 review pass 3 / Warning 1a: the two rows immediately below predate `readStamp`'s hex-shape
+  // check on `treeHash`/`headSha` — they used single-character placeholders ('a'/'b') on the grounds
+  // that "the exact treeHash/headSha values here are never compared to anything" (still true of their
+  // own subject field, `dirty`). Widened to full-length, correctly-shaped hex placeholders so each row
+  // still fails for the reason its name says, not on the new, unrelated hex-format check.
+  { name: 'stamp present but missing a required subfield (no "dirty")', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', stamp: { treeHash: 'a'.repeat(64), headSha: 'b'.repeat(40), writtenAt: '2026-08-04T00:00:00.000Z' } } })), check: /stamp: field "dirty" must be a boolean/ },
+  { name: 'stamp.dirty present but not a boolean', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', stamp: { treeHash: 'a'.repeat(64), headSha: 'b'.repeat(40), dirty: 'true', writtenAt: '2026-08-04T00:00:00.000Z' } } })), check: /stamp: field "dirty" must be a boolean/ },
+  { name: '[DUP-KEY] duplicate key inside "stamp" itself — the same forgery class every other object here is closed against, one level down', run: () => readReviewJson(pipelineDir({ 'review.json': `{"verdict":"PASS","stamp":{"treeHash":"aaaa","treeHash":"bbbb","headSha":"c","dirty":false,"writtenAt":"2026-08-04T00:00:00.000Z"}}` })), check: duplicateKey('treeHash') },
+  // PL-04 review pass 3 / Warning 1a: `readStamp` now checks treeHash/headSha against the hex shape
+  // `buildStamp()` always produces — a shape check, not a provenance one (see that function's own doc
+  // comment for the distinction). These two rows prove the check actually fires; the "accepts a
+  // hand-written-but-correctly-shaped stamp" half of that same distinction (e.g. `treeHash:
+  // '0'.repeat(64)`) is exactly what the pre-existing `[DUP-KEY]` row above, and `ledger-append.test.mjs`'s
+  // own `DUMMY_SPEC_STAMP`, already exercise — this fix narrows what a malformed stamp can look like, it
+  // does not, and is not meant to, reject every value a human could type by hand.
+  { name: 'stamp.treeHash is not a 64-character hex digest — the shape computeTreeHash() always produces', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', stamp: { treeHash: 'not-a-real-hash', headSha: 'b'.repeat(40), dirty: false, writtenAt: '2026-08-04T00:00:00.000Z' } } })), check: /field "treeHash" must be a 64-character hex digest/ },
+  { name: 'stamp.headSha is neither a 40-character hex digest nor the literal "(none)" no-HEAD fallback', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', stamp: { treeHash: 'a'.repeat(64), headSha: 'deadbeef', dirty: false, writtenAt: '2026-08-04T00:00:00.000Z' } } })), check: /field "headSha" must be a 40-character hex digest/ },
+
+  // parseJsonOrThrow's own [DUP-KEY] coverage — the primitive every row above is ultimately built on
+  { name: '[DUP-KEY] parseJsonOrThrow rejects a duplicate top-level key, not merely "last value wins"', run: () => parseJsonOrThrow('{"verdict":"NEEDS_FIXES","verdict":"PASS"}', 'test'), check: duplicateKey('verdict') },
+  { name: '[DUP-KEY] parseJsonOrThrow rejects a duplicate key nested inside an array element, not only at the top level', run: () => parseJsonOrThrow('{"tests":[{"path":"a.test.mjs","path":"b.test.mjs"}]}', 'test'), check: duplicateKey('path') },
+];
+
+test('every case in SIDECAR_VALIDATION_CASES fails closed with its named error — the full fail-closed attack surface across every .pipeline/*.json reader, at a glance', () => {
+  for (const { name, run, check } of SIDECAR_VALIDATION_CASES) {
+    assert.throws(run, check, name);
+  }
+});
+
+test('readReviewJson accepts stamp.headSha === "(none)" — buildStamp()\'s own documented no-HEAD fallback, not merely coincidentally hex-shaped', () => {
+  const result = readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', stamp: { treeHash: 'a'.repeat(64), headSha: '(none)', dirty: false, writtenAt: '2026-08-04T00:00:00.000Z' } } }));
+  assert.equal(result.stamp.headSha, '(none)');
 });

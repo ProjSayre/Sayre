@@ -121,6 +121,11 @@ function testFileContent(path, ids) {
   return `${marker}\ntest('sample', () => { /* body */ });\n`;
 }
 
+/** @param {{ path?: string, ids?: string[], content?: string }} [options]
+ *   `content` is annotated explicitly (PL-04 / item 4) because it has no default value — plain JS
+ *   parameter-shape inference from a destructuring default only sees properties that DO have one
+ *   (`path`, `ids`), so without this JSDoc `checkJs` infers a type that omits `content` entirely and
+ *   flags every real call site passing it as an unknown property. */
 function oneTestFixture({ path = 'scripts/sample.test.mjs', ids = ['AC-1'], content } = {}) {
   const body = content ?? testFileContent(path, ids);
   return { path, content: body, hash: sha256(body), ids };
@@ -227,7 +232,11 @@ test('a declaration whose own "reason" text denies the change is still counted a
   });
   writeFileSync(join(root, t.path), t.content + '// a quiet edit\n', 'utf8');
   const result = runCheck(root);
-  assert.equal(result.status, 0, result.stderr, 'this is the intentional mechanical/judgment split, not a bypass');
+  // PL-04 / item 4: assert.equal(actual, expected, message?) only takes ONE message argument — this
+  // used to pass two (result.stderr, then a fixed explanatory string), so the second was silently
+  // discarded by JS at every actual test run and never surfaced. checkJs caught it (TS2554, wrong
+  // arg count) as a real, if inert, defect; folded into the one message slot the function actually has.
+  assert.equal(result.status, 0, `${result.stderr} (this is the intentional mechanical/judgment split, not a bypass)`);
   assert.match(result.stdout, /declared in changes\.json/);
 });
 
@@ -248,41 +257,52 @@ test('a path declared in changes.json under a different, similarly-named path (e
   assert.match(result.stdout, /does not declare this change/);
 });
 
-test('fails when a listed test file no longer exists on disk at all', () => {
-  const t = oneTestFixture();
-  const root = fixtureRepo({
-    tests: [t],
-    pipeline: {
-      'spec.json': specJson({ acItems: ['AC-1'] }),
-      'red.json': redJson({ tests: [t] }),
+// PL-04 / C2: table-driven. Both rows assert the identical "no longer exists on disk" outcome but
+// from two distinct setups worth keeping visibly separate — a file recorded then deleted, vs. a path
+// red.json lists that was never created at all — since the *setup* is the point of each case, not
+// merely the payload.
+const MISSING_TEST_FILE_CASES = [
+  {
+    name: 'a listed test file no longer exists on disk at all (deleted after being recorded)',
+    build: () => {
+      const t = oneTestFixture();
+      const root = fixtureRepo({
+        tests: [t],
+        pipeline: { 'spec.json': specJson({ acItems: ['AC-1'] }), 'red.json': redJson({ tests: [t] }) },
+        commit: false,
+      });
+      rmSync(join(root, t.path));
+      return root;
     },
-    commit: false,
-  });
-  rmSync(join(root, t.path));
-  const result = runCheck(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stdout, /no longer exists on disk/);
-});
+  },
+  {
+    name: 'a test path is listed in red.json but the file was never created on disk at all (not merely deleted after being recorded)',
+    build: () => fixtureRepo({
+      tests: [], // nothing is ever written to disk at phantomPath
+      pipeline: {
+        'spec.json': specJson({ acItems: ['AC-1'] }),
+        'red.json': { impactMapPresent: false, tests: [{ path: 'scripts/phantom-never-existed.test.mjs', sha256: 'b'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' }] },
+      },
+    }),
+  },
+];
 
-test('fails when a test path is listed in red.json but the file was never created on disk at all (not merely deleted after being recorded)', () => {
-  const phantomPath = 'scripts/phantom-never-existed.test.mjs';
-  const root = fixtureRepo({
-    tests: [], // nothing is ever written to disk at phantomPath
-    pipeline: {
-      'spec.json': specJson({ acItems: ['AC-1'] }),
-      'red.json': { impactMapPresent: false, tests: [{ path: phantomPath, sha256: 'b'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' }] },
-    },
-  });
-  const result = runCheck(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stdout, /no longer exists on disk/);
+test('fails with "no longer exists on disk" for every case in MISSING_TEST_FILE_CASES', () => {
+  for (const { name, build } of MISSING_TEST_FILE_CASES) {
+    const result = runCheck(build());
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stdout, /no longer exists on disk/, name);
+  }
 });
 
 // --- Fixed (PL-03h, finding 5): a hash recorded for a path that later becomes a directory --------
 // carried forward unchanged by this round's architectural change — this is about a real file on
-// disk becoming a directory, unrelated to the markdown-vs-JSON question.
+// disk becoming a directory, unrelated to the markdown-vs-JSON question. Merged (PL-04 / C2) from two
+// near-identical fixtures (previously kept apart only so each could assert on a different output
+// stream) into one: both the stderr message and the printed JSON report are checked against the same
+// single fixture.
 
-test('a hash recorded for a path that has since become a directory reports a controlled violation, not an uncaught EISDIR exception', () => {
+test('a hash recorded for a path that has since become a directory reports a controlled violation, not an uncaught EISDIR exception — on stderr AND in the printed JSON report', () => {
   const path = 'scripts/became-a-dir.test.mjs';
   const root = fixtureRepo({
     tests: [],
@@ -296,20 +316,7 @@ test('a hash recorded for a path that has since become a directory reports a con
   const result = runCheck(root);
   assert.notEqual(result.status, 0, 'must not exit 0 when a recorded path is actually a directory');
   assert.match(result.stderr, /is a directory, not a file/i);
-});
 
-test('the printed JSON report (not only stderr) carries the directory violation for a hash-listed path that has become a directory', () => {
-  const path = 'scripts/became-a-dir-2.test.mjs';
-  const root = fixtureRepo({
-    tests: [],
-    pipeline: {
-      'spec.json': specJson({ acItems: ['AC-1'] }),
-      'red.json': { impactMapPresent: false, tests: [{ path, sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' }] },
-    },
-    commit: false,
-  });
-  mkdirSync(join(root, path), { recursive: true });
-  const result = runCheck(root);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, 'violations-found');
   assert.ok(
@@ -391,47 +398,43 @@ test('an @spec-shaped token appearing only inside an acceptance-criterion\'s pro
   assert.equal(legitimateResult.status, 0, legitimateResult.stderr);
 });
 
-// PL-03h round 4: case variance in a *declared* (red.json specIds) @spec id used to resolve as a
-// runtime "cites an id that does not resolve" violation, because the old parseSpecMapping accepted
-// any string as an id with no shape check of its own, deferring entirely to the resolution step.
-// scripts/pipeline-contracts.mjs's readRedJson validates each specIds entry against the same
-// AC-n/EC-n shape (uppercase-only) at JSON-read time, so a lowercase "ac-1" now fails closed one step
-// earlier — a malformed sidecar, not a resolvable-but-wrong id. This is a strictly stronger
-// guarantee, not a narrower one: the invalid shape can no longer even be represented in a
-// syntactically "valid" red.json, so there is no runtime code path left to reach for this input.
-test('fails closed on case variance in a DECLARED @spec id (red.json\'s specIds) — a lowercase "ac-1" fails red.json\'s own shape validation at JSON-read time, before any per-test resolution check runs', () => {
-  const t = oneTestFixture({ ids: ['AC-1'] }); // file content itself is irrelevant to this test
-  const raw = redJson({ tests: [t] });
-  raw.tests[0].specIds = ['ac-1'];
-  const root = fixtureRepo({
-    tests: [t],
-    pipeline: { 'spec.json': specJson({ acItems: ['AC-1'] }), 'red.json': raw },
-  });
-  const result = runCheck(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /does not match the required AC-n \/ EC-n shape/);
-});
-
-// The file-content marker regex (extractSpecMarkersFromContent) is, and always was, case-sensitive
-// on the AC/EC token itself (matching .sdd/stages/red.md's own documented comment idiom) — a
-// lowercase "ac-1" in a file's own `// @spec ac-1` comment was never extracted as a marker at all,
-// on either side of this ticket's architectural change. The observable outcome is therefore "cites no
-// @spec marker at all" (the file's only marker doesn't match the extraction regex), not "cites an
-// unresolvable id" — this test confirms that end-to-end through the real script.
-test('fails closed on case variance in a FILE-CONTENT @spec marker (lowercase "ac-1") — the extraction regex is case-sensitive, so this resolves to "no marker found," not "an unresolvable id"', () => {
-  const path = 'scripts/case-variance.test.mjs';
-  const content = "// @spec ac-1\ntest('sample', () => {});\n";
-  const t = { path, content, hash: sha256(content), ids: [] };
-  const root = fixtureRepo({
-    tests: [t],
-    pipeline: {
-      'spec.json': specJson({ acItems: ['AC-1'] }),
-      'red.json': redJson({ tests: [t] }),
+// PL-04 / C2: table-driven. Lowercase "ac-1" fails closed at two different layers depending on where
+// it appears, each worth its own row because the *mechanism* differs, not just the payload:
+// - DECLARED (red.json's specIds): scripts/pipeline-contracts.mjs's readRedJson validates each
+//   specIds entry against the AC-n/EC-n shape (uppercase-only) at JSON-read time — a malformed
+//   sidecar, not a resolvable-but-wrong id (PL-03h round 4: previously a runtime "does not resolve"
+//   violation, now a strictly stronger fail-closed-earlier guarantee).
+// - FILE-CONTENT (a test's own `// @spec ac-1` comment): the extraction regex
+//   (extractSpecMarkersFromContent) is, and always was, case-sensitive — this was never extracted as
+//   a marker at all, so the outcome is "cites no @spec marker at all," not "cites an unresolvable id."
+const CASE_VARIANCE_CASES = [
+  {
+    name: 'DECLARED @spec id (red.json\'s specIds) — a lowercase "ac-1" fails red.json\'s own shape validation at JSON-read time, before any per-test resolution check runs',
+    build: () => {
+      const t = oneTestFixture({ ids: ['AC-1'] }); // file content itself is irrelevant to this case
+      const raw = redJson({ tests: [t] });
+      raw.tests[0].specIds = ['ac-1'];
+      return fixtureRepo({ tests: [t], pipeline: { 'spec.json': specJson({ acItems: ['AC-1'] }), 'red.json': raw } });
     },
-  });
-  const result = runCheck(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /cites no "@spec" marker at all/);
+    stderrPattern: /does not match the required AC-n \/ EC-n shape/,
+  },
+  {
+    name: 'FILE-CONTENT @spec marker (lowercase "ac-1") — the extraction regex is case-sensitive, so this resolves to "no marker found," not "an unresolvable id"',
+    build: () => {
+      const content = "// @spec ac-1\ntest('sample', () => {});\n";
+      const t = { path: 'scripts/case-variance.test.mjs', content, hash: sha256(content), ids: [] };
+      return fixtureRepo({ tests: [t], pipeline: { 'spec.json': specJson({ acItems: ['AC-1'] }), 'red.json': redJson({ tests: [t] }) } });
+    },
+    stderrPattern: /cites no "@spec" marker at all/,
+  },
+];
+
+test('fails closed on case variance in a @spec id, at whichever layer it appears (CASE_VARIANCE_CASES)', () => {
+  for (const { name, build, stderrPattern } of CASE_VARIANCE_CASES) {
+    const result = runCheck(build());
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, stderrPattern, name);
+  }
 });
 
 test('a test citing two @spec IDs where only one is valid is flagged precisely for the invalid one, and the valid one is never also flagged', () => {
@@ -635,6 +638,33 @@ test('--dir still fails closed when spec.json is missing at the alternate locati
   const result = runCheck(root, ['--dir', '.sdd/ledger/sample-run']);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /spec\.json does not exist/);
+});
+
+// --- PL-04 / item 2 (the general defect): an unrecognized flag must fail loudly, naming itself -----
+
+test('an unrecognized flag fails loudly, naming itself, rather than being silently skipped (e.g. a typo\'d "--diir")', () => {
+  const root = fixtureRepo({});
+  const result = runCheck(root, ['--diir', '.sdd/ledger/sample-run']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unrecognized argument "--diir"/);
+});
+
+// review pass 1 / W2: `--dir` itself was under-validated — a flag-shaped or missing value silently
+// "worked," landing on `.pipeline/` (missing value) or a nonexistent directory (a flag-shaped value),
+// both of which report the indistinguishable-from-a-typo "no-red-json — nothing to check", exit 0.
+
+test('[unknown-flag] "--dir --bogus" fails loudly rather than treating "--bogus" as a directory name and reporting "nothing to check"', () => {
+  const root = fixtureRepo({});
+  const result = runCheck(root, ['--dir', '--bogus']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--dir requires a path value \(got "--bogus"\)/);
+});
+
+test('[unknown-flag] "--dir" as the last token with no value fails loudly rather than silently falling back to .pipeline/', () => {
+  const root = fixtureRepo({});
+  const result = runCheck(root, ['--dir']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--dir requires a path value \(got \(nothing\)\)/);
 });
 
 // --- Required input: spec.json must exist ----------------------------------------------------------

@@ -6,10 +6,25 @@
 //   node scripts/build-ledger-index.mjs --check    # exit 1 + diff if index.json is stale
 //
 // index.json maps a repo-relative file path to every ledger run that touched it:
-//   { "services/core/src/graph-query/index.ts": [ { runId, ticket, date, spec }, ... ] }
+//   { "services/core/src/graph-query/index.ts": [ { runId, ticket, date, spec, regate? }, ... ] }
 // This is the file-granularity query path spec.md describes: buggy file -> index.json -> the
 // spec(s) that mandated it (the same shape as generate-agent-shims.mjs's --check contract — never
 // hand-edit index.json, regenerate it and commit the result).
+//
+// PL-04 / item 3: `regate` is present only on a record produced by a `--re-gate` run (see
+// scripts/ledger-append.mjs and .sdd/ledger/README.md's "Re-gate entries" section) — `{ testerRan:
+// true | false }`. A re-gate entry is never excluded from this index the way a `bypass: true` entry
+// is (the spec really was ratified against the re-gated tree — see readEntryJson's own comment
+// below), but until this fix the qualification itself never reached index.json: entry.json's
+// `regate` object was written and even documented as reaching this file, yet buildIndex() below
+// never read it, so the fast query path (buggy file -> index.json -> spec) surfaced a clean-looking
+// attribution indistinguishable from a run that actually passed through dev's own loop — the exact
+// laundering `/re-gate` exists to make impossible, just relocated one hop downstream of entry.json.
+// Fixed by carrying the one fact that matters (whether tester ran on the re-gated tree) into each
+// index record it applies to, deliberately not the whole `regate` object (no `gatesOnly`, no `note`)
+// — this is a query index, not a record; a reader who wants the full disclosure text still follows
+// `spec`'s sibling `entry.json`. Absent entirely (not `null`) on an ordinary run's records, so this
+// index's per-run byte cost only grows for the runs the marker actually applies to.
 //
 // PL-03h round 4 (architectural — see .pipeline/review.md's round-3 "On convergence" section and
 // scripts/pipeline-contracts.mjs's own header for the full argument): this file used to parse
@@ -35,11 +50,21 @@
 // control decision. See .sdd/ledger/README.md for entry.json's exact shape and the one-time PL-03a
 // migration note (that run's entry.json was backfilled by hand from its own entry.md, the same
 // documented affordance entry.md itself already had).
+//
+// PL-04 / B3: `entry.json`'s `bypass: true` field — see `readEntryJson`'s own comment below — is no
+// longer written only by `ledger-append.mjs --hotfix`. That same script's normal path now also sets it
+// (derived from the recorded verdicts, never a separately-settable flag — see that file's
+// `buildEntryJson`) whenever a run's real, final verdicts were not both literally `PASS` and a human
+// recorded a reasoned `--override-review`/`--override-security` to write the entry anyway. This file
+// needed NO changes for that: `bypass: true` already meant "no ratified spec governs this entry's
+// files, exclude them from the index," which is exactly as true of an overridden non-PASS run as it is
+// of a hotfix — B3's explicit instruction was to reuse this exact mechanism rather than add a second,
+// parallel "excluded" concept, and the mechanism already generalized without modification.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readJsonFile, requireArray, requireObject, requireString } from './pipeline-contracts.mjs';
+import { readJsonFile, requireArray, requireBoolean, requireObject, requireString } from './pipeline-contracts.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
@@ -79,14 +104,36 @@ function listRunDirs() {
  * else is malformed or corrupted, and must never be indexed (round-2/3's `assertVerdictsAreClean`,
  * carried forward at the JSON layer rather than dropped).
  *
- * `bypass` (D-005 #3 / the `/hotfix` wiring pass) is the one documented exception to all of the
- * above: a hotfix entry (`scripts/ledger-append.mjs --hotfix`) never ran review or security, by
- * design, so it has no `verdicts` to check and no governing spec to attribute its files to. It is
- * optional and defaults to falsy — every entry.json written before this field existed (the PL-03a
- * migrated entry included) has no `bypass` key at all and must keep parsing exactly as before; this
- * is a different, ledger-internal file from the five `.pipeline/*.json` contracts
- * scripts/pipeline-contracts.mjs governs, so it does not inherit that contract's "never omit a
- * boolean to mean false" rule. See buildIndex() below for what "bypass" actually changes. */
+ * `bypass` (D-005 #3 / the `/hotfix` wiring pass; generalized by PL-04 / B3 — see this file's own
+ * header note) is the one documented exception to all of the above: a hotfix entry
+ * (`scripts/ledger-append.mjs --hotfix`) never ran review or security at all, by design, and an
+ * overridden entry (`ledger-append.mjs --override-review`/`--override-security`) ran both but ended
+ * with a real, final verdict that was not both literally PASS — either way, there is no `verdicts`
+ * this script can hold to the strict PASS/PASS check below, and no governing spec to attribute the
+ * entry's files to (a run whose real verdict was not PASS never had its spec ratified, the same as a
+ * run that never had a spec at all). `bypass` is optional and defaults to falsy — every entry.json
+ * written before this field existed (the PL-03a migrated entry included) has no `bypass` key at all
+ * and must keep parsing exactly as before; this is a different, ledger-internal file from the five
+ * `.pipeline/*.json` contracts scripts/pipeline-contracts.mjs governs, so it does not inherit that
+ * contract's "never omit a boolean to mean false" rule. See buildIndex() below for what "bypass"
+ * actually changes.
+ *
+ * `regate` (PL-04 / item 3) is the opposite kind of field from `bypass`: it never excludes a run from
+ * the index — a re-gated run's `verdicts` were still checked PASS/PASS above, exactly like any other
+ * indexed run — it only decorates the record(s) that run produces (see buildIndex() below). Optional
+ * and `null` for every entry.json written before this field existed, or for an ordinary (non-re-gate)
+ * run, exactly like `bypass`'s own back-compat default; when present, only `testerRan` is read and
+ * validated as a boolean — `gatesOnly` (the exact inverse) and the fixed disclosure `note` string
+ * entry.json's own `regate` carries (see scripts/ledger-append.mjs's `buildEntryJson`) are
+ * entry.json-only detail this index deliberately does not duplicate. */
+function readRegateField(raw, label) {
+  if (raw === undefined || raw === null) return null;
+  const regateLabel = `${label}: regate`;
+  requireObject(raw, regateLabel);
+  const testerRan = requireBoolean(raw.testerRan, regateLabel, 'testerRan');
+  return { testerRan };
+}
+
 function readEntryJson(runId) {
   const label = `.sdd/ledger/${runId}/entry.json`;
   const path = join(ledgerDir, runId, 'entry.json');
@@ -103,6 +150,7 @@ function readEntryJson(runId) {
   const filesTouched = requireArray(raw.filesTouched, label, 'filesTouched')
     .map((item, i) => requireString(item, label, `filesTouched[${i}]`));
   const bypass = raw.bypass === true;
+  const regate = readRegateField(raw.regate, label);
 
   if (!bypass) {
     requireObject(raw.verdicts, `${label}: verdicts`);
@@ -117,7 +165,7 @@ function readEntryJson(runId) {
     }
   }
 
-  return { runId: runIdField, ticket, date, filesTouched, bypass };
+  return { runId: runIdField, ticket, date, filesTouched, bypass, regate };
 }
 
 /** Builds the in-memory index (file path -> sorted array of run references) from every ledger run
@@ -148,7 +196,13 @@ export function buildIndex() {
 
     for (const file of entry.filesTouched) {
       if (!index[file]) index[file] = [];
-      index[file].push({ runId, ticket: entry.ticket, date: entry.date, spec: `.sdd/ledger/${runId}/spec.md` });
+      const record = { runId, ticket: entry.ticket, date: entry.date, spec: `.sdd/ledger/${runId}/spec.md` };
+      // PL-04 / item 3: carry the re-gate qualification forward, small on purpose — see this file's
+      // header comment for why only `testerRan` (never `gatesOnly`/`note`) is copied here, and only
+      // when this run's entry.json actually had one (readEntryJson's own back-compat default is
+      // `null`). Omitted entirely, not written as `regate: null`, for every ordinary run's records.
+      if (entry.regate) record.regate = { testerRan: entry.regate.testerRan };
+      index[file].push(record);
     }
   }
 
@@ -177,8 +231,21 @@ export function writeIndex() {
   return index;
 }
 
+/** PL-04 / item 2 (the general defect): the only flag this CLI recognizes. `main()` below used to
+ * check `process.argv.includes('--check')` directly and otherwise ignore argv entirely — a typo'd
+ * `--chekc` (or any other unrecognized token) silently fell through to the ordinary write-mode path
+ * instead of running the staleness check the caller almost certainly meant to invoke. Validated
+ * up front now, naming the exact unrecognized token, the same fix applied throughout scripts/. */
+const KNOWN_FLAGS = new Set(['--check']);
+
 function main() {
-  const checkMode = process.argv.includes('--check');
+  const argv = process.argv.slice(2);
+  for (const arg of argv) {
+    if (!KNOWN_FLAGS.has(arg)) {
+      fail(`unrecognized argument "${arg}" — known flags: --check. A typo'd flag must never look like it worked.`);
+    }
+  }
+  const checkMode = argv.includes('--check');
   const index = buildIndex();
   const content = serializeIndex(index);
   const fileCount = Object.keys(index).length;

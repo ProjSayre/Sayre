@@ -66,6 +66,9 @@ When invoked:
                ticket declared none — never omit this field, and never guess a lane that wasn't
                actually declared>" }
    ```
+   Omit `stamp` when first writing the file — step 5 below attaches it as
+   `{ "treeHash": "...", "headSha": "...", "dirty": true, "writtenAt": "..." }`
+   (`.sdd/pipeline.md`'s "Staleness stamps" section has the full shape).
    `ticket` is authored directly as a plain string field here — never derived by a downstream script
    parsing spec.md's raw title line — because even a purely cosmetic field (a ledger display column)
    should not require a markdown-structure read once a JSON sidecar exists at all. Every `id` must
@@ -77,6 +80,15 @@ When invoked:
    every `spec.json` written before this field existed has no `lane` key at all, so a reader must
    treat an absent key the same as an explicit `null`, never as a validation failure (see
    `scripts/pipeline-contracts.mjs`'s `readSpecJson`).
+5. Run `node scripts/write-stamp.mjs .pipeline/spec.json` (equivalently `npm run stamp --
+   .pipeline/spec.json`). This attaches the `stamp` field every `.pipeline/*.json` sidecar carries
+   (`.sdd/pipeline.md`'s "Staleness stamps" section) — a SHA-256 hash of the working tree at the
+   moment `spec.json` was written, plus `headSha`/`dirty`/`writtenAt` — which every downstream stage
+   compares its own freshness check against. This is a committed script rather than an instruction to
+   compute the hash yourself for the same reason `check-red-integrity.mjs` is: you cannot reliably
+   reproduce a SHA-256 digest of the current git working tree by writing JSON. Exit `0` on success; a
+   non-zero exit means `spec.json` was not written correctly in step 4 (missing, invalid JSON, or not a
+   JSON object) — fix that before continuing, don't hand `red` a sidecar with no `stamp`.
 
 If the ticket conflicts with the PRD or an architectural rule (e.g. it implies client-side RBAC filtering, or bypassing the service layer), flag this explicitly in Open Questions rather than silently resolving it or silently complying with a bad request.
 
@@ -89,5 +101,13 @@ not by quietly shifting IDs here. **Update `spec.json` identically, in the same 
 files must never diverge, since `spec.json` (not `spec.md`) is what `red`'s spec-trace resolution and
 the ledger actually read; a superseded `AC-*`/`EC-*` item's `text` should say so plainly (e.g. prefix
 it `"[SUPERSEDED — see ...]"`) rather than being deleted, for the same "preserve every ID" reason.
+
+## Staleness of required inputs (PL-04)
+
+Planner has no `.pipeline/` artifact to classify under `.sdd/pipeline.md`'s "Staleness stamps"
+three-way policy (re-derived / trusted-fresh / advisory) — it is always stage 1, with no upstream
+stage's JSON sidecar to read. The `stamp` it writes into `spec.json` (the tree state at the moment
+`spec.md`/`spec.json` were written) exists entirely for every *downstream* stage's benefit, not for
+planner's own use.
 
 The bar for "done": another engineer with zero context on the ticket should be able to implement it correctly from spec.md alone, without asking you a clarifying question.

@@ -69,6 +69,37 @@ You are the implementation stage of a Planner -> Red -> Dev -> Tester -> Review 
    declared change; if no red test needed changing, write `"redTestChanges": []` (matching "## Red-test
    changes"'s own "None." case) — never omit the field. A path counts as declared only if it is the
    exact `path` value of one of these entries, so declare the exact repo-relative path `red.md`/
-   `red.json` used, not a description of it.
+   `red.json` used, not a description of it. This shape also carries a `stamp` field, attached by
+   step 9 below — omit it when first writing the file.
+9. Run `node scripts/write-stamp.mjs .pipeline/changes.json` (equivalently `npm run stamp --
+   .pipeline/changes.json`) — attaches the `stamp` field every `.pipeline/*.json` sidecar carries (see
+   `.sdd/pipeline.md`'s "Staleness stamps" section and `.sdd/stages/planner.md`'s step 5, which does
+   the same thing for `spec.json`). Exit `0` on success; a non-zero exit means `changes.json` was not
+   written correctly in step 8 — fix that before finishing this stage.
+
+## Staleness of required inputs (PL-04)
+
+Run `node scripts/check-stamp-freshness.mjs <sidecar>` for each trusted-fresh input below before
+finishing this stage (exit `0` = not stale, `1` = stale, `2` = the check itself failed — see that
+script's own header for the full `"fresh" | "stale" | "unknown" | "absent"` shape).
+
+- `spec.md`/`spec.json` — **trusted-fresh**. You implement exactly what spec.md specifies, so if
+  `node scripts/check-stamp-freshness.mjs spec.json` reports `"stale"`, state that in changes.md's
+  "Decisions made" section and proceed against spec.md's current on-disk content — don't refuse (only
+  `security` refuses on a stale trusted-fresh input; see `.sdd/pipeline.md`'s "Staleness stamps"
+  section).
+- `red.md`/`red.json` — **trusted-fresh** for *which tests exist and what they assert* (step 4's
+  "the definition of done"): if `node scripts/check-stamp-freshness.mjs red.json` reports `"stale"`,
+  flag it in changes.md and proceed against the current on-disk test files. **Re-derived** for
+  *whether those tests currently pass*: step 4 already has you run the red suite yourself rather than
+  trust any recorded pass/fail state, so that specific fact never depends on `red.json`'s freshness in
+  the first place.
+- `review.md`/`review.json` (on a `NEEDS_FIXES` re-invocation) and `security-report.md`/
+  `security.json` (on a `BLOCKED` re-invocation) — **trusted-fresh**. If
+  `node scripts/check-stamp-freshness.mjs review.json` (respectively `security.json`) reports
+  `"stale"` (e.g. the tree was hand-edited between that stage's run and this one), flag it explicitly
+  in changes.md's "Fixes applied" section and still apply every finding as a required change against
+  the current diff — a stale finding list is still the best available instruction for what to fix,
+  it just needs to be visibly flagged rather than silently trusted as describing this exact tree.
 
 Follow existing project conventions exactly as documented in `.claude/rules/` (service layer pattern, openCypher, SQS/BullMQ split, RBAC boundary) — don't reinvent patterns already established in the codebase.

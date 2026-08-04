@@ -58,11 +58,36 @@ const TEST_FILE_PATTERN = /\.test\.(m?js|ts|tsx)$|(^|\/)test_[^/]+\.py$/;
 /** `--dir <path>` overrides the default `.pipeline/` directory this script reads its three JSON
  * inputs from — see the file header for why (`pr-review` on a fresh PR checkout, where `.pipeline/`
  * never existed). Absent, defaults to `.pipeline/`, unchanged from every prior version of this
- * script. */
+ * script.
+ *
+ * PL-04 / item 2 (the general defect): any other token throws, naming itself, rather than being
+ * silently skipped the way this loop used to skip anything that wasn't literally `--dir` — the same
+ * "typo'd flag must never look like it worked" fix applied throughout scripts/. Thrown, not `fail()`d
+ * directly, so it reaches this file's own top-level `catch` (see the bottom of this file) and gets
+ * the same one clean, prefixed message and exit 1 every other error here already gets.
+ *
+ * CORRECTED (PL-04 review pass 1 / W2): the fix above closed "any OTHER token" but left `--dir`
+ * itself under-validated: `argv[++i]` was taken as the value unconditionally, so `--dir` as the very
+ * last token (no value at all) silently fell back to `.pipeline/` (a falsy `undefined`), and `--dir
+ * --bogus` silently took the literal string `"--bogus"` as a directory name — main() then found no
+ * red.json there and reported `status: "no-red-json"`, exit 0, "nothing to check," for what was
+ * actually a typo'd invocation. This is the one script among those audited for this invariant that
+ * still violated it. Fixed the same way `ledger-append.mjs`'s `readRegateArgs`/`check-bounds.mjs`'s
+ * `--lane` handling validate a value-flag's argument: missing or flag-shaped (starts with `--`) both
+ * throw, naming what was actually found. */
 function parseArgs(argv) {
   let dir = null;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--dir') dir = argv[++i];
+    if (argv[i] === '--dir') {
+      const value = argv[i + 1];
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error(`--dir requires a path value (got ${value === undefined ? '(nothing)' : JSON.stringify(value)}) — a typo'd flag must never look like it worked.`);
+      }
+      dir = value;
+      i++;
+      continue;
+    }
+    throw new Error(`unrecognized argument "${argv[i]}" — known flags: --dir <path>. A typo'd flag must never look like it worked.`);
   }
   return { dir };
 }

@@ -38,6 +38,63 @@
  * is covered by scripts/guard-checker-readonly.test.mjs, which CI runs. Do not rely on reading
  * this file to know it works.
  *
+ * WHY A CHECKER MAY ALSO WRITE TO THE OS TEMP DIRECTORY (round G1 / A1 — "the guard pushes agents
+ * toward its own bypass"):
+ * This guard's purpose is repository integrity, not filesystem confinement. Before this change, the
+ * only writable path for `review`/`security-checker` was `.pipeline/`, which has no scratch space —
+ * so when `security-checker` needed one, the OS temp directory was blocked and `Bash` (the one write
+ * path this guard has never covered; see `.sdd/stages/security.md`'s own read-only framing) was not.
+ * A control that makes the compliant path impossible and the bypass convenient is worse than no
+ * control at all, because it trains the habit of routing around the guard for perfectly legitimate
+ * work — the next thing routed around it that way might not be legitimate.
+ *
+ * Writing to the OS temp directory cannot corrupt source, cause a review of a stale artifact, or let
+ * a checker forge a verdict: nothing downstream (the ledger, `pr-review`, the next pipeline stage)
+ * ever reads from there. And permitting it does not widen the existing `Bash` hole this file has
+ * always had — anything reachable by writing to temp via `Bash` was already reachable by writing to
+ * temp via `Bash` before this change; this only extends the SAME allowance to the `Write`/`Edit`/
+ * `NotebookEdit` tools this guard actually enforces against. What it removes is the incentive to
+ * reach for `Bash` at all for scratch space a checker has a legitimate reason to want.
+ *
+ * CONSIDERED AND DEFERRED (security-precondition fix round, this branch): scoping this allowance to a
+ * run-specific subdirectory under the OS temp root, rather than the entire root, was raised alongside
+ * advisory finding 2 above. Not done here: the whole OS temp directory is wider than a checker strictly
+ * needs, but — per the same "nothing downstream ever reads from there" reasoning this section already
+ * states — nothing makes that width exploitable today, so narrowing it is a hardening improvement, not
+ * a fix for a live gap. Left as a known, stated tradeoff rather than silently accepted.
+ *
+ * This is deliberately narrow: anything that resolves inside the repository but outside
+ * `.pipeline/` is still blocked exactly as before — that is the case this guard exists for, and
+ * nothing about temp-directory scratch space changes it. See the tests in
+ * scripts/guard-checker-readonly.test.mjs tagged A1 for both halves of this.
+ *
+ * CORRECTED (PL-04 review pass 1 / Blocker 4 / C4): the paragraph above is true only because `main()`
+ * also checks that the repository checkout itself is not already inside the OS temp directory before
+ * applying this allowance. Reproduced against the version of this file that shipped without that
+ * check: `cwd` set to a path under `os.tmpdir()` (a temp `git worktree`, an ephemeral/sandboxed
+ * checkout, or a CI runner whose workspace is nested under its own `TMPDIR` — all realistic, not
+ * contrived) made `services/core/src/index.ts` resolve inside `OS_TMP_ROOT` too, by construction of
+ * `resolve(cwd, targetPath)`, so the OS-temp allowance ALLOWed it — every source file in the repo,
+ * silently, the guard enforcing nothing while still exiting 0 as if it had. Fixed by requiring
+ * `!isContainedIn(OS_TMP_ROOT, resolve(cwd))` before the temp allowance applies at all; when the
+ * checkout is itself under temp, this file falls through to the `.pipeline/`-only rule exactly as if
+ * the temp allowance did not exist. See scripts/guard-checker-readonly.test.mjs's C4-tagged tests.
+ *
+ * CORRECTED (security-precondition fix round, this branch — advisory finding 2, MEDIUM): the C4 fix
+ * above only ever guarded one direction (checkout nested under temp). Its unguarded MIRROR — the OS
+ * temp directory itself nested inside the checkout, i.e. `TMP`/`TEMP` pointed at a path under the
+ * repository — reproduced identically: `repoIsUnderOsTmp` is false in that configuration (the repo is
+ * not under temp; temp is under the repo), so the temp allowance applied with no guard at all, ALLOWing
+ * a write anywhere under that host-configured `TMP`/`TEMP` even though it resolves inside the
+ * repository, outside `.pipeline/` — the same contradiction of this file's own "still blocked exactly
+ * as before" header claim, from the other side. Requires an unusual host configuration to trigger
+ * (rated MEDIUM, unlike C4's more realistic "checkout nested under a temp worktree"), but it is the
+ * identical defect shape. Fixed symmetrically: the temp allowance now applies only when *neither* root
+ * is nested inside the other (`!isContainedIn(OS_TMP_ROOT, resolvedCwd) && !isContainedIn(resolvedCwd,
+ * OS_TMP_ROOT)`) — when the OS temp directory is itself under the checkout, this falls through to the
+ * `.pipeline/`-only rule exactly as if the temp allowance did not exist, the same way C4's direction
+ * already does. See guard-checker-readonly.test.mjs's tests tagged with this same finding.
+ *
  * WHY THIS PARSES THE STDIN PAYLOAD WITH parseJsonOrThrow, NOT PLAIN JSON.parse (security round 6 /
  * the SEC-10 audit's "check every remaining JSON.parse call site" pass):
  * This payload is generated once per tool call by the trusted harness process, not read back from a
@@ -56,6 +113,7 @@
  */
 
 import { resolve, relative, isAbsolute, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 import { parseJsonOrThrow } from './pipeline-contracts.mjs';
 
 /** Stage names that are read-only with respect to source code. Both spellings of the security
@@ -65,8 +123,14 @@ import { parseJsonOrThrow } from './pipeline-contracts.mjs';
  * enforcement below silently does not apply to a stage until it is added to this set. */
 const READ_ONLY_AGENTS = new Set(['review', 'security-checker', 'security_checker', 'security', 'pr-review']);
 
-/** The only directory a checker stage may write to. */
+/** The one directory *inside the repository* a checker stage may write to. */
 const WRITABLE_SUBTREE = '.pipeline';
+
+/** The OS temp directory, resolved once at module load — see this file's header ("WHY A CHECKER MAY
+ * ALSO WRITE TO THE OS TEMP DIRECTORY") for why a checker may write here too, in addition to
+ * `WRITABLE_SUBTREE`. Resolved independently of any per-call `cwd`, the same as `os.tmpdir()` itself
+ * always is. */
+const OS_TMP_ROOT = resolve(tmpdir());
 
 function block(reason) {
   process.stderr.write(`Blocked: ${reason}\n`);
@@ -116,14 +180,56 @@ function main(raw) {
   }
 
   const cwd = typeof payload?.cwd === 'string' && payload.cwd ? payload.cwd : process.cwd();
-  const allowedRoot = resolve(cwd, WRITABLE_SUBTREE);
+  const resolvedCwd = resolve(cwd);
+  const allowedRoot = resolve(resolvedCwd, WRITABLE_SUBTREE);
   const resolvedTarget = resolve(cwd, targetPath);
 
   if (isContainedIn(allowedRoot, resolvedTarget)) allow();
 
+  // PL-04 review pass 1 / Blocker 4 (C4): the OS-temp allowance below must apply only when the
+  // *repository checkout itself* is not already inside the OS temp directory. Before this check, the
+  // allowance was computed purely from the target path's own containment in OS_TMP_ROOT — if `cwd`
+  // (a temp `git worktree`, an ephemeral/sandboxed checkout, a CI runner whose workspace lives under
+  // its own TMPDIR) is anywhere beneath OS_TMP_ROOT, then EVERY path inside that checkout also
+  // resolves inside OS_TMP_ROOT, so `isContainedIn(OS_TMP_ROOT, resolvedTarget)` was true for
+  // `services/core/src/index.ts` just as much as for a real scratch file — the guard allowed
+  // everything, silently, the exact "control weakened, caveat added" pattern this ticket exists to
+  // stop. Repo-containment must win: if the checkout lives under temp, skip the temp allowance
+  // entirely and fall through to the `.pipeline/`-only rule below, exactly as if this allowance did
+  // not exist. This is what makes this file's own header claim ("anything that resolves inside the
+  // repository but outside `.pipeline/` is still blocked exactly as before") actually true, in every
+  // checkout location, not only the common one. See guard-checker-readonly.test.mjs's C4-tagged tests.
+  const repoIsUnderOsTmp = isContainedIn(OS_TMP_ROOT, resolvedCwd);
+
+  // CORRECTED (security-precondition fix round, this branch — advisory finding 2): C4 above only ever
+  // guarded the checkout-nested-under-temp direction. Security reproduced the unguarded MIRROR case —
+  // `TMP`/`TEMP` pointed at a path *inside* the checkout (`OS_TMP_ROOT` nested under `resolvedCwd`,
+  // rather than the other way around) — which this file's header claims is still blocked ("anything
+  // that resolves inside the repository but outside `.pipeline/` is still blocked exactly as before")
+  // but was not: `repoIsUnderOsTmp` is false in this configuration (the repo is not under temp; temp is
+  // under the repo), so the temp allowance below applied unguarded, allowing a write anywhere under
+  // that host-configured temp directory even though it resolves inside the repository, outside
+  // `.pipeline/`. Same defect shape as C4, the other direction — the fix is the same idea applied
+  // symmetrically: the temp allowance may apply only when neither root is nested inside the other.
+  // This requires an unusual host configuration (`TMP`/`TEMP` set to a path under the checkout) to
+  // trigger, unlike C4's more realistic "checkout under a temp worktree" — rated accordingly lower —
+  // but it is the identical class of bug and the header's claim was equally false for it either way.
+  const osTmpIsUnderRepo = isContainedIn(resolvedCwd, OS_TMP_ROOT);
+  const tempAllowanceApplies = !repoIsUnderOsTmp && !osTmpIsUnderRepo;
+  if (tempAllowanceApplies && isContainedIn(OS_TMP_ROOT, resolvedTarget)) allow();
+
   block(
     `agent "${agentType}" is read-only with respect to source code. It may only write under ` +
-    `${WRITABLE_SUBTREE}/. Attempted: ${targetPath} (resolves to ${resolvedTarget}).`,
+    `${WRITABLE_SUBTREE}/${tempAllowanceApplies ? ` or the OS temp directory (${OS_TMP_ROOT})` : ''}. ` +
+    `Attempted: ${targetPath} (resolves to ${resolvedTarget}).` +
+    (repoIsUnderOsTmp
+      ? ` The OS-temp allowance does not apply here because the checkout itself (${resolvedCwd}) ` +
+        `already lives inside the OS temp directory (${OS_TMP_ROOT}) — see this file's header.`
+      : osTmpIsUnderRepo
+        ? ` The OS-temp allowance does not apply here because the OS temp directory (${OS_TMP_ROOT}) ` +
+          `itself resolves inside the checkout (${resolvedCwd}), outside ${WRITABLE_SUBTREE}/ — see ` +
+          'this file\'s header.'
+        : ''),
   );
 }
 

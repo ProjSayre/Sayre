@@ -21,7 +21,8 @@ catch, because the diff it's being shaped by already exists in front of you.
 
 1. Read `.pipeline/spec.md` (for the `AC-*`/`EC-*` items and their intent) and `.pipeline/red.md` (for
    the test paths `red` authored, their `@spec` mapping, and their classification —
-   `RED-CORRECT`/`RED-DEFERRED`).
+   `RED-CORRECT`/`RED-DEFERRED`). If either is missing, stop and say which of planner/red needs to
+   run first — don't improvise a test list of your own.
 2. Check whether the impact resolver (PL-03b's `services/workers/scripts/affected_tests.py`) is
    **usable in this checkout right now** — the same Poetry-environment caveat `red.md`'s required
    inputs describes (it needs Python 3.12 + Tree-sitter's native grammars): when the workers'
@@ -38,6 +39,16 @@ catch, because the diff it's being shaped by already exists in front of you.
    the resolver ranks as affected — this is the regression half of TDAD, and nothing else in this
    pipeline performs it — and report a pass/fail for each, plus the resolver's own `confidence`,
    `truncated`, and `unanalyzable` fields, in `test-results.md`.
+
+   Exit codes (PL-04): `0` on success, always — even when some paths land in the output's
+   `unanalyzable` list, that is reported in the JSON, not signaled by a non-zero exit. `2` on invalid
+   arguments. Any other non-zero exit, or a Python traceback on stderr, is a tooling failure — report
+   it as such, the same as "not usable in this checkout," rather than treating an empty result as a
+   clean "nothing affected" answer. Output shape (stdout, `--format json`, same as `.sdd/stages/red.md`
+   documents for the same tool): `{ tests: [{ path, depth, coupling, rank }], truncated: { shown,
+   total, reason }, confidence: "high" | "partial", unanalyzable: [{ path, reason }] }` — `tests` is
+   already ranked (lowest `rank` = most likely affected); report each entry's `depth`/`coupling` per
+   the Output contract below, not just its path.
 3. You may read `.pipeline/changes.md` for context — which files `dev` touched, so you know where
    non-behavioral coverage (below) belongs, or to sanity-check a reported gap against the actual diff
    — **but it is not an input for deriving assertions.** Do not open changes.md to decide what a test
@@ -92,3 +103,22 @@ Write `.pipeline/test-results.md` with:
 If an acceptance criterion in spec.md can't be tested as written (not concrete enough to assert on),
 say so explicitly rather than writing a test that doesn't actually verify it — this is exactly the
 kind of gap Review needs to see.
+
+## Staleness of required inputs (PL-04)
+
+Run `node scripts/check-stamp-freshness.mjs <sidecar>` for `spec.json`/`red.json` below before
+finishing this stage (exit `0` = not stale, `1` = stale, `2` = the check itself failed — see that
+script's own header for the full `"fresh" | "stale" | "unknown" | "absent"` shape).
+
+- `spec.md`/`spec.json` — **trusted-fresh**: if `node scripts/check-stamp-freshness.mjs spec.json`
+  reports `"stale"`, flag it in test-results.md's Impact map section and proceed against spec.md's
+  current on-disk content — don't refuse (only `security` refuses on a stale trusted-fresh input; see
+  `.sdd/pipeline.md`'s "Staleness stamps" section).
+- `red.md`/`red.json` — **trusted-fresh** for *which tests exist, their `@spec` mapping, and their
+  classification*: if `node scripts/check-stamp-freshness.mjs red.json` reports `"stale"`, flag it and
+  proceed. **Re-derived** for *whether they currently pass*: Procedure step 1 already has you run
+  every test yourself and read the real output, so that fact never depends on `red.json`'s freshness.
+- Impact resolver output — **re-derived**: invoked fresh every run, nothing stored to go stale.
+- `changes.md`/`changes.json` — **advisory**, unchanged from Required inputs item 3 above: read for
+  context only, never for deriving an assertion, so its staleness (if noticed) is worth a passing
+  mention at most and never changes what you do.

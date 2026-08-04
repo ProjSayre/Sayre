@@ -155,6 +155,16 @@ test('--check exits non-zero when a new run has been added but index.json was no
   assert.equal(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'), before, '--check must never write');
 });
 
+// --- PL-04 / item 2 (the general defect): an unrecognized flag must fail loudly, naming itself -----
+
+test('an unrecognized flag fails loudly, naming itself, and writes nothing — a typo (e.g. "--chek") must never silently fall through to the ordinary write path', () => {
+  const root = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['x.ts']) } });
+  const result = run(root, ['--chek']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unrecognized argument "--chek"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')), 'must not silently write index.json when the caller almost certainly meant --check');
+});
+
 // --- Edge case: a run directory missing spec.md/entry.md/entry.json fails loudly ---------------
 
 test('fails loudly, and writes nothing, when a run directory has no spec.md', () => {
@@ -213,75 +223,79 @@ test('.gitattributes pins LF on .sdd/ledger/index.json so --check is byte-stable
 });
 
 // --- entry.json strict validation: malformed/adversarial JSON fails closed, never silently indexed
+//
+// PL-04 / C2: table-driven. Every row builds a valid entry.json, breaks exactly one thing about it,
+// and asserts a non-zero exit naming the problem — the shape that used to be seven separate tests.
+// `checkNoIndex` matches exactly what each original standalone test asserted (three of the seven also
+// checked index.json was never written; the other four did not).
+//
+// CORRECTED (round 5 / review Critical 1) applies to the "duplicate verdicts key" row: entry.json is
+// parsed via pipeline-contracts.mjs's parseJsonOrThrow, same as every .pipeline/*.json sidecar — this
+// pins the fix directly at the ledger's own entry point, the file review.md's round-4 report
+// demonstrated the exploit against (a duplicate "verdicts" key laundering a false PASS into the
+// durable ledger record).
 
-test('fails loudly on invalid JSON in entry.json (truncated) rather than crashing with a raw parse-error stack trace', () => {
-  const root = fixture({ 'run-a': { rawEntryJson: '{ "runId": "run-a", "ticket": ' } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /entry\.json is not valid JSON/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')));
-});
+const ENTRY_JSON_VALIDATION_CASES = [
+  {
+    name: 'invalid JSON in entry.json (truncated) rather than crashing with a raw parse-error stack trace',
+    run: { 'run-a': { rawEntryJson: '{ "runId": "run-a", "ticket": ' } },
+    stderrPattern: /entry\.json is not valid JSON/,
+    checkNoIndex: true,
+  },
+  {
+    name: 'a duplicate "verdicts" key in entry.json — the BLOCKED/NEEDS_FIXES -> PASS forgery relocated one layer down from the old markdown duplicate-heading exploit, now closed by parseJsonOrThrow',
+    run: { 'run-a': { rawEntryJson:
+      '{"runId":"run-a","date":"2026-08-03","ticket":"PL-03c","filesTouched":["x.ts"],' +
+      '"verdicts":{"review":"NEEDS_FIXES","security":"NEEDS_FIXES"},' +
+      '"verdicts":{"review":"PASS","security":"PASS"}}' } },
+    stderrPattern: /duplicate key "verdicts"/,
+    checkNoIndex: true,
+  },
+  {
+    name: 'entry.json\'s "runId" field does not match its own directory name',
+    run: { 'run-a': { entryJson: sampleEntryJson('some-other-run-id', ['x.ts']) } },
+    stderrPattern: /must equal this entry's own directory name/,
+    checkNoIndex: false,
+  },
+  {
+    name: 'entry.json has no "ticket" field',
+    run: { 'run-a': { entryJson: (() => { const e = sampleEntryJson('run-a', ['x.ts']); delete e.ticket; return e; })() } },
+    stderrPattern: /field "ticket" must be a non-empty string/,
+    checkNoIndex: false,
+  },
+  {
+    name: 'entry.json\'s "filesTouched" is not an array (e.g. a single string)',
+    run: { 'run-a': { entryJson: (() => { const e = sampleEntryJson('run-a', ['x.ts']); e.filesTouched = 'x.ts'; return e; })() } },
+    stderrPattern: /field "filesTouched" must be an array/,
+    checkNoIndex: false,
+  },
+  {
+    // Regression (review Warning 1, carried forward at the JSON layer): a malformed/fabricated
+    // "verdicts" object must refuse, not silently index a run that never really passed both gates.
+    name: 'entry.json\'s "verdicts" does not read exactly { review: PASS, security: PASS }',
+    run: { 'run-a': { entryJson: (() => { const e = sampleEntryJson('run-a', ['x.ts']); e.verdicts = { review: 'PASS', security: 'BLOCKED' }; return e; })() } },
+    stderrPattern: /field "verdicts" must be exactly/,
+    checkNoIndex: true,
+  },
+  {
+    // Also covers "a non-bypass entry.json missing 'verdicts' is unaffected by the bypass check": the
+    // assertion is identical either way — readEntryJson must only skip the verdicts check when bypass
+    // is literally true, never merely because the field is absent.
+    name: 'entry.json has no "verdicts" field at all (equally true whether or not "bypass" is set — the bypass check must only skip validation when bypass is literally true)',
+    run: { 'run-a': { entryJson: (() => { const e = sampleEntryJson('run-a', ['x.ts']); delete e.verdicts; return e; })() } },
+    stderrPattern: /verdicts.*must be a JSON object/,
+    checkNoIndex: false,
+  },
+];
 
-// CORRECTED (round 5 / review Critical 1): entry.json is parsed via pipeline-contracts.mjs's
-// parseJsonOrThrow, same as every .pipeline/*.json sidecar — this pins the fix directly at the
-// ledger's own entry point, the file review.md's round-4 report demonstrated the exploit against
-// (a duplicate "verdicts" key laundering a false PASS into the durable ledger record).
-test('fails loudly on a duplicate "verdicts" key in entry.json — the BLOCKED/NEEDS_FIXES -> PASS forgery relocated one layer down from the old markdown duplicate-heading exploit, now closed by parseJsonOrThrow', () => {
-  const raw = '{"runId":"run-a","date":"2026-08-03","ticket":"PL-03c","filesTouched":["x.ts"],' +
-    '"verdicts":{"review":"NEEDS_FIXES","security":"NEEDS_FIXES"},' +
-    '"verdicts":{"review":"PASS","security":"PASS"}}';
-  const root = fixture({ 'run-a': { rawEntryJson: raw } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /duplicate key "verdicts"/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')));
-});
-
-test('fails loudly when entry.json\'s "runId" field does not match its own directory name', () => {
-  const root = fixture({ 'run-a': { entryJson: sampleEntryJson('some-other-run-id', ['x.ts']) } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /must equal this entry's own directory name/);
-});
-
-test('fails loudly when entry.json has no "ticket" field', () => {
-  const entryJson = sampleEntryJson('run-a', ['x.ts']);
-  delete entryJson.ticket;
-  const root = fixture({ 'run-a': { entryJson } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /field "ticket" must be a non-empty string/);
-});
-
-test('fails loudly when entry.json\'s "filesTouched" is not an array (e.g. a single string)', () => {
-  const entryJson = sampleEntryJson('run-a', ['x.ts']);
-  entryJson.filesTouched = 'x.ts';
-  const root = fixture({ 'run-a': { entryJson } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /field "filesTouched" must be an array/);
-});
-
-// --- Regression (review Warning 1, carried forward at the JSON layer): a malformed/fabricated ----
-// "verdicts" object must refuse, not silently index a run that never really passed both gates.
-
-test('fails loudly when entry.json\'s "verdicts" does not read exactly { review: PASS, security: PASS }', () => {
-  const entryJson = sampleEntryJson('run-a', ['x.ts']);
-  entryJson.verdicts = { review: 'PASS', security: 'BLOCKED' };
-  const root = fixture({ 'run-a': { entryJson } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /field "verdicts" must be exactly/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')));
-});
-
-test('fails loudly when entry.json has no "verdicts" field at all', () => {
-  const entryJson = sampleEntryJson('run-a', ['x.ts']);
-  delete entryJson.verdicts;
-  const root = fixture({ 'run-a': { entryJson } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /verdicts.*must be a JSON object/);
+test('fails loudly for every adversarial entry.json in ENTRY_JSON_VALIDATION_CASES, never silently indexing', () => {
+  for (const { name, run: runFixture, stderrPattern, checkNoIndex } of ENTRY_JSON_VALIDATION_CASES) {
+    const root = fixture(runFixture);
+    const result = run(root);
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, stderrPattern, name);
+    if (checkNoIndex) assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')), `${name}: index.json must not be written`);
+  }
 });
 
 test('assertVerdictsAreClean-equivalent check refuses trailing/extra content smuggled into the verdicts object (an extra third key does not loosen the byte-for-byte check)', () => {
@@ -326,6 +340,56 @@ test('a bypass entry coexists with a normal entry: the normal one is indexed, th
   assert.equal(index['app/hotfixed.ts'], undefined);
 });
 
+// PL-04 / B3: `bypass: true` is no longer written only by `ledger-append.mjs --hotfix` — the normal
+// path now also sets it (derived from the recorded verdicts) whenever a run's real, final verdicts
+// were not both literally PASS and a human recorded a reasoned `--override-review`/`--override-security`
+// to write the entry anyway (see ledger-append.mjs's own `buildEntryJson`/"Sanctioned overrides"
+// section). Unlike a hotfix, such an entry DOES have a real `verdicts` object (just not the required
+// PASS/PASS) and a real `spec.md` (the pipeline genuinely ran) — this file needs no code change to
+// handle that correctly, since `bypass: true` already means "exclude from the index" unconditionally,
+// regardless of why a caller set it; these tests pin that this generalizes without modification.
+
+test('[B3] a "bypass": true entry with a real (non-PASS) "verdicts" object and a real spec.md — the shape ledger-append.mjs writes for an overridden, non-hotfix run — is still excluded, and its verdicts are never even inspected', () => {
+  const entryJson = {
+    runId: 'override-a',
+    date: '2026-08-04',
+    ticket: 'PL-99z',
+    filesTouched: ['app/from-overridden-run.ts'],
+    verdicts: { review: 'NEEDS_FIXES', security: 'PASS' },
+    overrides: [{ gate: 'review', verdict: 'NEEDS_FIXES', reason: 'Recording a real terminal failure.' }],
+    bypass: true,
+  };
+  const root = fixture({ 'override-a': { entryJson } }); // spec.md IS present, unlike a hotfix fixture
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/from-overridden-run.ts'], undefined, 'an overridden, non-PASS run must never answer "which spec governs this file"');
+});
+
+test('[B3] an overridden bypass entry coexists with a normal PASS entry: the normal one is indexed, the overridden one is not', () => {
+  const overriddenEntry = {
+    runId: 'override-a',
+    date: '2026-08-04',
+    ticket: 'PL-99z',
+    filesTouched: ['app/from-overridden-run.ts'],
+    verdicts: { review: 'BLOCKED', security: 'BLOCKED' },
+    overrides: [
+      { gate: 'review', verdict: 'BLOCKED', reason: 'r1' },
+      { gate: 'security', verdict: 'BLOCKED', reason: 'r2' },
+    ],
+    bypass: true,
+  };
+  const root = fixture({
+    'run-a': { entryJson: sampleEntryJson('run-a', ['app/normal.ts']) },
+    'override-a': { entryJson: overriddenEntry },
+  });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(index['app/normal.ts']?.some((e) => e.runId === 'run-a'));
+  assert.equal(index['app/from-overridden-run.ts'], undefined);
+});
+
 test('"bypass": false (or omitted, the default) is held to the normal spec.md/verdicts requirements — bypass is opt-in, never a silent default', () => {
   const entryJson = sampleEntryJson('run-a', ['x.ts']);
   entryJson.bypass = false;
@@ -335,23 +399,101 @@ test('"bypass": false (or omitted, the default) is held to the normal spec.md/ve
   assert.match(result.stderr, /no spec\.md/);
 });
 
-test('a non-bypass entry.json missing "verdicts" is unaffected by the bypass check — the normal gate still fails closed', () => {
-  // Regression guard for the refactor itself: readEntryJson must only skip the verdicts check when
-  // bypass is literally true, never merely because the field structure changed shape.
-  const entryJson = sampleEntryJson('run-a', ['x.ts']);
-  delete entryJson.verdicts;
-  const root = fixture({ 'run-a': { entryJson } });
-  const result = run(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /verdicts.*must be a JSON object/);
-});
-
 test('a genuinely clean entry.json (exact verdicts, valid shape) is indexed without incident — the positive control for every adversarial fixture above', () => {
   const root = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['scripts/real-file.mjs']) } });
   const result = run(root);
   assert.equal(result.status, 0, result.stderr);
   const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
   assert.deepEqual(Object.keys(index), ['scripts/real-file.mjs']);
+});
+
+// --- PL-04 / item 3: a re-gate entry's index record carries the same disclosure marker -------------
+//
+// scripts/ledger-append.mjs writes a non-null `regate` object into entry.json for a `--re-gate` run
+// (`{ testerRan, gatesOnly, note }` — see that file's buildEntryJson), and had, from the day that flag
+// shipped, documented it as reaching index.json. It never did: buildIndex() below simply never read
+// the field, so a re-gated file's index record was byte-identical to one from a run that passed
+// through dev's own loop — the exact "clean-looking attribution" this fix closes. These tests are the
+// direct regression coverage for that gap.
+
+test('[PL-04 / item 3] an index record built from a re-gated entry surfaces the regate marker, including that tester ran', () => {
+  const entryJson = {
+    ...sampleEntryJson('run-a', ['app/hand-edited.ts']),
+    regate: {
+      testerRan: true,
+      gatesOnly: false,
+      note: 'code was changed in the working tree outside the pipeline\'s dev stage before this run; ' +
+        'changes.md/changes.json describe the tree as it stood before that edit',
+    },
+  };
+  const root = fixture({ 'run-a': { entryJson } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.deepEqual(index['app/hand-edited.ts'], [
+    { runId: 'run-a', ticket: 'PL-03c', date: '2026-08-03', spec: '.sdd/ledger/run-a/spec.md', regate: { testerRan: true } },
+  ]);
+});
+
+test('[PL-04 / item 3] a re-gate entry with tester skipped (--gates-only) surfaces testerRan: false in the index record — never dropped or defaulted to true', () => {
+  const entryJson = {
+    ...sampleEntryJson('run-a', ['app/gates-only.ts']),
+    regate: { testerRan: false, gatesOnly: true, note: '(irrelevant to the index — see build-ledger-index.mjs)' },
+  };
+  const root = fixture({ 'run-a': { entryJson } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.deepEqual(index['app/gates-only.ts'][0].regate, { testerRan: false });
+});
+
+test('[PL-04 / item 3] an index record built from a normal (non-re-gate) entry carries no "regate" key at all', () => {
+  const root = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['app/normal.ts']) } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(!('regate' in index['app/normal.ts'][0]), 'an ordinary run\'s index record must not carry a regate key');
+});
+
+test('[PL-04 / item 3] entry.json\'s explicit "regate": null (what ledger-append.mjs writes by default for every non-re-gate run) also carries no "regate" key into the index', () => {
+  const entryJson = { ...sampleEntryJson('run-a', ['app/normal-explicit-null.ts']), regate: null };
+  const root = fixture({ 'run-a': { entryJson } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(!('regate' in index['app/normal-explicit-null.ts'][0]));
+});
+
+test('[PL-04 / item 3] a bypass entry\'s files still never appear in the index at all, even when the entry also carries a regate object (a re-gated run that also needed --override-* still excludes via bypass, not regate)', () => {
+  const entryJson = {
+    runId: 'override-regate-a',
+    date: '2026-08-04',
+    ticket: 'PL-99z',
+    filesTouched: ['app/still-broken.ts'],
+    verdicts: { review: 'NEEDS_FIXES', security: 'PASS' },
+    overrides: [{ gate: 'review', verdict: 'NEEDS_FIXES', reason: 'Re-gated, but review still flags a style nit accepted on purpose.' }],
+    bypass: true,
+    regate: { testerRan: true, gatesOnly: false, note: 'irrelevant — excluded by bypass regardless' },
+  };
+  const root = fixture({ 'override-regate-a': { entryJson } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/still-broken.ts'], undefined, 'bypass excludes the run from the index regardless of an accompanying regate disclosure');
+});
+
+test('[PL-04 / item 3] a malformed regate object (testerRan not a boolean) fails loudly rather than silently indexing something', () => {
+  const entryJson = { ...sampleEntryJson('run-a', ['x.ts']), regate: { testerRan: 'true' } };
+  const root = fixture({ 'run-a': { entryJson } });
+  const result = run(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /field "testerRan" must be a boolean/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')));
 });
 
 // --- Integration: the real repository's real ledger index, as it exists on disk right now ------

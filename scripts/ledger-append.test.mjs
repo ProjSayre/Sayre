@@ -70,6 +70,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, test } from 'node:test';
 import { buildEntryJson, buildEntryMarkdown, buildHotfixEntryJson, buildHotfixEntryMarkdown, generateHotfixRunId } from './ledger-append.mjs';
+// buildStamp (scripts/pipeline-contracts.mjs) is imported directly, unlike contractsSource below (a raw
+// string embedded into each fixture repo) — the [freshness] tests need to compute a REAL stamp against
+// a fixture root from this test process itself (see realGitignoreFixtureRepo's own doc comment for why
+// that specifically requires a fixture with the project's actual .gitignore in place).
+import { buildStamp } from './pipeline-contracts.mjs';
 // Note: copySecurityHistoryIntoLedger is deliberately NOT imported directly here (unlike
 // buildEntryMarkdown/buildEntryJson, which are pure value-building functions) — it resolves
 // repoRoot/ledgerDir/securityHistoryDir from this module's own import.meta.url at import time, so
@@ -137,6 +142,14 @@ function specJson(ticket = 'PL-99z') {
     edgeCases: [],
   };
 }
+
+/** PL-04 review pass 2 / Critical 1: a syntactically-valid but semantically-arbitrary `stamp` object —
+ * every field `pipeline-contracts.mjs`'s `readStamp()` validates is present and correctly typed.
+ * `--re-gate`'s stamp check is presence-only (see `ledger-append.mjs`'s own header comment for why
+ * literal freshness against the fixture's live tree is deliberately not required — spec.json is
+ * documented elsewhere as trusted-fresh/non-refusing precisely because it routinely reads "stale" in a
+ * fully legitimate run), so the exact treeHash/headSha values here are never compared to anything. */
+const DUMMY_SPEC_STAMP = { treeHash: 'a'.repeat(64), headSha: 'b'.repeat(40), dirty: false, writtenAt: '2026-08-04T00:00:00.000Z' };
 
 function redJson(paths = ['scripts/sample.test.mjs']) {
   return {
@@ -206,12 +219,72 @@ function fixtureRepo({ pipeline = {}, git = true } = {}) {
   return root;
 }
 
+/** Like `fixtureRepo`, but applies the REAL project `.gitignore` before the first commit — the same
+ * technique the `AC10` test below already uses, extracted here because the `[freshness]` tests need it
+ * for a load-bearing reason, not merely to match the real repo's tracking boundary: `computeTreeHash`
+ * (scripts/pipeline-contracts.mjs) excludes any gitignored path from BOTH its tracked-diff scan and its
+ * untracked-file scan, and `.pipeline/**` (except README.md) is exactly what the real `.gitignore`
+ * excludes. `fixtureRepo`'s own minimal `.gitignore` (`node_modules/\n` — see `initGit`) does NOT
+ * exclude `.pipeline/*`, so under it `review.json`/`security.json` are ordinary tracked source as far
+ * as `computeTreeHash` is concerned — writing a stamp INTO one of them after the initial commit would
+ * itself change the tracked diff, making the very act of embedding a "fresh" stamp read back as stale
+ * one line later (a stamp cannot describe a tree that includes its own just-added bytes). Under the
+ * real `.gitignore`, `.pipeline/*` is invisible to `computeTreeHash` entirely, so a stamp can be
+ * computed once (`buildStamp(root)`), embedded into a `.pipeline/*.json` file, and stay accurate
+ * indefinitely until something OUTSIDE `.pipeline/` actually changes — which is also exactly how the
+ * real `write-stamp.mjs` avoids the same self-reference in production. See the `[freshness]` tests
+ * below for the fresh/stale scenarios this makes possible to construct at all. */
+function realGitignoreFixtureRepo({ pipeline = {} } = {}) {
+  const root = mkdtempSync(resolve(tmpdir(), 'sayre-ledger-append-freshness-'));
+  roots.push(root);
+
+  mkdirSync(join(root, 'scripts'), { recursive: true });
+  writeFileSync(join(root, 'scripts', 'ledger-append.mjs'), ledgerAppendSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), checkBoundsSource, 'utf8');
+
+  mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
+  writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
+  writeFileSync(join(root, '.sdd', 'bounds.yml'), boundsYmlSource, 'utf8');
+
+  for (const [relPath, contents] of Object.entries(pipeline)) {
+    const dest = join(root, '.pipeline', relPath);
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, typeof contents === 'string' ? contents : JSON.stringify(contents, null, 2), 'utf8');
+  }
+
+  // initGit() writes its own minimal .gitignore ('node_modules/\n') as part of setup — overwrite it
+  // with the real repo's .gitignore BEFORE the first commit (git does not retroactively ignore an
+  // already-tracked path), same ordering AC10 below already relies on.
+  initGit(root);
+  writeFileSync(join(root, '.gitignore'), readFileSync(resolve(repoRoot, '.gitignore'), 'utf8'), 'utf8');
+  commitAll(root, 'initial fixture state, real .gitignore applied before the first commit');
+  return root;
+}
+
 /** The standard "everything needed for a terminal PASS" pipeline fixture, as an object ready to
- * pass to fixtureRepo({ pipeline }) or to spread/override per test. */
-function terminalPassPipeline({ runId = RUN_ID, ticket = 'PL-99z', redPaths, changesFiles, manifestOverrides, includeChanges = true, includeRed = true } = {}) {
+ * pass to fixtureRepo({ pipeline }) or to spread/override per test.
+ *
+ * @param {{ runId?: string, ticket?: string, redPaths?: string[], changesFiles?: string[],
+ *   manifestOverrides?: object, includeChanges?: boolean, includeRed?: boolean, specStamp?: object }} [options]
+ *   `redPaths`/`changesFiles`/`manifestOverrides`/`specStamp` are annotated explicitly (PL-04 / item 4)
+ *   because none has a default value — plain JS parameter-shape inference from a destructuring default
+ *   only sees properties that DO have one (`runId`, `ticket`, `includeChanges`, `includeRed`), so
+ *   without this JSDoc `checkJs` infers a type omitting the other four, flagging every real call site
+ *   that passes them as an unknown property. `specStamp` (PL-04 review pass 2 / Critical 1) attaches a
+ *   `stamp` field onto the generated `spec.json` when given (see `DUMMY_SPEC_STAMP` above) — omitted by
+ *   default, matching every real spec.json on disk before `write-stamp.mjs` existed; every `[re-gate]`
+ *   test below that expects `--re-gate` to actually succeed must pass one, since that path now refuses
+ *   an unstamped spec.json (see `ledger-append.mjs`'s own header comment).
+ * @returns {Record<string, string | object>} keyed by path relative to `.pipeline/` — annotated
+ *   because the two conditional `pipeline[...] = ...` assignments below add keys/value shapes beyond
+ *   what the initial object literal's own inferred (closed) type would otherwise allow. */
+function terminalPassPipeline({ runId = RUN_ID, ticket = 'PL-99z', redPaths, changesFiles, manifestOverrides, includeChanges = true, includeRed = true, specStamp } = {}) {
+  /** @type {Record<string, string | object>} */
   const pipeline = {
     'spec.md': specMarkdown(ticket),
-    'spec.json': specJson(ticket),
+    'spec.json': specStamp ? { ...specJson(ticket), stamp: specStamp } : specJson(ticket),
     'review.md': reviewMarkdownPlaceholder('PASS'),
     'review.json': reviewJson('PASS'),
     'security-report.md': securityReportMarkdownPlaceholder('PASS'),
@@ -374,166 +447,203 @@ test('fails loudly (does not silently record an empty list) when changes.json ex
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry when files-touched data could not actually be determined');
 });
 
-// --- Refusal: not a terminal PASS ---------------------------------------------------------------
-
-test('refuses when review.json\'s verdict is NEEDS_FIXES, and writes nothing', () => {
-  const root = fixtureRepo({ pipeline: { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') } });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /NEEDS_FIXES/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('refuses when security.json\'s verdict is BLOCKED, and writes nothing', () => {
-  const root = fixtureRepo({ pipeline: { ...terminalPassPipeline(), 'security.json': securityJson(RUN_ID, 'BLOCKED') } });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /BLOCKED/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('refuses when spec.md is missing entirely (still required — it is copied verbatim into the ledger even though spec.json now supplies the ticket/goal data)', () => {
-  const pipeline = terminalPassPipeline();
-  delete pipeline['spec.md'];
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /spec\.md/);
-});
-
-test('refuses when spec.json is missing entirely', () => {
-  const pipeline = terminalPassPipeline();
-  delete pipeline['spec.json'];
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /spec\.json does not exist/);
-});
-
-test('refuses when review.json is missing entirely (distinct from a wrong verdict)', () => {
-  const pipeline = terminalPassPipeline();
-  delete pipeline['review.json'];
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /review\.json does not exist/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('refuses when security.json is missing entirely (distinct from a wrong verdict)', () => {
-  const pipeline = terminalPassPipeline();
-  delete pipeline['security.json'];
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /security\.json does not exist/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-// --- Strict verdict validation: a near-miss or malformed verdict fails closed --------------------
+// --- Refusal: a required .pipeline/ file is missing entirely -------------------------------------
 //
-// Retired (PL-03h round 4): the markdown-era versions of this section constructed a "## Verdict"
-// section whose text merely *contained* the word PASS in a sentence ("This run should probably PASS
-// once minor things are fixed"), or that had a "###"/"####" heading shadow, or a fenced/commented
-// shadow, sitting above the real section. None of that has an equivalent under the JSON contract —
-// `review.json`'s `verdict` field is read once, as one literal value; there is no sentence for the
-// word "PASS" to appear inside, and no heading depth or fence/comment state to get confused about.
-// The intent (a verdict must be recognized only when it IS the verdict, never merely resembling one)
-// is fully preserved below, now as a direct enum-validation check.
+// PL-04 / C2 (test-sediment consolidation): table-driven. Each row deletes exactly one required key
+// from the standard terminalPassPipeline() and asserts the same two things every one of these five
+// tests used to separately: a non-zero exit naming the missing file, and (except for spec.md/
+// spec.json, which the original tests never checked this for either) no ledger entry written.
 
-test('refuses when review.json\'s verdict is a sentence merely containing the word PASS, rather than being exactly the literal "PASS"', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.json'] = { verdict: 'This run should probably PASS once minor things are fixed.' };
-  const root = fixtureRepo({ pipeline });
+const MISSING_REQUIRED_FILE_CASES = [
+  { name: 'spec.md missing entirely (still required — copied verbatim into the ledger even though spec.json now supplies the ticket/goal data)', deleteKey: 'spec.md', stderrPattern: /spec\.md/, checkLedgerAbsent: false },
+  { name: 'spec.json missing entirely', deleteKey: 'spec.json', stderrPattern: /spec\.json does not exist/, checkLedgerAbsent: false },
+  { name: 'review.json missing entirely (distinct from a wrong verdict)', deleteKey: 'review.json', stderrPattern: /review\.json does not exist/, checkLedgerAbsent: true },
+  { name: 'security.json missing entirely (distinct from a wrong verdict)', deleteKey: 'security.json', stderrPattern: /security\.json does not exist/, checkLedgerAbsent: true },
+];
+
+test('refuses, naming the file, for every missing-required-file case in MISSING_REQUIRED_FILE_CASES', () => {
+  for (const { name, deleteKey, stderrPattern, checkLedgerAbsent } of MISSING_REQUIRED_FILE_CASES) {
+    const pipeline = terminalPassPipeline();
+    delete pipeline[deleteKey];
+    const root = fixtureRepo({ pipeline });
+    const result = runLedgerAppend(root);
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, stderrPattern, name);
+    if (checkLedgerAbsent) assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), `${name}: must write no ledger entry`);
+  }
+});
+
+// --- Refusal: not a terminal PASS, and strict verdict validation ---------------------------------
+//
+// PL-04 / C2: table-driven, same consolidation as above. Retired (PL-03h round 4): the markdown-era
+// versions of the last three rows constructed a "## Verdict" section whose text merely *contained*
+// the word PASS in a sentence, or had a heading/fence/comment shadow above the real section — none of
+// that has an equivalent under the JSON contract, where `review.json`'s `verdict` is read once, as
+// one literal value. The intent (a verdict is recognized only when it IS the verdict, never merely
+// resembling one) is fully preserved as a direct enum-validation check.
+
+const INVALID_VERDICT_CASES = [
+  { name: 'review.json\'s verdict is NEEDS_FIXES', override: { 'review.json': reviewJson('NEEDS_FIXES') }, stderrPattern: /NEEDS_FIXES/ },
+  { name: 'security.json\'s verdict is BLOCKED', override: { 'security.json': securityJson(RUN_ID, 'BLOCKED') }, stderrPattern: /BLOCKED/ },
+  { name: 'review.json\'s verdict is a sentence merely containing the word PASS, rather than being exactly the literal "PASS"', override: { 'review.json': { verdict: 'This run should probably PASS once minor things are fixed.' } }, stderrPattern: /field "verdict" must be exactly one of/ },
+  { name: 'review.json has no "verdict" field at all, rather than defaulting to a pass', override: { 'review.json': {} }, stderrPattern: /field "verdict" must be exactly one of/ },
+  { name: 'security.json\'s verdict is a near-miss string ("PASSED") rather than exactly PASS', override: { 'security.json': { verdict: 'PASSED', runId: RUN_ID } }, stderrPattern: /field "verdict" must be exactly one of/ },
+];
+
+test('refuses, and writes no ledger entry, for every invalid-verdict case in INVALID_VERDICT_CASES', () => {
+  for (const { name, override, stderrPattern } of INVALID_VERDICT_CASES) {
+    const pipeline = { ...terminalPassPipeline(), ...override };
+    const root = fixtureRepo({ pipeline });
+    const result = runLedgerAppend(root);
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, stderrPattern, name);
+    assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), `${name}: must write no ledger entry`);
+  }
+});
+
+// --- C1 / SEC-10 regression: a duplicate JSON key is a real, end-to-end exploitable forgery, not a --
+// hypothetical. C1 (review round 4) covers review.json/security.json/changes.json; SEC-10 (security
+// round 6) is the one call site (findCompletedSecurityRun's OWN reads of security-history/<run-id>/
+// manifest.json and results.json — the immutable audit-trail files security.json's runId points at)
+// that C1's fix never reached, so the identical forgery still worked end to end one layer under
+// security.json, surviving the round-5 fix entirely (see .pipeline/security-history/ SEC-10 and the
+// file-header comment above). PL-04 / C2: table-driven, same shape every row — override one pipeline
+// file with a string containing a duplicate JSON key, run, and assert the refusal names that key.
+// Restored, never deleted, per review's explicit instruction never to drop a regression class on an
+// untested premise.
+
+const DUPLICATE_KEY_CASES = [
+  {
+    name: '[C1] review.json duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was NEEDS_FIXES — the exact forgery review.md\'s round-4 report demonstrated end to end',
+    override: { 'review.json': '{"verdict":"NEEDS_FIXES","verdict":"PASS"}' },
+    duplicateKeyName: 'verdict',
+  },
+  {
+    name: '[C1] security.json duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was BLOCKED',
+    override: { 'security.json': `{"verdict":"BLOCKED","runId":"${RUN_ID}","verdict":"PASS"}` },
+    duplicateKeyName: 'verdict',
+  },
+  {
+    name: '[C1] changes.json duplicate "filesChanged" key, even though the working tree is otherwise clean (the fallback path this forgery would have to go through)',
+    baseOverrides: { includeChanges: false },
+    override: { 'changes.json': '{"filesChanged":["app/real.ts"],"redTestChanges":[],"filesChanged":["app/laundered.ts"]}' },
+    duplicateKeyName: 'filesChanged',
+  },
+  {
+    name: '[SEC-10] security-history/<run-id>/results.json duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was BLOCKED — the one call site review round 5\'s parseJsonOrThrow fix never reached',
+    override: { [`security-history/${RUN_ID}/results.json`]: `{"schema_version":"1.0.0","run_id":"${RUN_ID}","verdict":"BLOCKED","verdict":"PASS"}` },
+    duplicateKeyName: 'verdict',
+  },
+  {
+    name: '[SEC-10] security-history/<run-id>/manifest.json duplicate "status" key whose LAST occurrence is COMPLETE but whose real, first-written status was not',
+    override: {
+      [`security-history/${RUN_ID}/manifest.json`]:
+        `{"schema_version":"1.0.0","run_id":"${RUN_ID}","status":"IN_PROGRESS","status":"COMPLETE",` +
+        `"completed_at":"2026-08-03T12:05:00.000Z","target":{"commit_sha":"${'a'.repeat(40)}","dirty":false}}`,
+    },
+    duplicateKeyName: 'status',
+  },
+];
+
+test('refuses, naming the duplicate key, for every forgery in DUPLICATE_KEY_CASES — must write no ledger entry', () => {
+  for (const { name, baseOverrides, override, duplicateKeyName } of DUPLICATE_KEY_CASES) {
+    const pipeline = { ...terminalPassPipeline(baseOverrides), ...override };
+    const root = fixtureRepo({ pipeline });
+    const result = runLedgerAppend(root);
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, new RegExp(`duplicate key "${duplicateKeyName}"`), name);
+    assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), `${name}: must write no ledger entry`);
+  }
+});
+
+// --- [freshness] (security-precondition fix round, this branch — advisory finding 1): review.json's --
+// and security.json's own `stamp` must not be STALE against the tree right now. Before this fix,
+// nothing in this script ever called `stampFreshness`/`computeTreeHash` — every check here was about
+// WHICH TICKET or WHICH VERDICT, never whether the verdict being cited was still current for the code
+// actually being attributed to it. Security rated this the more severe finding of the round: a
+// stale-but-PASS review.json/security.json pair, left over from before a later, never-reviewed edit,
+// could be cited by an ordinary (non-`--re-gate`) run just as easily as a `--re-gate` one, producing a
+// durable entry whose live-diff `filesTouched` includes code neither gate ever saw. All fixtures below
+// use `realGitignoreFixtureRepo` (not the ordinary `fixtureRepo`) — see that helper's own doc comment
+// for why the real .gitignore is load-bearing here, not cosmetic.
+
+test('[freshness] refuses when review.json\'s stamp is STALE — the tree has moved on since it was written', () => {
+  const root = realGitignoreFixtureRepo({ pipeline: terminalPassPipeline() });
+  const staleStamp = buildStamp(root); // accurate at this instant — the clean tree right after the initial commit
+  writeFileSync(join(root, '.pipeline', 'review.json'), JSON.stringify({ verdict: 'PASS', stamp: staleStamp }, null, 2), 'utf8');
+
+  // A later, never-reviewed edit lands on the tree — exactly the laundering this fix closes.
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'never-reviewed.ts'), 'export const x = 1;\n', 'utf8');
+
   const result = runLedgerAppend(root);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /field "verdict" must be exactly one of/);
+  assert.match(result.stderr, /review\.json's stamp is STALE/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry');
+});
+
+test('[freshness] refuses when security.json\'s stamp is STALE — the tree has moved on since it was written', () => {
+  const root = realGitignoreFixtureRepo({ pipeline: terminalPassPipeline() });
+  const staleStamp = buildStamp(root);
+  writeFileSync(join(root, '.pipeline', 'security.json'), JSON.stringify({ verdict: 'PASS', runId: RUN_ID, stamp: staleStamp }, null, 2), 'utf8');
+
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'never-reviewed.ts'), 'export const x = 1;\n', 'utf8');
+
+  const result = runLedgerAppend(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /security\.json's stamp is STALE/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry');
+});
+
+test('[freshness] a FRESH stamp on both review.json and security.json does not block an otherwise-valid run', () => {
+  const root = realGitignoreFixtureRepo({ pipeline: terminalPassPipeline() });
+  const freshStamp = buildStamp(root);
+  writeFileSync(join(root, '.pipeline', 'review.json'), JSON.stringify({ verdict: 'PASS', stamp: freshStamp }, null, 2), 'utf8');
+  writeFileSync(join(root, '.pipeline', 'security.json'), JSON.stringify({ verdict: 'PASS', runId: RUN_ID, stamp: freshStamp }, null, 2), 'utf8');
+  // No further tree changes — the stamp still matches "right now."
+
+  const result = runLedgerAppend(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[freshness] an UNSTAMPED review.json/security.json (stampFreshness reads "unknown", never "stale") is not refused — back-compat with every artifact written before this contract existed', () => {
+  // terminalPassPipeline()'s default reviewJson()/securityJson() attach no "stamp" field at all — the
+  // exact shape of every sidecar on disk before this fix. Deliberately using realGitignoreFixtureRepo
+  // here too (not the ordinary fixtureRepo) so this test exercises the identical fixture shape as the
+  // stale/fresh cases above, isolating "no stamp" as the one variable that differs.
+  const root = realGitignoreFixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppend(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[freshness] a STALE review.json still refuses even with --override-review supplied — an override accepts a gate\'s real non-PASS verdict, never a verdict computed against a tree that has since moved on', () => {
+  const root = realGitignoreFixtureRepo({ pipeline: terminalPassPipeline() });
+  const staleStamp = buildStamp(root);
+  writeFileSync(join(root, '.pipeline', 'review.json'), JSON.stringify({ verdict: 'NEEDS_FIXES', stamp: staleStamp }, null, 2), 'utf8');
+
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'never-reviewed.ts'), 'export const x = 1;\n', 'utf8');
+
+  const result = runLedgerAppendWithArgs(root, ['--override-review', 'Attempting to override a stale verdict.']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /review\.json's stamp is STALE/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
-test('refuses when review.json has no "verdict" field at all, rather than defaulting to a pass', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.json'] = {};
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
+test('[freshness] a STALE review.json still refuses under --re-gate too — /re-gate\'s whole point is re-running the gates against the current tree; a stale verdict was never run against it', () => {
+  const root = realGitignoreFixtureRepo({ pipeline: terminalPassPipeline({ specStamp: DUMMY_SPEC_STAMP }) });
+  const staleStamp = buildStamp(root);
+  writeFileSync(join(root, '.pipeline', 'review.json'), JSON.stringify({ verdict: 'PASS', stamp: staleStamp }, null, 2), 'utf8');
+
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'never-reviewed.ts'), 'export const x = 1;\n', 'utf8');
+
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /field "verdict" must be exactly one of/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('refuses when security.json\'s verdict is a near-miss string ("PASSED") rather than exactly PASS', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['security.json'] = { verdict: 'PASSED', runId: RUN_ID };
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /field "verdict" must be exactly one of/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-// --- C1 regression (review round 4): a duplicate JSON key is a real, end-to-end exploitable --------
-// forgery, not a hypothetical. Restored per review's explicit instruction after the migration wrongly
-// retired this class of coverage on a premise ("no second position in the JSON") that was never
-// tested and turned out to be false — see the file-header comment above.
-
-test('[C1 regression] refuses when review.json has a duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was NEEDS_FIXES — the exact forgery review.md\'s round-4 report demonstrated end to end against this script', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['review.json'] = '{"verdict":"NEEDS_FIXES","verdict":"PASS"}';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /duplicate key "verdict"/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry — a durable review: PASS entry for a real NEEDS_FIXES run is exactly the outcome this check exists to prevent');
-});
-
-test('[C1 regression] refuses when security.json has a duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was BLOCKED', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline['security.json'] = `{"verdict":"BLOCKED","runId":"${RUN_ID}","verdict":"PASS"}`;
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /duplicate key "verdict"/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-test('[C1 regression] refuses when changes.json has a duplicate "filesChanged" key, even though the working tree is otherwise clean (the fallback path this forgery would have to go through)', () => {
-  const pipeline = terminalPassPipeline({ includeChanges: false });
-  pipeline['changes.json'] = '{"filesChanged":["app/real.ts"],"redTestChanges":[],"filesChanged":["app/laundered.ts"]}';
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /duplicate key "filesChanged"/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
-});
-
-// --- SEC-10 (security round 6): the C1-regression class above was retargeted at review.json/
-// security.json/changes.json but never reached findCompletedSecurityRun's OWN reads of
-// security-history/<run-id>/manifest.json and results.json — the immutable audit-trail files
-// security.json's runId points at, one layer under security.json itself. That gap is why the exact
-// same forgery review round 4 demonstrated against security.json still worked end to end against the
-// immutable copy, surviving the round-5 fix entirely (see .pipeline/security-history/ SEC-10). These
-// two tests are the coverage that gap's own absence made invisible — restored here, not deleted,
-// per this round's explicit instruction never to drop a regression class on an untested premise.
-
-test('[SEC-10 regression] refuses when security-history/<run-id>/results.json has a duplicate "verdict" key whose LAST occurrence is PASS but whose real, first-written verdict was BLOCKED — the one call site (findCompletedSecurityRun) that review round 5\'s parseJsonOrThrow fix never reached, even though review.json/security.json/changes.json all were', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline[`security-history/${RUN_ID}/results.json`] = `{"schema_version":"1.0.0","run_id":"${RUN_ID}","verdict":"BLOCKED","verdict":"PASS"}`;
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /duplicate key "verdict"/);
-  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must write no ledger entry — a durable security: PASS entry for a real BLOCKED security run is exactly the outcome this check exists to prevent');
-});
-
-test('[SEC-10 regression] refuses when security-history/<run-id>/manifest.json has a duplicate "status" key whose LAST occurrence is COMPLETE but whose real, first-written status was not', () => {
-  const pipeline = terminalPassPipeline();
-  pipeline[`security-history/${RUN_ID}/manifest.json`] =
-    `{"schema_version":"1.0.0","run_id":"${RUN_ID}","status":"IN_PROGRESS","status":"COMPLETE",` +
-    `"completed_at":"2026-08-03T12:05:00.000Z","target":{"commit_sha":"${'a'.repeat(40)}","dirty":false}}`;
-  const root = fixtureRepo({ pipeline });
-  const result = runLedgerAppend(root);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /duplicate key "status"/);
+  assert.match(result.stderr, /review\.json's stamp is STALE/);
   assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
 });
 
@@ -885,6 +995,463 @@ test('AC10: the real .gitignore keeps freshly-written ledger content trackable (
   assert.equal(isIgnored('.pipeline/README.md'), false, '.pipeline/README.md is the one documented carve-out and must stay trackable');
 });
 
+// --- PL-04 / B2, B3: sanctioned overrides (--override-review / --override-security) --------------
+//
+// B2 (observed): there was no sanctioned way to record a run whose review.json (or security.json)
+// verdict was not PASS, disclosed, with a reason — so an override happened by hand-editing a subagent
+// prompt instead, and left no artifact, no ledger entry, nothing a future reader could find. This is a
+// disclosure mechanism, not an authorization one — nothing checks who invokes either flag; see
+// ledger-append.mjs's own "Sanctioned overrides" section. B3 (observed, same root cause approached
+// from the other side): ledger-append
+// only ever wrote an entry on a genuine terminal PASS, so a run that reached a real, final
+// NEEDS_FIXES/BLOCKED verdict (PL-03a's three rounds among them) left nothing durable at all, even
+// though "the runs that fail are the informative ones." `--override-review`/`--override-security`
+// are the one mechanism this fix adds that answers both at once.
+
+function runLedgerAppendWithArgs(root, args) {
+  return spawnSync(process.execPath, [join(root, 'scripts', 'ledger-append.mjs'), ...args], { cwd: root, encoding: 'utf8' });
+}
+
+test('[B2] --override-review lets a NEEDS_FIXES review.json be recorded, with the required reason reaching both entry.md and entry.json', () => {
+  const pipeline = { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-review', 'Incident in progress; recording the real state to unblock the next step.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  assert.ok(existsSync(runDir), 'an override must still write a ledger entry, not merely permit one to be considered');
+
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  // [finding 3] the title must not read as a bare, clean-looking "# Ledger entry — <runId>" — that was
+  // indistinguishable at a glance from a genuine PASS run before this fix, even though the body's own
+  // "## Overrides" section was always honest.
+  assert.match(entry, /^# Ledger entry — .+\(OVERRIDE\)/m);
+  assert.match(entry, /## Verdicts\r?\n- review: NEEDS_FIXES\r?\n- security: PASS/);
+  assert.ok(entry.includes('## Overrides'));
+  assert.ok(entry.includes('review: actual verdict was NEEDS_FIXES, accepted anyway.'));
+  assert.ok(entry.includes('Incident in progress; recording the real state to unblock the next step.'));
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.verdicts, { review: 'NEEDS_FIXES', security: 'PASS' });
+  assert.equal(entryJson.bypass, true, 'a run that did not pass both gates on its own must be excluded from the index the same way a hotfix is');
+  assert.deepEqual(entryJson.overrides, [
+    { gate: 'review', verdict: 'NEEDS_FIXES', reason: 'Incident in progress; recording the real state to unblock the next step.' },
+  ]);
+});
+
+test('[B2] --override-review with no value at all fails closed, names the flag, and writes nothing — refusing to provide a reason means the override does not happen', () => {
+  const pipeline = { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-review']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--override-review requires a non-empty reason string/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[B2] --override-review with an empty/whitespace-only reason fails closed the same way as an entirely missing one', () => {
+  const pipeline = { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-review', '   ']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--override-review requires a non-empty reason string/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[B2] with no --override-review supplied at all, a NEEDS_FIXES review.json still refuses exactly as before, and the refusal now also names --override-review as the sanctioned alternative', () => {
+  const pipeline = { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppend(root); // no override flags at all
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /NEEDS_FIXES/);
+  assert.match(result.stderr, /--override-review/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[B2] --override-security lets a BLOCKED security.json be recorded, once its own results.json independently confirms the same BLOCKED verdict', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline['security.json'] = securityJson(RUN_ID, 'BLOCKED');
+  pipeline[`security-history/${RUN_ID}/results.json`] = resultsJson(RUN_ID, 'BLOCKED');
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-security', 'Rolling forward on a known, accepted risk.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.verdicts, { review: 'PASS', security: 'BLOCKED' });
+  assert.equal(entryJson.bypass, true);
+  assert.deepEqual(entryJson.overrides, [{ gate: 'security', verdict: 'BLOCKED', reason: 'Rolling forward on a known, accepted risk.' }]);
+});
+
+test('[B2] --override-security still refuses when security.json\'s claimed verdict does not match its own results.json — an override changes which verdict is acceptable, never whether the two files must agree with each other', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline['security.json'] = securityJson(RUN_ID, 'BLOCKED');
+  pipeline[`security-history/${RUN_ID}/results.json`] = resultsJson(RUN_ID, 'PARTIAL'); // disagrees with security.json's own claim
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-security', 'Attempting to override anyway.']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /does not match \.pipeline\/security\.json's claimed verdict/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[B2] both --override-review and --override-security may be supplied together, recording both independently', () => {
+  const pipeline = terminalPassPipeline();
+  pipeline['review.json'] = reviewJson('NEEDS_FIXES');
+  pipeline['security.json'] = securityJson(RUN_ID, 'BLOCKED');
+  pipeline[`security-history/${RUN_ID}/results.json`] = resultsJson(RUN_ID, 'BLOCKED');
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, [
+    '--override-review', 'Review reason.',
+    '--override-security', 'Security reason.',
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.overrides.length, 2);
+  assert.deepEqual(entryJson.overrides.map((o) => o.gate).sort(), ['review', 'security']);
+});
+
+test('[B2] a superfluous --override-review is inert when review.json already says PASS — nothing to override, so it is not recorded as one and the run is not excluded', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() }); // default changesJson files: ['app/existing.ts']
+  const result = runLedgerAppendWithArgs(root, ['--override-review', 'Not actually needed.']);
+  assert.equal(result.status, 0, result.stderr);
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.overrides, []);
+  assert.equal(entryJson.bypass, false);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(index['app/existing.ts']?.some((e) => e.runId === RUN_ID), 'a genuinely clean run must still be indexed, override flag or not');
+  // [finding 3]: a superfluous, inert override must not put an "(OVERRIDE)" marker on a run that was
+  // never actually overridden — the marker tracks the (empty) `overrides` array, not the flag's presence.
+  const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
+  assert.ok(!entry.includes('(OVERRIDE)'));
+});
+
+test('a normal, non-overridden PASS run\'s entry.md explicitly states that nothing was overridden, rather than omitting the section entirely', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppend(root);
+  assert.equal(result.status, 0, result.stderr);
+  const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
+  assert.ok(entry.includes('## Overrides'));
+  assert.ok(entry.includes('(none — both gates passed on their own; nothing here was overridden)'));
+  // [finding 3]: a clean pass must not carry the "(OVERRIDE)" title marker either.
+  assert.ok(!entry.includes('(OVERRIDE)'));
+});
+
+test('[B3] an overridden (non-PASS) entry\'s files are excluded from index.json\'s file->spec map, the same way a --hotfix bypass entry already is — reusing the existing mechanism, not a parallel one', () => {
+  const pipeline = { ...terminalPassPipeline({ changesFiles: ['app/from-failed-run.ts'] }), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-review', 'Recording a real terminal failure per B3.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/from-failed-run.ts'], undefined, 'a run whose real verdict was not PASS must never answer "which spec governs this file" — no spec was ratified');
+});
+
+test('[B3] unlike a --hotfix entry, an overridden entry still gets spec.md/spec.json/review.json/security.json copied into the ledger — the pipeline really did run, it just did not pass', () => {
+  const pipeline = { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-review', 'Recording a real terminal failure.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  assert.ok(existsSync(join(runDir, 'spec.md')));
+  assert.ok(existsSync(join(runDir, 'spec.json')));
+  assert.ok(existsSync(join(runDir, 'review.json')));
+  assert.ok(existsSync(join(runDir, 'security.json')));
+});
+
+test('[B3] build-ledger-index --check stays clean (no crash, no drift) after an overridden entry is written — the exclusion mechanism must not merely avoid indexing the run, it must not break regeneration for every other run either', () => {
+  const pipeline = { ...terminalPassPipeline({ changesFiles: ['app/normal.ts'] }), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--override-review', 'Recording a real terminal failure.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const check = spawnSync(process.execPath, [join(root, 'scripts', 'build-ledger-index.mjs'), '--check'], { cwd: root, encoding: 'utf8' });
+  assert.equal(check.status, 0, check.stderr);
+});
+
+// --- PL-04 / item 1: `/re-gate` — `--re-gate --tester-ran <true|false> --ticket <id>` -------------
+//
+// `.sdd/pipeline.md`'s `/re-gate` step 5 named this exact command, but the flag did not exist on this
+// script at all: every argv token this file didn't recognize was silently skipped (the general defect
+// PL-04 / item 2 fixes — see the unknown-flag tests further below), so running the documented command
+// against a PASS review.json used to write an ORDINARY ledger entry, indistinguishable from a run that
+// actually passed through dev's own loop. That is precisely the laundering `/re-gate` exists to make
+// impossible. These tests prove the real implementation: additive metadata on the normal path, same
+// PASS/PASS precondition as any other run, never excluded from index.json's file->spec map.
+//
+// PL-04 review pass 2 / Critical 1: `--ticket <id>` is new — every test below that expects `--re-gate`
+// to actually succeed now passes a matching `--ticket` AND a `specStamp` (via `terminalPassPipeline`),
+// since main() refuses a re-gate run whose spec.json doesn't (a) match the asserted ticket or (b) carry
+// a stamp at all — see `ledger-append.mjs`'s own header for the full reasoning, and the dedicated
+// `[re-gate / spec integrity]` tests further below for the two refusal paths themselves.
+
+test('[re-gate] --re-gate --tester-ran true --ticket <id> records a RE-GATE entry, still indexed by file (unlike a hotfix/override entry)', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/hand-edited.ts'], specStamp: DUMMY_SPEC_STAMP }) });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.match(entry, /^# Ledger entry — .+\(RE-GATE\)/m);
+  assert.ok(entry.includes('## Re-gate'));
+  assert.ok(entry.includes('was re-run against the hand-edited tree on this pass'));
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.regate, {
+    testerRan: true,
+    gatesOnly: false,
+    note: 'code was changed in the working tree outside the pipeline\'s dev stage before this run; changes.md/changes.json describe the tree as it stood before that edit',
+  });
+  assert.equal(entryJson.bypass, false, 'a re-gate run really did pass both gates — it must not be treated as a bypass');
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  const indexRecord = index['app/hand-edited.ts']?.find((e) => e.runId === RUN_ID);
+  assert.ok(indexRecord, 'a re-gate entry must still answer "which spec governs this file" — the spec really was ratified');
+  // PL-04 / item 3: the qualification itself must reach index.json, not only entry.json — otherwise
+  // the fast query path (buggy file -> index.json -> spec) surfaces a clean-looking attribution with
+  // nothing indicating the tree was hand-edited outside the pipeline before this run's gates re-ran.
+  assert.deepEqual(indexRecord.regate, { testerRan: true }, 'index.json\'s own record must disclose the re-gate and whether tester ran, without requiring a second lookup into entry.json');
+});
+
+test('[re-gate] --re-gate --tester-ran false --ticket <id> (a --gates-only re-gate) records the inverse pair and states tester was skipped', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/gates-only.ts'], specStamp: DUMMY_SPEC_STAMP }) });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'false', '--ticket', 'PL-99z']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.ok(entry.includes('was skipped on this pass (`/re-gate --gates-only`)'));
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.regate, {
+    testerRan: false,
+    gatesOnly: true,
+    note: entryJson.regate.note,
+  });
+
+  // PL-04 / item 3: testerRan: false must reach index.json exactly as written — never dropped or
+  // silently flipped — so a reader can tell a fast re-gate apart from a full one without opening
+  // entry.json.
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  const indexRecord = index['app/gates-only.ts']?.find((e) => e.runId === RUN_ID);
+  assert.deepEqual(indexRecord.regate, { testerRan: false });
+});
+
+test('[re-gate] an ordinary run (no --re-gate) has no "(RE-GATE)" title suffix, no "## Re-gate" section, and entry.json\'s "regate" is null', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppend(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.ok(!entry.includes('(RE-GATE)'));
+  assert.ok(!entry.includes('## Re-gate'));
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.regate, null);
+
+  // PL-04 / item 3: an ordinary run's own index.json record(s) must carry no "regate" key at all —
+  // the marker's absence is what tells a reader this attribution is unqualified.
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  const indexRecord = index['app/existing.ts']?.find((e) => e.runId === RUN_ID);
+  assert.ok(indexRecord, 'expected the default changes.json file to be indexed');
+  assert.ok(!('regate' in indexRecord), 'an ordinary run\'s index record must not carry a regate key');
+});
+
+test('[re-gate] --re-gate without --tester-ran fails closed and writes nothing', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--re-gate requires --tester-ran/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate] --tester-ran without --re-gate fails closed, naming the pairing requirement', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppendWithArgs(root, ['--tester-ran', 'true']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--tester-ran was given without --re-gate/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate] --tester-ran with a value other than exactly "true"/"false" fails closed rather than guessing', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'yes']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--tester-ran requires exactly "true" or "false"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate] --re-gate without --ticket fails closed and writes nothing', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ specStamp: DUMMY_SPEC_STAMP }) });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--re-gate requires --ticket/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate] --ticket without --re-gate fails closed, naming the pairing requirement', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppendWithArgs(root, ['--ticket', 'PL-99z']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--ticket was given without --re-gate/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate] --ticket with no value (or a flag-shaped one) fails closed rather than guessing', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ specStamp: DUMMY_SPEC_STAMP }) });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--ticket requires a non-empty ticket id/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+// --- PL-04 review pass 2 / Critical 1 (widened by review pass 3 / Warning 2): `/re-gate`'s ledger ---
+// step must not attribute a run to a spec that isn't its own. `/re-gate` is the one entry point that
+// reaches the ledger without ever running planner, so nothing else guarantees `.pipeline/spec.json` (or
+// `spec.md`) on disk describes the run being gated — concretely reproduced this round: PL-03h's leftover
+// spec.json was still on disk during a PL-04 re-gate, and a stamp-freshness check alone would not have
+// caught it (it predates the stamp contract entirely and reads "unknown", not "stale"). Three
+// independent checks below, matching main()'s own three refusal paths (--ticket vs. spec.json's ticket;
+// --ticket vs. spec.md's own first-heading ticket, added by review pass 3 once it found a matching
+// spec.json could still sit beside a leftover spec.md; and spec.json's stamp presence).
+
+test('[re-gate / spec integrity] --ticket that does not match spec.json\'s own ticket fails closed, naming both, before writing anything', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ specStamp: DUMMY_SPEC_STAMP }) }); // spec.json's own ticket is PL-99z
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-05']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--re-gate --ticket "PL-05" does not match \.pipeline\/spec\.json's own ticket \("PL-99z"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must not attribute this run\'s files to a spec that says it isn\'t about them');
+});
+
+test('[re-gate / spec integrity] a matching --ticket against an UNSTAMPED spec.json still fails closed — presence of a stamp is its own, separate precondition', () => {
+  // Deliberately no specStamp: this is exactly the PL-03h-leftover shape the round found on disk.
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /requires \.pipeline\/spec\.json to carry a "stamp" field/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate / spec integrity] a matching --ticket against a STAMPED spec.json succeeds — the two checks compose, neither alone is enough', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/verified.ts'], specStamp: DUMMY_SPEC_STAMP }) });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.ticket, 'PL-99z', 'a regression writing the WRONG ticket into an otherwise-successful entry must fail this test, not just "status === 0"');
+  assert.match(entryJson.ticketTitle, /^PL-99z —/);
+});
+
+test('[re-gate / spec integrity] a matching, stamped spec.json still fails closed when spec.md\'s own first-heading ticket disagrees — spec.md, not spec.json, is what gets copied verbatim into the ledger and what index.json\'s "spec" pointer resolves to', () => {
+  // spec.json says PL-99z (and is stamped, and matches --ticket below); spec.md is left over from a
+  // different ticket entirely — the exact "half-done" shape review pass 3 found: every JSON-facing
+  // field would agree on PL-99z while the spec body itself is PL-03h's. SEC-10 v2 fix round: the
+  // check that now fires first here is the UNCONDITIONAL spec.json/spec.md agreement check (it runs
+  // before the --re-gate-specific --ticket cross-check reaches spec.md at all, and would fire
+  // identically with --re-gate omitted entirely — see the "[plain path / spec integrity]" tests
+  // below for that same fixture run without --re-gate) — no longer the --re-gate-specific
+  // `specMdTicketId !== regate.ticket` check, which this fix removed as unreachable dead code once
+  // the agreement check already holds whenever spec.json matches --ticket (see ledger-append.mjs's
+  // own comment on this exact point).
+  const pipeline = { ...terminalPassPipeline({ changesFiles: ['app/verified.ts'], specStamp: DUMMY_SPEC_STAMP }), 'spec.md': specMarkdown('PL-03h') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /\.pipeline\/spec\.json's ticket \("PL-99z".*does not agree with \.pipeline\/spec\.md's own first-heading ticket \("PL-03h"\)/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must not file a spec.md from a different ticket under a right-looking ticket name');
+});
+
+// --- SEC-10 v2 (security round) / FND-bd78355b6ae7: the agreement check is now unconditional ---------
+//
+// Security's own reproduction: .pipeline/spec.json naming one ticket beside .pipeline/spec.md headed
+// with a different one, both review.json/security.json genuinely PASS and stamped fresh, run through
+// the PLAIN command (no --re-gate, no --ticket, no --override-*) — until this fix, exit 0, entry.json
+// reading as an entirely ordinary, clean-pass entry, with .sdd/ledger/<runId>/spec.md silently carrying
+// the WRONG ticket's body under the right-looking ticket name in index.json. These tests reproduce that
+// exact scenario end to end against the current script and confirm it now refuses.
+
+test('[plain path / spec integrity] spec.json/spec.md ticket mismatch fails closed even with NO --re-gate flag at all — this is the exact scenario security reproduced (FND-bd78355b6ae7)', () => {
+  // spec.json names "PL-04"; spec.md is headed "# PL-03h" — the exact leftover shape this fix round's
+  // own real .pipeline/ carried. No --re-gate, no --ticket: the plain, documented happy-path command.
+  const pipeline = { ...terminalPassPipeline({ ticket: 'PL-04', changesFiles: ['app/verified.ts'] }), 'spec.md': specMarkdown('PL-03h') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, []);
+  assert.notEqual(result.status, 0, 'the plain path must refuse, not silently file PL-03h\'s spec body under PL-04\'s ticket name');
+  assert.match(result.stderr, /\.pipeline\/spec\.json's ticket \("PL-04".*does not agree with \.pipeline\/spec\.md's own first-heading ticket \("PL-03h"\)/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'must not write any ledger entry for a mismatched spec.json/spec.md pair');
+});
+
+test('[plain path / spec integrity] a plain run whose spec.json and spec.md genuinely agree still succeeds — the new check adds no friction to an ordinary clean pass', () => {
+  const pipeline = terminalPassPipeline({ ticket: 'PL-06', changesFiles: ['app/verified.ts'] });
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, []);
+  assert.equal(result.status, 0, result.stderr);
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.ticket, 'PL-06');
+});
+
+test('[re-gate] --re-gate still requires review.json/security.json to both show PASS — it is a disclosure, not a bypass of the normal gate', () => {
+  // No specStamp needed: main() checks review.json/security.json's PASS/PASS verdict before it ever
+  // reads spec.json, so this must fail on the verdict, not on spec integrity — proving the two checks
+  // are ordered as documented, not merely both present.
+  const pipeline = { ...terminalPassPipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /NEEDS_FIXES/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)));
+});
+
+test('[re-gate] --re-gate composes with --override-review: a re-gated run that still didn\'t fully resolve a finding can layer a reasoned override on top, and is then excluded from the index like any other override', () => {
+  const pipeline = { ...terminalPassPipeline({ changesFiles: ['app/still-broken.ts'], specStamp: DUMMY_SPEC_STAMP }), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  const result = runLedgerAppendWithArgs(root, [
+    '--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z',
+    '--override-review', 'Re-gated, tester ran clean, but review still flags a style nit accepted on purpose.',
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.bypass, true, 'the override, not the re-gate, is what drives bypass here');
+  assert.deepEqual(entryJson.regate, { testerRan: true, gatesOnly: false, note: entryJson.regate.note });
+  assert.equal(entryJson.overrides.length, 1);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/still-broken.ts'], undefined, 'an override still excludes the run from the index, regardless of the re-gate disclosure alongside it');
+
+  // [finding 3]: both markers compose on the title line, in the same order the body sections
+  // ("## Re-gate" then "## Overrides") already use.
+  const entry = readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8');
+  assert.match(entry, /^# Ledger entry — .+\(RE-GATE\) \(OVERRIDE\)/m);
+});
+
+// --- PL-04 / item 2 (the general defect): an unrecognized flag must fail loudly, naming itself, ----
+// never be silently skipped. This is the concrete failure item 1 above found: before --re-gate
+// existed, `--re-gate --tester-ran true` matched nothing this file's argv-scanning code looked for
+// and was silently ignored, falling through to the ordinary path — indistinguishable from a clean run.
+
+test('[unknown-flag] a typo\'d/unsupported flag on the normal (non-hotfix) path fails loudly, naming itself, and writes nothing', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline() });
+  const result = runLedgerAppendWithArgs(root, ['--re-gaet', '--tester-ran', 'true']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unrecognized argument "--re-gaet"/);
+  assert.ok(!existsSync(join(root, '.sdd', 'ledger', RUN_ID)), 'a typo must never look like it worked');
+});
+
+test('[unknown-flag] an unrecognized flag on the --hotfix path fails loudly, naming itself, and writes nothing', () => {
+  const root = hotfixFixtureRepo();
+  const result = runLedgerAppendHotfix(root, [...HOTFIX_ARGS, '--files', 'app/x.ts', '--not-a-real-flag']);
+  // --files consumes every remaining token (documented, pre-existing convention), so an unrecognized
+  // flag placed AFTER --files is just another file path, not a validation target — this proves the
+  // unknown-flag check runs BEFORE --files starts consuming, not that it can catch something after it.
+  assert.equal(result.status, 0, result.stderr);
+
+  const badFlagBefore = runLedgerAppendHotfix(root, ['--not-a-real-flag', ...HOTFIX_ARGS]);
+  assert.notEqual(badFlagBefore.status, 0);
+  assert.match(badFlagBefore.stderr, /unrecognized argument "--not-a-real-flag"/);
+});
+
 // --- D-005 #3 / `/hotfix`: the sanctioned bypass entry -------------------------------------------
 //
 // .sdd/hotfix.md's "non-negotiable" requirements: a ledger entry recording what broke, what
@@ -975,33 +1542,37 @@ function hotfixArgsWithoutLane() {
   return HOTFIX_ARGS.slice(0, laneFlagIndex);
 }
 
-test('[GAP-01] --hotfix requires --lane, and writes nothing without it', () => {
-  const root = hotfixFixtureRepo();
-  const result = runLedgerAppendHotfix(root, hotfixArgsWithoutLane());
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /--lane/);
-  const ledgerDir = join(root, '.sdd', 'ledger');
-  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
-  assert.equal(runIds.length, 0, 'must write no run directory when --lane is missing');
-});
+// PL-04 / C2: table-driven — each row refuses --hotfix on a different lane-eligibility violation.
+// `checkLedgerAbsent` matches exactly what each original standalone test asserted (the "unknown lane"
+// case never checked this; the other two did).
+const HOTFIX_LANE_REFUSAL_CASES = [
+  { name: '--hotfix requires --lane, and writes nothing without it', args: () => hotfixArgsWithoutLane(), setup: null, stderrPattern: /--lane/, checkLedgerAbsent: true },
+  { name: '--hotfix refuses an unknown lane name, rather than silently granting eligibility', args: () => hotfixArgsWithLane('nonexistent-lane'), setup: null, stderrPattern: /unknown lane/, checkLedgerAbsent: false },
+  {
+    name: '--hotfix refuses a fenced lane — .sdd/hotfix.md\'s "who may use it" gate',
+    args: () => hotfixArgsWithLane('frontend'),
+    setup: (root) => {
+      mkdirSync(join(root, 'apps', 'web'), { recursive: true });
+      writeFileSync(join(root, 'apps', 'web', 'page.tsx'), 'export default function Page() { return null; }\n', 'utf8');
+    },
+    stderrPattern: /not available to a fenced lane/,
+    checkLedgerAbsent: true,
+  },
+];
 
-test('[GAP-01] --hotfix refuses an unknown lane name, rather than silently granting eligibility', () => {
-  const root = hotfixFixtureRepo();
-  const result = runLedgerAppendHotfix(root, hotfixArgsWithLane('nonexistent-lane'));
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /unknown lane/);
-});
-
-test('[GAP-01] --hotfix refuses a fenced lane — .sdd/hotfix.md\'s "who may use it" gate', () => {
-  const root = hotfixFixtureRepo();
-  mkdirSync(join(root, 'apps', 'web'), { recursive: true });
-  writeFileSync(join(root, 'apps', 'web', 'page.tsx'), 'export default function Page() { return null; }\n', 'utf8');
-  const result = runLedgerAppendHotfix(root, hotfixArgsWithLane('frontend'));
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /not available to a fenced lane/);
-  const ledgerDir = join(root, '.sdd', 'ledger');
-  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
-  assert.equal(runIds.length, 0, 'must write no run directory for a fenced lane');
+test('[GAP-01] refuses --hotfix for every lane-eligibility violation in HOTFIX_LANE_REFUSAL_CASES', () => {
+  for (const { name, args, setup, stderrPattern, checkLedgerAbsent } of HOTFIX_LANE_REFUSAL_CASES) {
+    const root = hotfixFixtureRepo();
+    if (setup) setup(root);
+    const result = runLedgerAppendHotfix(root, args());
+    assert.notEqual(result.status, 0, name);
+    assert.match(result.stderr, stderrPattern, name);
+    if (checkLedgerAbsent) {
+      const ledgerDir = join(root, '.sdd', 'ledger');
+      const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
+      assert.equal(runIds.length, 0, `${name}: must write no run directory`);
+    }
+  }
 });
 
 test('[GAP-01] --hotfix on the unfenced "full" lane still succeeds — the lane gate does not block the legitimate case', () => {
