@@ -10,9 +10,15 @@ unfenced author.
 ## Required inputs
 
 1. The PR diff and metadata (`gh pr view`, `gh pr diff`).
-2. The linked ticket, for its declared **lane**. If the PR links no ticket, or the ticket declares
-   no lane, say so and treat bounds as unverified — do not infer a lane from the diff. Inferring a
-   lane from the change is circular: it would derive the constraint from the thing being checked.
+2. The linked ticket, for its declared **lane**. Planner (`.sdd/stages/planner.md`) already reads
+   this from the ticket once and records it verbatim in `spec.json`'s `lane` field (PL-03e) — prefer
+   that canonical value, from `.pipeline/spec.json` if this run's working files are still on disk, or
+   from its durable copy at `.sdd/ledger/<run-id>/spec.json` once a ledger entry exists for this
+   ticket, over re-parsing the ticket body yourself. Fall back to reading the linked ticket/issue
+   directly only when neither copy of `spec.json` is available. If the PR links no ticket, or no
+   lane is declared anywhere, say so and treat bounds as unverified — do not infer a lane from the
+   diff. Inferring a lane from the change is circular: it would derive the constraint from the thing
+   being checked.
 3. `.sdd/ledger/index.json` where relevant — to find the spec that produced a file the PR touches.
 
 ## The bounds verdict is computed, not judged

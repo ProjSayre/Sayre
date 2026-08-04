@@ -13,10 +13,15 @@ Runtime note: this stage must be read-only with respect to source code. Claude C
 wired a PreToolUse hook intended to enforce that (see .sdd/runtimes.yml); a diagnostic run (PL-03a
 loop 3) established that a hook declared in subagent frontmatter never actually fires on this
 checkout, so that enforcement was never real — the hook was deleted rather than left in place
-making a claim it couldn't back. Read-only is, for every runtime today including Claude Code, an
-instruction honored by convention and checked afterward (diff inspection at review time, CI), not a
-runtime-enforced guarantee. Restoring real enforcement is tracked as PL-03g (see
-docs/PRD_Tickets.md).
+making a claim it couldn't back. **PL-03g has since landed real enforcement for Claude Code**:
+`.claude/settings.json` declares a top-level `PreToolUse` hook running
+`scripts/guard-checker-readonly.mjs`, confirmed to fire for subagent tool calls, and this stage is
+registered in that script's `READ_ONLY_AGENTS` set — see that script and its test suite. For every
+runtime without that hook mechanism, read-only remains an instruction honored by convention and
+checked afterward (diff inspection at review time, CI), not a runtime-enforced guarantee — and even
+for Claude Code, the guard covers `Write`/`Edit`/`NotebookEdit` only, never `Bash` (a
+command-allowlist over Bash was tried and rejected on the merits — see PL-03g's rejected-approach
+catalogue in `docs/PRD_Tickets.md`).
 
 Persistence wording note: unlike .sdd/stages/review.md, the "write .pipeline/security-report.md"
 step below names the write mechanism directly rather than using review.md's mechanism-neutral

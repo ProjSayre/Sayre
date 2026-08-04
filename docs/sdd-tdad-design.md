@@ -17,13 +17,15 @@ D-022 (Position B).
 | Ticket | State |
 |---|---|
 | PL-03a — cross-runtime `.sdd/` foundation | Landed, `e3134fe` |
-| PL-03b — impact resolver | Landed on `feat/tdad-impact-resolver`; **not yet wired into `red`/`tester`** |
+| PL-03b — impact resolver | Landed on `feat/tdad-impact-resolver`; **wired into `red`/`tester`** (this wiring pass) |
 | PL-03c — `red` stage, `tester` rewire, durable ledger | Landed, `07306d5` |
-| PL-03d — `pr-review` + bounds | Stage definition, `bounds.yml`, `check-bounds.mjs` + 12 tests, skill wrapper. **Not yet registered in `runtimes.yml`** |
-| PL-03e — Victor's surface | Issue template + PR template landed; planner Ticket-Check wiring outstanding |
-| PL-03f — `dev` reads `security-report.md` | Outstanding |
+| PL-03d — `pr-review` + bounds | Stage definition, `bounds.yml`, `check-bounds.mjs` + 12 tests, skill wrapper, and now **registered in `runtimes.yml`** and added to `guard-checker-readonly.mjs`'s `READ_ONLY_AGENTS` (this wiring pass) |
+| PL-03e — Victor's surface | Issue template + PR template landed; planner Ticket-Check + `lane`-into-`spec.json` wiring **landed** (this wiring pass) |
+| PL-03f — `dev` reads `security-report.md` | **Landed** (this wiring pass) — `dev` re-reads `security-report.md`/`security.json` on a `BLOCKED` re-invocation, same handling as a `NEEDS_FIXES` review |
 | PL-03g — real read-only enforcement | **Landed and live-verified** |
 | PL-03h — structural extraction | In progress |
+| PL-03i — impact resolver: barrel-hop ranking distortion | Opened (this wiring pass) — a real finding recorded, not fixed; see `docs/PRD_Tickets.md` |
+| D-005 #3 — `/hotfix` sanctioned bypass | `.sdd/hotfix.md` + skill landed earlier; `scripts/ledger-append.mjs --hotfix` and `.sdd/pipeline.md` entry-point wiring **landed** (this wiring pass) |
 
 ### Two claims in the body below are now wrong, and the corrections matter
 

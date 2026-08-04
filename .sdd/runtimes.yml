@@ -78,22 +78,29 @@ stages:
       disallowedTools: [Edit]
       model: inherit
       # D-005's action item ("review/security-checker are documented read-only but carry Bash with
-      # no matcher, so sed -i/tee/python -c could write past a Write-only guard") is NOT closed by
-      # a hook here, and previously never was despite two rounds of guard patches. A diagnostic run
+      # no matcher, so sed -i/tee/python -c could write past a Write-only guard") was NOT closed for
+      # a long stretch of this repo's history, despite two rounds of guard patches — a diagnostic run
       # (PL-03a loop 3) confirmed the PreToolUse hooks that used to be declared below (a Write
       # matcher on scripts/validate-pipeline-only-write.sh, a Bash matcher on the now-deleted
       # scripts/validate-pipeline-only-bash.sh) never fired: frontmatter-declared subagent hooks
       # don't fire at all on this checkout, only a hook declared in .claude/settings.json's
-      # top-level `hooks:` key does, and that key doesn't exist here. So this stage has never
-      # actually been read-only with respect to either Write or Bash — both scripts were dead code.
-      # The Bash guard's allowlist design is also independently rejected on the merits (see
-      # docs/PRD_Tickets.md's PL-03g — `ruff check --config fix=true` proves flag-name denylisting
-      # can't close an open-ended capability surface). Neither guard is re-wired here. Real
-      # enforcement is tracked as PL-03g, whose first open question is whether the PreToolUse
-      # payload carries enough agent identity for a settings.json-level hook to scope itself to
-      # review/security-checker without also blocking dev, which must write code. Until PL-03g
-      # lands, "read-only" for this stage is a convention verified at review time (diff inspection,
-      # CI), not a runtime-enforced guarantee — see .sdd/stages/review.md's runtime note.
+      # top-level `hooks:` key does, and (at that point) that key didn't exist here either. So this
+      # stage had never actually been read-only with respect to either Write or Bash — both scripts
+      # were dead code. The Bash guard's allowlist design is also independently rejected on the
+      # merits (see docs/PRD_Tickets.md's PL-03g — `ruff check --config fix=true` proves flag-name
+      # denylisting can't close an open-ended capability surface); that design is not revived.
+      #
+      # PL-03g has since landed: scripts/guard-checker-readonly.mjs is wired as a PreToolUse hook
+      # under .claude/settings.json's top-level `hooks:` key (confirmed to fire, including for
+      # subagent tool calls), and this stage is in that script's `READ_ONLY_AGENTS` set. So
+      # "read-only" for `Write`/`Edit`/`NotebookEdit` is now real, structural enforcement, not merely
+      # a reviewed convention — see scripts/guard-checker-readonly.mjs and its test suite. The one
+      # honest limit that remains, unchanged by PL-03g and not expected to close (see PL-03g's own
+      # rejected-approach catalogue): the guard does not cover `Bash` — a command-allowlist over Bash
+      # was tried and rejected on the merits, since a single allowed command that executes project
+      # code (`poetry run pytest` running `conftest.py`) makes command-layer default-deny meaningless.
+      # So `review` is read-only against the tools it would normally reach for to edit a file, and
+      # not against `Bash` specifically — see .sdd/stages/review.md's runtime note.
 
   security:
     neutral: stages/security.md
@@ -106,8 +113,33 @@ stages:
       tools: [Read, Grep, Glob, Bash, Write]
       disallowedTools: [Edit]
       model: sonnet
-      # Same finding as review, above, and the same non-fix: security-checker carries Bash too
-      # (e.g. to run npm run check:security-audit-agents / check:security-audit-run) and the
+      # Same history as review, above, and the same landed fix: security-checker carries Bash too
+      # (e.g. to run npm run check:security-audit-agents / check:security-audit-run), and the
       # PreToolUse hooks previously declared here (identical Write/Bash wiring) never fired either,
-      # for the same reason — frontmatter-declared subagent hooks don't fire on this checkout. See
-      # the review stage's comment above for the full explanation and PL-03g for the tracked fix.
+      # for the same reason — frontmatter-declared subagent hooks don't fire on this checkout. PL-03g
+      # has since landed the same way for this stage: it is in scripts/guard-checker-readonly.mjs's
+      # `READ_ONLY_AGENTS` set, enforced via the settings.json-level hook. See the review stage's
+      # comment above for the full history and the one remaining honest limit (Bash is not covered).
+
+  pr-review:
+    neutral: stages/pr-review.md
+    claude:
+      name: pr-review
+      description: >-
+        Reviews an open pull request across seven lenses — bounds, red-test integrity, spec
+        conformance, test adequacy, architecture rules, limitations, and security surface. The
+        lane-bounds verdict comes from scripts/check-bounds.mjs, never from judgment. Runs after a
+        PR exists, outside the per-ticket planner->red->dev->tester->review->security sequence. Use
+        via /pr-review <PR#>. An accelerator and a backstop, never a replacement for a human
+        reviewer.
+      tools: [Read, Grep, Glob, Bash, Write]
+      disallowedTools: [Edit]
+      model: sonnet
+      # Read-only with respect to source code (.sdd/stages/pr-review.md's own "Read-only" section) —
+      # the same real, live PL-03g enforcement review/security-checker have above, applied to a third
+      # stage: this stage is registered in scripts/guard-checker-readonly.mjs's READ_ONLY_AGENTS set,
+      # enforced via the settings.json-level PreToolUse hook (confirmed live-firing for subagent tool
+      # calls, unlike the inert frontmatter-hook approach this file's `hooks:` shorthand — described
+      # at the top of this file — was retired for). Same honest limit as its two siblings: the guard
+      # covers Write/Edit/NotebookEdit, not Bash — see .sdd/stages/pr-review.md's own note on why a
+      # command-allowlist over Bash was tried and rejected on the merits, not merely left undone.

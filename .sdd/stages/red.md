@@ -28,12 +28,29 @@ code to decide what a test *should assert* is the one thing this stage exists to
 
 1. Read `.pipeline/spec.md` in full. Every `AC-*` and `EC-*` item needs a test — planner's stable IDs
    exist specifically so you have something to cite.
-2. Check whether an impact map exists (the output of the test-impact resolver, PL-03b). **It does not
-   exist in this repository today.** Its absence never blocks this stage — but silently proceeding as
-   though there were nothing to disclose is exactly the anti-pattern D-006 credits this project for
-   otherwise avoiding. State the absence explicitly in `.pipeline/red.md` (see Output contract). If a
-   future ticket adds the resolver, read it and use it only to see which *existing* tests are at risk
-   from this change — it has no bearing on which *new* tests you author below.
+2. Check whether the impact resolver (PL-03b's `services/workers/scripts/affected_tests.py`) is
+   **usable in this checkout right now.** The resolver itself lives on this branch, but it needs the
+   workers' Poetry environment (Python 3.12 + Tree-sitter's native grammars) to actually run — a
+   checkout without that environment set up cannot use it, even though the script exists in the
+   repository. Its unavailability never blocks this stage — but silently proceeding as though there
+   were nothing to disclose is exactly the anti-pattern D-006 credits this project for otherwise
+   avoiding. State which case you're in explicitly in `.pipeline/red.md` (see Output contract), via
+   `red.json`'s required `impactMapPresent` boolean.
+
+   When it is usable, run it from `services/workers/` against spec.md's "Affected files" paths:
+   `poetry run python scripts/affected_tests.py <affected file paths...> --format json` (it also
+   accepts `--diff-base`/`--staged`, but a plain path list is usually right here — `dev` hasn't run
+   yet, so there is no diff for it to read). Use its ranked results only to see which *existing*
+   tests are at risk from this change — it has no bearing on which *new* tests you author below, and
+   a high-ranked existing test is never a substitute for a missing `AC-*`/`EC-*` test of your own.
+
+   When it is not usable — the workers' Poetry environment is not available in this checkout — say so
+   plainly, the same as if the tool didn't exist at all, rather than guessing at what it would have
+   returned. (A known, separate limitation of the resolver itself, tracked as PL-03i rather than
+   fixed here: its ranking is distorted by re-export barrels, which each cost a full depth level in
+   its BFS exactly like a real import would — this can rank a file's own direct test behind a test
+   that only reaches it through a barrel. That is a ranking-quality issue in the tool, not a reason to
+   distrust or withhold its "usable" disclosure.)
 
 ## Procedure
 
@@ -74,8 +91,9 @@ tooling can parse them mechanically:
 
 ```
 ## Impact map
-<one paragraph: present, with what it changed about which tests you ran or skipped; or explicitly
-absent, and why that's the expected state today (PL-03b is unbuilt) rather than a silent gap>
+<one paragraph: usable, naming which existing tests it ranked as at-risk and how that did or didn't
+change which tests you ran or skipped; or explicitly unavailable, naming the concrete reason (e.g.
+"the workers' Poetry environment is not set up in this checkout") rather than a silent gap>
 
 ## Test paths
 - path/to/first.test.ts
@@ -110,10 +128,11 @@ review (see `.sdd/stages/review.md`).
    `check-red-integrity.mjs` actually reads for the Red-test integrity and Spec trace checks;
    `red.md` remains the human-facing record and is never parsed for a control decision. Exact shape:
    ```
-   { "impactMapPresent": <true if the impact map (PL-03b) exists and was consulted, false if it is
-                           genuinely absent — always one or the other, per step 2 above; never omit
-                           this field to mean "absent," since an omitted field fails validation
-                           rather than being read as false>,
+   { "impactMapPresent": <true if the impact resolver (PL-03b) was usable in this checkout and was
+                           consulted, false if it was not usable (or genuinely absent) — always one
+                           or the other, per "Required inputs" step 2 above; never omit this field to
+                           mean "not usable," since an omitted field fails validation rather than
+                           being read as false>,
      "tests": [
        { "path": "path/to/first.test.ts",
          "sha256": "<the same hex digest recorded under 'Content hashes'>",

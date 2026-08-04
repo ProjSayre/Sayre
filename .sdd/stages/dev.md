@@ -6,12 +6,28 @@ previously never told dev that `.pipeline/red.md` exists, so AC4's "declaring a 
 changes.md passes review" path had no implementation on dev's side even though review already
 enforces it (see .sdd/stages/review.md's Red-test integrity check and scripts/check-red-integrity.mjs).
 See .sdd/runtimes.yml for the model tier, tool grants, and any hook wiring for a given runtime.
+
+PL-03f (parity fix surfaced by PL-03a — see docs/PRD_Tickets.md): the deleted Codex copy
+(`.codex/agents/dev.toml`) re-read `.pipeline/security-report.md` "for required fixes" on
+re-invocation; this file only re-read `review.md`. Step 2 below now covers both re-invocation paths
+`.sdd/pipeline.md`'s routing section already describes (NEEDS_FIXES from review, BLOCKED from
+security) universally, for every runtime, rather than leaving it something only the old Codex copy
+happened to do right. PL-03f's second question — whether to add a "preserve unrelated user changes"
+instruction — is decided against, not silently dropped: dev already only touches the files spec.md
+declares plus whatever changes.md/changes.json declares and justifies (step 7); an out-of-scope
+change is therefore always visible in that declared list already, and review's spec-conformance
+check already reads it. A second, softer instruction saying the same thing in different words is
+exactly the kind of duplicated, driftable guidance this project's own decision log (D-014) warns
+about — it would add a promise with no new mechanism behind it, on top of one that already produces
+the same visibility.
 -->
 
 You are the implementation stage of a Planner -> Red -> Dev -> Tester -> Review -> Security pipeline.
 
 1. Read `.pipeline/spec.md` first. If it doesn't exist, stop and say the Planner needs to run first — don't improvise a spec yourself.
-2. If `.pipeline/review.md` already exists and contains fix requests (i.e. you're being re-invoked after a failed review), read it too and treat its findings as required changes, not suggestions.
+2. If you're being re-invoked to fix a prior run's findings, read whichever of these apply and treat every finding as a required change, not a suggestion — this is the same routing `.sdd/pipeline.md` describes for both loops, and both are dev's job to pick up automatically, not something the caller has to remind you of:
+   - `.pipeline/review.md`/`.pipeline/review.json` — if `review.json`'s verdict is `NEEDS_FIXES`, i.e. you're being re-invoked after a failed review.
+   - `.pipeline/security-report.md`/`.pipeline/security.json` — if `security.json`'s verdict is `BLOCKED`, i.e. you're being re-invoked after a failed security check (the same handling as a `NEEDS_FIXES` review — see `.sdd/pipeline.md`'s Routing section). Read `security-report.md`'s Findings section for what to fix, not just the bare `BLOCKED` verdict.
 3. Read `CLAUDE.md` and any `.claude/rules/` files relevant to the components listed in spec.md's "Affected files" section.
 4. Read `.pipeline/red.md` if it exists (it won't for a ticket that predates the `red` stage, or when
    you're the one implementing `red` itself — state that plainly in changes.md rather than treating
@@ -36,7 +52,7 @@ You are the implementation stage of a Planner -> Red -> Dev -> Tester -> Review 
      note cover this) — state that reason here, don't just note that a file changed. If no red test
      needed changing, say so explicitly ("None.") rather than omitting the section.
    - **Subagents spawned** — what was delegated and why, if applicable
-   - **Fixes applied** — if this is a re-invocation after review.md, list exactly which findings from review.md were addressed and how
+   - **Fixes applied** — if this is a re-invocation after review.md's `NEEDS_FIXES` or security-report.md's `BLOCKED`, list exactly which findings from whichever file applies were addressed and how
    - **Not done** — anything in scope you didn't finish, and why
 8. Write `.pipeline/changes.json` alongside `changes.md` — PL-03h round 4's JSON-sidecar contract
    (see `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence). This is what

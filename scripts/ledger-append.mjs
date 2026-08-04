@@ -3,11 +3,18 @@
 //
 // Usage:
 //   node scripts/ledger-append.mjs
+//   node scripts/ledger-append.mjs --hotfix --what-broke <text> --what-changed <text> \
+//     --why-skipped <text> --not-verified <text> --follow-up-ticket <text>
 //
 // Preconditions (all re-verified here, never assumed from the caller): .pipeline/review.json and
 // .pipeline/security.json both show a `verdict` of `PASS`, and the run security.json cites actually
 // exists, is COMPLETE, and its own results.json independently confirms PASS under
 // .pipeline/security-history/.
+//
+// `--hotfix` (D-005 #3, see .sdd/hotfix.md) is the one exception to all of the above: it writes a
+// bypass ledger entry that requires neither review.json nor security.json — see the "D-005 #3 /
+// `/hotfix`" section below for the full reasoning, and .sdd/hotfix.md for the eligibility gates a
+// human must check before ever reaching for this flag.
 //
 // PL-03h round 4 (architectural — see .pipeline/review.md's round-3 "On convergence" section and
 // scripts/pipeline-contracts.mjs's own header): every field this script used to read by parsing
@@ -43,6 +50,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeIndex } from './build-ledger-index.mjs';
@@ -268,6 +276,197 @@ export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files
   };
 }
 
+// --- D-005 #3 / `/hotfix`: the sanctioned bypass ----------------------------------------------------
+//
+// `.sdd/hotfix.md` is explicit that a hotfix "does not require review.md or security-report.md" —
+// there is no planner/red/dev/tester/review/security run behind it at all, by design (production was
+// broken and the fix was small and obvious; see that file for the eligibility gates). So this path
+// reads none of the five .pipeline/*.json sidecars main() below requires, and writes no spec.md/
+// spec.json/security/ copy — there is no spec and no security run to copy. What it must still record,
+// per .sdd/hotfix.md's "non-negotiable" list, is what broke, what changed, why the pipeline was
+// skipped, what was not verified, and a follow-up ticket — and it must be "stamped so
+// build-ledger-index.mjs can distinguish it" (this file's own header comment, echoing .sdd/hotfix.md):
+// entry.json's `bypass: true` field is that stamp, and buildIndex() (scripts/build-ledger-index.mjs)
+// reads it to exclude a hotfix's files from the file->spec index entirely — see that file's own
+// comment for why exclusion, not a differently-labeled inclusion, is what "must never satisfy a query
+// asking which spec governs a file" actually requires.
+
+const HOTFIX_REQUIRED_FLAGS = {
+  whatBroke: '--what-broke',
+  whatChanged: '--what-changed',
+  whyPipelineSkipped: '--why-skipped',
+  notVerified: '--not-verified',
+  followUpTicket: '--follow-up-ticket',
+};
+
+function parseHotfixArgs(argv) {
+  const flagToKey = new Map(Object.entries(HOTFIX_REQUIRED_FLAGS).map(([key, flag]) => [flag, key]));
+  const args = {};
+  for (let i = 0; i < argv.length; i++) {
+    const key = flagToKey.get(argv[i]);
+    if (key) args[key] = argv[++i];
+  }
+  return args;
+}
+
+/** A fresh, sortable, collision-safe run id for a hotfix entry — there is no security run to reuse
+ * one from (buildEntryMarkdown's normal path reuses security-checker's run id; a hotfix never runs
+ * security at all). Same shape family as a normal run id (`<timestamp>-<shortsha>-<mode>-<random>`,
+ * see security-checker's own id convention) so it still sorts chronologically alongside normal
+ * entries in `.sdd/ledger/`'s directory listing — `HOTFIX` in the mode position is what makes a
+ * bypass entry visually distinct from a `PR_DELTA`/`REMEDIATION_RECHECK` one at a glance, on top of
+ * the structural `bypass: true` stamp buildIndex() actually reads. */
+export function generateHotfixRunId({ cwd = repoRoot } = {}) {
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace('.', '');
+  let shortSha = 'nogit0000000';
+  try {
+    shortSha = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd, encoding: 'utf8' }).trim() || shortSha;
+  } catch {
+    // No git, no HEAD yet, or git unavailable — a hotfix must still be writable in a degraded
+    // environment (see .sdd/hotfix.md's whole reason for existing), so fall back rather than fail.
+  }
+  const random = randomBytes(3).toString('hex');
+  return `${timestamp}-${shortSha}-HOTFIX-${random}`;
+}
+
+function currentCommitInfo() {
+  let sha = '(unknown)';
+  let dirty = false;
+  try {
+    sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim() || sha;
+  } catch {
+    // Not a git repo, or no HEAD yet.
+  }
+  try {
+    const status = execFileSync('git', ['status', '--porcelain'], { cwd: repoRoot, encoding: 'utf8' });
+    dirty = status.trim().length > 0;
+  } catch {
+    // git unavailable — leave dirty as its default (false) rather than guessing.
+  }
+  return { sha, dirty };
+}
+
+/** The hotfix twin of buildEntryMarkdown — same "one shared set of values, two renderings" shape,
+ * deliberately different headings (no "## Verdicts", no "## Spec Goal") so a bypass entry can never
+ * be skimmed as if it were a normal, passed run. */
+export function buildHotfixEntryMarkdown({ runId, date, whatBroke, whatChanged, whyPipelineSkipped, notVerified, followUpTicket, files, commitLine }) {
+  const lines = [];
+  lines.push(`# Ledger entry — ${runId} (HOTFIX BYPASS)`);
+  lines.push('');
+  lines.push('## Bypass');
+  lines.push(
+    '**This is a hotfix bypass entry, not a completed pipeline run.** It did not pass through ' +
+    'planner, red, dev, tester, review, or security — see `.sdd/hotfix.md`. No spec governs the ' +
+    'files this entry touched; this entry is deliberately excluded from `.sdd/ledger/index.json`\'s ' +
+    'file->spec map so a later query for "which spec governs this file" can never resolve to it.',
+  );
+  lines.push('');
+  lines.push('## Date');
+  lines.push(date);
+  lines.push('');
+  lines.push('## What broke');
+  lines.push(whatBroke);
+  lines.push('');
+  lines.push('## What changed');
+  lines.push(whatChanged);
+  lines.push('');
+  lines.push('## Why the pipeline was skipped');
+  lines.push(whyPipelineSkipped);
+  lines.push('');
+  lines.push('## What was not verified');
+  lines.push(notVerified);
+  lines.push('');
+  lines.push('## Follow-up ticket');
+  lines.push(followUpTicket);
+  lines.push('');
+  lines.push('## Files touched');
+  lines.push(files.length > 0 ? formatBulletList(files) : '(none could be determined automatically)');
+  lines.push('');
+  lines.push('## Commit');
+  lines.push(commitLine);
+  lines.push('');
+  return lines.join('\n');
+}
+
+/** The machine-facing twin of buildHotfixEntryMarkdown. `bypass: true` is the field
+ * scripts/build-ledger-index.mjs reads to exclude this entry from the file->spec index; `ticket`
+ * carries the follow-up ticket reference so readEntryJson's ordinary required-`ticket` check still
+ * has something real to validate, without inventing a second, hotfix-only field for the same idea. */
+export function buildHotfixEntryJson({ runId, date, whatBroke, whatChanged, whyPipelineSkipped, notVerified, followUpTicket, files, commit }) {
+  return {
+    runId,
+    date,
+    bypass: true,
+    ticket: followUpTicket,
+    whatBroke,
+    whatChanged,
+    whyPipelineSkipped,
+    notVerified,
+    followUpTicket,
+    filesTouched: files,
+    commit,
+  };
+}
+
+function runHotfix(argv) {
+  const args = parseHotfixArgs(argv);
+  const missing = Object.keys(HOTFIX_REQUIRED_FLAGS).filter((key) => !args[key] || !args[key].trim());
+  if (missing.length > 0) {
+    fail(
+      `--hotfix requires ${missing.map((key) => HOTFIX_REQUIRED_FLAGS[key]).join(', ')} — ` +
+      '.sdd/hotfix.md\'s non-negotiable fields (what broke, what changed, why the pipeline was ' +
+      'skipped, what was not verified) plus a follow-up ticket. None may be empty — a hotfix is ' +
+      'defined by the checks it skipped, and a record that omits them is not a record of a hotfix.',
+    );
+  }
+
+  const runId = generateHotfixRunId();
+  const runDir = join(ledgerDir, runId);
+  if (existsSync(runDir)) {
+    fail(`.sdd/ledger/${runId}/ already exists — refusing to overwrite. Run this command again; a fresh id is generated each time.`);
+  }
+
+  const touchedFiles = filesTouched(null);
+  const date = new Date().toISOString().slice(0, 10);
+  const { sha: commitSha, dirty } = currentCommitInfo();
+  const commitLine = dirty
+    ? `${commitSha} (worktree was dirty when this hotfix entry was written — the commit that actually lands this fix may differ once it's committed)`
+    : commitSha;
+
+  mkdirSync(runDir, { recursive: true });
+
+  const entryMarkdown = buildHotfixEntryMarkdown({
+    runId,
+    date,
+    whatBroke: args.whatBroke,
+    whatChanged: args.whatChanged,
+    whyPipelineSkipped: args.whyPipelineSkipped,
+    notVerified: args.notVerified,
+    followUpTicket: args.followUpTicket,
+    files: touchedFiles,
+    commitLine,
+  });
+  writeFileSync(join(runDir, 'entry.md'), entryMarkdown, 'utf8');
+
+  const entryJson = buildHotfixEntryJson({
+    runId,
+    date,
+    whatBroke: args.whatBroke,
+    whatChanged: args.whatChanged,
+    whyPipelineSkipped: args.whyPipelineSkipped,
+    notVerified: args.notVerified,
+    followUpTicket: args.followUpTicket,
+    files: touchedFiles,
+    commit: { sha: commitSha, dirty },
+  });
+  writeFileSync(join(runDir, 'entry.json'), JSON.stringify(entryJson, null, 2) + '\n', 'utf8');
+
+  const index = writeIndex();
+
+  console.log(`ledger-append --hotfix: wrote .sdd/ledger/${runId}/{entry.md,entry.json} (bypass entry — no governing spec; see .sdd/hotfix.md)`);
+  console.log(`ledger-append --hotfix: regenerated .sdd/ledger/index.json (${Object.keys(index).length} file(s) indexed; this run's files are deliberately excluded)`);
+}
+
 function main() {
   const reviewJson = readReviewJson(pipelineDir);
   if (reviewJson.verdict !== 'PASS') {
@@ -356,7 +555,11 @@ function main() {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    main();
+    if (process.argv.includes('--hotfix')) {
+      runHotfix(process.argv.slice(2));
+    } else {
+      main();
+    }
   } catch (error) {
     // readReviewJson/readSecurityJson/readSpecJson/readRedJson/readChangesJson throw SidecarError on
     // malformed JSON or a failed strict-shape check (see scripts/pipeline-contracts.mjs); this catch

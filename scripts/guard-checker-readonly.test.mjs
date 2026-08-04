@@ -41,9 +41,35 @@ test('the guard loads and runs at all (canary: a broken guard exits 1 and enforc
 });
 
 test('checker stages may write inside .pipeline/', () => {
-  for (const agent of ['review', 'security-checker', 'security_checker', 'security']) {
+  for (const agent of ['review', 'security-checker', 'security_checker', 'security', 'pr-review']) {
     assert.equal(invoke(writePayload(agent, '.pipeline/review.md')).code, ALLOW, agent);
   }
+});
+
+// --- pr-review (PL-03d/PL-03i): registered as read-only at the same time it is registered as a ----
+// stage at all. Its own stage file (.sdd/stages/pr-review.md) explicitly warns this enforcement
+// silently does not apply until pr-review is added to READ_ONLY_AGENTS — these tests are what
+// "extend the test suite to cover the new agent type" (the wiring-pass task) actually means: the
+// full set of guarantees review/security-checker already get, verified for pr-review too, not just
+// a name added to a set with nothing checking it.
+
+test('pr-review is read-only exactly like review/security-checker: allowed inside .pipeline/, blocked on source', () => {
+  assert.equal(invoke(writePayload('pr-review', '.pipeline/pr-review.md')).code, ALLOW);
+  const { code, stderr } = invoke(writePayload('pr-review', 'services/core/src/index.ts'));
+  assert.equal(code, BLOCK);
+  assert.match(stderr, /read-only/);
+});
+
+test('pr-review cannot escape .pipeline/ via traversal (the predecessor allowed this)', () => {
+  for (const escape of ['.pipeline/../../etc/passwd', '.pipeline/../CLAUDE.md']) {
+    assert.equal(invoke(writePayload('pr-review', escape)).code, BLOCK, escape);
+  }
+});
+
+test('pr-review is guarded on Edit and NotebookEdit, not just Write', () => {
+  assert.equal(invoke(writePayload('pr-review', 'CLAUDE.md', 'Edit')).code, BLOCK);
+  const notebook = { agent_type: 'pr-review', cwd: REPO, tool_name: 'NotebookEdit', tool_input: { notebook_path: 'analysis.ipynb' } };
+  assert.equal(invoke(notebook).code, BLOCK);
 });
 
 test('checker stages may write inside .pipeline/ given the native absolute path the tools actually pass', () => {
@@ -76,7 +102,11 @@ test('a sibling directory sharing the .pipeline prefix is not inside it', () => 
 });
 
 test('non-checker agents are unaffected — dev must be able to write code', () => {
-  for (const agent of ['dev', 'tester', 'planner', 'red', 'pr-review']) {
+  // Migrated: pr-review was listed here as unconstrained before it was a registered stage at all.
+  // Now that PL-03d/PL-03i registers it in READ_ONLY_AGENTS (see the dedicated pr-review tests
+  // above), leaving it in this list would assert the opposite of its own stage file's requirement —
+  // the premise changed, so pr-review moved to the checker-stage tests instead of staying here.
+  for (const agent of ['dev', 'tester', 'planner', 'red']) {
     assert.equal(invoke(writePayload(agent, 'services/core/src/index.ts')).code, ALLOW, agent);
   }
 });

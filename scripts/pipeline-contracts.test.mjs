@@ -171,6 +171,40 @@ test('readSpecJson never launders an id-shaped token that only appears in prose 
   assert.ok(!knownSpecIds(spec).has('AC-77'), 'a token appearing only inside a string value must never resolve as a declared id');
 });
 
+// --- spec.json's "lane" field (PL-03e — the wiring pass, .sdd/stages/planner.md) -----------------
+//
+// Unlike every other field on spec.json, "lane" is optional and defaults to null: it did not exist
+// before this ticket, so every spec.json already on disk (and every existing fixture in this test
+// file's own suite) has no "lane" key at all and must keep parsing exactly as before.
+
+test('readSpecJson returns lane: null when "lane" is absent — every spec.json written before this field existed must keep parsing', () => {
+  const dir = pipelineDir({ 'spec.json': validSpecJson() });
+  const spec = readSpecJson(dir);
+  assert.equal(spec.lane, null);
+});
+
+test('readSpecJson returns lane: null when "lane" is explicitly null, not just when the key is absent', () => {
+  const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: null }) });
+  const spec = readSpecJson(dir);
+  assert.equal(spec.lane, null);
+});
+
+test('readSpecJson returns the declared lane when planner records one', () => {
+  const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: 'frontend' }) });
+  const spec = readSpecJson(dir);
+  assert.equal(spec.lane, 'frontend');
+});
+
+test('readSpecJson fails closed when "lane" is present but not a string (e.g. a number)', () => {
+  const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: 42 }) });
+  assert.throws(() => readSpecJson(dir), /field "lane" must be a non-empty string/);
+});
+
+test('readSpecJson fails closed when "lane" is present but an empty string — an empty lane is not the same as a genuinely undeclared one', () => {
+  const dir = pipelineDir({ 'spec.json': validSpecJson({ lane: '' }) });
+  assert.throws(() => readSpecJson(dir), /field "lane" must be a non-empty string/);
+});
+
 // --- red.json -------------------------------------------------------------------------------------
 
 function validRedJson(overrides = {}) {

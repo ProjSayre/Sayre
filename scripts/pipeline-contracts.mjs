@@ -175,7 +175,15 @@ export function readSpecJson(pipelineDir, { required = true } = {}) {
   const edgeCases = requireArray(raw.edgeCases, label, 'edgeCases')
     .map((item, i) => validateSpecIdItem(item, label, 'edgeCases', i));
   assertNoDuplicateIds([...acceptanceCriteria, ...edgeCases], label, ['acceptanceCriteria', 'edgeCases']);
-  return { ticket, goal, acceptanceCriteria, edgeCases };
+  // `lane` (PL-03e — see .sdd/stages/planner.md and .github/ISSUE_TEMPLATE/pipeline-ticket.yml) is
+  // optional and defaults to null, unlike every other field on this object: it did not exist before
+  // this wiring pass, and every spec.json already on disk (including the PL-03a ledger entry backfilled
+  // by hand years before this field was designed) has no "lane" key at all and must keep parsing
+  // exactly as it did before. A ticket with no declared lane is a real, expected state (bounds is then
+  // reported unverified downstream — see .sdd/stages/pr-review.md) rather than a malformed document,
+  // so this is a lenient optional read, not a `requireString`-with-a-null-fallback.
+  const lane = raw.lane === undefined || raw.lane === null ? null : requireString(raw.lane, label, 'lane');
+  return { ticket, goal, acceptanceCriteria, edgeCases, lane };
 }
 
 /** Every AC-n/EC-n id spec.json declares as real — the set an `@spec` marker must resolve against.

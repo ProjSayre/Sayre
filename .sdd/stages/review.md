@@ -10,10 +10,15 @@ Runtime note: this stage must be read-only with respect to source code — it re
 it never fixes. Claude Code previously wired a PreToolUse hook intended to enforce that (see
 .sdd/runtimes.yml); a diagnostic run (PL-03a loop 3) established that a hook declared in subagent
 frontmatter never actually fires on this checkout, so that enforcement was never real — the hook
-was deleted rather than left in place making a claim it couldn't back. Read-only is, for every
-runtime today including Claude Code, an instruction honored by convention and checked afterward
-(diff inspection at review time, CI), not a runtime-enforced guarantee. Restoring real enforcement
-is tracked as PL-03g (see docs/PRD_Tickets.md).
+was deleted rather than left in place making a claim it couldn't back. **PL-03g has since landed
+real enforcement for Claude Code**: `.claude/settings.json` declares a top-level `PreToolUse` hook
+running `scripts/guard-checker-readonly.mjs`, confirmed to fire for subagent tool calls, and this
+stage is registered in that script's `READ_ONLY_AGENTS` set — see that script and its test suite.
+For every runtime without that hook mechanism, read-only remains an instruction honored by
+convention and checked afterward (diff inspection at review time, CI), not a runtime-enforced
+guarantee — and even for Claude Code, the guard covers `Write`/`Edit`/`NotebookEdit` only, never
+`Bash` (a command-allowlist over Bash was tried and rejected on the merits — see PL-03g's
+rejected-approach catalogue in `docs/PRD_Tickets.md`).
 
 PL-03c adds two checks below (red-test integrity, spec trace) now that the `red` stage exists in the
 sequence and produces `.pipeline/red.md`. PL-03h round 4 (architectural) moves both checks' mechanical

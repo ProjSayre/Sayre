@@ -37,12 +37,12 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, test } from 'node:test';
-import { buildEntryJson, buildEntryMarkdown } from './ledger-append.mjs';
+import { buildEntryJson, buildEntryMarkdown, buildHotfixEntryJson, buildHotfixEntryMarkdown, generateHotfixRunId } from './ledger-append.mjs';
 // Note: copySecurityHistoryIntoLedger is deliberately NOT imported directly here (unlike
 // buildEntryMarkdown/buildEntryJson, which are pure value-building functions) — it resolves
 // repoRoot/ledgerDir/securityHistoryDir from this module's own import.meta.url at import time, so
@@ -193,6 +193,24 @@ function terminalPassPipeline({ runId = RUN_ID, ticket = 'PL-99z', redPaths, cha
 
 function runLedgerAppend(root) {
   return spawnSync(process.execPath, [join(root, 'scripts', 'ledger-append.mjs')], { cwd: root, encoding: 'utf8' });
+}
+
+const HOTFIX_ARGS = [
+  '--what-broke', 'Prod 500s on GET /api/repos since the 14:02 deploy.',
+  '--what-changed', 'Reverted the null org_id guard removed in the same deploy.',
+  '--why-skipped', 'Incident in progress; full pipeline would have taken longer than the outage.',
+  '--not-verified', 'No new automated test added; only manually re-checked the one endpoint.',
+  '--follow-up-ticket', 'PL-99z-followup',
+];
+
+function runLedgerAppendHotfix(root, args = HOTFIX_ARGS) {
+  return spawnSync(process.execPath, [join(root, 'scripts', 'ledger-append.mjs'), '--hotfix', ...args], { cwd: root, encoding: 'utf8' });
+}
+
+/** A bare fixture repo with none of the normal .pipeline/ artifacts — --hotfix requires none of
+ * them, so this is deliberately much smaller than fixtureRepo({ pipeline: terminalPassPipeline() }). */
+function hotfixFixtureRepo() {
+  return fixtureRepo({ pipeline: {} });
 }
 
 // --- AC 7, 9: writes .sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json} on a terminal PASS
@@ -757,4 +775,170 @@ test('AC10: the real .gitignore keeps freshly-written ledger content trackable (
   assert.equal(isIgnored('.pipeline/review.json'), true, '.pipeline/review.json must stay gitignored');
   assert.equal(isIgnored('.pipeline/security.json'), true, '.pipeline/security.json must stay gitignored');
   assert.equal(isIgnored('.pipeline/README.md'), false, '.pipeline/README.md is the one documented carve-out and must stay trackable');
+});
+
+// --- D-005 #3 / `/hotfix`: the sanctioned bypass entry -------------------------------------------
+//
+// .sdd/hotfix.md's "non-negotiable" requirements: a ledger entry recording what broke, what
+// changed, why the pipeline was skipped, and what was not verified; a follow-up ticket; and the
+// entry marked as a bypass, never confusable with a run that passed both gates. This section proves
+// the mechanical half of all three, plus the specific property .sdd/hotfix.md and
+// .sdd/ledger/README.md both call out by name: a hotfix entry must never satisfy a query asking
+// which spec governs a file, because no spec does.
+
+test('--hotfix requires none of the normal .pipeline/ artifacts and writes only entry.md/entry.json', () => {
+  const root = hotfixFixtureRepo();
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'hotfixed.ts'), 'export const patched = true;\n', 'utf8');
+
+  const result = runLedgerAppendHotfix(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /bypass entry/);
+
+  // Find the one run directory --hotfix created (its id is generated fresh each run, unlike the
+  // fixed RUN_ID the terminal-PASS tests use).
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  assert.equal(runIds.length, 1, 'expected exactly one run directory to be written');
+  const runDir = join(ledgerDir, runIds[0]);
+
+  assert.ok(existsSync(join(runDir, 'entry.md')));
+  assert.ok(existsSync(join(runDir, 'entry.json')));
+  assert.ok(!existsSync(join(runDir, 'spec.md')), 'a hotfix entry must never have a spec.md — there is no spec');
+  assert.ok(!existsSync(join(runDir, 'spec.json')));
+  assert.ok(!existsSync(join(runDir, 'security')), 'a hotfix entry must never have a security/ copy — no security run occurred');
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.bypass, true);
+  assert.equal(entryJson.whatBroke, HOTFIX_ARGS[1]);
+  assert.equal(entryJson.whatChanged, HOTFIX_ARGS[3]);
+  assert.equal(entryJson.whyPipelineSkipped, HOTFIX_ARGS[5]);
+  assert.equal(entryJson.notVerified, HOTFIX_ARGS[7]);
+  assert.equal(entryJson.followUpTicket, HOTFIX_ARGS[9]);
+  assert.equal(entryJson.ticket, HOTFIX_ARGS[9], 'the generic "ticket" field should carry the follow-up ticket reference for a hotfix');
+  assert.ok(entryJson.filesTouched.includes('app/hotfixed.ts'));
+  assert.equal(entryJson.verdicts, undefined, 'a hotfix entry must not claim a verdicts object it never earned');
+
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.match(entry, /HOTFIX BYPASS/);
+  assert.match(entry, /## Bypass/);
+  assert.ok(!entry.includes('review: PASS') && !entry.includes('security: PASS'), 'a hotfix entry.md must never resemble a passed run');
+  for (const text of [HOTFIX_ARGS[1], HOTFIX_ARGS[3], HOTFIX_ARGS[5], HOTFIX_ARGS[7], HOTFIX_ARGS[9]]) {
+    assert.ok(entry.includes(text), `entry.md must include the disclosed text: ${text}`);
+  }
+});
+
+test('--hotfix fails closed and writes nothing when a required field is missing, naming which flag', () => {
+  const root = hotfixFixtureRepo();
+  const incomplete = HOTFIX_ARGS.slice(0, HOTFIX_ARGS.length - 2); // drop --follow-up-ticket and its value
+  const result = runLedgerAppendHotfix(root, incomplete);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--follow-up-ticket/);
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runIds = existsSync(ledgerDir) ? readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()) : [];
+  assert.equal(runIds.length, 0, 'must write no run directory when a required field is missing');
+});
+
+test('--hotfix fails closed when a required field is present but empty', () => {
+  const root = hotfixFixtureRepo();
+  const args = HOTFIX_ARGS.map((value) => (value === HOTFIX_ARGS[1] ? '   ' : value));
+  const result = runLedgerAppendHotfix(root, args);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--what-broke/);
+});
+
+test('a hotfix entry\'s files are excluded from index.json\'s file->spec map entirely — the core safety property', () => {
+  const root = hotfixFixtureRepo();
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'hotfixed.ts'), 'export const patched = true;\n', 'utf8');
+
+  const result = runLedgerAppendHotfix(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/hotfixed.ts'], undefined, 'a file touched only by a hotfix must not appear in index.json at all');
+});
+
+test('a hotfix entry coexists with a normal terminal-PASS entry: both are written, only the normal one is indexed by file', () => {
+  const root = fixtureRepo({ pipeline: terminalPassPipeline({ changesFiles: ['app/normal-run.ts'] }) });
+  const normalResult = runLedgerAppend(root);
+  assert.equal(normalResult.status, 0, normalResult.stderr);
+
+  mkdirSync(join(root, 'app'), { recursive: true });
+  writeFileSync(join(root, 'app', 'hotfixed.ts'), 'export const patched = true;\n', 'utf8');
+  const hotfixResult = runLedgerAppendHotfix(root);
+  assert.equal(hotfixResult.status, 0, hotfixResult.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(index['app/normal-run.ts']?.some((e) => e.runId === RUN_ID), 'the normal run must still be indexed');
+  assert.equal(index['app/hotfixed.ts'], undefined, 'the hotfix must not be indexed');
+
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  const runDirs = readdirSync(ledgerDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  assert.equal(runDirs.length, 2, 'both the normal run and the hotfix must have their own directory on disk');
+});
+
+test('refuses to overwrite an existing hotfix run directory (defensive — ids are randomized, but the guard exists)', () => {
+  const root = hotfixFixtureRepo();
+  const runId = generateHotfixRunId({ cwd: root });
+  // Pre-seed a COMPLETE, valid (if unrelated) prior hotfix entry at the guessed id — a partial one
+  // (e.g. entry.md with no entry.json) would make the *next* run's own writeIndex() call fail
+  // closed on this stray, malformed directory, which is a real and correct guarantee elsewhere
+  // (readEntryJson fails closed on anything malformed) but is not what this test exists to check.
+  const priorEntryJson = buildHotfixEntryJson({
+    runId, date: '2026-08-01', whatBroke: 'PRIOR', whatChanged: 'PRIOR', whyPipelineSkipped: 'PRIOR',
+    notVerified: 'PRIOR', followUpTicket: 'PRIOR-TICKET', files: [], commit: { sha: 'a'.repeat(40), dirty: false },
+  });
+  mkdirSync(join(root, '.sdd', 'ledger', runId), { recursive: true });
+  writeFileSync(join(root, '.sdd', 'ledger', runId, 'entry.md'), 'PRE-EXISTING\n', 'utf8');
+  writeFileSync(join(root, '.sdd', 'ledger', runId, 'entry.json'), JSON.stringify(priorEntryJson, null, 2) + '\n', 'utf8');
+
+  // Can't force the CLI to reuse this exact id (it's randomized per invocation), so this test
+  // exercises the guard's existence via a second, real invocation instead — a collision is
+  // astronomically unlikely, so this just proves a normal run still succeeds and does not touch the
+  // pre-seeded directory, which remains as a general "an existing directory is never silently
+  // reused" regression guard rather than a true collision test.
+  const result = runLedgerAppendHotfix(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readFileSync(join(root, '.sdd', 'ledger', runId, 'entry.md'), 'utf8'), 'PRE-EXISTING\n');
+});
+
+test('generateHotfixRunId produces a sortable, HOTFIX-tagged, collision-resistant id', () => {
+  const a = generateHotfixRunId({ cwd: repoRoot });
+  const b = generateHotfixRunId({ cwd: repoRoot });
+  assert.match(a, /^\d{8}T\d{9}Z-[0-9a-f]{12}-HOTFIX-[0-9a-f]{6}$/);
+  assert.notEqual(a, b, 'two calls must not collide');
+});
+
+test('buildHotfixEntryMarkdown and buildHotfixEntryJson thread their arguments through, not a hardcoded literal', () => {
+  const markdown = buildHotfixEntryMarkdown({
+    runId: 'sample-hotfix-run',
+    date: '2026-08-04',
+    whatBroke: 'SAMPLE_WHAT_BROKE',
+    whatChanged: 'SAMPLE_WHAT_CHANGED',
+    whyPipelineSkipped: 'SAMPLE_WHY_SKIPPED',
+    notVerified: 'SAMPLE_NOT_VERIFIED',
+    followUpTicket: 'SAMPLE_FOLLOWUP',
+    files: ['app/a.ts'],
+    commitLine: 'deadbeef',
+  });
+  for (const text of ['SAMPLE_WHAT_BROKE', 'SAMPLE_WHAT_CHANGED', 'SAMPLE_WHY_SKIPPED', 'SAMPLE_NOT_VERIFIED', 'SAMPLE_FOLLOWUP', 'app/a.ts', 'deadbeef']) {
+    assert.ok(markdown.includes(text), `expected buildHotfixEntryMarkdown output to include ${text}`);
+  }
+
+  const entry = buildHotfixEntryJson({
+    runId: 'sample-hotfix-run',
+    date: '2026-08-04',
+    whatBroke: 'SAMPLE_WHAT_BROKE',
+    whatChanged: 'SAMPLE_WHAT_CHANGED',
+    whyPipelineSkipped: 'SAMPLE_WHY_SKIPPED',
+    notVerified: 'SAMPLE_NOT_VERIFIED',
+    followUpTicket: 'SAMPLE_FOLLOWUP',
+    files: ['app/a.ts'],
+    commit: { sha: 'deadbeef', dirty: false },
+  });
+  assert.equal(entry.bypass, true);
+  assert.equal(entry.ticket, 'SAMPLE_FOLLOWUP');
+  assert.deepEqual(entry.filesTouched, ['app/a.ts']);
+  assert.equal(entry.verdicts, undefined);
 });

@@ -136,6 +136,33 @@ never claim a pass the tooling didn't itself verify:
   `security/` copy describe the same audit run from two different vantage points, not two different
   runs.)
 
+## Hotfix bypass entries (D-005 #3, `/hotfix`)
+
+`scripts/ledger-append.mjs --hotfix` writes a different kind of entry — see `.sdd/hotfix.md` for the
+eligibility gates, and `.claude/skills/hotfix/SKILL.md` for the command. A hotfix never ran planner,
+red, dev, tester, review, or security, so its `.sdd/ledger/<run-id>/` directory looks structurally
+different from every entry described above:
+
+- **No `spec.md`/`spec.json`.** There is no spec — that is the entire point of a bypass.
+- **No `security/` copy.** There is no security run to copy.
+- **`entry.json` carries `"bypass": true`** instead of a `verdicts` object, plus `whatBroke`,
+  `whatChanged`, `whyPipelineSkipped`, `notVerified`, and `followUpTicket` — `.sdd/hotfix.md`'s
+  four non-negotiable disclosures plus the required follow-up ticket reference. `ticket` holds that
+  same follow-up ticket reference, so the field every other entry.json requires still has something
+  real in it.
+- **`entry.md` is headed `(HOTFIX BYPASS)`** and opens with a `## Bypass` section stating plainly
+  that this is not a completed run, so a human skimming `.sdd/ledger/` can never mistake it for one.
+
+**The one property that actually matters: `build-ledger-index.mjs` excludes a bypass entry's files
+from `index.json`'s file→spec map entirely** — `bypass: true` is the stamp it reads to skip both the
+`spec.md`-must-exist check and the indexing step for that run. This is deliberate and stronger than
+merely labeling the entry: a hotfix-touched file must never appear in `index.json[<file>]` at all,
+because if it did, a caller asking "which spec governs this file" could receive a bypass entry back
+and mistake the *absence* of a spec for the *presence* of one — exactly the confusion `.sdd/hotfix.md`
+says a bypass entry "must never be confusable" with. A hotfix's own directory (`entry.md`/
+`entry.json`) is still real and discoverable — by `git log`, by listing `.sdd/ledger/`, or by
+grepping for `"bypass": true` — just never through the buggy-file→governing-spec query path below.
+
 ## The query path: buggy file → spec that mandated it
 
 ```

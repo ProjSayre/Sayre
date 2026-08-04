@@ -77,7 +77,16 @@ function listRunDirs() {
  * "is a well-formed verdicts object" — because a ledger entry only exists at all because
  * `ledger-append.mjs` already re-verified both gates showed PASS; an entry.json claiming anything
  * else is malformed or corrupted, and must never be indexed (round-2/3's `assertVerdictsAreClean`,
- * carried forward at the JSON layer rather than dropped). */
+ * carried forward at the JSON layer rather than dropped).
+ *
+ * `bypass` (D-005 #3 / the `/hotfix` wiring pass) is the one documented exception to all of the
+ * above: a hotfix entry (`scripts/ledger-append.mjs --hotfix`) never ran review or security, by
+ * design, so it has no `verdicts` to check and no governing spec to attribute its files to. It is
+ * optional and defaults to falsy — every entry.json written before this field existed (the PL-03a
+ * migrated entry included) has no `bypass` key at all and must keep parsing exactly as before; this
+ * is a different, ledger-internal file from the five `.pipeline/*.json` contracts
+ * scripts/pipeline-contracts.mjs governs, so it does not inherit that contract's "never omit a
+ * boolean to mean false" rule. See buildIndex() below for what "bypass" actually changes. */
 function readEntryJson(runId) {
   const label = `.sdd/ledger/${runId}/entry.json`;
   const path = join(ledgerDir, runId, 'entry.json');
@@ -93,19 +102,22 @@ function readEntryJson(runId) {
   const date = requireString(raw.date, label, 'date');
   const filesTouched = requireArray(raw.filesTouched, label, 'filesTouched')
     .map((item, i) => requireString(item, label, `filesTouched[${i}]`));
+  const bypass = raw.bypass === true;
 
-  requireObject(raw.verdicts, `${label}: verdicts`);
-  const expected = { review: 'PASS', security: 'PASS' };
-  const actual = { review: raw.verdicts.review, security: raw.verdicts.security };
-  if (actual.review !== expected.review || actual.security !== expected.security) {
-    fail(
-      `${label}: field "verdicts" must be exactly ${JSON.stringify(expected)} — got ${JSON.stringify(actual)}. ` +
-      'A ledger entry only exists because both gates passed — this one claims something the tooling ' +
-      'cannot verify, or is malformed, and must not be indexed.',
-    );
+  if (!bypass) {
+    requireObject(raw.verdicts, `${label}: verdicts`);
+    const expected = { review: 'PASS', security: 'PASS' };
+    const actual = { review: raw.verdicts.review, security: raw.verdicts.security };
+    if (actual.review !== expected.review || actual.security !== expected.security) {
+      fail(
+        `${label}: field "verdicts" must be exactly ${JSON.stringify(expected)} — got ${JSON.stringify(actual)}. ` +
+        'A ledger entry only exists because both gates passed — this one claims something the tooling ' +
+        'cannot verify, or is malformed, and must not be indexed.',
+      );
+    }
   }
 
-  return { runId: runIdField, ticket, date, filesTouched };
+  return { runId: runIdField, ticket, date, filesTouched, bypass };
 }
 
 /** Builds the in-memory index (file path -> sorted array of run references) from every ledger run
@@ -114,12 +126,25 @@ function readEntryJson(runId) {
 export function buildIndex() {
   const index = {};
   for (const runId of listRunDirs()) {
-    const specPath = join(ledgerDir, runId, 'spec.md');
     const entryMdPath = join(ledgerDir, runId, 'entry.md');
-    if (!existsSync(specPath)) fail(`.sdd/ledger/${runId}/ has no spec.md`);
     if (!existsSync(entryMdPath)) fail(`.sdd/ledger/${runId}/ has no entry.md`);
 
     const entry = readEntryJson(runId); // fails closed on anything malformed — see its own doc comment
+
+    if (entry.bypass) {
+      // A hotfix entry (D-005 #3, scripts/ledger-append.mjs --hotfix) never has a governing spec —
+      // that is the whole point of a bypass, see .sdd/hotfix.md. It is deliberately excluded from
+      // the file->spec map built below: index.json[file] must never resolve to a bypass entry, or a
+      // caller asking "which spec governs this file" could be handed a hotfix and mistake the
+      // absence of a spec for the presence of one. Skip both the spec.md-exists requirement below
+      // (a bypass entry never has one) and the indexing loop — the entry's own directory
+      // (entry.md/entry.json) remains real and discoverable by other means, just never through this
+      // specific query path.
+      continue;
+    }
+
+    const specPath = join(ledgerDir, runId, 'spec.md');
+    if (!existsSync(specPath)) fail(`.sdd/ledger/${runId}/ has no spec.md`);
 
     for (const file of entry.filesTouched) {
       if (!index[file]) index[file] = [];

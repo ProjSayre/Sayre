@@ -189,9 +189,13 @@ test('.sdd/stages/red.md retains the substantive guarantees this stage exists to
   // partial edit that softens one while leaving the other untouched still fails this test.
   assert.match(red, /may not finish this stage while any test is `RED-BROKEN`/);
   assert.match(red, /No `RED-BROKEN` entry may appear anywhere in a finished `red\.md`/, 'red.md\'s Output contract must restate the refusal, not just the Procedure section');
-  // AC 6 / D-006: the impact map's absence (PL-03b unbuilt) must be disclosed, never implied away.
-  // (Whitespace-tolerant: the source wraps this phrase across a line break at ~100 columns.)
-  assert.match(red, /does not\s+exist in this repository\s+today/, 'red.md must state the impact map is absent, not silently proceed');
+  // AC 6 / D-006: the impact map's (un)availability must be disclosed, never implied away.
+  // Migrated: PL-03b's resolver has since been wired into this stage, so the disclosure is no longer
+  // "the tool does not exist" (a permanent, repo-wide fact) but "the workers' Poetry environment is
+  // not available in this checkout" (a conditional, per-checkout fact) — the same D-006 discipline,
+  // pointed at the honest reason that actually applies now. (Whitespace-tolerant: the source wraps
+  // this phrase across a line break at ~100 columns.)
+  assert.match(red, /Poetry environment is not\s+available in this checkout/, 'red.md must state the resolver\'s unavailability explicitly when the Poetry environment is missing, not silently proceed');
 });
 
 test('.sdd/stages/tester.md is rewritten off changes.md per D-018, and does not author behavioral tests', () => {
@@ -202,7 +206,10 @@ test('.sdd/stages/tester.md is rewritten off changes.md per D-018, and does not 
   // AC 5, restated: the Output contract must also require the report, not just the Procedure prose —
   // same "pin both halves" defense as red.md's RED-BROKEN check above.
   assert.ok(tester.includes('Reported behavioral gaps'), 'tester.md\'s Output contract must have a dedicated section for reported (not authored) behavioral gaps');
-  assert.match(tester, /does not\s+exist in this repository\s+today/, 'tester.md must state the impact map is absent, not silently proceed');
+  // Migrated (same reasoning as red.md's equivalent test above): the resolver now exists and is
+  // wired into this stage, so the disclosure is conditional on the Poetry environment, not permanent.
+  assert.match(tester, /Poetry environment is not\s+available in this checkout/, 'tester.md must state the resolver\'s unavailability explicitly when the Poetry environment is missing, not silently proceed');
+  assert.ok(tester.includes('Affected-test regression results'), 'tester.md\'s Output contract must have a dedicated section for the impact resolver\'s regression run (the half of TDAD tester now performs)');
 });
 
 test('.sdd/stages/review.md checks red-test integrity and spec trace', () => {
@@ -237,11 +244,66 @@ test('.sdd/stages/planner.md requires stable AC-*/EC-* IDs', () => {
   assert.ok(planner.includes('preserve every existing'), 'planner.md must require preserving IDs across a spec amendment, not renumbering');
 });
 
+// --- PL-03e (wiring pass): spec.md's first section is a plain-English Ticket Check ----------------
+
+test('.sdd/stages/planner.md requires "Ticket Check" as spec.md\'s first section, with exactly its four required items', () => {
+  const planner = read('.sdd/stages/planner.md');
+  assert.match(planner, /"Ticket Check" is always first/, 'Ticket Check must be documented as spec.md\'s first section, not merely present somewhere');
+  const requiredItems = [
+    "What I'm about to build",
+    "What I'm explicitly not doing",
+    "How you'll know it worked",
+    'What I had to guess',
+  ];
+  for (const item of requiredItems) {
+    assert.ok(planner.includes(item), `planner.md's Ticket Check must require the item: "${item}"`);
+  }
+  // The section's whole point is being readable by a non-engineer — pin that constraint explicitly,
+  // not just the four item names, since a planner could satisfy the names while writing them in
+  // full engineering jargon.
+  assert.ok(planner.includes('no signatures, no file paths, no jargon') || planner.includes('no jargon'), 'planner.md must state Ticket Check is written for a non-engineer, with no jargon/paths/signatures');
+});
+
+test('.sdd/stages/planner.md reads the ticket\'s declared lane and records it in spec.json, defaulting to null when absent', () => {
+  const planner = read('.sdd/stages/planner.md');
+  assert.ok(planner.includes('.github/ISSUE_TEMPLATE/pipeline-ticket.yml'), 'planner.md must name the issue template lane is read from');
+  assert.match(planner, /"lane"/, 'planner.md\'s spec.json shape must document a "lane" field');
+  assert.ok(planner.toLowerCase().includes('null'), 'planner.md must state lane defaults to/records null when the ticket declares none');
+});
+
 test('.sdd/pipeline.md documents the six-stage sequence and the ledger step', () => {
   const pipeline = read('.sdd/pipeline.md');
   assert.match(pipeline, /planner.*red.*dev.*tester.*review.*security/s);
   assert.ok(pipeline.includes('ledger-append.mjs'));
   assert.ok(pipeline.includes('terminal `PASS`') || pipeline.includes('terminal PASS'));
+});
+
+// --- D-005 #3 / `/hotfix`: wired into .sdd/pipeline.md's entry-point section ---------------------
+
+test('.sdd/pipeline.md documents /hotfix as an entry point, pointing at .sdd/hotfix.md and the --hotfix ledger flag', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.match(pipeline, /### `\/hotfix/, 'expected a dedicated /hotfix entry-point section');
+  assert.ok(pipeline.includes('.sdd/hotfix.md'), 'the /hotfix section must point at .sdd/hotfix.md as the authoritative definition');
+  assert.ok(pipeline.includes('ledger-append.mjs --hotfix'), 'the /hotfix section must name the ledger flag that writes its bypass entry');
+  assert.ok(pipeline.includes('follow-up ticket'), 'the /hotfix section must restate the non-negotiable follow-up ticket requirement');
+});
+
+// --- PL-03d/PL-03i: pr-review is registered as a real stage, not just documented -----------------
+
+test('.sdd/runtimes.yml registers pr-review pointing at stages/pr-review.md', () => {
+  const runtimes = read('.sdd/runtimes.yml');
+  assert.match(runtimes, /\n  pr-review:\n\s+neutral: stages\/pr-review\.md/);
+});
+
+test('.claude/agents/pr-review.md is a generated shim pointing at .sdd/stages/pr-review.md', () => {
+  const shim = read('.claude/agents/pr-review.md');
+  assert.match(shim, /GENERATED by scripts\/generate-agent-shims\.mjs/);
+  assert.match(shim, /Follow `\.sdd\/stages\/pr-review\.md` exactly/);
+});
+
+test('scripts/guard-checker-readonly.mjs treats pr-review as read-only, per its own stage file\'s explicit warning', () => {
+  const guard = read('scripts/guard-checker-readonly.mjs');
+  assert.match(guard, /READ_ONLY_AGENTS = new Set\(\[[^\]]*'pr-review'[^\]]*\]\)/);
 });
 
 // --- PL-03c: the ledger is populated, tracked, and durable ----------------------------------------

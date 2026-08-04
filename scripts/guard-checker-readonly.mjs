@@ -44,8 +44,11 @@
 import { resolve, relative, isAbsolute, sep } from 'node:path';
 
 /** Stage names that are read-only with respect to source code. Both spellings of the security
- * stage are listed because the runtime shim name and the neutral `.sdd/` stage name differ. */
-const READ_ONLY_AGENTS = new Set(['review', 'security-checker', 'security_checker', 'security']);
+ * stage are listed because the runtime shim name and the neutral `.sdd/` stage name differ.
+ * `pr-review` (PL-03d/PL-03i) is added here at the same time it is registered in
+ * `.sdd/runtimes.yml` — its own stage file (`.sdd/stages/pr-review.md`) explicitly warns that the
+ * enforcement below silently does not apply to a stage until it is added to this set. */
+const READ_ONLY_AGENTS = new Set(['review', 'security-checker', 'security_checker', 'security', 'pr-review']);
 
 /** The only directory a checker stage may write to. */
 const WRITABLE_SUBTREE = '.pipeline';

@@ -281,6 +281,56 @@ test('assertVerdictsAreClean-equivalent check refuses trailing/extra content smu
   assert.equal(result.status, 0, result.stderr);
 });
 
+// --- D-005 #3 / `/hotfix`: a bypass entry (entry.json's "bypass": true) is excluded, not gated -----
+//
+// A hotfix entry (scripts/ledger-append.mjs --hotfix) never ran review or security, so it has no
+// "verdicts" to check and no spec.md at all — by design, see .sdd/hotfix.md. `bypass: true` tells
+// this script to skip both requirements for that one run, and — the property that actually
+// matters — to exclude its files from the index entirely rather than index them under some
+// differently-labeled entry, so a query for "which spec governs this file" can never resolve to one.
+
+test('a "bypass": true entry needs no spec.md and no "verdicts", and is excluded from the index entirely', () => {
+  const entryJson = { runId: 'hotfix-a', date: '2026-08-04', ticket: 'FOLLOWUP-1', filesTouched: ['app/hotfixed.ts'], bypass: true };
+  const root = fixture({ 'hotfix-a': { entryJson, skipSpec: true } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/hotfixed.ts'], undefined, 'a bypass entry\'s files must never appear in the index');
+});
+
+test('a bypass entry coexists with a normal entry: the normal one is indexed, the bypass one is not', () => {
+  const bypassEntry = { runId: 'hotfix-a', date: '2026-08-04', ticket: 'FOLLOWUP-1', filesTouched: ['app/hotfixed.ts'], bypass: true };
+  const root = fixture({
+    'run-a': { entryJson: sampleEntryJson('run-a', ['app/normal.ts']) },
+    'hotfix-a': { entryJson: bypassEntry, skipSpec: true },
+  });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(index['app/normal.ts']?.some((e) => e.runId === 'run-a'));
+  assert.equal(index['app/hotfixed.ts'], undefined);
+});
+
+test('"bypass": false (or omitted, the default) is held to the normal spec.md/verdicts requirements — bypass is opt-in, never a silent default', () => {
+  const entryJson = sampleEntryJson('run-a', ['x.ts']);
+  entryJson.bypass = false;
+  const root = fixture({ 'run-a': { entryJson, skipSpec: true } });
+  const result = run(root);
+  assert.notEqual(result.status, 0, 'an explicit bypass:false entry must still require spec.md, exactly like an entry with no bypass field at all');
+  assert.match(result.stderr, /no spec\.md/);
+});
+
+test('a non-bypass entry.json missing "verdicts" is unaffected by the bypass check — the normal gate still fails closed', () => {
+  // Regression guard for the refactor itself: readEntryJson must only skip the verdicts check when
+  // bypass is literally true, never merely because the field structure changed shape.
+  const entryJson = sampleEntryJson('run-a', ['x.ts']);
+  delete entryJson.verdicts;
+  const root = fixture({ 'run-a': { entryJson } });
+  const result = run(root);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /verdicts.*must be a JSON object/);
+});
+
 test('a genuinely clean entry.json (exact verdicts, valid shape) is indexed without incident — the positive control for every adversarial fixture above', () => {
   const root = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['scripts/real-file.mjs']) } });
   const result = run(root);

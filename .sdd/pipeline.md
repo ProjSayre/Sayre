@@ -2,8 +2,10 @@
 
 This is the single, runtime-neutral definition of how the six stages
 (`planner` → `red` → `dev` → `tester` → `review` → `security`, see `.sdd/stages/`) compose into a
-run, plus the ledger-append step that follows a terminal `PASS`, and of the four ways a human can
-invoke them. It replaces two documents that had already drifted apart on one material point (see
+run, plus the ledger-append step that follows a terminal `PASS`, and of the five ways a human can
+invoke this pipeline's tooling: four that run some or all of the stages above, and `/hotfix`, which
+deliberately runs none of them (see `.sdd/hotfix.md`, and this file's own `/hotfix` entry point
+below). It replaces two documents that had already drifted apart on one material point (see
 "Review persistence" below): `.claude/skills/pipeline/SKILL.md` and `.agents/skills/pipeline/SKILL.md`.
 Both are now thin wrappers over this file (Claude Code's is `.claude/skills/pipeline/SKILL.md`; the
 equivalent for any other AGENTS.md-reading runtime lives here directly, via `AGENTS.md`).
@@ -270,3 +272,31 @@ hand-edit made outside the pipeline.
    already `PASS`, or this command would have refused in step 2) exactly as much as reaching `PASS`
    via the full `/pipeline` does — run the same **ledger** step (`node scripts/ledger-append.mjs`)
    and report the resulting entry path.
+
+### `/hotfix <what's broken>`
+
+The sanctioned bypass (D-005 #3) — the fifth way to invoke this pipeline's tooling, and the only one
+that runs no stage at all. Not part of the stage sequence or routing above; not a shortcut through
+it. Follow `.sdd/hotfix.md` exactly — it is the authoritative, runtime-neutral definition of this
+path, including:
+
+1. The four eligibility gates (production is actually broken and the fix is small and obvious; the
+   author is on an unfenced `full` lane; the change doesn't touch `org_id` handling, RBAC filtering,
+   secrets, webhook validation, or the Graph Query Service; rolling back isn't the better option). If
+   any gate fails, say so plainly and route to `/pipeline` instead of proceeding.
+2. What it skips: `planner`, `red`, `dev`, `tester`, `review`, and `security` as a sequence — the
+   author implements directly.
+3. What it still requires, non-negotiably, before the incident is closed:
+   - `node scripts/ledger-append.mjs --hotfix --what-broke <text> --what-changed <text> --why-skipped
+     <text> --not-verified <text> --follow-up-ticket <text>` — writes a bypass entry under
+     `.sdd/ledger/<run-id>/`, stamped `"bypass": true` so `scripts/build-ledger-index.mjs` excludes
+     its files from `index.json`'s file→spec map entirely (see `.sdd/ledger/README.md`'s "Hotfix
+     bypass entries" section) — a hotfix entry must never satisfy a query asking which spec governs a
+     file, because no spec does.
+   - A follow-up ticket, opened before the incident closes, to bring the change back through the
+     normal path or to justify why it does not need to.
+
+This entry point deliberately does not invoke **planner**, **red**, **dev**, **tester**, **review**,
+**security**, or the normal **ledger** step described in the Stage sequence above — `ledger-append.mjs
+--hotfix` is a distinct code path from a plain `ledger-append.mjs` run, precisely because it requires
+neither `review.json` nor `security.json` to exist.
