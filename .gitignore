@@ -34,3 +34,12 @@ CLAUDE.local.md
 .claude/settings.local.json
 .pipeline/**
 !.pipeline/README.md
+
+# PL-03a: .codex/ is NOT a Codex agent scaffold (that lived only in .codex/agents/, deleted this
+# ticket) — it is a ~1.4 GB local design workspace (Blender hero-animation pipeline, design refs,
+# imagegen, vendor assets) that has never been in git. This rule used to live only in
+# .git/info/exclude (machine-local, protecting Phillip's checkout only); moving it here protects
+# every cofounder's checkout from accidentally staging it via `git add -A`. This line must exist
+# here BEFORE the equivalent .git/info/exclude line is ever removed — see PL-03a's changes.md for
+# why the ordering matters (a `git add -A` in the gap would stage 1.4 GB).
+.codex/

@@ -65,11 +65,13 @@ Feature/ticket work runs through five subagents in sequence, coordinating via sh
 1. `planner` (Opus) — turns a vague ticket into a detailed spec with exact file paths/signatures/edge cases, writes `.pipeline/spec.md`
 2. `dev` (Sonnet) — reads spec.md, implements (can spawn its own subagents for independent sub-tasks), writes `.pipeline/changes.md`
 3. `tester` — reads changes.md, writes/runs tests for happy path + edge cases, writes `.pipeline/test-results.md`
-4. `review` — **read-only, cannot edit code** (enforced by hook) — checks the diff against spec.md/PRD alignment and test-results.md's coverage, writes `.pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES`
-5. `security-checker` — **read-only, cannot edit code** (enforced by hook) — runs only after review.md is `PASS`; applies the registered progress-based attacker briefs, writes immutable audit artifacts under `.pipeline/security-history/<run-id>/`, and writes `.pipeline/security-report.md` with verdict `PASS` or `BLOCKED`
+4. `review` — **read-only, cannot edit code by convention, verified at review** (not enforced by a hook — see below) — checks the diff against spec.md/PRD alignment and test-results.md's coverage, writes `.pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES`
+5. `security-checker` — **read-only, cannot edit code by convention, verified at review** (not enforced by a hook — see below) — runs only after review.md is `PASS`; applies the registered progress-based attacker briefs, writes immutable audit artifacts under `.pipeline/security-history/<run-id>/`, and writes `.pipeline/security-report.md` with verdict `PASS` or `BLOCKED`
 
 If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline routes back to `dev` with the fix list, then re-runs the downstream stages — capped at 3 loops before stopping to ask a human.
 
 Each stage reads the previous stage's file before starting. Don't skip a stage or let `dev` invent its own spec — if `.pipeline/spec.md` is missing, run `planner` first.
+
+`review` and `security-checker`'s read-only property was previously claimed as hook-enforced. A diagnostic run established that a `PreToolUse` hook declared in subagent frontmatter never fires on this checkout (only a hook declared in `.claude/settings.json`'s top-level `hooks:` key does, and this repo's `settings.json` has none), so both stages have never actually been prevented from writing outside `.pipeline/` — the hook wiring and its guard scripts were dead code. Their read-only-ness is a convention, checked by inspecting the diff at review time and in CI, not a runtime-enforced guarantee. Real enforcement is tracked as `PL-03g` (`docs/PRD_Tickets.md`).
 
 Note: `planner`/`dev` model fields use the `opus`/`sonnet` aliases so they always resolve to Anthropic's current models for that tier — pin an exact model string (e.g. `claude-opus-4-8`) in their frontmatter instead if you need a fixed version.

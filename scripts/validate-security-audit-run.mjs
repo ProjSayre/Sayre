@@ -301,6 +301,15 @@ const requiredSources = new Set([
   registry.contract,
   registry.orchestrator,
   'security-attacker-agents/agent-registry.json',
+  // PL-03a moved the security stage's authoritative procedure to .sdd/stages/security.md;
+  // .claude/agents/security-checker.md is now a five-line generated pointer (see
+  // scripts/generate-agent-shims.mjs) with no procedural content of its own. Hashing only the
+  // pointer would let someone rewrite the actual procedure this stage runs — the file below —
+  // without the manifest's tamper-evidence noticing, because the pointer file itself never
+  // changes. Both are hashed: the neutral procedure (what's actually followed) and the shim (which
+  // still carries the tool grants, disallowedTools, and hook wiring worth pinning in its own
+  // right).
+  '.sdd/stages/security.md',
   '.claude/agents/security-checker.md'
 ]);
 for (const agent of registry.agents) if (inventory.get(agent.surface_id).selected) requiredSources.add(agent.path);

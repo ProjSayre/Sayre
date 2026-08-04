@@ -7,11 +7,7 @@ argument-hint: <ticket description or path to ticket file>
 
 Run only the planning stage for: $ARGUMENTS
 
-1. If `.pipeline/spec.md` already exists, tell the user it will be overwritten and ask for confirmation before continuing.
-2. Invoke the `planner` subagent with the ticket/feature request above. It reads the PRD and writes `.pipeline/spec.md`.
-3. Do NOT continue to `dev`, `tester`, `review`, or `security-checker` — this command stops after planning, on purpose.
-4. Report back to the user:
-   - The Goal, Scope, and Open Questions sections from spec.md (so they don't have to open the file to know if it's worth reading closely)
-   - Where the file lives (`.pipeline/spec.md`)
-   - That they can hand-edit it directly before continuing
-   - How to continue afterward: **invoke the `dev` subagent directly** (e.g. "Use the dev subagent to implement this") rather than running `/pipeline` — `/pipeline` always starts from `planner` and would regenerate (and overwrite) the spec you just reviewed/edited.
+Follow `.sdd/pipeline.md`'s "`/spec-only <ticket>`" section exactly — it is the authoritative,
+runtime-neutral definition of this command. Invoke the `planner` subagent for the planning step;
+do not continue to `dev`, `tester`, `review`, or `security-checker` — this command stops after
+planning, on purpose.

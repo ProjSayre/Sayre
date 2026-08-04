@@ -1,0 +1,101 @@
+# .sdd/runtimes.yml — per-stage runtime wiring
+#
+# This file captures everything the Interfaces table in the PL-03a spec places OUTSIDE the
+# neutral layer: tool grants, model tier, hook wiring, and the subagent name. Required inputs,
+# procedure, checks, output contract, and verdict vocabulary live in `.sdd/stages/<stage>.md`
+# instead — never duplicate that content here.
+#
+# `scripts/generate-agent-shims.mjs` reads this file and writes `.claude/agents/*.md`. Currently
+# `.claude` is the only runtime target with subagent/hook machinery worth generating for; a future
+# runtime target would add its own top-level key here (e.g. `codex:`) rather than a new file.
+#
+# Hook shorthand (currently unused — see below): had any stage declared one, each hooks entry
+# would be `{ matcher, command }`, and the generator would expand it into Claude Code's actual
+# frontmatter hook schema (a `hooks:` array of `{ type: command, command }` per matcher). No stage
+# below declares a hooks: block right now. A diagnostic run (PL-03a loop 3) established that a
+# PreToolUse hook declared in subagent frontmatter — exactly the form this file used to wire onto
+# review/security below — never fires; only a hook declared under a top-level `hooks:` key in
+# .claude/settings.json does, and this repo's settings.json has no such key. Re-adding a hooks:
+# entry here without also confirming it is wired at the settings.json level would reintroduce the
+# same false assurance. See PL-03g (docs/PRD_Tickets.md) for the real-enforcement follow-up.
+
+version: 1
+
+stages:
+  planner:
+    neutral: stages/planner.md
+    claude:
+      name: planner
+      description: >-
+        Turns a vague feature request or ticket into a highly detailed spec doc, using the PRD as
+        context. Use at the start of any feature/ticket, before any code is written. Writes
+        .pipeline/spec.md, which dev reads next.
+      tools: [Read, Grep, Glob, Write]
+      model: opus
+
+  dev:
+    neutral: stages/dev.md
+    claude:
+      name: dev
+      description: >-
+        Implements code according to .pipeline/spec.md. Can spawn its own subagents for isolated
+        research or parallel implementation work. Use after a spec exists, and re-invoke if
+        review.md routes work back for fixes.
+      tools: [Read, Write, Edit, Grep, Glob, Bash, Agent]
+      model: sonnet
+
+  tester:
+    neutral: stages/tester.md
+    claude:
+      name: tester
+      description: >-
+        Reads what dev built and writes/runs tests covering edge cases and the happy path. Use
+        after dev writes .pipeline/changes.md.
+      tools: [Read, Write, Edit, Grep, Glob, Bash]
+      model: sonnet
+
+  review:
+    neutral: stages/review.md
+    claude:
+      name: review
+      description: >-
+        Read-only reviewer. Verifies the diff follows spec.md and that the feature aligns with the
+        human goal/PRD before code touches the main branch. Routes back to dev if tests or code
+        aren't up to standard. Use after tester writes .pipeline/test-results.md.
+      tools: [Read, Grep, Glob, Bash, Write]
+      disallowedTools: [Edit]
+      model: inherit
+      # D-005's action item ("review/security-checker are documented read-only but carry Bash with
+      # no matcher, so sed -i/tee/python -c could write past a Write-only guard") is NOT closed by
+      # a hook here, and previously never was despite two rounds of guard patches. A diagnostic run
+      # (PL-03a loop 3) confirmed the PreToolUse hooks that used to be declared below (a Write
+      # matcher on scripts/validate-pipeline-only-write.sh, a Bash matcher on the now-deleted
+      # scripts/validate-pipeline-only-bash.sh) never fired: frontmatter-declared subagent hooks
+      # don't fire at all on this checkout, only a hook declared in .claude/settings.json's
+      # top-level `hooks:` key does, and that key doesn't exist here. So this stage has never
+      # actually been read-only with respect to either Write or Bash — both scripts were dead code.
+      # The Bash guard's allowlist design is also independently rejected on the merits (see
+      # docs/PRD_Tickets.md's PL-03g — `ruff check --config fix=true` proves flag-name denylisting
+      # can't close an open-ended capability surface). Neither guard is re-wired here. Real
+      # enforcement is tracked as PL-03g, whose first open question is whether the PreToolUse
+      # payload carries enough agent identity for a settings.json-level hook to scope itself to
+      # review/security-checker without also blocking dev, which must write code. Until PL-03g
+      # lands, "read-only" for this stage is a convention verified at review time (diff inspection,
+      # CI), not a runtime-enforced guarantee — see .sdd/stages/review.md's runtime note.
+
+  security:
+    neutral: stages/security.md
+    claude:
+      name: security-checker
+      description: >-
+        Final security-focused pass over the implementation, run only after review.md's verdict is
+        PASS. Checks tenant isolation, RBAC boundaries, secrets handling, webhook validation.
+        Read-only with respect to source code.
+      tools: [Read, Grep, Glob, Bash, Write]
+      disallowedTools: [Edit]
+      model: sonnet
+      # Same finding as review, above, and the same non-fix: security-checker carries Bash too
+      # (e.g. to run npm run check:security-audit-agents / check:security-audit-run) and the
+      # PreToolUse hooks previously declared here (identical Write/Bash wiring) never fired either,
+      # for the same reason — frontmatter-declared subagent hooks don't fire on this checkout. See
+      # the review stage's comment above for the full explanation and PL-03g for the tracked fix.

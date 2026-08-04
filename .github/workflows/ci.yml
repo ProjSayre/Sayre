@@ -51,6 +51,24 @@ jobs:
       - name: Install dependencies (root, single pass)
         run: npm ci
 
+      # PL-03a: .claude/agents/*.md is generated from .sdd/runtimes.yml
+      # (scripts/generate-agent-shims.mjs). A hand-edited shim must fail here rather than
+      # silently drift from .sdd/ again — this is the "hand-edited shim" edge case's CI gate.
+      - name: Agent shims — staleness check
+        run: npm run check:agent-shims
+
+      # PL-03a: these two suites cover the generator's --check/dirty-tree/missing-neutral-file edge
+      # cases and .sdd/'s completeness/content-hash guarantees. None of this was previously gated
+      # in CI. (A third suite, scripts/validate-pipeline-only-bash.test.mjs, tested a Bash
+      # PreToolUse guard that was deleted in PL-03a loop 3 — a diagnostic run established that
+      # frontmatter-declared subagent hooks never fire on this checkout, so the guard was dead code
+      # the whole time; see docs/PRD_Tickets.md's PL-03g for the real-enforcement follow-up.)
+      - name: Agent shims — generator tests
+        run: npm run test:agent-shims
+
+      - name: .sdd/ completeness — tests
+        run: npm run test:sdd-completeness
+
       - name: config — typecheck
         run: npm run typecheck --workspace @sayre/config
 

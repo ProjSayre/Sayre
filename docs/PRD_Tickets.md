@@ -522,11 +522,133 @@ D-014's acceptance test — *"can a new cofounder go `git clone` → running sta
 
 **Depends on:** none — PL-03a…PL-03d are files plus the Node/Python toolchains the repo already requires; only the Victor-facing rollout (PL-03e) is gated, on PL-02 for his environment · **Executor:** Pair (methodology: human-directed; implementation: AI agent)
 
-**Split for execution:** PL-03a cross-runtime foundation · PL-03b impact resolver · PL-03c pipeline stage changes (needs PL-03b) · PL-03d `pr-review` agent (needs PL-03a, PL-03c) · PL-03e Victor's rollout (needs PL-03a–d, PL-02). Each gets its own spec pass; the combined scope is too large for one implementation run.
+**Split for execution:** PL-03a cross-runtime foundation · PL-03b impact resolver · PL-03c pipeline stage changes (needs PL-03b) · PL-03d `pr-review` agent (needs PL-03a, PL-03c) · PL-03e Victor's rollout (needs PL-03a–d, PL-02) · PL-03f and PL-03g, opened during PL-03a execution. Each gets its own spec pass; the combined scope is too large for one implementation run.
 
-Implements `docs/sdd-tdad-design.md` in five steps: the tracked runtime-neutral `.sdd/` layer plus shim generator, paring the agent surface to `.sdd/` + `AGENTS.md` + generated `.claude/` shims and deleting the `.codex/` and `.agents/` mirrors (closing the drift between them, and the fact that all three were excluded via `.git/info/exclude` and therefore reached no one who cloned — including a Codex `security-checker` reduced to a 13-line paraphrase of the 99-line original, missing the attacker registry, checklist IDs, `UNVERIFIED` semantics, and content-hashed manifests, while still emitting `PASS`); the `affected_tests.py` impact resolver over the pure `sayre_workers.parsing` modules; a `red` stage authoring all behavioral tests from spec before `dev` runs; `tester` rewired off `changes.md` (D-018's finding that tests currently ratify the implementation); and a `pr-review` agent with deterministic lane-bounds checking. Also closes D-005's action item — `review` and `security-checker` are documented read-only but carry `Bash` with no matcher, so `sed -i`, `tee`, and `python -c` write past the guard.
+Implements `docs/sdd-tdad-design.md` in five steps: the tracked runtime-neutral `.sdd/` layer plus shim generator, paring the agent surface to `.sdd/` + `AGENTS.md` + generated `.claude/` shims and deleting the `.codex/` and `.agents/` mirrors (closing the drift between them, and the fact that all three were excluded via `.git/info/exclude` and therefore reached no one who cloned — including a Codex `security-checker` reduced to a 13-line paraphrase of the 99-line original, missing the attacker registry, checklist IDs, `UNVERIFIED` semantics, and content-hashed manifests, while still emitting `PASS`); the `affected_tests.py` impact resolver over the pure `sayre_workers.parsing` modules; a `red` stage authoring all behavioral tests from spec before `dev` runs; `tester` rewired off `changes.md` (D-018's finding that tests currently ratify the implementation); and a `pr-review` agent with deterministic lane-bounds checking. D-005's action item is **not** closed here, and is worse than D-005 recorded. D-005 assumed the `Write` matcher worked and only the unmatched `Bash` tool bypassed it; a 2026-07-31 diagnostic showed `PreToolUse` hooks declared in *subagent frontmatter* never fire at all (settings-file hooks do, including for subagent tool calls), so both agents have always been unenforced for `Write` as well as `Bash`. PL-03a corrected the false "enforced by hook" claims and removed the inert guard; real enforcement is PL-03g.
 
 **Acceptance criteria:** a fresh clone gives a Codex user a working pipeline with no machine-local setup; regenerating shims produces no diff in CI; the resolver reports truncation, unanalyzable files, and no-adapter files as three distinct outcomes; a behavioral test with no `@spec` reference fails review; a diff touching a path outside the ticket's declared lane is reported by a script, not an LLM judgment; a run's ledger entry survives in git after `.pipeline/` is cleared.
+
+### **PL-03f — `dev` stage reads `security-report.md` on re-invocation** **_(parity fix surfaced by PL-03a)_**
+
+**Depends on:** PL-03a · **Executor:** AI agent
+
+While extracting the three prior agent mirrors into `.sdd/` (PL-03a), two places where the old,
+deleted Codex copy (`.codex/agents/dev.toml`) was actually *ahead* of Claude Code's surfaced — see
+`docs/sdd-drift-corrections-pl-03a.md` item 4. It read `.pipeline/security-report.md` "for
+required fixes" on re-invocation; Claude's copy (now `.sdd/stages/dev.md`) only re-reads
+`review.md`. It also said to "preserve unrelated user changes," which neither copy states today.
+PL-03a left both unfixed since stage-content changes were out of scope for that ticket, and
+`.sdd/pipeline.md`'s routing section already asserts *"dev's own procedure already reads
+[review.md] automatically"* with no equivalent claim for `security-report.md`. This ticket closes
+that gap directly in `.sdd/stages/dev.md`, so the fix is universal (every runtime) rather than
+something only the old Codex copy happened to do right, and makes an explicit decision on the
+second behavior rather than leaving it undecided indefinitely.
+
+**Acceptance criteria:** `.sdd/stages/dev.md`'s re-invocation section requires reading
+`.pipeline/security-report.md` (not only `review.md`) when present, consistent with the
+`NEEDS_FIXES`/`BLOCKED` routing `.sdd/pipeline.md` already describes; "preserve unrelated user
+changes" is either codified as an explicit `dev` instruction or explicitly decided against with a
+recorded reason; none of PL-03a's existing acceptance criteria regress.
+
+### **PL-03g — Real read-only enforcement for `review`/`security-checker`** **_(supersedes the Bash-guard allowlist approach; from the PL-03a loop-3 diagnostic)_**
+
+**Depends on:** PL-03a · **Executor:** Pair (mechanism design/scope decision: human; implementation: AI agent)
+
+PL-03a's D-005 action item — "`review`/`security-checker` are documented read-only but carry `Bash`
+with no matcher, so `sed -i`/`tee`/`python -c` write past the `Write`-only guard" — was never
+actually closed, across three review rounds of patching `scripts/validate-pipeline-only-bash.sh`'s
+allowlist. A diagnostic run at the end of PL-03a's loop 3 established why: a `PreToolUse` hook
+declared in `.claude/settings.json` fires, including for subagent tool calls (confirmed: the log
+recorded the main session's write plus both of a subagent's writes) — but the identical hook
+declared in subagent frontmatter (`.claude/agents/review.md`'s generated `hooks:` block) does not
+fire at all. `review` was asked to write `hook-probe-frontmatter.txt` at repo root, outside
+`.pipeline/`, which its frontmatter guard should have blocked; the write succeeded with no error.
+So `review` and `security-checker` have never been read-only with respect to either `Write` or
+`Bash` — both guard scripts were dead code the whole time, and three rounds of allowlist hardening
+were spent making a mechanism that was never actually invoked internally consistent. PL-03a loop 3
+deleted the Bash guard outright, reverted the Write guard to its pre-ticket state, and corrected
+every "enforced by a hook" claim in `CLAUDE.md` / `.sdd/stages/review.md` / `.sdd/stages/security.md`
+to state the true, weaker guarantee (a convention, checked at review time and in CI, not a runtime
+enforcement). This ticket is where real enforcement gets designed.
+
+**First task — the open question that decides everything else:** does the `PreToolUse` payload
+Claude Code delivers to a settings-level hook carry enough agent/subagent identity for a hook
+declared in `.claude/settings.json` to scope itself to `review` and `security-checker` specifically,
+without also matching `dev` (which must legitimately write source code) or `planner`/`tester`? If
+the payload carries no such field, a settings-level `Write`/`Bash` matcher is necessarily global and
+can't be stage-scoped, and this ticket's answer is either (a) a different mechanism entirely (e.g. a
+wrapper `dev`/`tester` never invoke, or running `review`/`security-checker` in a separate, more
+restricted execution context), or (b) an explicit escalation that Claude Code has no first-party way
+to scope a hook to one subagent today, rather than another round of shell-script cleverness. If a
+scoping field does exist, implement the hook at the settings.json level (not frontmatter, which is
+now proven inert), and design its confinement check as a closed, testable problem — normalize both
+the target path and `.pipeline/` to absolute form, compare with a separator boundary, and either
+reject symlink escapes or state them explicitly out of scope — rather than another open-ended
+command-string allowlist.
+
+**Rejected-approach catalogue (preserved here since the tests that documented it,
+`scripts/validate-pipeline-only-bash.test.mjs`, were deleted in PL-03a loop 3 along with the guard
+they tested).** Three review/test rounds found the following distinct bypass classes in the
+command-string-allowlist design; they are the evidence base for why a denylist/allowlist over Bash
+command strings was rejected on the merits — not merely because the hook carrying it never fired —
+and must not be reintroduced as "the fix" for whatever mechanism replaces it:
+
+- `find ... -delete` / `find ... -exec ...` / `-fprintf` (closed by dropping `find` from the
+  allowlist entirely, not by patching the exec-flag hole — the character class excluding shell
+  operators structurally can't also exclude every exec-shaped flag by shape alone)
+- `git diff --output=<path>` (and the same flag on `git log`/`show`/`blame`) — a write disguised as
+  a read-only command
+- `poetry run ruff check --fix` — rewrites source in place
+- `poetry run ruff check --config fix=true` (or `--config /tmp/evil.toml`) — **the finding that
+  settled the architectural question.** Re-enables autofix through a config value without the token
+  `--fix` ever appearing in the command string, so no flag-name denylist can close it; the
+  capability is reachable through a value, not a name, and values can't be enumerated
+- `poetry run pytest --junitxml=`/`--cov-report=`/`--result-log=` (report files to an arbitrary
+  path), `pytest --basetemp=<dir>` (pytest's own docs warn its contents may be deleted), and bare
+  `poetry run pytest` (executes `conftest.py` and every collected test file — arbitrary code
+  execution is pytest's purpose, not an edge case of it)
+- `poetry run mypy --python-executable=<path>` (spawns the given path as a subprocess — code
+  execution) and `mypy --cache-dir=<dir>` / `--install-types` (writes to a caller-chosen directory /
+  runs `pip install`)
+- `npm run build:workspaces` / `npx turbo run build --filter=...` — building writes `dist/`,
+  `.next/`, `*.tsbuildinfo` and executes every workspace's `build` script; allowlisted since round 1
+  without that being noticed
+- the shim generator's own write-mode invocation (`npm run generate:agent-shims`, bare
+  `node scripts/generate-agent-shims.mjs`) — allowlisted for "convention consistency" with its
+  `--check` sibling, without distinguishing that the bare form's entire purpose is to write
+  `.claude/agents/*.md`, including `review`'s and `security-checker`'s own hook-wiring frontmatter
+- `cat ../../../.ssh/id_rsa` / `git diff --no-index /dev/null <secret file>` — not a write, but an
+  exfiltration path through an allowlisted "read-only" command, reading credentials a subsequent
+  legitimate `.pipeline/` write could then leak
+
+**Also carry forward, unfixed:** the path-traversal bug in
+`scripts/validate-pipeline-only-write.sh`'s `.pipeline/` confinement check —
+`case "$FILE_PATH" in .pipeline/*|*/.pipeline/*)` is a textual prefix match, not a normalized-path
+check, so `.pipeline/../../etc/passwd`, `.pipeline/../../.git/hooks/pre-commit`, and
+`foo/.pipeline/../../../src/app.ts` are all wrongly ALLOWED (reproduced directly against the real
+script). The same script also blocks the native Windows backslash path form
+(`C:\...\.pipeline\review.md`) while allowing the equivalent forward-slash form — an availability
+bug in the opposite direction. Both bugs are pre-existing (not introduced by PL-03a) and were left
+unfixed in PL-03a loop 3 on the reasoning that a hook that never fires doesn't need a correct
+confinement check yet — but whatever mechanism this ticket lands must fix both before relying on it.
+
+**Founder decision log note (cannot be edited from this repository):** D-005 in the founder
+decision log (tracked outside this repo) records its action item against the Bash-hook mechanism as
+though it runs; it does not, and never did on this checkout. D-005 should be amended to reflect that
+"review/security-checker are read-only, enforced by hook" was never true, and that this ticket is
+the real fix. Recording the need here since the log itself isn't reachable from this checkout to
+edit directly.
+
+**Acceptance criteria:** a documented, tested answer to whether `PreToolUse` carries scoping
+identity; if yes, a working settings.json-level hook that blocks a real out-of-`.pipeline/`
+`Write`/`Bash` call from `review`/`security-checker` while leaving `dev`/`tester`/`planner`
+unaffected, verified by actually driving the guarded tool call from within each stage's own session
+(not by invoking a guard script standalone with synthetic stdin, which is all three PL-03a review
+rounds ever did); the `.pipeline/` confinement check passes both the traversal-blocked and
+Windows-backslash-allowed cases; none of the rejected-approach catalogue's bypass classes is
+reintroduced in any form that addresses only a single command or flag name; if the answer is no, a
+written escalation of the platform gap plus whichever alternative (a different mechanism, or a
+documented decision to keep this convention-only) is chosen instead.
 
 ### **PL-04 — COVERS edge weighting + ranked, bounded `get_covering_tests`** **_(contract fix)_**
 
@@ -622,6 +744,8 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 |PL-03c|PL-03b|Platform|
 |PL-03d|PL-03a, PL-03c|Platform|
 |PL-03e|PL-03a-d, PL-02|Platform|
+|PL-03f|PL-03a|Platform|
+|PL-03g|PL-03a|Platform|
 |PL-04|W2-07, W4-03, W4-06|Platform|
 |PL-05|PL-04 (gate)|Platform|
 |PL-06|W4-06|Platform|
