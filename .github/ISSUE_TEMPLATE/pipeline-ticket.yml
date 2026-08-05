@@ -1,0 +1,83 @@
+name: Pipeline ticket
+description: A ticket to be implemented through the SDD/TDAD pipeline (/pipeline <issue>)
+title: "[TICKET] "
+labels: ["pipeline"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This becomes the input to `/pipeline`. `planner` reads it and writes a spec; you approve the
+        spec in plain English before any code is written. See `.sdd/README.md`.
+
+        Write the goal for a person, not for an agent. The pipeline is good at turning a clear
+        intent into exact file paths and signatures — it is bad at guessing what you meant.
+
+  - type: input
+    id: lane
+    attributes:
+      label: Lane
+      description: >
+        Which paths this ticket is allowed to touch, from the named lanes in `.sdd/bounds.md`.
+        The pr-review stage checks the actual diff against this with a script, not a judgment call.
+        Use `full` only when the work genuinely needs it.
+      placeholder: frontend
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What should be true when this is done?
+      description: >
+        Plain English, two or three sentences. Describe the outcome someone would notice, not the
+        implementation. If you already know the approach, put it under Notes instead — a ticket
+        that prescribes the implementation removes the planner's ability to catch a wrong one.
+      placeholder: A user viewing the Technical Tree can collapse a folder and have that state persist across a page reload.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: How will you know it worked?
+      description: >
+        One checkable statement per line — things a human can see, click, or verify. These become
+        the `AC-*` items the `red` stage writes tests against **before** any code exists, so vague
+        criteria here produce vague tests. "It should feel fast" is not checkable; "the tree renders
+        within 2s on a 5,000-node repo" is.
+      placeholder: |
+        Collapsing a folder and reloading the page keeps it collapsed.
+        Collapse state is per-user, not shared between accounts.
+        A repo the user cannot access never appears in the tree, collapsed or not.
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Explicitly not in scope
+      description: >
+        What this ticket should NOT do. This is worth filling in even when it feels obvious — it is
+        the main defence against scope creep, and it is what stops an agent "helpfully" fixing
+        something on the way past.
+      placeholder: |
+        Not changing how the tree is fetched.
+        Not touching the Product or Onboarding views.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes, constraints, prior context
+      description: >
+        Anything the planner should read first — a related PR, a decision that constrains the
+        approach, a file you already know is involved. Optional.
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: The acceptance criteria are things someone could check without reading the code.
+          required: true
+        - label: I have set a lane, and it is the narrowest one that fits.
+          required: true

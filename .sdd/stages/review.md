@@ -1,66 +1,24 @@
 # Review
 
-<!--
-Extracted verbatim from .claude/agents/review.md, per PL-03a, with one runtime-specific clause
-removed (the hook-enforcement mechanism — see below). See .sdd/runtimes.yml for the model tier,
-tool grants, and any hook wiring for a given runtime. Content changes are otherwise out of scope
-for this ticket.
+Judge spec conformance, correctness, and maintainability after deterministic verification. Review
+is read-only with respect to source code; its only write is the draft under the current run.
 
-Runtime note: this stage must be read-only with respect to source code — it reports and routes,
-it never fixes. Claude Code previously wired a PreToolUse hook intended to enforce that (see
-.sdd/runtimes.yml); a diagnostic run (PL-03a loop 3) established that a hook declared in subagent
-frontmatter never actually fires on this checkout, so that enforcement was never real — the hook
-was deleted rather than left in place making a claim it couldn't back. Read-only is, for every
-runtime today including Claude Code, an instruction honored by convention and checked afterward
-(diff inspection at review time, CI), not a runtime-enforced guarantee. Restoring real enforcement
-is tracked as PL-03g (see docs/PRD_Tickets.md).
+## Inputs
 
-PL-03c adds two checks below (red-test integrity, spec trace) now that the `red` stage exists in the
-sequence and produces `.pipeline/red.md`. Everything else in this file is unchanged from PL-03a.
--->
+- Current `spec.json`, optional `red.json`, `dev.json`, and PASS `verify.json`.
+- Git diff from the run's base SHA.
+- Relevant architecture/rule files and latest attempt history when fixes were routed.
 
-You are the review stage of a Planner -> Red -> Dev -> Tester -> Review -> Security pipeline. You are READ-ONLY with respect to source code — you cannot edit any file outside `.pipeline/`. You report and route; you never fix.
+## Procedure
 
-1. Read `.pipeline/spec.md`, `.pipeline/changes.md`, `.pipeline/test-results.md`, and `.pipeline/red.md`.
-2. Run `git diff` to see the actual changes yourself — don't rely solely on changes.md's self-report.
-3. Check, in this order:
-   - **Test standard** — does test-results.md show a clean pass with real coverage of spec.md's edge cases? A pass with major coverage gaps counts as not meeting standard.
-   - **Spec conformance** — does the diff match spec.md's Approach, exact file paths/signatures, and every Acceptance Criterion?
-   - **Goal alignment** — does this change actually serve the Goal in spec.md and the broader PRD, not just the letter of the spec? A spec can be technically satisfied while missing the point — call that out.
-   - **Red-test integrity** and **Spec trace** — run `node scripts/check-red-integrity.mjs`
-     (`npm run check:red-integrity`) and read its report. This is the mechanical half of both checks
-     below, split out as a committed script (PL-03c review Critical 3) rather than prose asking you
-     to compute a SHA-256 digest by reading a file — you cannot do that by reading, so the honest
-     version of that instruction was already "shell out," just ad hoc and unrecorded each run. The
-     script itself does not exist for a run with no `.pipeline/red.md` (a ticket that predates `red`,
-     or a re-invocation with none this run) — it exits 0 and says so; there is nothing to check.
-     - **Red-test integrity, mechanical half (the script):** it recomputes the SHA-256 content hash of every file listed under `red.md`'s "Content hashes (SHA-256)" section
-       and compares it against the hash recorded there, and reports which mismatches `changes.md` declares (in a
-       "## Red-test changes" section) versus which it doesn't.
-     - **Red-test integrity, judgment half (you):** for every mismatch the script reports as
-       declared, decide whether the stated reason is legitimate (the legitimate case is "the spec
-       was wrong and `dev` amended it" — see spec.md's edge cases and `.sdd/pipeline.md`'s routing
-       note on this). A mismatch is `NEEDS_FIXES` **unless** `changes.md` declares the change and
-       states a reason you judge legitimate. An undeclared change to a red test — the script's exit
-       code tells you this outright — is exactly the failure this check exists to catch: someone
-       quietly weakening a test to make it pass instead of fixing the implementation.
-     - **Spec trace, mechanical half (the script):** it resolves every `@spec <ID>` marker `red.md`
-       lists (and every marker in the listed test files themselves) against `spec.md`'s `AC-*`/`EC-*`
-       items, and separately reports any new test file in the diff that carries no `@spec` marker at
-       all and isn't one `red.md` already lists — a report, not a failure, on that last part.
-     - **Spec trace, judgment half (you):** an ID the script reports as unresolvable, or a listed
-       test citing no `@spec` marker at all, is `NEEDS_FIXES`. Non-behavioral tests `tester` added
-       (fixtures, harness, type-level) are not required to carry a marker — they don't assert spec
-       behavior in the first place, so there's nothing for them to trace to. For each new,
-       marker-less test file the script surfaces as a candidate, decide whether it is actually
-       behavioral (in which case its absence of a marker is the failure) or genuinely non-behavioral
-       coverage `tester` was allowed to add (in which case it's fine as-is).
-   - **Architectural boundaries** — business logic isn't inline in a route handler/resolver; no client-side RBAC filtering or full-graph traversal in graphology code; only Folder/File nodes render on canvas; no queue introduced outside the SQS/BullMQ split.
-4. Produce a report in this shape. It is persisted to `.pipeline/review.md`; the mechanism (this stage writing it directly, vs. a coordinator saving the returned markdown) is runtime-specific — see .sdd/runtimes.yml.
-   - **Verdict** — a literal `## Verdict` heading, whose first non-blank line is exactly `PASS` or `NEEDS_FIXES` and nothing else on that line (not a bullet, not a sentence containing the word). `scripts/ledger-append.mjs` parses this exact shape to confirm a terminal `PASS` before writing a ledger entry — a bullet-shaped verdict, however clearly worded, is not read by that script. One of `PASS` (ready for security-checker / merge), or `NEEDS_FIXES` (routes back to dev).
-   - **Critical** — spec/goal misalignment, architectural violations, inadequate test coverage, an undeclared red-test hash change, or an uncited/unresolvable `@spec` reference — anything that forces `NEEDS_FIXES`
-   - **Warning** — should fix, doesn't block on its own
-   - **Suggestion** — optional improvement
-   - **Fix list for dev** — if verdict is `NEEDS_FIXES`, an explicit, numbered list of exactly what dev must change. Dev will read this file directly, so write it as instructions to dev, not just observations.
+1. Require `next: review`; do not re-run the test suite already recorded by verify.
+2. Compare each AC/EC with code and evidence. Inspect declared red-test changes closely.
+3. Check scope, API compatibility, error behavior, tenant boundaries, test adequacy, and unreported
+   deviations. Do not make product edits.
+4. Use `NEEDS_FIXES` only for a blocking correctness/spec issue and include at least one `critical`
+   finding with file/line where possible. Warnings and suggestions do not force a loop.
+5. Use `node scripts/pipeline-run.mjs schema review`, write the draft, and run `emit review`.
 
-Be specific — cite file/line and quote spec.md language when something doesn't match. If you set `NEEDS_FIXES`, say so clearly in your final response so the calling agent knows to re-invoke `dev` rather than proceeding to `security-checker`.
+PASS routes to security. NEEDS_FIXES routes to dev and is bounded by the shared three-attempt cap.
+The settings-level read-only guard remains the enforcement for Write/Edit tools; Bash cannot be
+made generally read-only, so use it only for inspection.

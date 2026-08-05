@@ -128,6 +128,19 @@ test('--check exits non-zero after a hand-edit to a generated shim', () => {
   assert.match(check.stderr, /demo\.md/);
 });
 
+// --- PL-04 / item 2 (the general defect): an unrecognized flag must fail loudly, naming itself -----
+
+test('an unrecognized flag fails loudly, naming itself, and writes no shim at all (e.g. a typo\'d "--froce")', () => {
+  const root = fixtureRepo({
+    '.sdd/runtimes.yml': DEMO_RUNTIMES_YML,
+    '.sdd/stages/demo.md': DEMO_STAGE_MD,
+  });
+  const result = runGenerator(root, ['--froce']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /unrecognized argument "--froce"/);
+  assert.ok(!existsSync(join(root, '.claude', 'agents', 'demo.md')), 'a typo must never look like it worked');
+});
+
 // --- Edge case: generator run on a dirty tree must warn and refuse to overwrite -----------------
 
 test('refuses to overwrite a hand-edited shim that has uncommitted changes, and warns', () => {
@@ -254,7 +267,7 @@ test('[integration] the real repo\'s .claude/agents/*.md shims are currently up 
   });
   assert.equal(result.status, 0, `real repo shims are stale: ${result.stderr}`);
 
-  for (const name of ['planner', 'red', 'dev', 'tester', 'review', 'security-checker']) {
+  for (const name of ['planner', 'red', 'dev', 'review', 'security-checker', 'pr-review']) {
     const buffer = readFileSync(resolve(repoRoot, '.claude', 'agents', `${name}.md`));
     assert.ok(!buffer.includes(0x0d), `${name}.md contains a CR byte`);
   }

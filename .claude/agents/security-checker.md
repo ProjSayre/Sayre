@@ -1,6 +1,6 @@
 ---
 name: security-checker
-description: Final security-focused pass over the implementation, run only after review.md's verdict is PASS. Checks tenant isolation, RBAC boundaries, secrets handling, webhook validation. Read-only with respect to source code.
+description: Risk-tiered final security gate. FAST checks the diff and selected boundaries; FULL and MILESTONE use the separate deep-audit contract.
 tools: Read, Grep, Glob, Bash, Write
 disallowedTools: Edit
 model: sonnet

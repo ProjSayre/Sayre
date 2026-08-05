@@ -706,6 +706,44 @@ own JSON report rather than an uncaught `EISDIR` crash; the three tests marked s
 `scripts/build-ledger-index.test.mjs` and `scripts/check-red-integrity.test.mjs` (each referencing
 this ticket) are un-skipped and pass unmodified.
 
+### **PL-03i — Impact resolver: traverse re-export barrels as transparent zero-cost hops** **_(finding surfaced while wiring PL-03b into `red`/`tester`)_**
+
+**Depends on:** PL-03b · **Executor:** AI agent
+
+A real ranking distortion, found while wiring the resolver into `red`/`tester` (not fixed there,
+deliberately — see that ticket's own note): every barrel hop the resolver's reverse-import BFS
+crosses inflates `depth` by a full level, exactly like a real (non-barrel) import would. Concretely,
+on this repo, changing `services/workers/sayre_workers/parsing/coverage.py` ranks
+`services/workers/tests/test_test_coverage.py` — the test *for* that file — 6th at depth 3, behind
+`services/workers/tests/test_affected_tests.py` at depth 2, because tests import via the
+`sayre_workers.parsing` package's re-export barrel rather than the module directly, and each barrel
+hop costs a full depth level the same as a real coupling point would. `affected_tests.py` already
+detects a re-export barrel (`_has_reexport_barrel_pattern`, PL-03b) and reports it under
+`unanalyzable`'s `re_export_barrel` reason for a *changed* file that is itself a barrel — but that
+detection is never consulted by the BFS to treat a barrel crossed *en route* to some other file as a
+zero-cost pass-through rather than a real hop.
+
+**What it should look like:** when the reverse-traversal BFS crosses a node identified as a
+re-export barrel, that hop should not count against the `depth` of whatever it forwards to — treated
+as a transparent pass-through the same way a re-export in a real module resolver is, not a genuine
+coupling point. This is a ranking-quality fix, not a correctness fix: the tool's current behavior is
+never dishonest (no `unanalyzable` file is ever silently misreported as covered), it just under-ranks
+tests that reach a changed file only through a barrel relative to tests that import it directly,
+which is exactly backwards for judging risk — the barrel-mediated test is not less at-risk, it is
+just one import hop removed from looking that way.
+
+**Acceptance criteria:** on this repo, `python services/workers/scripts/affected_tests.py
+sayre_workers/parsing/coverage.py --format json` (run from `services/workers/`, with the Poetry
+environment available) ranks `test_test_coverage.py` at or above every test that reaches
+`coverage.py` only through a deeper barrel chain of the same or greater real (non-barrel) distance; a
+fixture with a re-export barrel sitting between a changed file and its direct test demonstrates the
+rank improvement directly (before: the barrel hop counts, and the direct test ranks behind a
+same-real-distance non-barrel test; after: it ranks at or above it); no existing
+`affected_tests.py`/`test_affected_tests.py` test regresses; the existing `re_export_barrel`
+`unanalyzable` disclosure for a *changed* file that is itself a barrel is unaffected by this change —
+that is a different case (a changed file that IS a barrel, not a barrel merely crossed en route to a
+test) and must keep working exactly as it does today.
+
 ### **PL-04 — COVERS edge weighting + ranked, bounded `get_covering_tests`** **_(contract fix)_**
 
 **Depends on:** W2-07, W4-03, W4-06 · **Executor:** AI agent (contract change reviewed by human)
@@ -803,6 +841,7 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 |PL-03f|PL-03a|Platform|
 |PL-03g|PL-03a|Platform|
 |PL-03h|PL-03c|Platform|
+|PL-03i|PL-03b|Platform|
 |PL-04|W2-07, W4-03, W4-06|Platform|
 |PL-05|PL-04 (gate)|Platform|
 |PL-06|W4-06|Platform|

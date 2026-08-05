@@ -42,22 +42,23 @@ list). Run the narrowest relevant one for what you're actually changing rather t
 
 ## The pipeline
 
-Sayre's delivery pipeline is six stages — `planner` → `red` → `dev` → `tester` → `review` →
-`security` — defined once, runtime-neutral, in `.sdd/`, plus a ledger-append step once a run reaches
-terminal `PASS`. Four commands compose the stages:
+Sayre's delivery pipeline is `planner` → optional `red` → `dev` → deterministic `verify` →
+`review` → risk-tiered `security` → deterministic `finalize`. It is defined once in `.sdd/` and
+mechanically enforced by `scripts/pipeline-run.mjs`; there is no tester agent.
 
 - `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
-- `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
+- `/spec-only <ticket>` — produce the current run's generated spec and stop for human review.
 - `/pipeline-status` — report the current pipeline state without changing it.
 - `/security-recheck` — repeat only the final security assessment.
+- `/hotfix <what's broken>` — the sanctioned bypass for a production incident that cannot wait for
+  the full sequence; skips every stage above and writes a bypass ledger entry instead — see
+  `.sdd/hotfix.md`, the authoritative, runtime-neutral definition of this path.
 
-Each command's exact procedure is defined in `.sdd/pipeline.md`, not here — read it before running
-one. Do not skip a missing stage or let a stage invent a replacement for a missing input; if a
-required `.pipeline/` artifact doesn't exist, say which stage needs to run first. Pipeline artifacts
-live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history) —
-except the one thing that's durable by design: `.sdd/ledger/<run-id>/{spec.md,entry.md}`, committed
-once a run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the
-file→spec query path.
+Each command's exact procedure is in `.sdd/pipeline.md`. Do not infer state from old shared files:
+the current pointer and isolated state live under `.pipeline/current.json` and
+`.pipeline/runs/<run-id>/`. Agents author one draft JSON; the runner validates it, generates
+Markdown, routes outcomes, and refuses stale/cross-ticket artifacts. Scratch stays gitignored. Only
+a terminal PASS is atomically promoted to `.sdd/ledger/<run-id>/`; see `.sdd/ledger/README.md`.
 
 Architecture rules, the service-layer boundary, RBAC/tenant-isolation requirements, and the
 project's "Don't" list are defined once in `CLAUDE.md` and are not restated here — copying them into

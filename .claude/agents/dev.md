@@ -1,6 +1,6 @@
 ---
 name: dev
-description: Implements code according to .pipeline/spec.md. Can spawn its own subagents for isolated research or parallel implementation work. Use after a spec exists, and re-invoke if review.md routes work back for fixes.
+description: Implements the current run-scoped spec or routed findings, performs focused iteration, and records the minimal final verification plan.
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent
 model: sonnet
 ---

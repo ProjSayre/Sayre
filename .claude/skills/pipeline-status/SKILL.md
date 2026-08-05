@@ -1,10 +1,9 @@
 ---
 name: pipeline-status
-description: Reports which stage the .pipeline/ pipeline is currently at, without running or re-running anything. Use to check where a pipeline run left off.
+description: Reports the current run-scoped pipeline state without changing it.
 disable-model-invocation: true
 argument-hint: (no arguments)
 ---
 
-Follow `.sdd/pipeline.md`'s "`/pipeline-status`" section exactly — it is the authoritative,
-runtime-neutral definition of this command. Take no action beyond reading `.pipeline/` files and
-reporting: don't invoke any subagent, don't write anything.
+Run `node scripts/pipeline-run.mjs status` and report the run, ticket, profile, attempt, stages, and
+next action. Invoke no agent and write nothing.

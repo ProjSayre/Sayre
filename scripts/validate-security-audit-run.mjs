@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { relative, resolve, sep } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { basename, relative, resolve, sep } from 'node:path';
+import { readJsonFile } from './pipeline-contracts.mjs';
 
 const root = process.cwd();
 const requestedPath = process.argv[2];
@@ -13,12 +14,18 @@ function assert(condition, message) {
   if (!condition) fail(message);
 }
 
+// SEC-10 follow-up (security round 6, "audit every remaining JSON.parse call site"): this script's
+// whole purpose is independently re-verifying manifest.json/results.json — the exact immutable
+// audit-trail files SEC-10's duplicate-key forgery targeted — so `parseJson` below reads them
+// through `pipeline-contracts.mjs`'s `readJsonFile` (strict, duplicate-key-rejecting, size-capped),
+// not plain `JSON.parse`. A validator built to catch tampering must not itself be fooled by the same
+// trick it exists to catch. `registry`/`manifestSchema`/`resultsSchema` below stay on plain
+// `JSON.parse` deliberately: those are static, git-tracked repository configuration
+// (`security-attacker-agents/agent-registry.json` and its two referenced schema files), reviewed the
+// normal way through a diff, not per-run output an agent process writes and this script must treat as
+// untrusted.
 function parseJson(path) {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch (error) {
-    fail(`${path} is not valid JSON: ${error.message}`);
-  }
+  return readJsonFile(path, path);
 }
 
 function countBy(values) {
@@ -153,11 +160,54 @@ function expectedCoverageTransition(previous, current, comparable) {
   return 'UNCHANGED';
 }
 
-assert(requestedPath, 'Usage: node scripts/validate-security-audit-run.mjs .pipeline/security-history/<run-id>');
-const historyRoot = resolve(root, '.pipeline', 'security-history');
+assert(requestedPath, 'Usage: node scripts/validate-security-audit-run.mjs <security-audit-directory>');
+const legacyHistoryRoot = resolve(root, '.pipeline', 'security-history');
+const scopedRunsRoot = resolve(root, '.pipeline', 'runs');
 const runDir = resolve(root, requestedPath);
-const relativeRunDir = relative(historyRoot, runDir);
-assert(relativeRunDir && relativeRunDir !== '..' && !relativeRunDir.startsWith(`..${sep}`) && !relativeRunDir.includes(sep), 'Run path must be one direct child of .pipeline/security-history/');
+const legacyRelative = relative(legacyHistoryRoot, runDir);
+const scopedRelative = relative(scopedRunsRoot, runDir);
+const isLegacyDirectChild = legacyRelative && legacyRelative !== '..' &&
+  !legacyRelative.startsWith(`..${sep}`) && !legacyRelative.includes(sep);
+const scopedParts = scopedRelative.split(sep);
+const isScopedAudit = scopedRelative && scopedRelative !== '..' &&
+  !scopedRelative.startsWith(`..${sep}`) && scopedParts.length === 3 &&
+  scopedParts[0] && scopedParts[1] === 'security-history' && scopedParts[2];
+assert(
+  isLegacyDirectChild || isScopedAudit,
+  'Run path must be a direct child of legacy .pipeline/security-history/ or a v2 .pipeline/runs/<pipeline-run-id>/security-history/ directory',
+);
+const auditRunId = basename(runDir);
+
+function baselineArtifact(runId, fileName) {
+  const localHistoryRoot = isLegacyDirectChild
+    ? legacyHistoryRoot
+    : resolve(scopedRunsRoot, scopedParts[0], 'security-history');
+  for (const candidate of [
+    resolve(localHistoryRoot, runId, fileName),
+    resolve(legacyHistoryRoot, runId, fileName),
+  ]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  const ledgerRoot = resolve(root, '.sdd', 'ledger');
+  if (existsSync(ledgerRoot)) {
+    for (const entry of readdirSync(ledgerRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const securityDir = resolve(ledgerRoot, entry.name, 'security');
+      const manifestFile = resolve(securityDir, 'manifest.json');
+      if (!existsSync(manifestFile)) continue;
+      try {
+        if (JSON.parse(readFileSync(manifestFile, 'utf8')).run_id === runId) {
+          const candidate = resolve(securityDir, fileName);
+          if (existsSync(candidate)) return candidate;
+        }
+      } catch {
+        // The selected baseline receives the ordinary schema errors below; unrelated corrupt
+        // ledger entries are ignored here and remain the ledger validator's responsibility.
+      }
+    }
+  }
+  return null;
+}
 
 const manifestPath = resolve(runDir, 'manifest.json');
 const resultsPath = resolve(runDir, 'results.json');
@@ -179,7 +229,7 @@ assert(resultsSchemaErrors.length === 0, `Results schema errors:\n${resultsSchem
 assert(manifest.schema_version === '1.0.0', 'Unsupported manifest schema version');
 assert(results.schema_version === '1.0.0', 'Unsupported results schema version');
 assert(manifest.status === 'COMPLETE', 'Manifest status must be COMPLETE');
-assert(manifest.run_id === relativeRunDir, 'Manifest run_id must match its immutable directory name');
+assert(manifest.run_id === auditRunId, 'Manifest run_id must match its immutable directory name');
 assert(results.run_id === manifest.run_id, 'Manifest and results run IDs differ');
 assert(results.baseline_run_id === manifest.baseline.run_id, 'Manifest and results baseline IDs differ');
 assert(['PASS', 'BLOCKED'].includes(results.verdict), 'Invalid pipeline verdict');
@@ -219,11 +269,11 @@ const observedCheckIds = new Set();
 let baselineObservations = new Map();
 let baselineInventory = new Map();
 if (manifest.baseline.run_id) {
-  const baselinePath = resolve(historyRoot, manifest.baseline.run_id, 'results.json');
-  const baselineManifestPath = resolve(historyRoot, manifest.baseline.run_id, 'manifest.json');
+  const baselinePath = baselineArtifact(manifest.baseline.run_id, 'results.json');
+  const baselineManifestPath = baselineArtifact(manifest.baseline.run_id, 'manifest.json');
   if (manifest.baseline.comparable) {
-    assert(existsSync(baselinePath), 'Comparable baseline results are unavailable');
-    assert(existsSync(baselineManifestPath), 'Comparable baseline manifest is unavailable');
+    assert(baselinePath, 'Comparable baseline results are unavailable');
+    assert(baselineManifestPath, 'Comparable baseline manifest is unavailable');
     const baselineResults = parseJson(baselinePath);
     const baselineManifest = parseJson(baselineManifestPath);
     const baselineManifestErrors = schemaErrors(baselineManifest, manifestSchema);
