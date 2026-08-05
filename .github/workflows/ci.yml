@@ -69,6 +69,17 @@ jobs:
       - name: .sdd/ completeness — tests
         run: npm run test:sdd-completeness
 
+      # The Read()/Edit() half of .claude/settings.json's permissions.deny is generated from
+      # .agentignore (scripts/generate-secret-denylist.mjs). Same staleness contract as the shims:
+      # .agentignore is the runtime-neutral statement of where secrets live, and this gate is what
+      # stops it drifting from the deny list that actually enforces it. A drifted list is worse
+      # than no list — it reads as coverage that isn't there.
+      - name: Secret deny list — staleness check
+        run: npm run check:agent-ignore
+
+      - name: Secret deny list — generator tests
+        run: npm run test:agent-ignore
+
       # PL-03c: .sdd/ledger/index.json is generated from every .sdd/ledger/<run-id>/entry.md
       # (scripts/build-ledger-index.mjs), the same staleness-gate contract as the agent shims above
       # — a hand-edit or a forgotten regeneration after adding a ledger entry must fail here.
