@@ -81,7 +81,11 @@ a second file is exactly the kind of drift this file exists to stop causing.
 - Create one branch and one worktree per ticket. Never combine multiple tickets on one
   implementation branch, even when they are requested in one session.
 - Start a ticket branch from the latest `origin/main` when all of its dependencies are merged
-  there.
+  there. A human owner may designate an unpushed local trial base by setting the repository-local
+  Git config `sayre.ticketBase` to a branch name. When that setting exists, verify that the branch
+  resolves and use it instead so new ticket branches inherit the trial infrastructure. This changes
+  only the branch base: continue to fetch and read authoritative product scope from `origin/main`,
+  and never push the trial base unless the owner asks.
 - If a ticket has exactly one required predecessor that is implemented but not merged, branch the
   dependent ticket from that predecessor's branch so the Git ancestry records the dependency.
 - If a ticket would require two or more unmerged predecessor branches, do not implement it. Report
