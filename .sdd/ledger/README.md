@@ -1,5 +1,18 @@
 # Ledger
 
+## V2 run-scoped entries
+
+New runs are finalized by `node scripts/pipeline-run.mjs finalize`. The runner copies the current
+run's generated `spec.md` and canonical `spec.json`, plus `red.json` when present, `dev.json`,
+`verify.json`, `review.json`, `security.json`, `entry.md`, and authoritative `entry.json`. A FULL or
+MILESTONE run also copies its validated `security/` audit directory. Promotion is atomic and only
+occurs for fresh verification/review/security PASS artifacts.
+
+V2 uses the pipeline run ID directly and isolates scratch at `.pipeline/runs/<run-id>/`; it does not
+reuse a security audit ID as the pipeline identity. `scripts/pipeline-run.mjs` regenerates
+`index.json` after promotion. The legacy v1 format and `scripts/ledger-append.mjs` below remain for
+old entries, sanctioned hotfixes, and legacy re-gate compatibility.
+
 Populated as of PL-03c. Every completed pipeline run — one that reached a **terminal `PASS`** (both
 `review.md` and `security-report.md` show `PASS`) — gets a durable, committed entry here. A run that
 stops earlier (a loop-cap timeout, an abandoned ticket) writes no entry; see `.sdd/pipeline.md`'s

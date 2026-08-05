@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
@@ -174,6 +174,25 @@ test('accepts a complete first-observation audit run', () => {
     assert.match(validation.stdout, /internally consistent/);
   } finally {
     rmSync(fixture.runDir, { recursive: true, force: true });
+  }
+});
+
+test('accepts the v2 run-scoped security-history layout', () => {
+  mkdirSync(historyRoot, { recursive: true });
+  const fixture = createFixture();
+  const scopedDir = resolve(root, '.pipeline', 'runs', 'pipeline-fixture', 'security-history', fixture.runId);
+  mkdirSync(resolve(scopedDir, '..'), { recursive: true });
+  renameSync(fixture.runDir, scopedDir);
+  try {
+    const validation = spawnSync(
+      process.execPath,
+      ['scripts/validate-security-audit-run.mjs', `.pipeline/runs/pipeline-fixture/security-history/${fixture.runId}`],
+      { cwd: root, encoding: 'utf8' },
+    );
+    assert.equal(validation.status, 0, validation.stderr);
+    assert.match(validation.stdout, /internally consistent/);
+  } finally {
+    rmSync(resolve(root, '.pipeline', 'runs', 'pipeline-fixture'), { recursive: true, force: true });
   }
 });
 

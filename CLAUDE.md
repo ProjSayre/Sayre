@@ -56,26 +56,26 @@ After every change, run in this order:
 
 ## Agent pipeline
 Run `/pipeline <ticket description or path to ticket file>` to chain the full pipeline. Related commands:
-- `/spec-only <ticket>` — runs just `planner`, stops for human review/editing of `spec.md` before any code is touched
+- `/spec-only <ticket>` — runs just `planner` and stops for human review of the generated spec
 - `/pipeline-status` — reports which stage a run is currently at, without running anything
-- `/security-recheck` — re-runs just `security-checker` against current disk state, for a fast check after a hand-edit (doesn't redo tester/review)
+- `/security-recheck` — re-runs security only when deterministic verification and review are fresh
 - `/hotfix <what's broken>` — the sanctioned bypass for a production incident; runs none of the stages above — see `.sdd/hotfix.md`
 
-Feature/ticket work runs through six subagents in sequence, coordinating via shared files in `.pipeline/` (not `.claude/`, gitignored), plus a ledger-append step once a run reaches terminal `PASS`:
+`scripts/pipeline-run.mjs` owns isolated state under `.pipeline/runs/<run-id>/`, validates one
+canonical JSON artifact per stage, generates Markdown, executes verification, enforces the retry
+cap, and promotes terminal PASS runs to the ledger. Never use shared `.pipeline/spec.*` or infer
+state from filenames.
 
-1. `planner` (Opus) — turns a vague ticket into a detailed spec with exact file paths/signatures/edge cases and stable `AC-*`/`EC-*` IDs, writes `.pipeline/spec.md`
-2. `red` (Opus) — authors every behavioral test for spec.md's `AC-*`/`EC-*` items **before `dev` runs**, so tests describe the spec rather than the diff; classifies each `RED-CORRECT`/`RED-DEFERRED` and refuses to finish with any `RED-BROKEN` test; writes `.pipeline/red.md`
-3. `dev` (Sonnet) — reads spec.md, implements (can spawn its own subagents for independent sub-tasks), writes `.pipeline/changes.md`
-4. `tester` — reads spec.md and red.md (not changes.md, for deriving assertions), runs the red suite, adds only non-behavioral coverage, and reports rather than fills any behavioral gap it spots, writes `.pipeline/test-results.md`
-5. `review` — **read-only, cannot edit code, enforced by a `PreToolUse` hook** (see below) — checks the diff against spec.md/PRD alignment, test-results.md's coverage, red-test integrity (rehashed against red.md), and `@spec` trace, writes `.pipeline/review.md` with verdict `PASS` or `NEEDS_FIXES` (authoritative in `.pipeline/review.json`)
-6. `security-checker` — **read-only, cannot edit code, enforced by a `PreToolUse` hook** (see below) — runs only after `.pipeline/review.json`'s verdict is `PASS`; applies the registered progress-based attacker briefs, writes immutable audit artifacts under `.pipeline/security-history/<run-id>/`, and writes `.pipeline/security-report.md` with verdict `PASS` or `BLOCKED` (authoritative in `.pipeline/security.json`)
+The sequence is `planner` → optional `red` → `dev` → deterministic `verify` → `review` →
+`security` → deterministic `finalize`. Five agents participate on a behavioral happy path; there is
+no tester agent. Each AC/EC chooses `test`, `review`, or `manual` evidence, so existing coverage and
+justified non-test checks are valid. Red still precedes dev whenever automated behavior is required.
 
-On a **terminal `PASS`** (review and security both `PASS`), `node scripts/ledger-append.mjs` writes a durable, tracked entry — `.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}` (plus a copy of `red.json`/`changes.json`/`review.json`/`security.json` when present) — and regenerates `.sdd/ledger/index.json`. `entry.json` is the machine-facing, authoritative half; `entry.md` is the human-facing rendering. This is the one thing that survives `.pipeline/` being wiped; see `.sdd/ledger/README.md`.
+Security is risk-tiered: ordinary work gets FAST diff-focused checks, sensitive paths automatically
+get FULL, and MILESTONE is explicit. Tenant/RBAC, secret, webhook, and ingestion boundaries remain
+blocking. Review and security remain read-only for normal source-editing tools through the
+settings-level `PreToolUse` guard; its honest Bash limitation is documented in their stage files.
 
-If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline routes back to `dev` with the fix list, then re-runs the downstream stages — capped at 3 loops before stopping to ask a human. `red` does not re-run in this loop.
-
-Each stage reads the previous stage's file before starting. Don't skip a stage or let `dev` invent its own spec — if `.pipeline/spec.md` is missing, run `planner` first.
-
-`review` and `security-checker`'s read-only property was previously claimed as hook-enforced but was not: a `PreToolUse` hook declared in subagent frontmatter never fires on this checkout (only a hook declared in `.claude/settings.json`'s top-level `hooks:` key does), so for a period both stages were never actually prevented from writing outside `.pipeline/`. **PL-03g has since landed real enforcement**: `.claude/settings.json` declares a top-level `PreToolUse` hook running `scripts/guard-checker-readonly.mjs`, confirmed to fire for subagent tool calls, and `review`/`security-checker`/`pr-review` are all registered in that script's `READ_ONLY_AGENTS` set — see that script and its test suite (`scripts/guard-checker-readonly.test.mjs`), which CI runs. This is now real, structural enforcement for `Write`/`Edit`/`NotebookEdit`, not merely a reviewed convention — the one honest limit that remains is that the guard does not cover `Bash` (a command-allowlist over Bash was tried and rejected on the merits; see PL-03g's rejected-approach catalogue in `docs/PRD_Tickets.md`).
-
-Note: `planner`/`dev` model fields use the `opus`/`sonnet` aliases so they always resolve to Anthropic's current models for that tier — pin an exact model string (e.g. `claude-opus-4-8`) in their frontmatter instead if you need a fixed version.
+The runner hand-routes no outcomes: failed verify, `NEEDS_FIXES`, or `BLOCKED` returns to dev and the
+shared maximum is three development attempts. `finalize` requires fresh verify/review/security PASS
+and atomically writes `.sdd/ledger/<run-id>/`. `.sdd/pipeline.md` is authoritative.

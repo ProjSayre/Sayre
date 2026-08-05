@@ -13,8 +13,8 @@
 // its own module location, so exercising it against anything other than the real repo means spawning it
 // with `cwd` pointed at a throwaway fixture that mirrors the exact relative layout it reads:
 // security-attacker-agents/** (the registry, both schemas, the contract/orchestrator/attacker-brief
-// files) and .sdd/stages/security.md. Built by copying the real repo's own security-attacker-agents/
-// tree and .sdd/stages/security.md verbatim (fs.cpSync) rather than hand-constructing a minimal
+// files) and the two .sdd security stage files. Built by copying the real repo's own configuration
+// verbatim (fs.cpSync) rather than hand-constructing a minimal
 // fixture — the validator cross-checks a lot of internal consistency (attacker-file/registry parity,
 // checklist-ID prefixes matching each agent's registered check_prefix, contract-term presence,
 // registry<->stage-file integration) that a hand-built fixture would have to painstakingly reproduce for
@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 /** A throwaway fixture root carrying an exact copy of the real repo's security-attacker-agents/ tree
- * and .sdd/stages/security.md — the two path families scripts/validate-security-audit-agents.mjs reads,
+ * and .sdd/stages/security*.md — the two path families scripts/validate-security-audit-agents.mjs reads,
  * all resolved relative to `process.cwd()` (see that script's own `root = process.cwd()`). */
 function fixtureRoot() {
   const root = mkdtempSync(resolve(tmpdir(), 'sayre-security-audit-agents-'));
@@ -48,6 +48,7 @@ function fixtureRoot() {
   cpSync(resolve(repoRoot, 'security-attacker-agents'), join(root, 'security-attacker-agents'), { recursive: true });
   mkdirSync(join(root, '.sdd', 'stages'), { recursive: true });
   cpSync(resolve(repoRoot, '.sdd', 'stages', 'security.md'), join(root, '.sdd', 'stages', 'security.md'));
+  cpSync(resolve(repoRoot, '.sdd', 'stages', 'security-full.md'), join(root, '.sdd', 'stages', 'security-full.md'));
   return root;
 }
 

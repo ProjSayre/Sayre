@@ -1,7 +1,7 @@
 # Stage — `pr-review`
 
 Reviews an open pull request. Runs **after** a PR exists, outside the per-ticket
-`planner → red → dev → tester → review → security` sequence. Invoked on demand as
+`planner → optional red → dev → verify → review → security` sequence. Invoked on demand as
 `/pr-review <PR#>`; it is an accelerator and a backstop, never a replacement for a human reviewer.
 
 Reviews **any** PR, not only fenced contributors' — bounds simply reports "no constraint" for an
@@ -12,7 +12,7 @@ unfenced author.
 1. The PR diff and metadata (`gh pr view`, `gh pr diff`).
 2. The linked ticket, for its declared **lane**. Planner (`.sdd/stages/planner.md`) already reads
    this from the ticket once and records it verbatim in `spec.json`'s `lane` field (PL-03e) — prefer
-   that canonical value, from `.pipeline/spec.json` if this run's working files are still on disk, or
+   that canonical value, from `.pipeline/runs/<run-id>/artifacts/spec.json` if this run's working files are still on disk, or
    from its durable copy at `.sdd/ledger/<run-id>/spec.json` once a ledger entry exists for this
    ticket, over re-parsing the ticket body yourself. Fall back to reading the linked ticket/issue
    directly only when neither copy of `spec.json` is available. If the PR links no ticket, or no
@@ -42,29 +42,12 @@ Report each separately. A single blended verdict hides which dimension failed, a
 that specialized critics catch what one averaged prompt misses.
 
 1. **Bounds** — the script's verdict verbatim, plus your adjudication of any out-of-lane path:
-   was it justified in `changes.md`, and is the justification adequate?
-2. **Red-test integrity** — `.pipeline/red.json` is gitignored, per-run scratch: it will not exist
-   on a fresh checkout of the PR branch, since `.pipeline/` never gets pushed. Do not run
-   `node scripts/check-red-integrity.mjs` against `.pipeline/` unconditionally and report whatever
-   it says as this lens's result — its "no red.json for this run" status means *nothing was
-   checked*, and reporting that as a clean lens is worse than no lens at all (a check that always
-   passes teaches a reader nothing). Instead:
-   1. If `.pipeline/red.json` exists (rare once a PR exists, but possible if you're running in the
-      same working tree the pipeline just ran in, before it was pushed), run
-      `node scripts/check-red-integrity.mjs` plain.
-   2. Otherwise, use the same ledger lookup as the `lane` field above to find this ticket's run
-      directory. If `.sdd/ledger/<run-id>/red.json` exists there (copied verbatim by
-      `ledger-append.mjs` whenever `red` ran and the run reached terminal `PASS`), run
-      `node scripts/check-red-integrity.mjs --dir .sdd/ledger/<run-id>` — the ledger directory holds
-      the same `red.json`/`spec.json`/`changes.json` shape `.pipeline/` does, so the script's
-      mechanical rehash/`@spec`-resolution logic is unchanged; only the source directory differs.
-   3. If neither location has a `red.json` (the ticket predates `red`, or no run has reached
-      terminal `PASS` yet), report this lens under **Unverified**, not as clean — say plainly that
-      red-test integrity could not be checked and why.
-
-   Whichever source resolved: report it. A red test whose content changed without a declaration in
-   `changes.json`'s `redTestChanges` is a finding. The mechanical half (rehash, `@spec` resolution)
-   is the script's; the judgment half — is the declared reason legitimate — is yours.
+   was it justified in the run's `dev.json` (legacy: `changes.json`), and is the justification adequate?
+2. **Red-test integrity** — resolve the run directory from `.pipeline/current.json` or the ledger.
+   For a v2 run, execute `node scripts/pipeline-run.mjs check-red --dir <artifact-directory>`;
+   for a legacy v1 run, execute `node scripts/check-red-integrity.mjs --dir <artifact-directory>`.
+   Report `NOT_PRESENT` as unverified, never clean. A hash mismatch without a declaration is a
+   finding; judge whether each declared `redTestChanges` reason is legitimate.
 3. **Spec conformance** — does the diff deliver the ticket's goal, and only that? Scope creep in a
    PR that otherwise passes is still a finding.
 4. **Test adequacy** — did the affected tests actually run? Were regressions addressed rather than

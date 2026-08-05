@@ -1,25 +1,13 @@
 ---
 name: pipeline
-description: Runs the full Planner -> Dev -> Tester -> Review -> Security pipeline for a feature or ticket. Invoke explicitly with /pipeline <ticket description or path to ticket file> — this always runs on request, never auto-triggers, since it takes real actions (spawns agents, writes to .pipeline/, runs tests).
+description: Runs the run-scoped Planner -> optional Red -> Dev -> Verify -> Review -> Security pipeline for a ticket. Invoke explicitly with /pipeline <ticket>; it never auto-triggers.
 disable-model-invocation: true
-argument-hint: <ticket description or path to a ticket file>
+argument-hint: <ticket description or path to ticket file>
 ---
 
-Run the full agent pipeline for this ticket/feature request: $ARGUMENTS
+Run the full pipeline for: $ARGUMENTS
 
-Follow `.sdd/pipeline.md`'s "`/pipeline <ticket>`" section exactly — it is the authoritative,
-runtime-neutral definition of this command's procedure, the stage sequence, routing, and loop caps.
-This file only maps that procedure onto Claude Code's subagents:
-
-1. **planner** → the `planner` subagent
-2. **red** → the `red` subagent (writes `.pipeline/red.md` directly, before `dev` runs)
-3. **dev** → the `dev` subagent
-4. **tester** → the `tester` subagent
-5. **review** → the `review` subagent (writes `.pipeline/review.md` directly — see
-   `.sdd/runtimes.yml`)
-6. **security** → the `security-checker` subagent (writes `.pipeline/security-report.md` directly)
-7. **ledger** → not a subagent; on a terminal `PASS`, run `node scripts/ledger-append.mjs` directly
-   (it regenerates `.sdd/ledger/index.json` itself)
-
-Do not restate or duplicate `.sdd/pipeline.md`'s procedure here — read it fresh each time this
-command runs, the same way any other runtime would.
+Follow `.sdd/pipeline.md` exactly. Initialize with `scripts/pipeline-run.mjs`, then dispatch only the
+stage returned by `next`: `planner`, optional `red`, `dev`, deterministic `verify`, `review`,
+`security-checker`, and deterministic `finalize`. Read state after every action and never infer or
+hand-route it. The tester agent is intentionally absent.

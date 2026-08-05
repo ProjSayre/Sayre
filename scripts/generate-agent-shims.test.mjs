@@ -267,7 +267,7 @@ test('[integration] the real repo\'s .claude/agents/*.md shims are currently up 
   });
   assert.equal(result.status, 0, `real repo shims are stale: ${result.stderr}`);
 
-  for (const name of ['planner', 'red', 'dev', 'tester', 'review', 'security-checker']) {
+  for (const name of ['planner', 'red', 'dev', 'review', 'security-checker', 'pr-review']) {
     const buffer = readFileSync(resolve(repoRoot, '.claude', 'agents', `${name}.md`));
     assert.ok(!buffer.includes(0x0d), `${name}.md contains a CR byte`);
   }

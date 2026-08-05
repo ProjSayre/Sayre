@@ -117,16 +117,16 @@ for (const term of [
 // .claude/agents/security-checker.md is now a generated pointer (see
 // scripts/generate-agent-shims.mjs) with no procedural content of its own, so the integration
 // check below has to read the neutral file instead.
-const checker = read('.sdd/stages/security.md');
+const checker = read('.sdd/stages/security.md') + '\n' + read('.sdd/stages/security-full.md');
 for (const reference of [
   registry.contract,
   registry.orchestrator,
   registryPath,
   registry.manifest_schema,
   registry.results_schema,
-  '.pipeline/security-history/'
+  '.pipeline/runs/'
 ]) {
-  assert(checker.includes(reference), `Security stage definition (.sdd/stages/security.md) is not integrated with ${reference}`);
+  assert(checker.includes(reference), `Security stage definitions are not integrated with ${reference}`);
 }
 
 console.log(`Security audit agent validation passed: ${registry.agents.length} surface briefs, ${allCheckIds.length} unique checks, 2 schemas.`);

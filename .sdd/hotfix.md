@@ -28,7 +28,7 @@ obstacle to route around.
 
 ## What it does
 
-Skips `planner`, `red`, `dev`, `tester`, `review`, and `security` as a sequence. You implement
+Skips `planner`, `red`, `dev`, deterministic verification, `review`, and `security` as a sequence. You implement
 directly.
 
 ## What it still requires — non-negotiable

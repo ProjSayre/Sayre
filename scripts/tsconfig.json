@@ -83,6 +83,8 @@
     "ledger-append.test.mjs",
     "pipeline-contracts.mjs",
     "pipeline-contracts.test.mjs",
+    "pipeline-run.mjs",
+    "pipeline-run.test.mjs",
     "sdd-completeness.test.mjs",
     "validate-security-audit-agents.mjs",
     "validate-security-audit-agents.test.mjs",

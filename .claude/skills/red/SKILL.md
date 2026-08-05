@@ -1,14 +1,9 @@
 ---
 name: red
-description: Runs just the red stage against the current .pipeline/spec.md, authoring and classifying a behavioral test for every AC-*/EC-* item before any implementation exists. Use to (re)run red on its own, without running the rest of the pipeline.
+description: Runs only the current run's red/coverage stage before implementation.
 disable-model-invocation: true
 argument-hint: (no arguments)
 ---
 
-Run only the red stage against the current spec.
-
-Follow `.sdd/pipeline.md`'s "`/red`" section exactly — it is the authoritative, runtime-neutral
-definition of this command. Invoke the `red` subagent; it writes `.pipeline/red.md`/`red.json`
-directly. Require `.pipeline/spec.md` to exist first — if it doesn't, say planner needs to run
-(`/planner <ticket>`) instead of improvising a spec. Do not continue to `dev`, `tester`, `review`,
-or `security-checker` — this command stops after red, on purpose.
+Follow `.sdd/pipeline.md`. Require `next: red`, invoke the `red` agent, and stop after its validated
+draft is emitted. Never use a shared legacy `.pipeline/spec.*`.

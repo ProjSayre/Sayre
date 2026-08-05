@@ -1,30 +1,14 @@
-# .pipeline
+# Pipeline scratch space
 
-Shared working folder for the Planner -> Red -> Dev -> Tester -> Review -> Security pipeline. Run the whole thing with `/pipeline <ticket>`. Each stage reads the prior stage's file and writes its own — markdown for humans, plus (PL-03h round 4) a JSON sidecar for every field a downstream control decision depends on:
+Only this README is tracked. `scripts/pipeline-run.mjs` creates isolated, gitignored work under
+`.pipeline/runs/<run-id>/` and points `.pipeline/current.json` at the active run.
 
-| File | Written by | Read by |
-|---|---|---|
-| `spec.md` | planner (Opus) | red, dev (human-facing; never parsed for a control decision) |
-| `spec.json` | planner (Opus) | red, dev, check-red-integrity.mjs, ledger-append.mjs (authoritative) |
-| `red.md` | red (Opus) | dev, tester, review (human-facing) |
-| `red.json` | red (Opus) | dev, check-red-integrity.mjs, ledger-append.mjs (authoritative) |
-| `changes.md` | dev (Sonnet) | tester, review, security-checker (human-facing) |
-| `changes.json` | dev (Sonnet) | check-red-integrity.mjs, ledger-append.mjs (authoritative) |
-| `test-results.md` | tester | review |
-| `review.md` | review (read-only) | security-checker, dev (if `NEEDS_FIXES`), humans (human-facing) |
-| `review.json` | review (read-only) | ledger-append.mjs (authoritative — the terminal-`PASS` gate) |
-| `security-report.md` | security-checker (read-only) | dev (if `BLOCKED`), humans (human-facing) |
-| `security.json` | security-checker (read-only) | ledger-append.mjs (authoritative — verdict + run id) |
-| `security-history/<run-id>/manifest.json` | security-checker (read-only) | later security runs, humans, artifact exporter, ledger-append.mjs |
-| `security-history/<run-id>/results.json` | security-checker (read-only) | later security runs, humans, progress tooling, ledger-append.mjs |
-| `security-history/<run-id>/report.md` | security-checker (read-only) | later security runs, humans |
+Do not create shared `.pipeline/spec.*`, `changes.*`, or verdict files. Agents author one draft JSON
+inside the current run; the runner validates it and generates the canonical JSON and human-readable
+Markdown under `artifacts/`. Successful runs are promoted atomically to `.sdd/ledger/<run-id>/`.
 
-See `scripts/pipeline-contracts.mjs` for each JSON sidecar's exact shape and validation rules, and `.sdd/pipeline.md`'s "JSON sidecars" note for the full rationale: three rounds of patching a hand-rolled markdown block scanner (`scripts/build-ledger-index.mjs`'s old `extractSection`) each closed one document-formatting exploit and left another open, so every control-path script now reads only the JSON files above — never the markdown — for a verdict, a content hash, a file-path list, or an `@spec` ID resolution. The markdown files are not decorative; they remain the documents a human reads, and each stage still writes them. A stage's JSON and markdown must always agree — that is checked by convention (the same stage writes both from the same underlying facts), not by a separate diff tool.
+Inspect without mutation:
 
-**Routing:** if `review.json`'s verdict is `NEEDS_FIXES`, the pipeline goes back to `dev`, which reads `review.md`'s fix list before re-implementing (`red` does not re-run). Same pattern if `security.json` comes back `BLOCKED`. `review` and `security-checker` do not edit source code. A `PreToolUse` hook declared in subagent frontmatter was previously believed to enforce this; a 2026-07-31 diagnostic showed frontmatter-declared hooks do not fire (settings-file hooks do), so it was never actually enforced. **PL-03g has since landed real, runtime enforcement for Claude Code**: a top-level `PreToolUse` hook in `.claude/settings.json` runs `scripts/guard-checker-readonly.mjs`, which blocks `Write`/`Edit`/`NotebookEdit` outside `.pipeline/` for `review`/`security-checker`/`pr-review`, confirmed to fire for subagent tool calls. The one honest limit that remains: the guard does not cover `Bash` (a command-allowlist over Bash was tried and rejected on the merits — see `docs/PRD_Tickets.md`'s PL-03g rejected-approach catalogue).
-
-**Red-test integrity / spec trace (PL-03c; JSON-only as of PL-03h round 4):** `review` runs `node scripts/check-red-integrity.mjs` (`npm run check:red-integrity`) as the mechanical half of its Red-test integrity and Spec trace checks — it rehashes every file `red.json` lists and resolves every `@spec` marker against `spec.json`, exiting non-zero on an undeclared hash mismatch or an unresolvable ID. `review` still makes the judgment calls the script can't: whether a declared reason is legitimate, and whether a marker-less new test the script surfaces is actually behavioral.
-
-**Terminal `PASS` (PL-03c; JSON-only as of PL-03h round 4):** once `review.json` and `security.json` both show `PASS`, `node scripts/ledger-append.mjs` writes a durable, tracked entry — `.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}` plus a copy of whichever other JSON sidecars existed for the run, reusing the security run's own id — and regenerates `.sdd/ledger/index.json`. `security/` (round 3) is a **copy**, never a move, of this same run's `security-history/<run-id>/{manifest.json,results.json,report.md}` below — copy, because that source directory stays right where it is (immutable, and read by later runs as their own progress baseline; see below), and copy rather than reference because a `.pipeline/` wipe must not take the audit record with it. That is the thing this ticket promotes out of `.pipeline/`'s ephemerality; see `.sdd/ledger/README.md`.
-
-The six top-level stage files (`spec.md`, `red.md`, `changes.md`, `test-results.md`, `review.md`, `security-report.md`) are per-ticket working state and may be overwritten. Security history directories are immutable and must never be reused or overwritten; later runs use them as progress baselines, and `ledger-append.mjs`'s own copy into `.sdd/ledger/<run-id>/security/` reads from them without ever moving or deleting them. Everything under `.pipeline/` except this README is gitignored because audit evidence may contain sensitive paths or sanitized attack traces. Export completed `security-history/<run-id>/` directories to an approved access-controlled CI or security-artifact store before deleting a worktree or when history must survive machines — the `.sdd/ledger/<run-id>/security/` copy is the durable, committed record for every run that reached terminal `PASS`, but a run that never reaches `PASS` still relies on this export step, since no ledger entry (and so no `security/` copy) is ever written for it.
+```text
+node scripts/pipeline-run.mjs status
+```

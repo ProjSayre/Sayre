@@ -1,27 +1,5 @@
-# .sdd/runtimes.yml — per-stage runtime wiring
-#
-# This file captures everything the Interfaces table in the PL-03a spec places OUTSIDE the
-# neutral layer: tool grants, model tier, hook wiring, and the subagent name. Required inputs,
-# procedure, checks, output contract, and verdict vocabulary live in `.sdd/stages/<stage>.md`
-# instead — never duplicate that content here.
-#
-# `scripts/generate-agent-shims.mjs` reads this file and writes `.claude/agents/*.md`. Currently
-# `.claude` is the only runtime target with subagent/hook machinery worth generating for; a future
-# runtime target would add its own top-level key here (e.g. `codex:`) rather than a new file.
-#
-# Hook shorthand (still unused here — see below): had any stage declared one via this file, each
-# hooks entry would be `{ matcher, command }`, and the generator would expand it into Claude Code's
-# actual frontmatter hook schema (a `hooks:` array of `{ type: command, command }` per matcher). No
-# stage below declares a hooks: block. A diagnostic run (PL-03a loop 3) established that a
-# PreToolUse hook declared in subagent frontmatter — exactly the form this file used to wire onto
-# review/security below — never fires; only a hook declared under a top-level `hooks:` key in
-# .claude/settings.json does, and at that point this repo's settings.json had no such key either.
-# **PL-03g has since landed the real fix at the settings.json level** — see the review/security
-# blocks below for the full history — so re-adding a per-stage hooks: entry here would be redundant
-# with, not a replacement for, that mechanism; the shorthand stays unused rather than duplicating a
-# guarantee `.claude/settings.json` + `scripts/guard-checker-readonly.mjs` already provide.
-
-version: 1
+# Runtime-only wiring. Procedures live in .sdd/stages/*.md.
+version: 2
 
 stages:
   planner:
@@ -29,43 +7,29 @@ stages:
     claude:
       name: planner
       description: >-
-        Turns a vague feature request or ticket into a highly detailed spec doc, using the PRD as
-        context. Use at the start of any feature/ticket, before any code is written. Writes
-        .pipeline/spec.md, which dev reads next.
-      tools: [Read, Grep, Glob, Write]
-      model: opus
+        Creates one concise run-scoped spec draft and submits it to the pipeline control plane.
+        Use before implementation; never edits product code.
+      tools: [Read, Grep, Glob, Write, Bash]
+      model: sonnet
 
   red:
     neutral: stages/red.md
     claude:
       name: red
       description: >-
-        Authors every behavioral test for spec.md's AC-*/EC-* items before dev runs, so tests
-        describe the spec rather than the diff. Classifies each test RED-CORRECT/RED-DEFERRED and
-        refuses to finish with any RED-BROKEN test. Use after planner writes .pipeline/spec.md and
-        before dev starts implementing.
+        Maps test-classified requirements to new or existing behavioral tests before development,
+        records hashes and argv-safe commands, and submits one run-scoped draft.
       tools: [Read, Write, Edit, Grep, Glob, Bash]
-      model: opus
+      model: sonnet
 
   dev:
     neutral: stages/dev.md
     claude:
       name: dev
       description: >-
-        Implements code according to .pipeline/spec.md. Can spawn its own subagents for isolated
-        research or parallel implementation work. Use after a spec exists, and re-invoke if
-        review.md routes work back for fixes.
+        Implements the current run-scoped spec or routed findings, performs focused iteration, and
+        records the minimal final verification plan.
       tools: [Read, Write, Edit, Grep, Glob, Bash, Agent]
-      model: sonnet
-
-  tester:
-    neutral: stages/tester.md
-    claude:
-      name: tester
-      description: >-
-        Reads what dev built and writes/runs tests covering edge cases and the happy path. Use
-        after dev writes .pipeline/changes.md.
-      tools: [Read, Write, Edit, Grep, Glob, Bash]
       model: sonnet
 
   review:
@@ -73,75 +37,30 @@ stages:
     claude:
       name: review
       description: >-
-        Read-only reviewer. Verifies the diff follows spec.md and that the feature aligns with the
-        human goal/PRD before code touches the main branch. Routes back to dev if tests or code
-        aren't up to standard. Use after tester writes .pipeline/test-results.md.
+        Read-only source reviewer for a deterministically verified run. Returns PASS or actionable
+        NEEDS_FIXES through one validated draft.
       tools: [Read, Grep, Glob, Bash, Write]
       disallowedTools: [Edit]
-      model: inherit
-      # D-005's action item ("review/security-checker are documented read-only but carry Bash with
-      # no matcher, so sed -i/tee/python -c could write past a Write-only guard") was NOT closed for
-      # a long stretch of this repo's history, despite two rounds of guard patches — a diagnostic run
-      # (PL-03a loop 3) confirmed the PreToolUse hooks that used to be declared below (a Write
-      # matcher on scripts/validate-pipeline-only-write.sh, a Bash matcher on the now-deleted
-      # scripts/validate-pipeline-only-bash.sh) never fired: frontmatter-declared subagent hooks
-      # don't fire at all on this checkout, only a hook declared in .claude/settings.json's
-      # top-level `hooks:` key does, and (at that point) that key didn't exist here either. So this
-      # stage had never actually been read-only with respect to either Write or Bash — both scripts
-      # were dead code. The Bash guard's allowlist design is also independently rejected on the
-      # merits (see docs/PRD_Tickets.md's PL-03g — `ruff check --config fix=true` proves flag-name
-      # denylisting can't close an open-ended capability surface); that design is not revived.
-      #
-      # PL-03g has since landed: scripts/guard-checker-readonly.mjs is wired as a PreToolUse hook
-      # under .claude/settings.json's top-level `hooks:` key (confirmed to fire, including for
-      # subagent tool calls), and this stage is in that script's `READ_ONLY_AGENTS` set. So
-      # "read-only" for `Write`/`Edit`/`NotebookEdit` is now real, structural enforcement, not merely
-      # a reviewed convention — see scripts/guard-checker-readonly.mjs and its test suite. The one
-      # honest limit that remains, unchanged by PL-03g and not expected to close (see PL-03g's own
-      # rejected-approach catalogue): the guard does not cover `Bash` — a command-allowlist over Bash
-      # was tried and rejected on the merits, since a single allowed command that executes project
-      # code (`poetry run pytest` running `conftest.py`) makes command-layer default-deny meaningless.
-      # So `review` is read-only against the tools it would normally reach for to edit a file, and
-      # not against `Bash` specifically — see .sdd/stages/review.md's runtime note.
+      model: sonnet
 
   security:
     neutral: stages/security.md
     claude:
       name: security-checker
       description: >-
-        Final security-focused pass over the implementation, run only after review.md's verdict is
-        PASS. Checks tenant isolation, RBAC boundaries, secrets handling, webhook validation.
-        Read-only with respect to source code.
+        Risk-tiered final security gate. FAST checks the diff and selected boundaries; FULL and
+        MILESTONE use the separate deep-audit contract.
       tools: [Read, Grep, Glob, Bash, Write]
       disallowedTools: [Edit]
       model: sonnet
-      # Same history as review, above, and the same landed fix: security-checker carries Bash too
-      # (e.g. to run npm run check:security-audit-agents / check:security-audit-run), and the
-      # PreToolUse hooks previously declared here (identical Write/Bash wiring) never fired either,
-      # for the same reason — frontmatter-declared subagent hooks don't fire on this checkout. PL-03g
-      # has since landed the same way for this stage: it is in scripts/guard-checker-readonly.mjs's
-      # `READ_ONLY_AGENTS` set, enforced via the settings.json-level hook. See the review stage's
-      # comment above for the full history and the one remaining honest limit (Bash is not covered).
 
   pr-review:
     neutral: stages/pr-review.md
     claude:
       name: pr-review
       description: >-
-        Reviews an open pull request across seven lenses — bounds, red-test integrity, spec
-        conformance, test adequacy, architecture rules, limitations, and security surface. The
-        lane-bounds verdict comes from scripts/check-bounds.mjs, never from judgment. Runs after a
-        PR exists, outside the per-ticket planner->red->dev->tester->review->security sequence. Use
-        via /pr-review <PR#>. An accelerator and a backstop, never a replacement for a human
-        reviewer.
+        Reviews an open pull request across bounds, red-test integrity, spec conformance, tests,
+        architecture, limitations, and security. Runs outside the per-ticket pipeline.
       tools: [Read, Grep, Glob, Bash, Write]
       disallowedTools: [Edit]
       model: sonnet
-      # Read-only with respect to source code (.sdd/stages/pr-review.md's own "Read-only" section) —
-      # the same real, live PL-03g enforcement review/security-checker have above, applied to a third
-      # stage: this stage is registered in scripts/guard-checker-readonly.mjs's READ_ONLY_AGENTS set,
-      # enforced via the settings.json-level PreToolUse hook (confirmed live-firing for subagent tool
-      # calls, unlike the inert frontmatter-hook approach this file's `hooks:` shorthand — described
-      # at the top of this file — was retired for). Same honest limit as its two siblings: the guard
-      # covers Write/Edit/NotebookEdit, not Bash — see .sdd/stages/pr-review.md's own note on why a
-      # command-allowlist over Bash was tried and rejected on the merits, not merely left undone.

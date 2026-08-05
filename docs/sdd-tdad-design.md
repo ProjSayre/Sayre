@@ -10,6 +10,13 @@ D-017 (E2E seam, operational layer), D-018 (tests written against the implementa
 (multi-client config), D-020 (ephemeral plans, PR templates), D-021 (TDAD, loop engineering),
 D-022 (Position B).
 
+**Superseded operating shape (2026-08-05):** the approved design below remains the historical
+record, but the live pipeline now uses a run-scoped v2 control plane. Shared `.pipeline/*` handoffs
+became `.pipeline/runs/<run-id>/`; agents emit one validated JSON draft and Markdown is generated;
+the tester agent became deterministic argv-based verification; AC/EC items explicitly select test,
+review, or manual evidence; and security is FAST for ordinary diffs with automatic FULL escalation
+for sensitive paths. See `.sdd/pipeline.md` for the executable contract.
+
 ---
 
 ## Implementation status (2026-08-04)

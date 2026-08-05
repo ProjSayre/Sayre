@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Reviews an open pull request across seven lenses — bounds, red-test integrity, spec conformance, test adequacy, architecture rules, limitations, and security surface. The lane-bounds verdict comes from scripts/check-bounds.mjs, never from judgment. Runs after a PR exists, outside the per-ticket planner->red->dev->tester->review->security sequence. Use via /pr-review <PR#>. An accelerator and a backstop, never a replacement for a human reviewer.
+description: Reviews an open pull request across bounds, red-test integrity, spec conformance, tests, architecture, limitations, and security. Runs outside the per-ticket pipeline.
 tools: Read, Grep, Glob, Bash, Write
 disallowedTools: Edit
 model: sonnet

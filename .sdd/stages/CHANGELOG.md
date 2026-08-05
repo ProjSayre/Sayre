@@ -20,6 +20,23 @@ automatically"; that was false — see the SEC-10 entry below — and the file's
 directly, rather than being cleaned up into a shorter, confidently wrong sentence.) Moving history
 out of a stage file is about removing *dated narration*, never about removing a *correction*.
 
+## 2026-08-05 — run-scoped v2 optimization
+
+- Replaced shared `.pipeline/*.md`/JSON state with isolated `.pipeline/runs/<run-id>/` state and a
+  current pointer. Every canonical artifact now carries the pipeline run ID.
+- Added `scripts/pipeline-run.mjs` as the strict state machine, schema validator, Markdown renderer,
+  deterministic verifier, retry-cap owner, security-profile selector, and atomic ledger promoter.
+- Removed the tester subagent. Recorded argv commands run once without a shell and produce bounded
+  logs; red-test hash integrity is checked mechanically before review.
+- Changed the blanket “new test for every AC/EC” rule to explicit `test`/`review`/`manual`
+  classification, with red accepting new or existing coverage and requiring justification for any
+  deferred evidence.
+- Split ordinary FAST security from registry-driven FULL/MILESTONE audits. Sensitive paths can only
+  raise the profile; tenant/RBAC and related critical boundaries remain blockers.
+- Reduced live stage prompts to current procedure and pinned all normal stage agents to Sonnet.
+  Historical notes remain in this file.
+- Consolidated CI control-plane checks/tests and restored a valid root `npm test` command.
+
 ## Shared: read-only enforcement for `review` / `security-checker` / `pr-review`
 
 - **PL-03a (initial extraction).** The pre-`.sdd/` Claude Code definitions for these three stages
