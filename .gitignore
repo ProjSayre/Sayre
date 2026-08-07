@@ -21,9 +21,12 @@ scripts/.shots/
 infra/*
 !infra/.env.example
 !infra/docker-compose.yml
+!infra/docker-compose.test-selfhosted.yml
 !infra/github-app/
 !infra/localstack/
 !infra/prometheus/
+!infra/ecs/
+!infra/aws/
 
 # Build / tooling caches
 .turbo/

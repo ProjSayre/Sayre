@@ -66,7 +66,7 @@ let activeStore: JiraConnectionStore = jiraConnectionStore;
 let activeOAuthClient: JiraOAuthClient = createDefaultJiraOAuthClient();
 
 function requireTestEnvironment(): void {
-  if (process.env.NODE_ENV !== 'test') {
+  if (getConfig('NODE_ENV') !== 'test') {
     throw new Error(
       'orgSecrets test helpers are unavailable outside the test environment.',
     );

@@ -4,9 +4,10 @@
 // than folded into worker.ts's module body, so importing worker.ts (e.g. from
 // worker.test.ts) never has the side effect of starting a real interval.
 
+import { getConfig } from '@sayre/config';
 import { runJiraPollCycle } from './jiraPoller';
 
-const POLL_INTERVAL_MS = Number(process.env.JIRA_POLL_INTERVAL_MS ?? 60_000);
+const POLL_INTERVAL_MS = Number(getConfig('JIRA_POLL_INTERVAL_MS'));
 
 async function tick(): Promise<void> {
   try {
