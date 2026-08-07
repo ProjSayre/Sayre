@@ -56,6 +56,8 @@ export const CONFIG_NAMES = [
   'DOCKER_CONFIG',
   'MCP_TOKEN_PEPPER_VERSION',
   'MCP_ALLOWED_ORIGINS',
+  'JIRA_POLL_INTERVAL_MS',
+  'REDIS_TLS',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -68,6 +70,10 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   DEV_USER_ID: 'user_dev_local',
   REDIS_HOST: 'localhost',
   REDIS_PORT: '6379',
+  // Off by default (matches local dev / docker-compose's plain redis:7.4-alpine,
+  // which has no TLS listener). Managed Redis providers outside the VPC (e.g.
+  // Redis Cloud) should set this to "true" -- see bullmq.ts's createRedisConnection.
+  REDIS_TLS: 'false',
   MESSAGING_INTEGRATION_REQUIRED: 'false',
   SMOKE_BASE: 'http://localhost:5173',
   SMOKE_SHOTS: 'scripts/.shots',
@@ -127,6 +133,9 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // Empty JSON array rejects browser Origins while allowing non-browser MCP
   // clients that omit Origin. Production may provision explicit HTTPS origins.
   MCP_ALLOWED_ORIGINS: '[]',
+  // W3-10 Jira poll loop (pollWorker.ts) — matches its prior process.env
+  // fallback of 60_000ms.
+  JIRA_POLL_INTERVAL_MS: '60000',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);
@@ -161,7 +170,7 @@ function validateValue(name: ConfigName, value: string | undefined): string {
     throw new ConfigError(`Configuration ${name} is empty.`);
   }
 
-  if (name === 'CI' || name === 'MESSAGING_INTEGRATION_REQUIRED') {
+  if (name === 'CI' || name === 'MESSAGING_INTEGRATION_REQUIRED' || name === 'REDIS_TLS') {
     const normalized = value.trim().toLowerCase();
     if (normalized !== 'true' && normalized !== 'false') {
       throw new ConfigError(`Configuration ${name} must be "true" or "false".`);
