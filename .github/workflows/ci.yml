@@ -32,6 +32,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # scripts/sdd-completeness.test.mjs's ledger tests run `git show`
+          # against old commits (e.g. e3134fe, several commits back) — a
+          # shallow clone (actions/checkout's default fetch-depth: 1) makes
+          # those "fatal: bad object", so full history is required here.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
