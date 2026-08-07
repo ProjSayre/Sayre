@@ -64,8 +64,45 @@ describe('bullmq surface', () => {
         password: 'resolved-redis-password',
         maxRetriesPerRequest: null,
       });
+      expect(received?.tls).toBeUndefined();
     } finally {
       resetConfigForTests();
+      resetSecretsForTests();
+    }
+  });
+
+  it('REDIS_TLS=true passes a tls option through to the Redis factory (managed Redis outside the VPC, e.g. Redis Cloud)', async () => {
+    setConfigOverrideForTests('REDIS_TLS', 'true');
+    setSecretBackendForTests(async () => 'resolved-redis-password');
+    let received: Record<string, unknown> | undefined;
+    const fakeConnection = { kind: 'fake-redis-tls' };
+
+    try {
+      const result = await createRedisConnection((options) => {
+        received = options as unknown as Record<string, unknown>;
+        return fakeConnection as unknown as IORedis;
+      });
+      expect(result).toBe(fakeConnection);
+      expect(received?.tls).toEqual({});
+    } finally {
+      resetConfigForTests();
+      resetSecretsForTests();
+    }
+  });
+
+  it('REDIS_TLS unset (default) leaves tls undefined, matching local docker-compose redis with no TLS listener', async () => {
+    setSecretBackendForTests(async () => 'resolved-redis-password');
+    let received: Record<string, unknown> | undefined;
+    const fakeConnection = { kind: 'fake-redis-no-tls' };
+
+    try {
+      const result = await createRedisConnection((options) => {
+        received = options as unknown as Record<string, unknown>;
+        return fakeConnection as unknown as IORedis;
+      });
+      expect(result).toBe(fakeConnection);
+      expect(received?.tls).toBeUndefined();
+    } finally {
       resetSecretsForTests();
     }
   });

@@ -104,6 +104,20 @@ jobs:
       - name: web — test
         run: npx turbo run test --filter=@sayre/web
 
+      # @sayre/gateway had no lint/typecheck/test CI coverage despite being a
+      # real workspace member with its own test suite (WebSocket gateway +
+      # Redis pub/sub + SQS consumer) — added so a regression here doesn't
+      # ship silently. No external services needed: its tests mock
+      # Redis/SQS rather than requiring the live redis: service below.
+      - name: gateway — lint
+        run: npx turbo run lint --filter=@sayre/gateway
+
+      - name: gateway — typecheck
+        run: npx turbo run typecheck --filter=@sayre/gateway
+
+      - name: gateway — test
+        run: npx turbo run test --filter=@sayre/gateway
+
       # turbo's dependency graph (`typecheck`/`test` depend on `^build`) builds
       # @sayre/shared-types before @sayre/core on a clean runner.
       - name: core — lint
