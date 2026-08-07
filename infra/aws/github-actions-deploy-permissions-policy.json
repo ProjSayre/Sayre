@@ -1,0 +1,54 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ECRAuth",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRPush",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload"
+      ],
+      "Resource": [
+        "arn:aws:ecr:us-east-1:<ACCOUNT_ID>:repository/codebase-ontology/web",
+        "arn:aws:ecr:us-east-1:<ACCOUNT_ID>:repository/codebase-ontology/core",
+        "arn:aws:ecr:us-east-1:<ACCOUNT_ID>:repository/codebase-ontology/workers"
+      ]
+    },
+    {
+      "Sid": "ECSDeploy",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeServices",
+        "ecs:DescribeTaskDefinition",
+        "ecs:RegisterTaskDefinition",
+        "ecs:UpdateService"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PassRolesToECS",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-ecs-execution",
+        "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-web-task-role",
+        "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-core-task-role",
+        "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-workers-task-role"
+      ],
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "ecs-tasks.amazonaws.com" }
+      }
+    }
+  ]
+}

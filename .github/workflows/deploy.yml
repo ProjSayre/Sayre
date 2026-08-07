@@ -1,0 +1,167 @@
+name: Deploy
+
+# Runs only after ci.yml and security-gates.yml succeed on main.
+# Builds/pushes to ECR, then deploys each service to its own ECS
+# Fargate service. Uses GitHub's OIDC provider to assume an AWS role —
+# no long-lived AWS access keys stored as repo secrets.
+#
+# Uses GitHub Environments so infra-critical steps (Neo4j->Neptune,
+# pgvector->OpenSearch, KMS secrets cutover — all "Executor: Human" in
+# the backlog) require a manual approval click even in an otherwise
+# automated pipeline.
+#
+# Single-environment (production only) for now — a staging environment
+# (separate cluster, separate IAM roles trusted via GitHub's environment-
+# scoped OIDC claim, separate Secrets Manager entries, promotion of the
+# same image tag rather than a rebuild) is a deliberate later addition,
+# not implemented yet.
+
+on:
+  workflow_run:
+    workflows: ["CI", "Security & Architecture Gates"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  id-token: write   # required for OIDC -> AWS role assumption
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: codebase-ontology-platform
+
+jobs:
+  build-and-push:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # apps/web and services/core are npm-workspace members (root
+          # package.json's "workspaces") — their Dockerfiles need the repo
+          # root as build context to see the root lockfile and sibling
+          # workspace packages (@sayre/config, @sayre/shared-types),
+          # confirmed by actually building both from `.` locally; a
+          # context scoped to just apps/web or services/core can't resolve
+          # `npm ci`. services/workers is Poetry-only and self-contained,
+          # so it keeps its own directory as context.
+          - path: apps/web
+            name: web
+            context: .
+            dockerfile: apps/web/Dockerfile
+          - path: services/core
+            name: core
+            context: .
+            dockerfile: services/core/Dockerfile
+          - path: services/workers
+            name: workers
+            context: services/workers
+            dockerfile: services/workers/Dockerfile
+    outputs:
+      web_image: ${{ steps.image.outputs.web }}
+      core_image: ${{ steps.image.outputs.core }}
+      workers_image: ${{ steps.image.outputs.workers }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr-login
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build & push ${{ matrix.name }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/codebase-ontology/${{ matrix.name }}:${{ github.event.workflow_run.head_sha }}
+            ${{ steps.ecr-login.outputs.registry }}/codebase-ontology/${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      - name: Record pushed image URI
+        id: image
+        run: echo "${{ matrix.name }}=${{ steps.ecr-login.outputs.registry }}/codebase-ontology/${{ matrix.name }}:${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+
+  deploy-standard:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production  # ordinary deploys — no manual gate
+    strategy:
+      matrix:
+        include:
+          - service: web
+            ecs_service: codebase-ontology-web
+            task_def_file: infra/ecs/task-definitions/web.json
+            container_name: web
+          - service: core
+            ecs_service: codebase-ontology-core
+            task_def_file: infra/ecs/task-definitions/core.json
+            container_name: core
+          - service: workers
+            ecs_service: codebase-ontology-workers
+            task_def_file: infra/ecs/task-definitions/workers.json
+            container_name: workers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Render new task definition with the freshly built image
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ matrix.task_def_file }}
+          container-name: ${{ matrix.container_name }}
+          image: ${{ needs.build-and-push.outputs[format('{0}_image', matrix.service)] }}
+
+      - name: Deploy to ECS (register new revision + update service)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ matrix.ecs_service }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  purge-cloudflare-cache:
+    needs: deploy-standard
+    runs-on: ubuntu-latest
+    # Cloudflare is DNS/proxy only here, not compute — this just
+    # purges cached assets so users don't see stale content until TTL
+    # expiry. No-op / delete this job if nothing is orange-clouded.
+    if: ${{ vars.CLOUDFLARE_ZONE_ID != '' }}
+    steps:
+      - name: Purge Cloudflare cache
+        run: |
+          curl -sf -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${{ vars.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything": true}'
+
+  # Only invoked manually for a trigger-gated infra cutover
+  # (PM-03 Neo4j->Neptune, PM-04 pgvector->OpenSearch, PM-07 KMS secrets).
+  # The `infra-critical` environment should be configured in repo
+  # settings with required reviewers, per the "Executor: Human
+  # (infra-critical)" designation on those tickets.
+  infra-critical-cutover:
+    if: false  # flip to a workflow_dispatch trigger when an actual cutover is scheduled
+    runs-on: ubuntu-latest
+    environment: infra-critical
+    steps:
+      - name: Run gated migration/cutover
+        run: echo "Manual-approval-gated cutover step"

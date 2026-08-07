@@ -1,0 +1,40 @@
+{
+  "family": "codebase-ontology-workers",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "2048",
+  "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-workers-task-role",
+  "containerDefinitions": [
+    {
+      "name": "workers",
+      "image": "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/codebase-ontology/workers:placeholder",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "SAYRE_ENV", "value": "production" },
+        { "name": "AWS_REGION", "value": "us-east-1" },
+        { "name": "NEO4J_URI", "value": "<NEO4J_URI>" },
+        { "name": "NEO4J_USER", "value": "neo4j" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_RUNTIME_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/database-runtime-url" },
+        { "name": "NEO4J_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/neo4j-password" },
+        { "name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/workers/anthropic-api-key" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/codebase-ontology-workers",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "workers"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "interval": 30, "timeout": 5, "retries": 3, "startPeriod": 45
+      }
+    }
+  ]
+}

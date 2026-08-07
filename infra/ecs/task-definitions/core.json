@@ -1,0 +1,52 @@
+{
+  "family": "codebase-ontology-core",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/codebase-ontology-core-task-role",
+  "containerDefinitions": [
+    {
+      "name": "core",
+      "image": "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/codebase-ontology/core:placeholder",
+      "essential": true,
+      "portMappings": [
+        { "containerPort": 4000, "protocol": "tcp" },
+        { "containerPort": 4001, "protocol": "tcp" }
+      ],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "NEO4J_URI", "value": "<NEO4J_URI>" },
+        { "name": "NEO4J_USER", "value": "neo4j" },
+        { "name": "REDIS_HOST", "value": "<REDIS_HOST>" },
+        { "name": "REDIS_PORT", "value": "6379" },
+        { "name": "REDIS_TLS", "value": "true" },
+        { "name": "GITHUB_APP_SLUG", "value": "<GITHUB_APP_SLUG>" },
+        { "name": "GITHUB_APP_ID", "value": "<GITHUB_APP_ID>" },
+        { "name": "GITHUB_APP_CLIENT_ID", "value": "<GITHUB_APP_CLIENT_ID>" },
+        { "name": "GITHUB_LOGIN_CALLBACK_URL", "value": "<GITHUB_LOGIN_CALLBACK_URL>" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_RUNTIME_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/database-runtime-url" },
+        { "name": "NEO4J_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/neo4j-password" },
+        { "name": "REDIS_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/core/redis-password" },
+        { "name": "GITHUB_APP_PRIVATE_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/core/github-app-private-key" },
+        { "name": "GITHUB_APP_CLIENT_SECRET", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/core/github-app-client-secret" },
+        { "name": "GITHUB_WEBHOOK_SECRET", "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:codebase-ontology/core/github-webhook-secret" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/codebase-ontology-core",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "core"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"],
+        "interval": 30, "timeout": 5, "retries": 3, "startPeriod": 30
+      }
+    }
+  ]
+}
