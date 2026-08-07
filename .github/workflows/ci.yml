@@ -166,6 +166,21 @@ jobs:
         env:
           DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 
+      # W3-10 Jira connection RLS test (jiraConnectionStore.rls.test.ts) — same
+      # node:test-vs-vitest reason as the two steps above, but this one had no
+      # :ci script at all until now, so it never ran anywhere.
+      - name: core — RLS isolation tests (Jira connections)
+        run: npm --prefix services/core run test:rls:jira:ci
+        env:
+          DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+
+      # test/mcp-interop/interop.test.ts (MCP tool-handler contract against a
+      # fixture gateway + fake OpenAI-compatible model) has its own tsconfig
+      # covered by `core — typecheck` above, but execution was never wired in
+      # — only its typecheck ran, not the tests themselves.
+      - name: core — MCP interop tests
+        run: npm run test:mcp-interop --workspace @sayre/core
+
   workers:
     name: workers (ruff, mypy, pytest)
     runs-on: ubuntu-latest
@@ -245,13 +260,17 @@ jobs:
           messaging/sqs_client.py
           sayre_workers/graph_migrations/runner.py
           scripts/run_graph_migrations.py
-          sayre_workers/telemetry/otel.py
+          sayre_workers/telemetry
           sayre_workers/db
           sayre_workers/ingestion
           sayre_workers/model_provider
           sayre_workers/enrichment
           sayre_workers/retrieval
           sayre_workers/tickets
+          sayre_workers/parsing
+          sayre_workers/dynamic_coverage
+          sayre_workers/cli.py
+          sayre_workers/__main__.py
 
       # DATABASE_ADMIN_URL lets test_tenant_isolation.py's Postgres-gated suite
       # actually execute here instead of skipping (mirrors the `core — RLS`
