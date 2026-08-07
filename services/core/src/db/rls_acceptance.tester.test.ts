@@ -137,6 +137,7 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
     provider: ["text", false],
     external_id: ["text", true],
     default_branch: ["text", true],
+    revoked_at: ["timestamp with time zone", true],
     created_at: ["timestamp with time zone", false],
     updated_at: ["timestamp with time zone", false],
   },
