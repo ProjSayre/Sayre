@@ -1,0 +1,334 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-04T05:52:15.629Z",
+  "completed_at": "2026-08-04T06:35:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+    "branch": "main",
+    "dirty": true,
+    "environment": "local-dev, static analysis + local Node/vitest process only -- no live Docker Postgres/Neo4j/Redis/GitHub contacted this run. Reran the diff's own existing test suites plus self-authored scratch dynamic probes (deleted immediately after use, never committed) directly against the real services/core source; no live network egress beyond localhost, no live database connection opened.",
+    "base_urls": [],
+    "changed_paths": [
+      "DEPENDENCIES.md",
+      "package-lock.json",
+      "services/core/package.json",
+      "services/core/src/mcp/gateway.ts",
+      "services/workers/pyproject.toml",
+      "services/workers/poetry.lock",
+      "scripts/dependency-baseline.test.mjs",
+      "scripts/dependency-install.test.mjs"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260727T042955000Z-fd80b6e8dc-PR_DELTA-281eeb",
+    "commit_sha": "fd80b6e8dcb27d538c22dc72f0f804abdf09dd45",
+    "comparable": false,
+    "selection_reason": "Newest complete run under .pipeline/security-history/ whose target commit is a confirmed ancestor of the current target (`git merge-base --is-ancestor fd80b6e8dcb27d538c22dc72f0f804abdf09dd45 e7d473db5ac52f59a654d3ace636fa385e23e3f0` exit 0; the two older runs -- 20260723T045054983Z-dcd04559ef and 20260726T014535000Z-7f22125a81 -- are also ancestors but are superseded per the contract's baseline order, which prefers the newest ancestor). No human-specified baseline was supplied. Recorded for traceability and used for surface-readiness-drift detection (product_progress.documentation_code_drift), but marked comparable=false: this run's diff (W0-00 dependency-manifest re-derivation touching DEPENDENCIES.md, package-lock.json, services/core/package.json, services/core/src/mcp/gateway.ts, services/workers/pyproject.toml, services/workers/poetry.lock, plus two new red-authored test scripts) is a materially different target surface than the baseline's W2-09 GitHub installation_repositories/reconcile diff, with zero observation_key overlap (this run's target assets -- dependency-manifest-pins, mcp-gateway-schema-widening, ci-dependency-vulnerability-scanning -- do not exist as observations in the baseline run). Per audit-contract.md section 2, when target surfaces are materially incompatible, comparable is set to false and NOT_COMPARABLE transitions are used rather than inventing a trend -- consistent with how all three prior runs in this history handled the same situation relative to each other.",
+    "incompatible_dimensions": [
+      "Zero observation_key overlap: baseline's diff covered the W2-09 GitHub installation_repositories/reconcile surface (webhook branch, reconcile route/service, DB writers); this run's diff is the W0-00 dependency-manifest/DEPENDENCIES.md/mcp-gateway-schema-cast surface -- entirely different target assets.",
+      "target.environment description differs (this run additionally performed self-authored ad hoc dynamic probes against the MCP gateway schema boundary; the baseline run only reran the diff's own pre-existing test files).",
+      "This run selects supply-chain-infrastructure and mcp-transport-key-lifecycle; the baseline run selected ingestion-queue-webhook, web-api-client, and secrets-audit-data-lifecycle -- non-overlapping selected-brief sets."
+    ]
+  },
+  "product_progress": {
+    "milestone": "W0-00 -- Dependency & Environment Baseline (re-derivation / audit). Living single source of truth for dependency pinning + DEPENDENCIES.md completeness; this run audits a re-derivation pass that reconciled services/core's zod pin against the PRD's named zod 4.4.x line and closed nine DEPENDENCIES.md documentation gaps (findings B1-B9 in .pipeline/spec.md).",
+    "phase": "pre-external-customer (MVP; secrets remain gitignored .env per .claude/rules/security-multitenancy.md's phased posture -- KMS migration (PM-07) not yet triggered).",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/service-layer.md",
+      ".claude/rules/graph-schema.md",
+      "docs/PRD_Tickets.md (W0-00 section, lines 17-34, per spec.md)"
+    ],
+    "documentation_code_drift": [
+      "DEPENDENCIES.md's zod row previously stated a plain 'W0-00' reference with no version line; it now explicitly names the PRD's zod 4.4.x line and records the 3.25.76->4.4.x bump -- this run confirms the manifest (services/core/package.json: \"zod\": \"4.4.x\", resolved 4.4.3) and DEPENDENCIES.md are now consistent with each other and with the PRD; no residual drift found on this specific row.",
+      "No CI dependency-vulnerability-scanning step (npm audit / pip-audit / Dependabot / Snyk / Trivy / OSV) exists in .github/workflows/ci.yml, confirmed by direct inspection this run -- this is a pre-existing, repo-wide gap unrelated to and not introduced by this diff (this diff touches no CI file), surfaced here because supply-chain-infrastructure was selected for other reasons (dependency manifests changed). See SC-03/SC-14 observations and finding FND-247fa22c08be.",
+      "mcp-transport-key-lifecycle surface readiness is unchanged (IMPLEMENTED, as already recorded by the 2026-07-27 baseline run's documentation_code_drift entry) -- this run's diff only touches two SDK-facing type constants inside the pre-existing gateway.ts, not the surface's overall maturity."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Repository owner (human), running this audit against their own local codebase and disposable local Node processes only -- matching the standing posture of all three prior security-history runs. No live GitHub/Jira/Linear, production, staging, or shared target was contacted or authorized this run.",
+    "resource_ceiling": "Local Node process only. Reran services/core/src/mcp/gateway.test.ts (3/3, independently, via `npx vitest run`), `npx tsc --noEmit`, and `npx eslint src/mcp/gateway.ts` in services/core. Independently wrote and ran two throwaway dynamic probe scripts (not committed; each created under services/core/, executed via `npx tsx`, then deleted immediately after use, confirmed via `git status --porcelain` showing zero residual files) against a disposable localhost Express+MCP server bound to 127.0.0.1 on an ephemeral port: (1) sent 7 malformed find_relevant_nodes/get_node_context tool calls (empty string, oversized string, NUL byte, leading-whitespace) through the real @modelcontextprotocol/sdk Client/Server round trip to verify server-side zod validation still rejects them post-cast; (2) called listTools() and inspected the advertised JSON schema for get_node_context. Also ran `npm ls zod --workspaces --include-workspace-root` and `npm view zod@4.4.3 dist.integrity` (read-only npm registry metadata query) to independently cross-check the dual-package-hazard explanation in changes.md/review.md and the lockfile's recorded integrity hash. No package install/uninstall, no `npm ci`/`poetry install` from a wiped node_modules/venv was performed this security pass (relying on dev's and review's already-independently-performed and disclosed clean-install verifications in changes.md/review.md for that specific evidence).",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "Synthetic org fixture '11111111-1111-4111-8111-111111111111' (the same fixture used by services/core/src/mcp/gateway.test.ts) reused in this run's ad hoc dynamic probe scripts for MCPT-07/MCPT-12/CORE-06 verification -- no live tenant data contacted."
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-01 check (always selected regardless of path match).",
+      "rationale": "This diff touches zero persistence/query write paths (no services/core/src/db/**, graph-query/**, graph-write/**, or route/service file). The only source edit (gateway.ts) widens the TypeScript type of two already-existing, already-org-scoped MCP tool-schema constants; it introduces no new read/write and does not touch credential.context.orgId sourcing (unchanged, still resolved exclusively from the authenticated MCP key, not from tool arguments).",
+      "code_references": [
+        "services/core/src/db/ (untouched by this diff)",
+        "services/core/src/graph-query/ (untouched by this diff)",
+        "services/core/src/mcp/gateway.ts (org_id sourcing via credential.context, unchanged)"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-02 check (always selected regardless of path match).",
+      "rationale": "Zero files under graph-query/, graph-write/, or any graphology/canvas client code appear in this diff. The Graph Query Service itself is entirely untouched.",
+      "code_references": [
+        "services/core/src/graph-query/ (untouched by this diff)"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-03 check; explicitly flagged for scrutiny in the task's focus list given DEPENDENCIES.md was heavily edited.",
+      "rationale": "Verified no live-looking credential/token/key pattern anywhere in the six changed manifest/source files or DEPENDENCIES.md's new prose; the new package-lock.json entry contains only public npm-registry metadata (name/version/resolved URL/sha512 integrity/license/funding), independently cross-checked against the live registry.",
+      "code_references": [
+        "DEPENDENCIES.md",
+        "package-lock.json",
+        "services/core/src/mcp/gateway.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-04 check (always selected regardless of path match).",
+      "rationale": "No webhook receiver file (services/core/src/webhooks/**, githubWebhookService.ts, jiraPoller.ts, etc.) appears in this diff.",
+      "code_references": [
+        "services/core/src/webhooks/ (untouched by this diff)"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-05 check (always selected regardless of path match).",
+      "rationale": "services/workers/** appears in this diff only via pyproject.toml (a pin-style normalization, `openai>=2.45.0,<2.46.0` -> `openai==2.45.*`, zero resolved-version change) and poetry.lock (regenerated content-hash line only, byte-identical resolved package graph, confirmed via `git diff` showing exactly one changed line). No file under sayre_workers/ingestion/** is touched.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/ (untouched by this diff)",
+        "services/workers/pyproject.toml",
+        "services/workers/poetry.lock"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-06 check; explicitly flagged for scrutiny in the task's focus list (whether the two `as any` casts in gateway.ts weaken tool-input validation).",
+      "rationale": "The only injection-adjacent code in this diff is gateway.ts's NODE_ID_SCHEMA/QUERY_SCHEMA `as any` widening. Verified via a live dynamic probe (see CORE-06 observation) that server-side zod validation is unaffected.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:47-60"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Path-routing floor (services/workers/**) technically matches via pyproject.toml/poetry.lock, but inspection of the actual diff shows zero application source under services/workers/sayre_workers/** is touched -- only a cosmetic openai pin-style normalization with zero resolved-version drift (confirmed via `git diff services/workers/poetry.lock`, exactly one content-hash line changed). No prompt-construction, retrieval, embedding, or Graphify code exists anywhere in this diff, so no LLM-01..12 target asset is introduced or modified.",
+      "rationale": "Not selected; recorded per the orchestrator's non-silent-exclusion requirement rather than omitted.",
+      "code_references": [
+        "services/workers/pyproject.toml",
+        "services/workers/sayre_workers/retrieval/ (untouched by this diff)"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Path-routing floor (services/workers/**, services/core/**) technically matches, but grep across every changed file for ModelProvider/EmbeddingProvider/GraphifyAdapter/egress/ssrf/httpx-client-construction -- zero matches. The only services/core source edit (gateway.ts) is the MCP tool gateway, not a model-provider adapter or egress client; the only services/workers change is the openai pin-style normalization with zero resolved-version drift.",
+      "rationale": "Not selected; recorded per the orchestrator's non-silent-exclusion requirement rather than omitted.",
+      "code_references": [
+        "services/workers/sayre_workers/model_provider/ (untouched by this diff)"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Direct trigger-path match (services/core/src/mcp/**); gateway.ts is directly edited. Explicitly named in the task's focus list.",
+      "rationale": "Full checklist executed. Only the two SDK-facing schema constants (NODE_ID_SCHEMA/QUERY_SCHEMA) and their eight call-site substitutions changed; every other MCP transport/session/auth/key-lifecycle code path in this surface is byte-identical before and after this diff.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches trigger_paths (services/gateway/**, *realtime*, *websocket*, *redis*) -- services/gateway/ is entirely untouched by this diff.",
+      "rationale": "Not selected; recorded per the orchestrator's non-silent-exclusion requirement rather than omitted.",
+      "code_references": [
+        "services/gateway/ (untouched by this diff)"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Path-routing floor (services/workers/**) technically matches via pyproject.toml/poetry.lock only; no webhook receiver, queue publisher/consumer, ingestion, or provider-API-client file is touched anywhere in this diff.",
+      "rationale": "Not selected; recorded per the orchestrator's non-silent-exclusion requirement rather than omitted.",
+      "code_references": [
+        "services/workers/pyproject.toml"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches trigger_paths (apps/web/**, top-level src/**, services/core/src/routes/**, services/core/src/http/**) -- gateway.ts lives under services/core/src/mcp/, a distinct thin-handler surface from the REST routes/HTTP layer this brief targets.",
+      "rationale": "Not selected; recorded per the orchestrator's non-silent-exclusion requirement rather than omitted.",
+      "code_references": [
+        "apps/web/ (untouched by this diff)",
+        "services/core/src/routes/ (untouched by this diff)"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Path-routing floor (scripts/**) technically matches via the two new red-authored test scripts, but both are pure static/mechanical checks and clean-install harnesses with zero secret-loader, logging, storage, rotation, audit-log, tenant-deletion, backup, export, or detection code (confirmed by reading both files in full and grepping for process.env/console.*/spawnSync -- the install-test script does spawn `npm ci`/`poetry install` with fixed literal arguments only, never attacker- or environment-influenced). SEC-01/SEC-02's substance (loader bypass, hardcoded/historical secrets) is directly covered by the mandatory CORE-03 observation's own file-by-file secret-pattern scan across every changed file, including these two scripts. SEC-03..14 (frontend exposure, logs/metrics/traces, storage/rotation, CI leakage, audit-log, tenant deletion, backup, export, detection) have no applicable target asset anywhere in this diff.",
+      "rationale": "Not selected; recorded per the orchestrator's non-silent-exclusion requirement rather than omitted. CORE-03's evidence stands in for SEC-01/02's substance for this diff.",
+      "code_references": [
+        "scripts/dependency-baseline.test.mjs",
+        "scripts/dependency-install.test.mjs"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Direct trigger-path match: package.json, package-lock.json, pyproject.toml, poetry.lock, and scripts/** are all directly in this diff -- this ticket's primary surface. Full checklist executed.",
+      "rationale": "Readiness marked PARTIAL, not IMPLEMENTED: dependency pinning/lockfile enforcement is solid (SC-01/SC-02 PASS), but no automated dependency-vulnerability scanning or SBOM generation exists in CI (SC-03 FAIL, SC-14 UNVERIFIED) -- a pre-existing, repo-wide gap surfaced by selecting this brief for this diff, not introduced by this diff.",
+      "code_references": [
+        "DEPENDENCIES.md",
+        "package-lock.json",
+        "services/core/package.json",
+        "services/workers/pyproject.toml",
+        "services/workers/poetry.lock",
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".sdd/stages/security.md",
+      "sha256": "1d23bb9594243ebd518cc6ec618831c966d062a5845270adf6bb4d2c0c2a5997"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "5a9313b9fb87c85267bcd26bcd6487f5eeae154c64876e0879af86faf01a5e38"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "158b389bfbff77988d5046c9ec8b50708015ce5445bb3053520ed67f8eccca25"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "fde0283ab0d6cc50a2a289eaad12ac485580bef5c67366bb10b460b8355d759e"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "c1a24a105aa49d8ae317a1b740e8ecf3076f326b0ff669c2d4916c8a39b4cd0e"
+    },
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    }
+  ],
+  "limitations": [
+    "No live GitHub/Jira/Linear delivery, live Postgres/Neo4j/Redis connection, or production/staging/shared target was contacted this run. All findings are STATIC code-level analysis plus (a) rerunning the diff's own existing gateway.test.ts (3/3, independently reconfirmed via `npx vitest run`), `npx tsc --noEmit`, and `npx eslint` in services/core, and (b) two self-authored, disposable, localhost-only dynamic probes against the live MCP gateway router (created, run, and deleted within this session; confirmed zero residual files via `git status --porcelain`).",
+    "MCPT-01, 02, 03, 04, 05, 06, 08, 09, 10, 11 are NOT_APPLICABLE for this run specifically because gateway.ts's origin-validation, authentication, session-lifecycle, streaming, and API-key code paths are byte-identical before and after this diff (only NODE_ID_SCHEMA/QUERY_SCHEMA and their eight inputSchema call sites changed) -- this is a PR_DELTA scoped to the actual diff, not a MILESTONE/FULL re-audit of the entire pre-existing MCP transport surface. A prior or future MILESTONE/FULL run should still exercise those checks against the surface as a whole.",
+    "SC-04 through SC-13 are NOT_APPLICABLE because no .github/**, infra/**, Dockerfile*, or migration file appears anywhere in this diff's changed_paths.",
+    "SC-03/SC-14 surface a pre-existing, repo-wide absence of automated CI dependency-vulnerability scanning (no npm audit / pip-audit / Dependabot / Snyk / Trivy / OSV step in .github/workflows/ci.yml). This is not introduced by this diff (this diff touches no CI file) and is scored LOW severity / non-blocking, but is recorded as finding FND-247fa22c08be, OPEN, for follow-up.",
+    "This run did not perform a from-scratch `rm -rf node_modules && npm ci` or `poetry env remove --all && poetry install` itself (that specific dynamic clean-install evidence for AC-1/EC-2/EC-3/EC-7/EC-8 was independently performed and disclosed by both `dev` (changes.md) and `review` (review.md) with byte-identical before/after lockfile diffs); this run instead independently cross-checked the resulting dependency-resolution claim via `npm ls zod --workspaces --include-workspace-root` (confirms the dual-package layout matches changes.md's explanation) and a live `npm view zod@4.4.3 dist.integrity` registry query (confirms the lockfile's recorded sha512 integrity hash is genuine, not fabricated)."
+  ]
+}
