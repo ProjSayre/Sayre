@@ -320,6 +320,14 @@ def applied_versions(
             (target,),
         )
         rows = cur.fetchall()
+    # Read-only, but psycopg leaves every execute() inside an open transaction until
+    # explicitly ended. Committing (rather than leaving it open) releases the ACCESS
+    # SHARE lock this SELECT took on graph_migrations immediately -- otherwise a
+    # caller that holds this connection open across a later blocking operation (e.g.
+    # a test spawning the CLI as a subprocess with its own fresh connection) can
+    # deadlock that subprocess's ensure_tracking_table against this still-open
+    # read lock if it needs an ACCESS EXCLUSIVE lock (its PK-reshape ALTER TABLE).
+    pg_conn.commit()
     return {(layer, version): checksum for layer, version, checksum in rows}
 
 
