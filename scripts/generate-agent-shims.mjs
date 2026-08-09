@@ -33,8 +33,20 @@ const sddDir = join(repoRoot, '.sdd');
 const runtimesPath = join(sddDir, 'runtimes.yml');
 const claudeAgentsDir = join(repoRoot, '.claude', 'agents');
 
-const checkMode = process.argv.includes('--check');
-const forceMode = process.argv.includes('--force');
+// PL-04 / item 2 (the general defect): the only flags this CLI recognizes. Every argv token used to
+// be checked independently via `.includes(...)`, so anything else (a typo like `--froce`, or any
+// other unrecognized token) was silently ignored rather than rejected — the same "typo'd flag must
+// never look like it worked" fix applied throughout scripts/. `fail` is a hoisted function
+// declaration (defined further down this file), so it's safe to call here at module top level.
+const KNOWN_FLAGS = new Set(['--check', '--force']);
+const cliArgs = process.argv.slice(2);
+for (const arg of cliArgs) {
+  if (!KNOWN_FLAGS.has(arg)) {
+    fail(`unrecognized argument "${arg}" — known flags: --check, --force. A typo'd flag must never look like it worked.`);
+  }
+}
+const checkMode = cliArgs.includes('--check');
+const forceMode = cliArgs.includes('--force');
 
 function readText(path) {
   return readFileSync(path, 'utf8');

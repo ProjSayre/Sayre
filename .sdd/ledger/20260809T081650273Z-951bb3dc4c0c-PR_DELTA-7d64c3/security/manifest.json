@@ -1,0 +1,289 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-09T08:17:00.000Z",
+  "completed_at": "2026-08-09T08:45:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre"
+  },
+  "target": {
+    "commit_sha": "951bb3dc4c0ca5a0fa8a0cbbe0d97fbe3089a87f",
+    "branch": "fix/pl-04-pipeline-defects",
+    "dirty": true,
+    "environment": "local development checkout — static analysis + local test/validator suites only; no live/staging/production target, no runtime penetration test",
+    "base_urls": [],
+    "changed_paths": [
+      "package.json",
+      ".github/workflows/ci.yml",
+      "scripts/sdd-completeness.test.mjs"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+    "commit_sha": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+    "comparable": true,
+    "selection_reason": "Newest COMPLETE run whose target commit is an ancestor of the current target (audit-contract baseline order item 2 — no human-specified baseline supplied beyond the coordinator confirming this is the correct next-in-sequence run). `git merge-base --is-ancestor 010b2fe50c72f0dbbc76fcf71480546e9a5c52a9 951bb3dc4c0ca5a0fa8a0cbbe0d97fbe3089a87f` confirmed true this session (951bb3d is PL-13's own landing commit, per review.md pass 1). Same repository, same local-dev-only environment class, same empty tenant_fixtures.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "PL-14 — wire the W0-00 dependency suites into CI; de-brittle the PL-12 [inline] wiring test (Amendment 1)",
+    "phase": "PR_DELTA, first security pass this run (no fix rounds yet). review.json verdict PASS pass 1 of this run, independently re-verified fresh via `node scripts/check-stamp-freshness.mjs review.json` (exit 0, status \"fresh\", stamp treeHash 3b52ffb8…) before this run proceeded. `.pipeline/spec.json` reads stale for the usual /inline-edit lane-structural reason (STOP A stamp predates STOP B, and Amendment 1 rewrote the file after stamping) — advisory, not trusted-fresh, per this stage's Staleness-of-required-inputs section, so this does not trigger a refusal.",
+    "source_references": [
+      ".pipeline/spec.md (Amendment 1)",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".pipeline/review.json",
+      ".pipeline/test-results.md",
+      ".pipeline/security-history/20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1/ (this run's own baseline)"
+    ],
+    "documentation_code_drift": [
+      "None newly observed. review.md's own Warning 1/2 already disclose the cosmetic CI-step-name divergence from spec's Interfaces sketch and the EC-2 remote-CI-log claim as locally unverifiable — both re-confirmed, neither security-relevant."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode.",
+      "rationale": "PL-14's diff (package.json, .github/workflows/ci.yml, scripts/sdd-completeness.test.mjs) touches no persistence, graph-write, or org_id-stamping code — confirmed via `git diff HEAD --stat -- 'services/**' 'apps/**' 'packages/**' 'infra/**'` (empty).",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No route/resolver/graph-query-service/graphology code touched by this diff — all three files are pipeline control-plane/CI wiring.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "Diff grepped for credential/secret patterns and process.env access — none found. No secret loader involved in this diff at all.",
+      "code_references": [
+        "package.json",
+        ".github/workflows/ci.yml",
+        "scripts/sdd-completeness.test.mjs"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/core/src/webhooks/** changes in this diff.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/workers/** changes in this diff.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "Read dependency-install.test.mjs's spawnSync calls (array-form args, no shell:true, no untrusted-input concatenation) and both new ci.yml `run:` lines (static literal strings, zero `${{ }}` expression interpolation) directly.",
+      "code_references": [
+        "scripts/dependency-install.test.mjs:44-57",
+        ".github/workflows/ci.yml:170-179"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "None of the three changed files are under services/workers/**, packages/graph-schema/**, or match *embedding*/*retriev*/*prompt*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "None of the three changed files match services/workers/**, services/core/**, infra/**, *provider*, *egress*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered by this diff's own changed paths.",
+      "rationale": "None of the three changed files match services/core/src/mcp/**, *mcp*, *api-key*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered by this diff's own changed paths.",
+      "rationale": "None of the three changed files match services/gateway/**, *realtime*, *websocket*, *redis*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "None of the three changed files match services/workers/**, *queue*, *webhook*, *integration*, *sqs*, *bullmq*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: apps/web/** untouched by PL-14's diff (confirmed via changed-paths list) — unlike PL-13, this surface has no genuine trigger-path match this round and is not among the checks the coordinator asked to carry forward on their own merits, so it is not force-selected either.",
+      "rationale": "No apps/web/**, src/**, or services/core/src/{routes,http}/** file in this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "PR_DELTA trigger-path match: scripts/** (sdd-completeness.test.mjs) and .github/**/package.json overlap with **/*secret*-adjacent tooling. This is also where the red-test-pin/audit-integrity question (SEC-10) the coordinator flagged lives.",
+      "code_references": [
+        "scripts/sdd-completeness.test.mjs",
+        ".github/workflows/ci.yml",
+        "package.json"
+      ],
+      "rationale": "Full PR_DELTA scope: every checklist ID (SEC-01..14) run against the new diff's own target asset, plus re-verification (unaffected) of the persisting SEC-09/SEC-10 v3/v6 findings carried from baseline (scripts/ledger-append.mjs, scripts/check-lite-eligible.mjs, .sdd/bounds.yml all confirmed untouched by this diff), plus one new SEC-10 attack-path-version examining the diff-to-content red-test-pin conversion itself."
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Genuine PR_DELTA trigger-path match this round (unlike PL-13's continuity-only selection): .github/workflows/ci.yml and package.json are both directly touched by this diff — two new CI steps and two new npm scripts. This is the coordinator's adversarial angle (1).",
+      "rationale": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json shows the first two changed, package-lock.json untouched.",
+      "code_references": [
+        ".github/workflows/ci.yml:170-179",
+        "package.json:44-45"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "progress-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "security-stage",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle-attacker",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure-attacker",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "CORE-01/02/04/05 remain UNVERIFIED for this diff's own code (no application/persistence/webhook/ingestion code touched — all three files are pipeline control-plane/CI wiring).",
+    "No dynamic/runtime testing against a live GitHub Actions runner was performed (authorization.runtime_tests_authorized is false) — the new CI steps were verified by reading ci.yml directly and by independently running the same npm scripts locally (test:sdd-completeness, test:dependency-baseline), not by triggering an actual Actions run. dependency-install.test.mjs's npm-ci test was read but not independently re-run this session (Windows ENOENT quirk, EC-4, already extensively documented by tester/review) — its behavior was verified by code reading (array-form spawnSync args, no shell:true) rather than execution.",
+    "web-api-client not selected this round (apps/web/** untouched) — the WEB-01..12 coverage this surface carried during the PL-13 round is not re-examined here; nothing in this diff bears on it.",
+    "SEC-09/SEC-10 v3/v6 carried forward verbatim from baseline (unaffected — ledger-append.mjs/check-lite-eligible.mjs/bounds.yml confirmed untouched by this diff), not re-derived from scratch, per the coordinator's instruction to weigh persisting findings on their own merits."
+  ]
+}

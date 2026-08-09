@@ -7,9 +7,10 @@ Cursor, or anything else — reads the same methodology from here. There is no s
 copy of *what each stage does*.
 
 If you've never touched this pipeline before, read `.sdd/pipeline.md` first (the stage sequence and
-the four ways to invoke it), then whichever `.sdd/stages/*.md` file matches the stage you're
-running. That's genuinely enough — these files are written to be understandable without knowing
-what a Claude Code subagent, hook, or Codex sandbox is.
+the ways to invoke it, including the sanctioned `/hotfix` bypass — see `.sdd/hotfix.md`), then
+whichever `.sdd/stages/*.md` file matches the stage you're running. That's genuinely enough — these
+files are written to be understandable without knowing what a Claude Code subagent, hook, or Codex
+sandbox is.
 
 ## Why this exists
 
@@ -41,7 +42,7 @@ belongs in `.sdd/`. If it depends on the specific tool, it belongs in that tool'
 |---|---|
 | Required inputs and read order | Tool grants |
 | Procedure and checks | Model tier |
-| Output contract and section names | Hook wiring (attempted for read-only enforcement; see note below — not currently load-bearing) |
+| Output contract and section names | Hook wiring (real, load-bearing read-only enforcement for Claude Code since PL-03g — see note below) |
 | Verdict vocabulary (`PASS` / `NEEDS_FIXES` / `BLOCKED` / `UNVERIFIED`) | Subagent name |
 | Which `.pipeline/` artifact is produced | Whether a subagent writes that artifact directly, or a coordinator saves it |
 
@@ -49,18 +50,25 @@ Concretely: `.sdd/stages/review.md` says *"produce a report in this shape; it is
 `.pipeline/review.md`"* and stops there. It does not say whether a Claude Code subagent writes
 that file directly (it does) or a Codex-style coordinator saves the subagent's returned markdown
 (because Codex has no subagent-isolation equivalent at all). Both are the same contract; the
-mechanism is runtime detail and lives in `.sdd/runtimes.yml`. Neither runtime currently confines
-that write to `.pipeline/` with a runtime-enforced guard — see the note under "The generated
-surfaces" below.
+mechanism is runtime detail and lives in `.sdd/runtimes.yml`. As of PL-03g, Claude Code confines
+that write to `.pipeline/` with a real, runtime-enforced guard (a `PreToolUse` hook running
+`scripts/guard-checker-readonly.mjs`, covering `Write`/`Edit`/`NotebookEdit`, not `Bash`) — see the
+note under "The generated surfaces" below. Codex, having no subagent-isolation mechanism at all
+(and having been deleted from this repo — see "Accepted costs" below), never had an equivalent and
+has none now.
 
 ## Directory map
 
 ```
 .sdd/
   README.md          — this file
-  pipeline.md         — stage sequence, routing, loop caps, and the four entry-point commands
+  pipeline.md         — stage sequence, routing, loop caps, and the entry-point commands (PL-04:
+                        the full sequence, six per-stage commands, a status check, /re-gate,
+                        /pipeline-lite, /inline-edit, and /hotfix — see pipeline.md's own Entry
+                        points section for the current count)
   runtimes.yml         — per-stage tool grants / model tier / hook wiring for .claude/
-  bounds.md            — named lane vocabulary (defined only — nothing enforces it yet, see below)
+  bounds.md            — named lane vocabulary, enforced by scripts/check-bounds.mjs (PL-03d)
+  hotfix.md            — the sanctioned bypass (D-005 #3), the one entry point that runs no stage
   stages/
     planner.md
     red.md
@@ -68,12 +76,20 @@ surfaces" below.
     tester.md
     review.md
     security.md
+    pr-review.md       — reviews an open PR; outside the per-ticket sequence (PL-03d/i)
+    CHANGELOG.md        — round-by-round history extracted out of the stage files themselves (PL-04
+                          / C3): each stage file states what to do and why; this file states which
+                          round changed it and when
   ledger/
     README.md          — entry format and the file->spec query path
     index.json         — generated file->run-id index; never hand-edited (see below)
     <run-id>/
       spec.md          — verbatim spec.md from a completed, terminal-PASS run
-      entry.md         — that run's metadata (date, ticket, files touched, verdicts, red-test paths)
+      spec.json        — verbatim spec.json for that run
+      entry.md         — that run's metadata, human-facing (date, ticket, files touched, verdicts, red-test paths)
+      entry.json       — the same metadata, machine-facing and authoritative (see .sdd/ledger/README.md)
+      security/        — copy of that run's .pipeline/security-history/<run-id>/ audit record
+      red.json, changes.json, review.json, security.json — copied verbatim when present for that run
 ```
 
 ## The generated surfaces: `.claude/agents/*.md` and `.sdd/ledger/index.json`
@@ -100,21 +116,30 @@ exist" failure.
 `.agents/` were) because it's the one runtime here with subagent isolation actually worth wiring —
 `review`/`security-checker` run in their own context, separate from whatever `dev` was just doing.
 
-**Note on hook enforcement (corrected, PL-03a loop 3):** earlier revisions of this document, and of
-`.claude/agents/review.md`/`security-checker.md` themselves, claimed Claude Code "enforces this
-stage is read-only structurally" via a `PreToolUse` hook. A diagnostic run established that a hook
-declared in subagent frontmatter — the only place one was ever wired here — never actually fires on
-this checkout; only a hook declared under a top-level `hooks:` key in `.claude/settings.json` does,
-and this repo's `settings.json` has none. So neither runtime currently has a working structural
-read-only guarantee for these two stages: Claude Code's hook was declared but inert, and Codex never
-had an equivalent at all. "Read-only" is, for both runtimes today, an instruction honored by
-convention and checked afterward (diff inspection at review time, CI) — not an enforced guarantee.
-Real enforcement is tracked as `PL-03g` (`docs/PRD_Tickets.md`), whose first question is whether a
-settings.json-level hook can even be scoped to one subagent without also blocking `dev`.
+**Note on hook enforcement (corrected, PL-03a loop 3; landed, PL-03g):** earlier revisions of this
+document, and of `.claude/agents/review.md`/`security-checker.md` themselves, claimed Claude Code
+"enforces this stage is read-only structurally" via a `PreToolUse` hook. A diagnostic run established
+that a hook declared in subagent frontmatter — the only place one was ever wired at the time — never
+actually fires on this checkout; only a hook declared under a top-level `hooks:` key in
+`.claude/settings.json` does. At that point this repo's `settings.json` had no such key, so neither
+runtime had a working structural read-only guarantee for these stages: Claude Code's hook was
+declared but inert, and Codex never had an equivalent at all. **PL-03g has since closed that gap**:
+`.claude/settings.json` now declares a top-level `PreToolUse` hook running
+`scripts/guard-checker-readonly.mjs`, confirmed to fire for subagent tool calls (not just the main
+session), and `review`/`security-checker`/`pr-review` are all registered in that script's
+`READ_ONLY_AGENTS` set — see `scripts/guard-checker-readonly.mjs` and its test suite. "Read-only" for
+those three stages is now real, structural enforcement for `Write`/`Edit`/`NotebookEdit`, not merely
+a reviewed convention. The one honest limit that remains, and is not expected to close (see PL-03g's
+own rejected-approach catalogue in `docs/PRD_Tickets.md`): the guard does not cover `Bash` — a
+command-allowlist over Bash was tried and rejected on the merits, since a single allowed command that
+executes project code (`poetry run pytest` running `conftest.py`) makes command-layer default-deny
+meaningless.
 
-`.claude/skills/*/SKILL.md` (the four entry-point commands — `/pipeline`, `/spec-only`,
-`/pipeline-status`, `/security-recheck`) are hand-authored but intentionally thin: each one points
-at its matching section of `.sdd/pipeline.md` rather than restating the procedure.
+`.claude/skills/*/SKILL.md` (the entry-point commands — `/pipeline`, `/spec-only`,
+`/pipeline-status`, `/security-recheck`, `/pipeline-lite`, `/inline-edit`, `/hotfix`, and
+`/pr-review`) are hand-authored but intentionally thin: each one points at its matching section of
+`.sdd/pipeline.md` (or, for `/hotfix`/`/pr-review`, their own neutral file — `.sdd/hotfix.md` /
+`.sdd/stages/pr-review.md`) rather than restating the procedure.
 
 **The second generated surface, added in PL-03c:** `.sdd/ledger/index.json` is generated the same
 way, from a different source. `scripts/build-ledger-index.mjs` reads every `.sdd/ledger/<run-id>/entry.md`
@@ -127,8 +152,10 @@ themselves committed, durable content, not per-runtime configuration — see "Th
 
 Unlike everything above, `.sdd/ledger/` is not runtime configuration — it's the one place this
 pipeline keeps a permanent record after `.pipeline/`'s working files are overwritten by the next run.
-`scripts/ledger-append.mjs` writes `.sdd/ledger/<run-id>/{spec.md,entry.md}` once a run reaches
-**terminal `PASS`** (both `review.md` and `security-report.md` show `PASS`), reusing that run's own
+`scripts/ledger-append.mjs` writes `.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}`
+(plus a verbatim copy of `red.json`/`changes.json`/`review.json`/`security.json` when present for the
+run — `entry.json` is the machine-facing, authoritative half; see `.sdd/ledger/README.md`) once a run
+reaches **terminal `PASS`** (both `review.json` and `security.json` show `PASS`), reusing that run's own
 security run id so a ledger entry and its security-history directory are trivially correlatable, and
 regenerates `index.json` itself. Full rationale, the entry format, and the "why reuse the run id"
 reasoning live in `.sdd/ledger/README.md` — this section only documents the query path a human or a
@@ -174,19 +201,27 @@ open question, worth watching on the first several real runs rather than decidin
 
 ## What's here and what's deliberately not (yet)
 
-This directory now covers six stages (`red` landed in PL-03c) plus the ledger. Specifically **not**
-in scope here, even though `docs/sdd-tdad-design.md` describes them as later steps of the same
-design:
+This directory now covers seven stages (`red` landed in PL-03c; `pr-review` registered in
+`runtimes.yml` in the PL-03d/PL-03i wiring pass) plus the ledger. Two gaps recorded in earlier
+revisions of this section are now closed:
 
-- **No `pr-review` agent**, and nothing in this repository enforces `.sdd/bounds.md`'s lane
-  vocabulary yet — that file defines names and path globs only.
-- **No impact resolver** (`get_affected_tests` / `affected_tests.py`, PL-03b). `red` and `tester`
-  both work without it today — each states its absence explicitly in `.pipeline/red.md` /
-  `.pipeline/test-results.md` rather than silently implying coverage neither one actually has (see
-  `.sdd/stages/red.md` and `.sdd/stages/tester.md`).
+- **`pr-review` is registered** (`.sdd/stages/pr-review.md`, wired into `runtimes.yml`), and
+  `.sdd/bounds.yml`'s lane vocabulary is enforced by `scripts/check-bounds.mjs`, which `pr-review`
+  calls rather than judging bounds itself. `pr-review` is also registered in
+  `scripts/guard-checker-readonly.mjs`'s `READ_ONLY_AGENTS` set, so its read-only-with-respect-to-
+  source-code claim is enforced the same real way `review`/`security-checker`'s is (PL-03g).
+- **The impact resolver is wired in** (`get_affected_tests` / `services/workers/scripts/
+  affected_tests.py`, PL-03b). `red` and `tester` both use it when the workers' Poetry environment
+  (Python 3.12 + Tree-sitter's native grammars) is available in the current checkout, and both still
+  state its absence explicitly — via `.pipeline/red.md` / `.pipeline/test-results.md` — when it
+  isn't, rather than silently implying coverage that checkout can't actually produce (see
+  `.sdd/stages/red.md` and `.sdd/stages/tester.md`). A known ranking distortion in the resolver
+  itself (re-export barrels inflating depth) is tracked as PL-03i, not fixed as part of the wiring.
 
-These land in follow-on tickets (tracked as PL-03b/d in the design doc). Building this foundation
-first is what unblocked them without requiring another rewrite of the stage files.
+Still genuinely not built: the resolver's v2, graph-backed body swap (gated on this repo having real
+`measured` `COVERS` edges — see `docs/sdd-tdad-design.md` Section 2), and PL-03g's open question about
+whether a settings.json-level hook can be scoped even more finely than "the checker stages" as a
+group.
 
 ## For more context
 

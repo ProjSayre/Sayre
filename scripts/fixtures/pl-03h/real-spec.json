@@ -1,0 +1,89 @@
+{
+  "_comment": "Frozen, committed snapshot of this run's real .pipeline/spec.json (PL-03h round 4), captured after the architectural amendment landed. A frozen copy stops tracking the live file the moment it is created, by design — see scripts/fixtures/pl-03h/real-spec.md's equivalent note from the prior round. Lets check-red-integrity.test.mjs regress against genuinely real, complex spec.json content without reading the live, gitignored .pipeline/spec.json, which does not exist on a fresh checkout.",
+  "ticket": "PL-03h — Fence/comment-aware markdown parsing for the ledger + spec-trace/hash checks",
+  "goal": "Remove control decisions from prose entirely: every machine-consumed pipeline field (verdicts, content hashes, file-path lists, @spec ID mappings) moves to a small JSON sidecar each stage writes next to its markdown, and ledger-append.mjs/check-red-integrity.mjs/build-ledger-index.mjs read only JSON for every control decision. Markdown stays human-facing and is never parsed for a control decision again.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "[SUPERSEDED — see the round-4 architectural amendment at the top of spec.md] Originally: a markdown-structure-aware parsing layer (scanBlockState + stripFencedAndCommentedBlocks, consulted by extractSection) resolves a heading shadowed by a fenced code block or an HTML comment, and fails closed (throws) on a genuine duplicate heading. Round 4 deletes extractSection/scanBlockState/stripFencedAndCommentedBlocks entirely — see AC-9."
+    },
+    {
+      "id": "AC-2",
+      "text": "[SUPERSEDED] Originally: extractKnownSpecIds resolves @spec IDs only from real acceptance-criteria/edge-case items in spec.md, not from fenced code examples in the same section. Round 4: spec.json's acceptanceCriteria/edgeCases arrays only ever contain declared {id,text} items — there is no section text left to grep, so there is no fenced-example-laundering surface to close in the first place. See AC-9, AC-12."
+    },
+    {
+      "id": "AC-3",
+      "text": "A directory-shaped path recorded for hashing produces a controlled violation message in check-red-integrity.mjs's own JSON report — at every site that reads such a path's content (the rehash loop, the spec-trace loop, and the candidate-new-test loop) — rather than an uncaught EISDIR crash. Unaffected by the round-4 JSON migration: this is about a real file on disk becoming a directory, not about markdown vs. JSON. isReadableFile is now called uniformly at all three sites (round-2 Warning 1, closed this round — see Fixes applied)."
+    },
+    {
+      "id": "AC-4",
+      "text": "[SUPERSEDED] Originally: the dead case-insensitive \"Files changed\" fallback in ledger-append.mjs is removed; a changes.md that exists but lacks the exact heading fails loudly. Round 4: changes.json's filesChanged is a plain string array with no heading to mis-case, omit, or leave empty in the markdown sense — the equivalent required-field failure (an empty array on a clean tree) is preserved. See AC-9."
+    },
+    {
+      "id": "AC-5",
+      "text": "[SUPERSEDED] Originally: isDeclaredInChanges recognizes a declaration only from a parsed \"## Red-test changes\" bullet-list entry, not a substring match. Round 4: changes.json's redTestChanges is an array of {path,reason} objects; declaration is exact array membership on path, with no bullet-list grammar and no prose to substring-match at all. See AC-9."
+    },
+    {
+      "id": "AC-6",
+      "text": "[SUPERSEDED] Originally: all five red.md/build-ledger-index.mjs test-suite skip tests are un-skipped and pass unmodified. Round 4 replaces the underlying mechanism those tests exercised (extractSection's fence/comment/duplicate-heading resolution) entirely, so the tests themselves are retired, not merely un-skipped — see changes.md's \"Constraints\" section for the full accounting of which test intents were migrated to the JSON contract and which are stated as having no remaining premise."
+    },
+    {
+      "id": "AC-7",
+      "text": "node --test scripts/*.test.mjs and npx tsc --noEmit are both clean; the real repo's own .pipeline/.sdd/ledger/ documents still extract correctly (build-ledger-index.mjs --check and a direct check-red-integrity.mjs run both still succeed against the real, unmodified repo state)."
+    },
+    {
+      "id": "AC-8",
+      "text": "Round 4 (architectural). Five JSON sidecars are defined and read by every control-path script: .pipeline/spec.json ({ticket,goal,acceptanceCriteria,edgeCases}) from planner, .pipeline/red.json ({impactMapPresent,tests:[{path,sha256,specIds,classification}]}) from red, .pipeline/changes.json ({filesChanged,redTestChanges:[{path,reason}]}) from dev, .pipeline/review.json ({verdict}) from review, .pipeline/security.json ({verdict,runId}) from security. Each is validated strictly on read (scripts/pipeline-contracts.mjs): required keys present, verdict/classification literals restricted to their allowed enum, arrays checked to be arrays, spec/test ids checked against the AC-n/EC-n shape, and (the direct JSON analog of \"fail closed on a duplicate heading\") duplicate ids/paths within one array are refused."
+    },
+    {
+      "id": "AC-9",
+      "text": "extractSection, scanBlockState, and stripFencedAndCommentedBlocks are deleted from scripts/build-ledger-index.mjs entirely — not left in place unused. scripts/check-red-integrity.mjs and scripts/ledger-append.mjs read only the JSON sidecars (via scripts/pipeline-contracts.mjs) for every control decision (verdicts, content hashes, file-path lists, @spec ID resolution, the security run id). The only markdown scripts/ledger-append.mjs still touches is .pipeline/spec.md, copied verbatim into the ledger for human readers — never parsed for any decision. changes.md states explicitly which two remaining regexes in this codebase operate on non-markdown text (a plain spec.json string field's ticket-id extraction, and a fixed source-code @spec-comment idiom in test files) and why neither is a control-path markdown parse of the kind this ticket removes."
+    },
+    {
+      "id": "AC-10",
+      "text": "scripts/ledger-append.mjs copies whichever of the five .pipeline/*.json sidecars exist for a run into .sdd/ledger/<run-id>/, verbatim, alongside spec.md — so the permanent ledger record carries both the human (markdown) and machine (JSON) forms. scripts/build-ledger-index.mjs reads only .sdd/ledger/<run-id>/entry.json (a new sidecar ledger-append.mjs writes alongside entry.md) for every ledger-index control decision (the verdicts gate, the files-touched path list) — entry.md remains human-facing only. The one pre-existing ledger entry (PL-03a) is backfilled with its own entry.json by hand, the same one-time migration affordance entry.md itself already documents."
+    },
+    {
+      "id": "AC-11",
+      "text": ".sdd/stages/planner.md, red.md, dev.md, review.md, and security.md are each updated to instruct their stage to emit its JSON sidecar alongside its markdown report, with the exact shape given. .sdd/pipeline.md's Stage sequence documents the sidecar for each of the five stages and the ledger step's own copy-forward of them."
+    },
+    {
+      "id": "AC-12",
+      "text": "check-red-integrity.mjs's parseContentHashes inversion (a fenced format-reference example inside \"## Content hashes (SHA-256)\" being read into the same Map as real entries, so a later illustrative entry could overwrite a real recorded hash) is confirmed eliminated by construction under the JSON contract: red.json's tests array bundles path/sha256/specIds/classification into one object per test, so there is no second, independently-parsed list for an illustrative example to launder into, and no Map for a later entry to silently overwrite. Verified directly in scripts/pipeline-contracts.test.mjs and scripts/check-red-integrity.test.mjs."
+    },
+    {
+      "id": "AC-13",
+      "text": "scripts/fixtures/pl-03h/ is tracked in git (git add), not merely present on disk — verified by simulating a clean checkout (git archive HEAD, overlay the modified/added scripts, git init, run the full suite) and confirming the untracked-fixture failure mode (round-2 Critical 2) does not recur."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "A fence legitimately sitting inside a section's own content is now moot under the JSON contract — content that used to be markdown prose with an embedded fenced example (e.g. red.md's \"Observed failure output\") stays human-facing markdown only; no JSON field is ever derived from it."
+    },
+    {
+      "id": "EC-2",
+      "text": "[SUPERSEDED] A genuine duplicate heading where the earlier one is the real, final one — moot: JSON objects have no heading-repetition concept. The direct analog (a duplicate id/path within one JSON array) is refused — see AC-8."
+    },
+    {
+      "id": "EC-3",
+      "text": "[SUPERSEDED] Blockquote, table cell, and backslash-escaped heading-looking lines — moot: there is no heading predicate left to fool, since no control-path script parses markdown structure."
+    },
+    {
+      "id": "EC-4",
+      "text": "A changes.json that exists but genuinely has no files touched this run: dev.md's changes.json output contract always includes \"filesChanged\" as a required array field regardless of content, so an empty array while the working tree is otherwise clean is treated as a malformed-document signal (fails loudly), never a legitimate \"nothing changed\" state — the same posture the old markdown version held for an absent/empty \"## Files changed\" section."
+    },
+    {
+      "id": "EC-5",
+      "text": "A path in check-red-integrity.mjs's rehash loop, spec-trace loop, or candidate-new-test loop that has become a directory — not only the hash-rehash site; isReadableFile closes all three sites uniformly (round-2 Warning 1, closed this round)."
+    },
+    {
+      "id": "EC-6",
+      "text": "Honest limit, stated explicitly rather than overclaimed: a stage that writes a false value into its own JSON sidecar (e.g. review.json's verdict is PASS when the diff is actually broken) still produces a false result — the JSON contract does not verify a stage told the truth about itself. What it removes is a THIRD PARTY's ability to inject a false reading through document formatting (a fenced example, an HTML comment, a duplicate heading, an ATX closing sequence, a setext heading) rather than through the stage's own say-so, which is what every one of review round 3's seven demonstrated exploits did."
+    },
+    {
+      "id": "EC-7",
+      "text": "A malformed JSON sidecar (truncated JSON, a missing required field, a verdict/classification value outside its allowed enum, an id not matching the AC-n/EC-n shape, a duplicate id/path within one array) fails closed with a message naming the offending field — validated strictly on read by scripts/pipeline-contracts.mjs, never partially trusted or best-effort parsed."
+    }
+  ]
+}

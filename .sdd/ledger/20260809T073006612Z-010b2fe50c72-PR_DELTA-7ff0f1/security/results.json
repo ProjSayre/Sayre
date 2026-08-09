@@ -1,0 +1,1654 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+  "baseline_run_id": "20260809T065405029Z-010b2fe50c72-PR_DELTA-877e84",
+  "generated_at": "2026-08-09T07:45:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "UNVERIFIED": 5,
+      "PASS": 24,
+      "FAIL": 6,
+      "NOT_APPLICABLE": 23
+    },
+    "result_transitions": {
+      "UNCHANGED": 57,
+      "FIRST_OBSERVATION": 1
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 57,
+      "NOT_COMPARABLE": 1
+    },
+    "finding_statuses": {
+      "OPEN": 6,
+      "RESOLVED": 3
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-13's diff touches any tenant/org_id stamping, RLS policy, or persistence-boundary code — the first PL-04-round diff to touch apps/web/** at all, so re-verified rather than assumed unaffected.",
+      "evidence": [
+        "`git diff HEAD --stat -- 'services/**' 'apps/**' 'packages/**' 'infra/**'` returns only apps/web/.claude/skills/redteam-ux/driver.mjs (this session). Read the full file: it is a standalone Node CLI script (Puppeteer automation), not imported by any apps/web route/page/component, and performs zero Postgres/Neo4j/pgvector reads or writes.",
+        "scripts/check-secret-access.mjs performs only `git ls-files` and static regex analysis of tracked source text — no persistence access."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- 'services/**' 'apps/**' 'packages/**' 'infra/**'; read driver.mjs in full.",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-13's diff introduces any route/resolver/graphology code duplicating server-side RBAC filtering.",
+      "evidence": [
+        "Diff contains no apps/web/app, apps/web/components, services/core/src/routes, services/core/src/graph-query, services/gateway, or graphology-adjacent changes of any kind — driver.mjs lives entirely outside the Next.js app tree, under .claude/skills/."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only; confirm no path under apps/web/app, apps/web/components, or services/core/src/{routes,graph-query}.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched",
+      "attack_path_version": "v1",
+      "attempt": "Full cold-model + verification pass on this ticket's own subject: does driver.mjs's migration off raw process.env access, and check-secret-access.mjs's new ALLOWLIST entry, keep secrets neither hardcoded nor logged and route config through the phase-appropriate loader (.claude/rules/security-multitenancy.md, CLAUDE.md's Secrets section)?",
+      "evidence": [
+        "Read the full diff and both files' current content. driver.mjs no longer contains `process.env`, `CHROME_PATH`, or `LOCALAPPDATA` anywhere (grep, zero matches) — the three direct reads are replaced by a local `optionalConfig()` wrapper over `@sayre/config`'s `getOptionalConfig('PUPPETEER_EXECUTABLE_PATH')`, and the Windows per-user candidate now derives from `os.homedir()` instead of `process.env.LOCALAPPDATA`.",
+        "Read packages/config/src/config.ts in full: `getOptionalConfig` is the ONLY place in the file that reads `process.env`, and that file is itself on check-secret-access.mjs's ALLOWLIST as a designated loader — so driver.mjs's new route is a genuine use of the central loader boundary, not a bypass that merely relocates a raw env read one file over. `PUPPETEER_EXECUTABLE_PATH` is already registered in `CONFIG_NAMES` (line 19) with no default value, so an unset override returns `undefined` without throwing, and a set, non-empty override returns the raw string with no further validation (matches the pre-existing CHROME_PATH semantics exactly — same trust level, same class of local override, not a new privilege).",
+        "Live-verified `getOptionalConfig('PUPPETEER_EXECUTABLE_PATH')` this session (node -e, both from the repo root and from apps/web/.claude/skills/redteam-ux/ directly, confirming EC-4's loader-resolves-from-driver-directory precondition holds): unset -> undefined (no throw); empty string -> throws ConfigError \"... is empty.\"; whitespace-only -> throws ConfigError \"... is empty.\"; a set non-empty (bogus) path -> returned verbatim. driver.mjs's local `optionalConfig()` wrapper catches exactly `ConfigError` and returns `undefined`, rethrowing anything else — matches spec.md EC-1's required behavior (empty/whitespace override is \"no override\", never a crash) and mirrors the pre-existing, already-reviewed pattern in scripts/render-anime-hero.mjs (same wrapper shape, same config name).",
+        "grep of the diff for credential/secret-shaped strings (`api[_-]?key|secret|password|token|-----BEGIN|BEARER `): zero live-value matches — only the config *name* PUPPETEER_EXECUTABLE_PATH (a browser-binary path setting, not a credential) appears, in a header comment and an error message, never a resolved value.",
+        "Independently ran `node scripts/check-secret-access.mjs` (exit 0, \"Secret-access gate passed.\"), `npm run test:secret-access` (38/38 pass, including the \"allows only the four exact loader paths\" fixture test, which does not assert ALLOWLIST.size and is unaffected by the new fifth entry), and `npm run test:readonly-guard` (23/23 pass, including the exact [C4-mirror] cases the new ALLOWLIST comment describes).",
+        "Confirmed the \"Secret-access boundary\" CI step (.github/workflows/ci.yml:49-52) runs check:secret-access/test:secret-access before `npm ci` (line 58) — check-secret-access.mjs still imports only node:child_process/node:fs (unaffected by this diff), so the built-ins-only property this early gate depends on still holds."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node scripts/check-secret-access.mjs; npm run test:secret-access; npm run test:readonly-guard; node --check apps/web/.claude/skills/redteam-ux/driver.mjs; node -e exercise of getOptionalConfig('PUPPETEER_EXECUTABLE_PATH') for unset/empty/whitespace/set cases, from both the repo root and apps/web/.claude/skills/redteam-ux/.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs:36-56",
+        "packages/config/src/config.ts:184-197",
+        "scripts/check-secret-access.mjs:6-18",
+        "scripts/render-anime-hero.mjs:26-41"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any webhook receiver code.",
+      "evidence": [
+        "No services/core/src/webhooks changes in this diff (confirmed via changed-paths list)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any ingestion worker / scratch-clone lifecycle code.",
+      "evidence": [
+        "No services/workers/** changes in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff) — apps/web/.claude/skills/ is dev-only agent tooling, not app/route/persistence code; no services/**, packages/**, or infra/** code touched",
+      "attack_path_version": "v1",
+      "attempt": "Read every changed line in both files for shell/SQL/Cypher/queue/provider input built by concatenation from untrusted input.",
+      "evidence": [
+        "driver.mjs: `puppeteer.launch({ executablePath: findChrome(), ... })` passes the resolved path as a direct constructor argument to puppeteer-core, which spawns the browser via `child_process.spawn` with an argv array (no shell:true, no string command line) — confirmed by reading the unchanged launch() call site (line 226-230, not touched by this diff). No shell interpolation of the override value is possible even if it contains shell metacharacters.",
+        "check-secret-access.mjs: the new ALLOWLIST entry is a plain string added to a `Set` literal; no new regex is built from file content, argv, or any other untrusted input — `DIRECT_FORBIDDEN`, `SOURCE_EXTENSION`, `EXCLUDED_SEGMENT` and all other patterns are unchanged, 100% static.",
+        "node --check on driver.mjs: exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs:226-230 and scripts/check-secret-access.mjs:6-18 directly; node --check driver.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs:226-230",
+        "scripts/check-secret-access.mjs:6-18"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1-driver-loader-migration",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1-driver-loader-migration",
+      "attempt": "Searched driver.mjs for any direct or alternate-path secret/config read outside the designated loader, and traced the new route to confirm it genuinely terminates at the one sanctioned boundary rather than merely relocating a raw process.env read.",
+      "evidence": [
+        "grep of driver.mjs for `process.env`, `process\\s*\\[`, `CHROME_PATH`, `LOCALAPPDATA`: zero matches (previously 3 direct reads: lines 40, 41, 46).",
+        "Traced `optionalConfig('PUPPETEER_EXECUTABLE_PATH')` -> `getOptionalConfig' (packages/config/src/config.ts:192-197) -> `process.env[name]` at config.ts:194, the ONLY process.env read in that call chain, inside a file that is itself on check-secret-access.mjs's ALLOWLIST as a designated loader (line 7). Not a simulated boundary: no other file in the chain reads process.env directly.",
+        "Confirmed via `check-secret-access.mjs`'s own scan (independently re-run): exit 0, \"Secret-access gate passed.\" across the whole tracked tree."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep -n \"process.env|CHROME_PATH|LOCALAPPDATA\" apps/web/.claude/skills/redteam-ux/driver.mjs (no matches); node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs:36-56",
+        "packages/config/src/config.ts:192-197"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|scripts/check-secret-access.mjs's new ALLOWLIST entry for scripts/guard-checker-readonly.test.mjs — mechanically whole-file and permanent, not scoped to the one sanctioned line (PL-13 new surface)|v2-allowlist-whole-file-residual",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-secret-access.mjs's new ALLOWLIST entry for scripts/guard-checker-readonly.test.mjs — mechanically whole-file and permanent, not scoped to the one sanctioned line (PL-13 new surface)",
+      "attack_path_version": "v2-allowlist-whole-file-residual",
+      "attempt": "Modeled the ALLOWLIST entry itself as an alternate credential path outside the designated loader: does exempting scripts/guard-checker-readonly.test.mjs open a route by which a FUTURE edit to that one file could read a genuinely secret-class value from process.env with the gate staying silent forever? Weighed the three mitigants spec.md EC-5 states rather than accepting or dismissing the residual on the ticket's own say-so.",
+      "evidence": [
+        "Read `check-secret-access.mjs`'s scan loop directly (line 1847-1852): `if (!SOURCE_EXTENSION.test(file) || EXCLUDED_SEGMENT.test(file) || ALLOWLIST.has(file)) continue;` — `ALLOWLIST.has(file)` is an exact-string Set membership test with no line/pattern/variable-name scoping. Once a file is a member, EVERY process.env access anywhere in that file, present or future, is silently skipped by this gate for as long as the entry remains — confirmed by reading the loop; there is no per-line or per-identifier suppression mechanism anywhere in this file (matches spec.md EC-5's own \"Nothing mechanically narrows an ALLOWLIST entry... today\").",
+        "Confirmed the CURRENT state of the exempted file does not exploit this today: `git diff HEAD -- scripts/guard-checker-readonly.test.mjs` is empty (byte-unchanged), and its one process.env-touching line (233, `spawnSync(process.execPath, [GUARD], { ..., env: { ...process.env, ...env } })`) reads no secret-class value — it spreads the CURRENT process's own environment into a child process to control TMP/TEMP/TMPDIR for the [C4-mirror] regression tests, confirmed by reading the surrounding test bodies (lines 219-261).",
+        "Weighed the three stated mitigants against the actual tree, not merely quoted them: (a) the comment above the entry names the sanctioned access precisely (child-process env spread for TMP/TEMP/TMPDIR injection) — a diff adding an unrelated second env read to this file would visibly contradict that comment at review time, but review is a human/agent process, not a mechanical control; (b) the file has zero production import path (it is a `*.test.mjs` file exercising `scripts/guard-checker-readonly.mjs` as a subprocess) and CI provisions no real credential when it runs; (c) the SIBLING `check-org-secret-access.mjs` gate independently confirmed to still cover this exact file for the Jira raw-column class — its own ALLOWLIST (4 entries, all under services/core/src/db/) does NOT include scripts/guard-checker-readonly.test.mjs, and it scans the same `git ls-files`-derived tracked-file set, so a future edit introducing a `jiraAccessTokenEnc`-class read to this file would still be caught by that gate. Mitigant (c) is real but narrow: it covers only the Jira raw-column class, not AWS/GitHub/JWT/other secret classes.",
+        "No time-bounded, named risk-acceptance record (approver/reason/ticket/expiry) exists for this residual anywhere in .pipeline/ or the diff — spec.md's EC-5 discloses it as an \"accepted residual\" but this is a design note in a spec, not the audit contract's formal risk_acceptance object, so this observation does not treat it as one."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-b1187a8efdf6",
+        "status": "OPEN",
+        "first_seen_run_id": "20260809T065405029Z-010b2fe50c72-PR_DELTA-877e84",
+        "first_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "last_seen_run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+        "last_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "No per-line/per-pattern suppression mechanism exists in check-secret-access.mjs today (spec.md explicitly rejected adding one as out of scope for this CI-unblock ticket, correctly — a general suppression-comment mechanism is a larger, separate change). A future remediation could either (a) add a narrow, pattern-scoped suppression (e.g. an allowlist keyed to a specific line/pattern hash rather than a whole file, so drift elsewhere in the same file is still caught), or (b) add a lightweight recurring check (e.g. a recorded content-hash or line-count assertion on the ALLOWLISTed file, re-verified in CI) that fails loudly if the file changes at all, forcing a human to re-review the exemption rather than silently inheriting it forever. Not a PL-13 defect — the same whole-file shape already exists for the four pre-existing designated-loader entries and the org-secret-access gate's jiraConnectionStore.rls.test.ts precedent; this is a structural property of the ALLOWLIST mechanism itself, newly extended to a fifth, non-loader file by this ticket.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read scripts/check-secret-access.mjs:1846-1852 (the scan loop) and :6-18 (the ALLOWLIST) directly; read scripts/guard-checker-readonly.test.mjs:227-261 for the sanctioned access; read scripts/check-org-secret-access.mjs:24-29 to confirm the sibling gate's ALLOWLIST does not also exempt this file.",
+      "code_references": [
+        "scripts/check-secret-access.mjs:6-18,1846-1852",
+        "scripts/guard-checker-readonly.test.mjs:227-261",
+        "scripts/check-org-secret-access.mjs:24-29"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Scanned the diff and both files' current content for hardcoded or historical credential/secret literals.",
+      "evidence": [
+        "grep of `git diff HEAD` for `api[_-]?key|secret|password|token|-----BEGIN|BEARER `: zero matches (checked this session).",
+        "No new fixture, build output, or generated artifact is introduced by this diff (2 hand-written source files only)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Verified driver.mjs (the only apps/web/** file in this diff) cannot enter a browser bundle, rendered HTML, public runtime config, or client-side source map.",
+      "evidence": [
+        "grep across apps/web for \"redteam-ux\"/\"driver.mjs\" restricted to *.ts/*.tsx/*.js/*.jsx/*.mjs/*.cjs/*.json: the only matches are inside driver.mjs itself (its own usage comments) and apps/web/.claude/skills/redteam-ux/SKILL.md (a documentation file) — no apps/web/app, apps/web/components, or Next.js config file imports or references it.",
+        "driver.mjs lives under apps/web/.claude/skills/, outside every conventional Next.js entrypoint directory (app/, pages/, components/) — nothing in the build graph reaches it."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Exercised the diff's new/changed console output for secret-value leakage (headers, error messages).",
+      "evidence": [
+        "Read the full diff: the two changed console.error-adjacent lines are the header comment (\"Config: PUPPETEER_EXECUTABLE_PATH (via @sayre/config) overrides browser binary discovery.\") and the not-found message (\"No Chrome/Edge binary found. Set PUPPETEER_EXECUTABLE_PATH (see @sayre/config).\") — both name the config VARIABLE, never its resolved value. findChrome() never logs the resolved override or candidate path anywhere; it only returns it to puppeteer.launch()."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any new storage/access-control surface.",
+      "evidence": [
+        "This diff introduces no new persistence, encryption-at-rest, or database-role change of any kind."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any rotation/cache-invalidation-relevant code.",
+      "evidence": [
+        "This diff touches no secret-rotation, cache, or long-lived-connection code."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether driver.mjs exposes credentials or environment unrelated to its own job via the spawned browser child process, mounted files, or outbound requests.",
+      "evidence": [
+        "The `puppeteer.launch({...})` call site itself (driver.mjs:226-230) is byte-unchanged by this diff (confirmed via the diff hunks — the change is confined to findChrome() and the two imports/wrapper above it) — whatever env-propagation behavior that call already had toward its spawned browser process is a pre-existing, out-of-scope property of this ticket, not something PL-13 introduces or widens.",
+        "The diff narrows, not widens, what driver.mjs itself reads from the environment: three direct process.env reads become zero, replaced by one config-loader call for one named, non-secret setting (a browser executable path)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Verified the CI secret-access gate's pre-npm-ci placement and built-ins-only property still hold after this diff.",
+      "evidence": [
+        ".github/workflows/ci.yml:49-58: the \"Secret-access boundary\" step (check:secret-access && test:secret-access && check:org-secret-access && test:org-secret-access) runs before \"Install dependencies (root, single pass)\" (npm ci) — unaffected by this diff (ci.yml is not in the changed-paths list).",
+        "scripts/check-secret-access.mjs still imports only node:child_process and node:fs after this diff (the only change is one Set literal entry plus a comment) — the built-ins-only property this early-gate placement depends on is preserved."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any tenant deletion/offboarding-relevant code.",
+      "evidence": [
+        "This diff touches no org/tenant lifecycle code of any kind."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any backup/restore-relevant code.",
+      "evidence": [
+        "This diff touches no backup/restore code."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any export/support-tooling-relevant code.",
+      "evidence": [
+        "This diff touches no export or support-tooling code."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs (PL-13 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any detection/alerting-relevant code.",
+      "evidence": [
+        "This diff touches no detection/alerting code."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read the full PL-13 diff and both changed files directly; re-run node scripts/check-secret-access.mjs.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether a ledger entry records actor identity, and re-weighed this finding's relevance now that TWO consecutive PL-04-round runs (PL-12, then PL-13) have landed through the /inline-edit lane — self-authored changes.md/changes.json, no dev-stage isolation, both times.",
+      "evidence": [
+        "scripts/ledger-append.mjs is untouched by PL-13's diff (confirmed via `git diff HEAD --name-only`) — buildEntryJson/buildEntryMarkdown still carry no actor/user field on any lane, inline included.",
+        "grep \"whoami|getuid|process.env.USER|USERNAME|user.name|user.email\" scripts/ledger-append.mjs: zero matches, unchanged from baseline.",
+        "Re-weighed per this run's own instructions: this is now the SECOND consecutive inline-relevant run in a row — the /inline-edit lane is confirmed live and repeatedly used, not merely available. Severity is NOT escalated (same reasoning as baseline: systemic across every lane, not a PL-13 regression; entry.json still records commit sha/dirty state as a partial correlation path; review+security still gate content/security independent of authorship) — but the two-consecutive-run pattern is now itself evidence this is an active, recurring gap rather than a hypothetical one, and is named here as a reason to prioritize the pre-existing remediation."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-3043428c5bd1",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+        "last_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "scripts/ledger-append.mjs buildEntryJson/buildEntryMarkdown — capture some actor signal (e.g. git config user.name/email) into entry.json for every ledger-write path. Persisting, not this round's regression; now doubly evidenced as actively relevant given two consecutive self-authored /inline-edit runs — worth prioritizing rather than continuing to defer.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Run any ledger-append.mjs path (including --inline) and inspect entry.json/entry.md for an actor field — there is none.",
+      "code_references": [
+        "scripts/ledger-append.mjs (buildEntryJson, buildEntryMarkdown)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1-duplicate-key-forgery",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1-duplicate-key-forgery",
+      "attempt": "Confirmed no regression: findCompletedSecurityRun/readJsonFile (the code that closes this exploit) is untouched by PL-13's diff.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs` is empty — not in this diff at all.",
+        "node --test scripts/*.test.mjs (this session): includes the duplicate-key-forgery regression tests — no regression."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v2-plain-path-spec-identity",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v2-plain-path-spec-identity",
+      "attempt": "Confirmed the fix (FND-bd78355b6ae7, RESOLVED) is not regressed: ledger-append.mjs is untouched by this diff.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs` is empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-bd78355b6ae7",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260804T203800838Z-f3c53b16460c-PR_DELTA-80e1cb",
+        "last_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed several rounds ago; unaffected by this diff.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v3-residual-stale-agreement",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v3-residual-stale-agreement",
+      "attempt": "Re-confirmed the persisting residual (FND-9ea3ec4bba13) still applies on the plain path (code unchanged), and re-confirmed --inline is unaffected either way — carried forward on its merits per this run's instructions.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs` is empty — the plain path's scope decision (main()'s comment at ~1492-1507) is unchanged.",
+        "PL-13's diff does not touch --inline's own --ticket cross-check either (also unchanged)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-9ea3ec4bba13",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T203800838Z-f3c53b16460c-PR_DELTA-80e1cb",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+        "last_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged remediation from baseline (add a fail-safe default: when it cannot be established which ticket spec.json/spec.md actually describe, refuse rather than proceed). Persisting, out of PL-13's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs liteBarredPaths() vs .sdd/bounds.yml's actual hotfix_barred_paths/deny_for_fenced_lanes union (PL-11 new surface)|v4-lite-barred-path-undercoverage",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs liteBarredPaths() vs .sdd/bounds.yml's actual hotfix_barred_paths/deny_for_fenced_lanes union (PL-11 new surface)",
+      "attack_path_version": "v4-lite-barred-path-undercoverage",
+      "attempt": "Confirmed no regression: check-lite-eligible.mjs and .sdd/bounds.yml are untouched by PL-13's diff.",
+      "evidence": [
+        "`git diff HEAD -- scripts/check-lite-eligible.mjs .sdd/bounds.yml`: empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-b731f500c5b8",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260808T204649727Z-fe1d2b326985-PR_DELTA-a208f9",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "last_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed several rounds ago; unaffected by this diff.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs countChangedLines()/evaluateLiteEligibility() line-count size proxy (PL-11 new surface)|v5-lite-linecount-bound-evasion",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs countChangedLines()/evaluateLiteEligibility() line-count size proxy (PL-11 new surface)",
+      "attack_path_version": "v5-lite-linecount-bound-evasion",
+      "attempt": "Confirmed no regression: the fixed line-length bound code is untouched by PL-13's diff.",
+      "evidence": [
+        "`git diff HEAD -- scripts/check-lite-eligible.mjs`: empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-22ef4b5c746e",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260808T204649727Z-fe1d2b326985-PR_DELTA-a208f9",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "last_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed several rounds ago; unaffected by this diff. See v6 for the still-open, bounded residual.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs evaluateLiteEligibility() — max_changed_lines and max_line_length compose multiplicatively rather than bounding total content (PL-11 security-fix round sibling-path sweep)|v6-lite-multiline-spread-residual",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs evaluateLiteEligibility() — max_changed_lines and max_line_length compose multiplicatively rather than bounding total content (PL-11 security-fix round sibling-path sweep)",
+      "attack_path_version": "v6-lite-multiline-spread-residual",
+      "attempt": "Re-confirmed the persisting, bounded residual (FND-9735a2fbe37a) is unaffected — no change to evaluateLiteEligibility or the lite_eligibility bounds since it was found. Carried forward on its merits per this run's instructions.",
+      "evidence": [
+        "`git diff HEAD -- scripts/check-lite-eligible.mjs .sdd/bounds.yml`: empty. The ~75,000-character hard ceiling this residual describes is unchanged; PL-13 does not touch --lite or its bounds at all."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-9735a2fbe37a",
+        "status": "OPEN",
+        "first_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+        "last_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged from baseline: add a third, product-level bound (total changed bytes/characters), or tighten max_changed_lines/max_line_length so their product is closer to the lite lane's own stated use case. Persisting, out of PL-13's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/ledger-append.mjs's --inline ticket cross-check (readInlineArgs / the specTicketId !== inlineArgs.ticket refusal) (PL-12 new surface)|v7-inline-ticket-identity",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/ledger-append.mjs's --inline ticket cross-check (readInlineArgs / the specTicketId !== inlineArgs.ticket refusal) (PL-12 new surface)",
+      "attack_path_version": "v7-inline-ticket-identity",
+      "attempt": "Confirmed no regression: the --inline ticket cross-check code is untouched by PL-13's diff (PL-13 uses the /inline-edit lane but does not modify its implementation).",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs`: empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/ledger-append.mjs's --inline/--lite/--re-gate/--hotfix mutual-exclusion and composition handling (PL-12 new surface)|v8-inline-lane-composition",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/ledger-append.mjs's --inline/--lite/--re-gate/--hotfix mutual-exclusion and composition handling (PL-12 new surface)",
+      "attack_path_version": "v8-inline-lane-composition",
+      "attempt": "Confirmed no regression: composition-handling code is untouched by PL-13's diff.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs`: empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/ledger-append.mjs's --inline handling of a leftover .pipeline/red.json (never read, never copied) (PL-12 new surface)|v9-inline-red-json-non-laundering",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/ledger-append.mjs's --inline handling of a leftover .pipeline/red.json (never read, never copied) (PL-12 new surface)",
+      "attack_path_version": "v9-inline-red-json-non-laundering",
+      "attempt": "Confirmed no regression, and independently re-confirmed the property held for THIS run's own leftover PL-12 red.json (disclosed in review.md's Warning 1): the stale sidecar in .pipeline/ this run started with was never read or copied.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs`: empty.",
+        "This run's own .pipeline/ directory started with stale PL-12 red.md/red.json (per review.md's Warning 1) — consistent with v9's own finding that --inline never reads red.json regardless of its content; not exercised mechanically this run since this stage does not itself invoke ledger-append.mjs."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/build-ledger-index.mjs's verdicts gate — whether declaring `inline` on an entry.json buys any widening of the required { review: PASS, security: PASS } shape (PL-12 new surface)|v10-inline-verdicts-gate-non-widening",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/build-ledger-index.mjs's verdicts gate — whether declaring `inline` on an entry.json buys any widening of the required { review: PASS, security: PASS } shape (PL-12 new surface)",
+      "attack_path_version": "v10-inline-verdicts-gate-non-widening",
+      "attempt": "Confirmed no regression: build-ledger-index.mjs is untouched by PL-13's diff.",
+      "evidence": [
+        "`git diff HEAD -- scripts/build-ledger-index.mjs`: empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|/inline-edit's D-2 (deliberately no mechanical size bound) — whether the lane's lack of a size gate allows escaping security scrutiny by size (PL-12 new surface, reviewed from the attacker's chair per this run's own instructions)|v11-inline-unbounded-size-D2",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "/inline-edit's D-2 (deliberately no mechanical size bound) — whether the lane's lack of a size gate allows escaping security scrutiny by size (PL-12 new surface, reviewed from the attacker's chair per this run's own instructions)",
+      "attack_path_version": "v11-inline-unbounded-size-D2",
+      "attempt": "Re-confirmed: the unconditional, non-lite security.json PASS gate in ledger-append.mjs's main() is untouched by PL-13's diff, and this run's own diff (2 files, +26/-5) is itself a live, real-world data point that a small, ordinary /inline-edit change still goes through this full stage rather than skipping it.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs`: empty — the unconditional `securityJson.verdict !== 'PASS'` gate is unchanged.",
+        "This run IS security genuinely running in full on a real /inline-edit diff, which is itself evidence the D-2 compensating control (security always runs) is exercised in practice, not merely asserted in the abstract."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 (and its own cited predecessors) for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed lockfile completeness/enforcement unaffected — ci.yml/package.json/package-lock.json untouched by PL-13.",
+      "evidence": [
+        "`git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json`: empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed install/build script execution posture unaffected.",
+      "evidence": [
+        "Empty diff on the relevant files, as above. Neither changed file (driver.mjs, check-secret-access.mjs) adds an install/build lifecycle script."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for an automated dependency-vulnerability/SBOM scanning gate in CI. Carried forward on its merits per this run's instructions.",
+      "evidence": [
+        "Re-read the current .github/workflows/ci.yml in full: still no npm audit step, no dependabot.yml/renovate.json, no SBOM-generation step anywhere. Unaffected by PL-13 (ci.yml untouched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-d26b84ebd646",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+        "last_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Add a CI-integrated dependency-scanning gate (npm audit, Dependabot, or equivalent). Still no tracked ticket. Persisting, out of PL-13's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "npm audit --omit=dev from repo root; ls .github/ for a dependabot.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed CI trigger/permission posture unaffected.",
+      "evidence": [
+        "ci.yml untouched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for workflow injection via untrusted input into shell/workflow steps.",
+      "evidence": [
+        "ci.yml untouched by this diff; neither changed file feeds a workflow step."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether third-party GitHub Actions are pinned to a commit SHA rather than a mutable tag. Carried forward on its merits per this run's instructions.",
+      "evidence": [
+        "actions/checkout@v4, actions/setup-node@v4, actions/setup-python@v5 remain pinned to major-version tags, not commit SHAs — unaffected by PL-13 (ci.yml untouched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-ef0066ad43ed",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+        "last_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Pin actions/checkout, actions/setup-node, actions/setup-python to commit SHAs rather than major-version tags. Persisting, out of PL-13's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read ci.yml's `uses:` lines.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for container hardening changes.",
+      "evidence": [
+        "No Dockerfile/container config in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for network-exposure changes.",
+      "evidence": [
+        "No listening-service config in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for IAM/cloud-role changes.",
+      "evidence": [
+        "No IAM/cloud config in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked environment-separation posture.",
+      "evidence": [
+        "Neither changed file references a staging/prod credential, queue name, or database URL; PUPPETEER_EXECUTABLE_PATH is a local dev-only diagnostic override, absent from infra/.env.example entirely."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for TLS/configuration posture changes.",
+      "evidence": [
+        "No TLS/config-posture code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1-parser-perf",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1-parser-perf",
+      "attempt": "Re-confirmed the parser-perf finding this attack-path-version tracks is unaffected.",
+      "evidence": [
+        "check-secret-access.mjs's lexical-view parsers (javascriptLexicalView/pythonLexicalView) are unchanged by this diff — the only change to that file is one Set literal entry; independently re-ran `npm run test:secret-access` (38/38, includes the parser-perf-adjacent fixture suite) this session."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for migration-privilege changes.",
+      "evidence": [
+        "No migration code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked patch/exception lifecycle tracking for known vulnerable dependencies.",
+      "evidence": [
+        "No dependency-manifest change in this diff; no new exception introduced or resolved. Unaffected, same UNVERIFIED disposition as baseline (no tracked exception-lifecycle tooling exists in this repo to verify against, independent of this diff)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether driver.mjs adds or exposes any route, endpoint, or method.",
+      "evidence": [
+        "driver.mjs defines zero HTTP routes/handlers; it is a CLI entrypoint invoked via `node driver.mjs ...` that acts as an HTTP/browser CLIENT against an already-running dev server, never a server itself."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SQL/Cypher/OS-command/path/header/log/template injection at any parameter boundary this diff introduces.",
+      "evidence": [
+        "No request-parsing or query-construction code in this diff; `findChrome()`'s only external input (PUPPETEER_EXECUTABLE_PATH) is used solely as a puppeteer-core executablePath argument (see CORE-06), not concatenated into a command, query, or template."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for stored/reflected/DOM XSS surfaces introduced by this diff.",
+      "evidence": [
+        "driver.mjs never renders HTML/Markdown; it drives a browser and reads its DOM read-only (screenshots, console/network logs, a11y snapshots) — it is a test client, not a rendering surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for CSRF/cross-origin behavior changes.",
+      "evidence": [
+        "No cookie-authenticated request or CORS-relevant code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for clickjacking/browser-policy (CSP, frame, MIME-sniffing) changes.",
+      "evidence": [
+        "No response-header or policy code in this diff — driver.mjs consumes pages, it does not serve them."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for property-level authorization/mass-assignment surfaces.",
+      "evidence": [
+        "No create/update request-handling code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for input-ambiguity handling (duplicate params, Unicode normalization, prototype keys, etc.) this diff introduces.",
+      "evidence": [
+        "driver.mjs's own CLI arg parser (parseArgs) is unchanged by this diff; the new config-loader call takes a single fixed literal name ('PUPPETEER_EXECUTABLE_PATH'), not attacker-influenced input."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for resource-consumption (pagination, traversal depth, batch size) changes.",
+      "evidence": [
+        "No pagination/traversal/batch code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for business-flow abuse (invitations, role changes, key creation) surfaces.",
+      "evidence": [
+        "No business-flow code in this diff — driver.mjs is a local red-team testing aid, invoked manually/by an agent, not a product feature."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for cache/intermediary leakage changes.",
+      "evidence": [
+        "No caching or response-header code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for error/enumeration-leak changes.",
+      "evidence": [
+        "The two changed console.error messages name a config variable, never a secret value, org ID, or internal identifier (see SEC-04)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/.claude/skills/redteam-ux/driver.mjs (PL-13 diff) — a local Node CLI/Puppeteer automation script under .claude/skills/, not a browser-served route, API endpoint, or rendered component",
+      "attack_path_version": "v1",
+      "attempt": "Checked for redirect/URL-handling changes.",
+      "evidence": [
+        "driver.mjs's own URL construction (runFlow's `goto` handling) is unchanged by this diff; the new code path never constructs or follows a redirect."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read apps/web/.claude/skills/redteam-ux/driver.mjs in full; grep apps/web for any import of it (none found outside its own file and SKILL.md).",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|.sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json — hand-backfilled per the PL-03a one-time migration affordance during the PL-13 ledger-tear reconciliation (new artifact since baseline 877e84)|v12-ledger-backfill-honesty",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json — hand-backfilled per the PL-03a one-time migration affordance during the PL-13 ledger-tear reconciliation (new artifact since baseline 877e84)",
+      "attack_path_version": "v12-ledger-backfill-honesty",
+      "attempt": "Modeled the hand-backfill itself as a forged-attribution / log-omission-through-an-alternate-path attack on the audit ledger (SEC-10's own checklist scope): does this backfill let someone claim a review/security PASS for a run that never happened, or silently alter what the ORIGINAL 2026-08-04 run actually recorded? Verified field-for-field against entry.md and against the durable security/ audit-history copy, not taken on the coordinator's or review's word.",
+      "evidence": [
+        "Read .sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json and entry.md side by side: runId, date (2026-08-04), ticket (W0-00), all 8 filesTouched entries (same order), and verdicts ({review: PASS, security: PASS}) match byte-for-byte between the two files. No field in entry.json asserts anything entry.md does not already assert.",
+        "entry.json's shape (_comment, runId, date, ticket, filesTouched, verdicts — no invented redTestPaths/securityRunId/commit fields) is identical to .sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/entry.json's own backfill shape (the PL-03a precedent .sdd/ledger/README.md's \"entry.json is authoritative\" section names explicitly) — read both files directly and compared field sets, not merely the README's description of them.",
+        "The _comment field discloses the backfill's own provenance honestly: who (the coordinator, \"during the PR #83 reconciliation\"), when (2026-08-09), why (main-side pre-PL-03h entry lacking a sidecar), and the precedent cited (bf73ea) — it does not claim to have been produced by scripts/ledger-append.mjs.",
+        "Cross-corroborated against independent, durable evidence rather than trusting entry.json's self-report alone: .sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/security/results.json (the copied, immutable audit-history record scripts/ledger-append.mjs's copySecurityHistoryIntoLedger would have produced at the time) independently shows status COMPLETE, verdict PASS, run_id matching the entry exactly — this is a real security run's own recorded output, not a claim invented by the backfill.",
+        "Traced build-ledger-index.mjs's readEntryJson directly (lines 171-218): it mechanically enforces runId-matches-directory-name and the verdicts literal ({review:\"PASS\",security:\"PASS\"} unless declared lite), but does NOT itself re-verify a hand-authored entry.json's claimed verdicts against any review.json/security.json still on disk — trust for a hand-backfilled historical entry rests on (a) the field-for-field match to entry.md, (b) the durable security/ copy's own independent corroboration, and (c) review's own scrutiny (two passes here, both independently re-verified this session), not on a mechanical control this script provides for this specific migration-affordance path. This is a real, narrow, structural property of the affordance (documented as a \"one-time\" mechanism specifically because it is not re-verified the way scripts/ledger-append.mjs's ordinary path is) — not exploited here, since every corroborating check above lines up, but worth naming rather than silently assuming away.",
+        "Independently re-ran `npm run check:ledger-index` this session: exit 0, \"up to date (98 file(s), 4 run(s))\" — the regenerated index.json is not in `git status` (matches the committed bytes), and all 8 of d441aa's filesTouched entries resolve to it correctly in index.json. `.sdd/ledger/` contains exactly 4 run directories on disk (bf73ea, d441aa, 728516, 1bf759) — no 877e84, confirming the torn append's ledger copy is genuinely gone while its .pipeline/security-history/ immutable twin remains present and unaltered."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read .sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json and entry.md side by side; read .sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/security/results.json; npm run check:ledger-index.",
+      "code_references": [
+        ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json",
+        ".sdd/ledger/README.md (\"entry.json is authoritative\")",
+        "scripts/build-ledger-index.mjs:171-218"
+      ]
+    }
+  ]
+}

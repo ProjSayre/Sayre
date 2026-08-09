@@ -1,0 +1,13 @@
+{
+  "filesChanged": [
+    "apps/web/.claude/skills/redteam-ux/driver.mjs",
+    "scripts/check-secret-access.mjs"
+  ],
+  "redTestChanges": [],
+  "stamp": {
+    "treeHash": "66695996869549688dc090564e452ec2c9c98713b319e1f640d7755051480927",
+    "headSha": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+    "dirty": true,
+    "writtenAt": "2026-08-09T06:17:58.422Z"
+  }
+}

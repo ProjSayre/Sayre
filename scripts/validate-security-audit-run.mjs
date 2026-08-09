@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
+import { readJsonFile } from './pipeline-contracts.mjs';
 
 const root = process.cwd();
 const requestedPath = process.argv[2];
@@ -13,12 +14,18 @@ function assert(condition, message) {
   if (!condition) fail(message);
 }
 
+// SEC-10 follow-up (security round 6, "audit every remaining JSON.parse call site"): this script's
+// whole purpose is independently re-verifying manifest.json/results.json — the exact immutable
+// audit-trail files SEC-10's duplicate-key forgery targeted — so `parseJson` below reads them
+// through `pipeline-contracts.mjs`'s `readJsonFile` (strict, duplicate-key-rejecting, size-capped),
+// not plain `JSON.parse`. A validator built to catch tampering must not itself be fooled by the same
+// trick it exists to catch. `registry`/`manifestSchema`/`resultsSchema` below stay on plain
+// `JSON.parse` deliberately: those are static, git-tracked repository configuration
+// (`security-attacker-agents/agent-registry.json` and its two referenced schema files), reviewed the
+// normal way through a diff, not per-run output an agent process writes and this script must treat as
+// untrusted.
 function parseJson(path) {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch (error) {
-    fail(`${path} is not valid JSON: ${error.message}`);
-  }
+  return readJsonFile(path, path);
 }
 
 function countBy(values) {

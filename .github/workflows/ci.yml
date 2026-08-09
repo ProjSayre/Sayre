@@ -89,11 +89,103 @@ jobs:
 
       # PL-03c review Critical 3: scripts/check-red-integrity.mjs is the mechanical half of
       # .sdd/stages/review.md's "Red-test integrity" and "Spec trace" checks (rehash red.md's
-      # listed files, resolve every @spec marker). Like check:security-audit-run, only the script's
-      # own test suite runs in CI — .pipeline/red.md is gitignored per-run working state, so there
-      # is nothing for `check:red-integrity` itself to check against on a CI runner.
+      # listed files, resolve every @spec marker). Like check:security-audit-run below, only the
+      # script's own test suite runs in CI — .pipeline/red.md is gitignored per-run working state, so
+      # there is nothing for `check:red-integrity` itself to check against on a CI runner.
       - name: Red-test integrity check — tests
         run: npm run test:red-integrity
+
+      # PL-04 review pass 2 / Critical 2: scripts/validate-security-audit-agents.mjs and
+      # scripts/validate-security-audit-run.mjs are the security stage's own mechanical gates
+      # (.sdd/stages/security.md:112,125), but neither had a CI step until this fix — and
+      # validate-security-audit-agents.mjs had no test suite at all, despite this same round changing
+      # it (G1's A4: registry/schema JSON.parse -> parseJsonOrThrow, so a duplicate top-level key in
+      # agent-registry.json can no longer silently narrow which security-attacker briefs run). Unlike
+      # check:security-audit-run/check:red-integrity (which validate a specific per-run artifact under
+      # gitignored .pipeline/ working state, with nothing to check against on a CI runner),
+      # validate-security-audit-agents.mjs validates committed, git-tracked static configuration (the
+      # attacker-agent registry, its two JSON schemas, the contract/orchestrator/brief files) — nothing
+      # per-run or ephemeral — so it runs directly here on every CI invocation, the same way
+      # check:agent-shims does.
+      - name: Security audit agent registry — static config check
+        run: npm run check:security-audit-agents
+
+      - name: Security audit agent registry — tests
+        run: npm run test:security-audit-agents
+
+      # CORRECTED (PL-04 review pass 2): the comment above this step previously claimed
+      # check:security-audit-run's own test suite already ran in CI ("Like check:security-audit-run,
+      # only the script's own test suite runs in CI") — false; there was no step for it anywhere in
+      # this file. check:security-audit-run itself still doesn't run here (same reasoning as
+      # check:red-integrity above: it validates one specific .pipeline/security-history/<run-id>/ run,
+      # gitignored per-run working state with nothing to check against on a CI runner) — only its own
+      # test suite does, now for real.
+      - name: Security audit run validator (validate-security-audit-run.mjs) — tests
+        run: npm run test:security-audit-run
+
+      # PL-03h round 4: scripts/pipeline-contracts.mjs is the shared JSON-sidecar contract
+      # build-ledger-index.mjs/check-red-integrity.mjs/ledger-append.mjs now read for every control
+      # decision (spec.json/red.json/changes.json/review.json/security.json), replacing the markdown
+      # block scanner those three suites above used to exercise directly. Its own strict-validation
+      # suite runs here, independent of whether any real .pipeline/*.json exists on this runner.
+      - name: Pipeline JSON-sidecar contract — tests
+        run: npm run test:pipeline-contracts
+
+      # PL-04 review pass 1 / Blocker 1 (C1): buildStamp/stampFreshness (exercised above by
+      # test:pipeline-contracts) had zero non-test callers — every stage's own "Exact shape" output
+      # contract promised a `stamp` field nothing ever wrote, so `security`'s "refuse on a stale
+      # review.json" promise could never fire. scripts/write-stamp.mjs (the producer) and
+      # scripts/check-stamp-freshness.mjs (the consumer every stage's "Staleness of required inputs"
+      # section now names by exact command/exit code) close that gap. Gated here the same way every
+      # other control-plane script's own suite already is — a script this round adds without a CI
+      # step is the same "documented but unwired" defect class this whole pass exists to eliminate.
+      - name: Stamp producer (write-stamp.mjs) — tests
+        run: npm run test:write-stamp
+
+      - name: Stamp freshness check (check-stamp-freshness.mjs) — tests
+        run: npm run test:stamp-freshness
+
+      # PL-03d: the lane-bounds verdict is computed by a script rather than judged by pr-review,
+      # so an LLM cannot hallucinate a pass. Its own suite runs here; `check:bounds` needs a lane
+      # and a diff base, which are per-PR inputs the pr-review stage supplies.
+      - name: Lane bounds check — tests
+        run: npm run test:bounds
+
+      # PL-11: the /pipeline-lite lane's own mechanical eligibility gate (max_files/max_changed_lines
+      # + the hotfix_barred_paths/deny_for_fenced_lanes union), same "a computer counts, an agent
+      # doesn't judge" reasoning as the lane-bounds check above. Its own suite runs here the same way;
+      # `check:lite-eligible` itself needs a live working tree or --files/--base, which are per-run
+      # inputs ledger-append.mjs --lite (or a human) supplies.
+      - name: Lite-lane eligibility check — tests
+        run: npm run test:lite-eligible
+
+      # PL-03g: this guard is what actually makes review/security-checker read-only, wired as a
+      # PreToolUse hook in .claude/settings.json. It matters that CI runs this suite: a hook that
+      # fails to load exits 1, and a PreToolUse hook only BLOCKS on exit 2 — so a broken guard
+      # silently enforces nothing, which is indistinguishable from having no guard at all. That is
+      # the exact failure this control was built to end, so it is not left to inspection.
+      - name: Checker read-only guard — tests
+        run: npm run test:readonly-guard
+
+      # W0-00's two suites, brought over unwired by PR #78 (main's older sdd-completeness
+      # didn't require wiring; this branch's PL-11-era assertion does — PL-14).
+      # dependency-install re-runs `npm ci` at the repo root (clean-state by design); its
+      # Poetry half self-skips on this runner (no poetry on PATH) — see PL-14 spec EC-5.
+      - name: Dependency baseline — tests
+        run: npm run test:dependency-baseline
+
+      - name: Dependency install — tests
+        run: npm run test:dependency-install
+
+      # PL-04 / item 4: the root tsconfig.json's "include" is ["src"] only, so `npx tsc --noEmit`
+      # (the config — typecheck / web — typecheck / core — typecheck steps below) has never checked
+      # anything under scripts/ — every "tsc clean" this pipeline tooling reported was vacuous for
+      # it. scripts/tsconfig.json adds `checkJs` over the SDD pipeline control-plane scripts and
+      # their test suites specifically (see that file's own header for exactly which files, and why
+      # the marketing-site/secret-scanning scripts elsewhere in scripts/ are deliberately out of
+      # scope for this pass).
+      - name: Pipeline control-plane scripts — typecheck
+        run: npm run typecheck:scripts
 
       - name: config — typecheck
         run: npm run typecheck --workspace @sayre/config
