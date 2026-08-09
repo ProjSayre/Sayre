@@ -72,20 +72,27 @@ list). Run the narrowest relevant one for what you're actually changing rather t
 
 Sayre's delivery pipeline is six stages — `planner` → `red` → `dev` → `tester` → `review` →
 `security` — defined once, runtime-neutral, in `.sdd/`, plus a ledger-append step once a run reaches
-terminal `PASS`. Four commands compose the stages:
+terminal `PASS`. Five commands compose the stages: four that run some or all of them, and `/hotfix`,
+which deliberately runs none of them.
 
 - `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
 - `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
 - `/pipeline-status` — report the current pipeline state without changing it.
 - `/security-recheck` — repeat only the final security assessment.
+- `/hotfix <what's broken>` — the sanctioned bypass for a production incident that cannot wait for
+  the full sequence; skips every stage above and writes a bypass ledger entry instead — see
+  `.sdd/hotfix.md`, the authoritative, runtime-neutral definition of this path.
 
 Each command's exact procedure is defined in `.sdd/pipeline.md`, not here — read it before running
 one. Do not skip a missing stage or let a stage invent a replacement for a missing input; if a
 required `.pipeline/` artifact doesn't exist, say which stage needs to run first. Pipeline artifacts
 live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history) —
-except the one thing that's durable by design: `.sdd/ledger/<run-id>/{spec.md,entry.md}`, committed
-once a run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the
-file→spec query path.
+except the one thing that's durable by design:
+`.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}` (plus a copy of
+`red.json`/`changes.json`/`review.json`/`security.json` when present for the run — `entry.json` is
+the machine-facing, authoritative half; `entry.md` is the human-facing rendering), committed once a
+run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the file→spec
+query path.
 
 Architecture rules, the service-layer boundary, RBAC/tenant-isolation requirements, and the
 project's "Don't" list are defined once in `CLAUDE.md` and are not restated here — copying them into

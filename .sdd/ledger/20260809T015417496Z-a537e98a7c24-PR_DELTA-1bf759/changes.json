@@ -1,0 +1,26 @@
+{
+  "filesChanged": [
+    "scripts/ledger-append.mjs",
+    "scripts/build-ledger-index.mjs",
+    "scripts/ledger-append.test.mjs",
+    ".sdd/pipeline.md",
+    ".sdd/ledger/README.md",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/CHANGELOG.md",
+    ".sdd/README.md",
+    "CLAUDE.md",
+    ".claude/skills/inline-edit/SKILL.md"
+  ],
+  "redTestChanges": [
+    {
+      "path": "scripts/ledger-append.test.mjs",
+      "reason": "Not a spec-correctness fix — a fixture-construction defect in the [inline] test 'entry.json carries inline: { skippedStages, reason, note, size }, derived from exported constants, and the key is null on every other run'. Its --skipped-stages/--inline-note refusal loop reused the same `root` fixture the test had already used for an earlier, successful runInline(root) call in the same test body, which leaves a real .sdd/ledger/<RUN_ID>/ directory on that root. assertInlineRefusal's own assertNothingWritten(root, why) (assert.deepEqual(ledgerRunIds(root), [], ...)) can therefore never pass against that root regardless of how the two flags are implemented or rejected -- there is no legitimate way for an unrelated flag-validation refusal to make an already-written, legitimate ledger entry disappear. Fixed by giving each loop iteration its own fresh fixture root (fixtureRepo({ pipeline: inlinePipeline() }) + inlineEditOnDisk(...)), the same construction this same test already uses two lines later for its 'plain run' check, for the identical reason. Every original assertion (unrecognized-flag rejection via assertInlineRefusal, and the exact stderr match) is unchanged; only the fixture each iteration runs against changed. Verified before (121/122, this exact test the only failure) and after (122/122) in scripts/ledger-append.test.mjs; no other test in the file was touched."
+    }
+  ],
+  "stamp": {
+    "treeHash": "c819d6fe6e0586e7714fd4d8e00f5a8ef1fef54d49d2b4ab89c5f3c4b997bd68",
+    "headSha": "a537e98a7c241b23ff826885973ac39df97e4b28",
+    "dirty": true,
+    "writtenAt": "2026-08-09T01:23:32.176Z"
+  }
+}

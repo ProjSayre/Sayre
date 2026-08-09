@@ -1,0 +1,1223 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
+  "baseline_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+  "generated_at": "2026-08-09T02:35:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "UNVERIFIED": 5,
+      "PASS": 20,
+      "NOT_APPLICABLE": 14,
+      "FAIL": 5
+    },
+    "result_transitions": {
+      "UNCHANGED": 39,
+      "FIRST_OBSERVATION": 5
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 39,
+      "NOT_COMPARABLE": 5
+    },
+    "finding_statuses": {
+      "OPEN": 5,
+      "RESOLVED": 3
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-12's diff touches any tenant/org_id stamping, RLS policy, or persistence-boundary code.",
+      "evidence": [
+        "`git diff a537e98 --stat -- 'services/**' 'apps/**' 'packages/**' 'infra/**'` returns empty (independently re-run this session, PL-12's own diff). CORE-01's implementing surfaces are untouched."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed. See SEC-10 (v7-v11) for the evidenced concern about the NEW mechanism this diff introduces, which does not change this observation's own result.",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-12's diff introduces any route/resolver/graphology code duplicating server-side RBAC filtering.",
+      "evidence": [
+        "Diff contains no apps/web, services/core/src/routes, services/core/src/graph-query, services/gateway, or graphology-adjacent changes of any kind."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed. See SEC-10 (v7-v11).",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched",
+      "attack_path_version": "v1",
+      "attempt": "Grepped the full PL-12 diff plus every new/changed line for credential/secret patterns and process.env access.",
+      "evidence": [
+        "grep -n \"process\\.env\\.\" across scripts/ledger-append.mjs, scripts/build-ledger-index.mjs: zero matches (this session).",
+        "grep -iE \"api[_-]?key|secret|password|token|-----BEGIN|BEARER \" over the full PL-12 diff (docs/PRD_Tickets.md excluded — confirmed pre-existing/unrelated, see below): zero live-value matches, only prose references to check-secret-access.mjs/security.json/security-checker."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduce: grep the diff and every touched script for the patterns above.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-org-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-12's diff touches any webhook receiver code.",
+      "evidence": [
+        "No services/core/src/webhooks changes in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-12's diff touches any ingestion worker / scratch-clone lifecycle code.",
+      "evidence": [
+        "No services/workers/** changes in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No runtime action performed.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "PL-04 pipeline-defects fix round diff (.claude/skills/**, .sdd/**, scripts/*, .github/workflows/ci.yml, package.json, package-lock.json) — no services/**, apps/web/**, or docs/** application code touched",
+      "attack_path_version": "v1",
+      "attempt": "Read every new/changed line in scripts/ledger-append.mjs's --inline branch and scripts/build-ledger-index.mjs's readInlineField for shell/SQL/Cypher/queue concatenation; independently re-ran the full test suite and typecheck.",
+      "evidence": [
+        "measureInlineSize (scripts/ledger-append.mjs:1245-1261) calls the already-imported, UNMODIFIED countChangedLines/maxChangedLineLength (scripts/check-lite-eligible.mjs — confirmed untouched by this diff, `git diff a537e98 -- scripts/check-lite-eligible.mjs` empty). No new git/shell invocation is added by PL-12 at all.",
+        "readTicketFlag/readWhyInlineReason/readInlineArgs (scripts/ledger-append.mjs:1177-1235) are pure argv string comparisons (`.startsWith('--')`, `.trim()`, `argv.indexOf(...)`) — no eval/Function()/execSync anywhere in the new/changed lines.",
+        "`node --test scripts/*.test.mjs` independently re-run this session: 458 pass, 1 fail (the single pre-existing, out-of-scope sdd-completeness CRLF assertion — confirmed identical failure text before and after this diff). `npx tsc --noEmit` (root) and `npx tsc --noEmit -p scripts/tsconfig.json`: both exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/*.test.mjs; npx tsc --noEmit -p scripts/tsconfig.json; read scripts/ledger-append.mjs's --inline branch and scripts/build-ledger-index.mjs's readInlineField directly.",
+      "code_references": [
+        "scripts/ledger-append.mjs:1177-1261",
+        "scripts/ledger-append.mjs:1369-1620"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Searched every touched/new script and doc for a direct secret/credential read outside a designated loader.",
+      "evidence": [
+        "No process.env access of any kind anywhere in PL-12's diff — these remain pure dev-tooling scripts and process docs with no secrets to load."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep -n \"process\\.env\\.\" across the touched scripts.",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/build-ledger-index.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Inspected the full PL-12 diff for a hardcoded or historical secret.",
+      "evidence": [
+        "grep -iE \"api[_-]?key|secret|password|token|-----BEGIN\" over the diff returns only prose/comment matches discussing the security stage/ledger design, never a live value."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-run the grep above against git diff a537e98.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for frontend/bundle code that could expose a server-only secret.",
+      "evidence": [
+        "This diff touches no apps/web or any browser-bundled code at all."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A — no executable frontend boundary in this diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked new/changed console output (measureInlineSize's failure logs, the --inline console.log lines in main()) for secret or sensitive-data leakage.",
+      "evidence": [
+        "Every new console.log call site prints only file-path names, counts, bound values, ticket-id strings, and a git/fs error.message — dev-tooling operator output, never tenant data, credentials, or product telemetry. Read scripts/ledger-append.mjs:1250,1257,1817-1825 directly."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read every new console.log/process.stderr.write call site introduced by this diff.",
+      "code_references": [
+        "scripts/ledger-append.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for secret storage/access-control code.",
+      "evidence": [
+        "No secret storage, encryption, or database-role code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for secret rotation/cache-invalidation code.",
+      "evidence": [
+        "No rotation/cache-invalidation code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for worker/sandbox environment exposure.",
+      "evidence": [
+        "No services/workers/** code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked the CI config for fork/PR workflow boundary, artifact upload, and debug output risk (re-confirming baseline's account, since PL-12 does not itself touch ci.yml).",
+      "evidence": [
+        "`git diff a537e98 -- .github/workflows/ci.yml` is empty — PL-12 adds no new CI step. Re-read the current, unchanged file directly this session: triggers remain plain push/pull_request (no pull_request_target/workflow_dispatch), no `${{ }}` interpolation into any `run:` line, no new artifact upload or secret reference beyond baseline's own already-reviewed content."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff a537e98 -- .github/workflows/ci.yml (empty); read the file's trigger/run blocks directly.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether a ledger entry — including the NEW --inline entry shape — records actor identity, and re-weighed this finding's relevance specifically for a lane whose defining property is \"the implementer and the session are one context\" (no dev-stage isolation).",
+      "evidence": [
+        "Read buildEntryJson/buildEntryMarkdown's current full bodies (scripts/ledger-append.mjs) directly: the new `inline` parameter carries `skippedStages`/`reason`/`note`/`size` only — no actor/user field, on the inline path or any other.",
+        "grep \"whoami|getuid|process.env.USER|USERNAME|user.name|user.email\" scripts/ledger-append.mjs: zero matches, unchanged from baseline.",
+        "Re-weighed per this run's own instructions: the inline lane is where a human (or an agent operating a live session) directly authors changes.md/changes.json themselves — arguably the single lane in this system where \"who made this edit\" is most practically answerable and most useful to record, yet it is not. NOT escalated in severity because (a) this is systemic across every lane in the ledger, not a PL-12 regression — PL-12 had the same opportunity PL-11 had (threading a new object through the same two functions) and, like PL-11, did not close it; (b) entry.json still records commit sha/dirty state, a partial correlation path through ordinary git history/blame; (c) review+security still gate content/security independent of authorship."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-3043428c5bd1",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
+        "last_seen_commit": "a537e98a7c241b23ff826885973ac39df97e4b28",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "scripts/ledger-append.mjs buildEntryJson/buildEntryMarkdown — capture some actor signal (e.g. git config user.name/email) into entry.json for every ledger-write path, including the new --inline path this run adds. Persisting, not this round's regression; heightened practical relevance noted above for the inline lane specifically, without a severity change.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Run any ledger-append.mjs path (including --inline) and inspect entry.json/entry.md for an actor field — there is none.",
+      "code_references": [
+        "scripts/ledger-append.mjs (buildEntryJson, buildEntryMarkdown)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for tenant deletion/offboarding code.",
+      "evidence": [
+        "No tenant-deletion/offboarding code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for tenant backup/restore code.",
+      "evidence": [
+        "No backup/restore code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for export/support-tooling code.",
+      "evidence": [
+        "No export/support-tooling code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for detection/alerting code.",
+      "evidence": [
+        "No detection/alerting code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1-duplicate-key-forgery",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1-duplicate-key-forgery",
+      "attempt": "Confirmed no regression: findCompletedSecurityRun/readJsonFile (the code that closes this exploit) is untouched by PL-12's diff.",
+      "evidence": [
+        "git diff a537e98 -- scripts/ledger-append.mjs: the first hunk begins at old line 524 — findCompletedSecurityRun (lines ~290-363) sits entirely before the first changed line and is untouched.",
+        "node --test scripts/*.test.mjs (this session): 458/459, including the duplicate-key-forgery regression tests — no regression."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/*.test.mjs; git diff a537e98 -- scripts/ledger-append.mjs to confirm findCompletedSecurityRun is unchanged.",
+      "code_references": [
+        "scripts/ledger-append.mjs:290-363"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v2-plain-path-spec-identity",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v2-plain-path-spec-identity",
+      "attempt": "Confirmed the fix (FND-bd78355b6ae7, RESOLVED) is not regressed: the unconditional spec.json/spec.md agreement check is unchanged and still sits above every lane-specific branch, now also reached, unconditionally, by --inline.",
+      "evidence": [
+        "Read scripts/ledger-append.mjs:1477-1490 directly: the unconditional agreement check is unchanged in substance from baseline and sits before `if (regate)` (1515) and before `if (inlineArgs)` (1532) — unconditional on every path, inline included.",
+        "node --test scripts/*.test.mjs (this session): 458/459 — includes the plain-path spec-integrity regression tests plus the new `[inline] the unconditional spec.json/spec.md agreement check fires on the inline path exactly as on every other` test, confirmed present and passing."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-bd78355b6ae7",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260804T203800838Z-f3c53b16460c-PR_DELTA-80e1cb",
+        "last_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed several rounds ago; unchanged and re-confirmed this run, now additionally covering the new --inline path.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read scripts/ledger-append.mjs:1450-1542 directly; node --test scripts/ledger-append.test.mjs.",
+      "code_references": [
+        "scripts/ledger-append.mjs:1450-1542"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v3-residual-stale-agreement",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v3-residual-stale-agreement",
+      "attempt": "Re-confirmed the persisting residual (FND-9ea3ec4bba13) still applies on the plain path (code unchanged), and evaluated whether the new --inline path shares it.",
+      "evidence": [
+        "Direct read this session: the plain path's own scope decision (main()'s comment at ~1492-1507) is unchanged — spec.json/spec.md agreeing with each other while both are stale leftovers from a prior ticket remains mechanically undetectable there.",
+        "Unlike the plain path (and unlike --lite, which has no ticket assertion at all), --inline DOES carry a caller-supplied `--ticket` cross-check (scripts/ledger-append.mjs:1532-1542), identical in shape to --re-gate's own (already excluded from this finding's scope) — so --inline inherits --re-gate's existing, narrower posture, not lite's undefended one. This does not resolve v3 (the check still only verifies presence-and-shape + which-ticket, never that planner genuinely ran this round — Honest limit (d) in .sdd/pipeline.md's /inline-edit section states this explicitly), so v3 remains OPEN on its original scope (the plain path), unaffected by this diff either way."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-9ea3ec4bba13",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T203800838Z-f3c53b16460c-PR_DELTA-80e1cb",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
+        "last_seen_commit": "a537e98a7c241b23ff826885973ac39df97e4b28",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged remediation from baseline (add a fail-safe default: when it cannot be established which ticket spec.json/spec.md actually describe, refuse rather than proceed). Confirmed this round to remain scoped to the plain path; --inline (like --re-gate) already carries the narrower --ticket mitigation and is not a new instance of this residual.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Reproduced conceptually by code reading only (the underlying code is unchanged from the prior fixture-verified reproduction).",
+      "code_references": [
+        "scripts/ledger-append.mjs:1492-1620",
+        ".sdd/pipeline.md"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs liteBarredPaths() vs .sdd/bounds.yml's actual hotfix_barred_paths/deny_for_fenced_lanes union (PL-11 new surface)|v4-lite-barred-path-undercoverage",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs liteBarredPaths() vs .sdd/bounds.yml's actual hotfix_barred_paths/deny_for_fenced_lanes union (PL-11 new surface)",
+      "attack_path_version": "v4-lite-barred-path-undercoverage",
+      "attempt": "Confirmed no regression: check-lite-eligible.mjs and .sdd/bounds.yml are untouched by PL-12's diff.",
+      "evidence": [
+        "git diff a537e98 -- scripts/check-lite-eligible.mjs .sdd/bounds.yml: empty — not in this diff at all."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-b731f500c5b8",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260808T204649727Z-fe1d2b326985-PR_DELTA-a208f9",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "last_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed several rounds ago; unaffected by this diff.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "git diff a537e98 -- scripts/check-lite-eligible.mjs .sdd/bounds.yml (empty).",
+      "code_references": [
+        "scripts/check-lite-eligible.mjs:50-64",
+        ".sdd/bounds.yml:41-90"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs countChangedLines()/evaluateLiteEligibility() line-count size proxy (PL-11 new surface)|v5-lite-linecount-bound-evasion",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs countChangedLines()/evaluateLiteEligibility() line-count size proxy (PL-11 new surface)",
+      "attack_path_version": "v5-lite-linecount-bound-evasion",
+      "attempt": "Confirmed no regression: the fixed line-length bound code is untouched by PL-12's diff.",
+      "evidence": [
+        "git diff a537e98 -- scripts/check-lite-eligible.mjs: empty. ledger-append.mjs's --lite branch (which calls this code) is likewise untouched by this diff — only the new --inline branch was added, in a separate region of the file (confirmed via the hunk list: first hunk at old line 524, well after --lite's own code)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-22ef4b5c746e",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260808T204649727Z-fe1d2b326985-PR_DELTA-a208f9",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "last_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed several rounds ago; unaffected by this diff. See v6 for the still-open, bounded residual.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "git diff a537e98 -- scripts/check-lite-eligible.mjs (empty).",
+      "code_references": [
+        "scripts/check-lite-eligible.mjs:176-210"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs evaluateLiteEligibility() — max_changed_lines and max_line_length compose multiplicatively rather than bounding total content (PL-11 security-fix round sibling-path sweep)|v6-lite-multiline-spread-residual",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs evaluateLiteEligibility() — max_changed_lines and max_line_length compose multiplicatively rather than bounding total content (PL-11 security-fix round sibling-path sweep)",
+      "attack_path_version": "v6-lite-multiline-spread-residual",
+      "attempt": "Re-confirmed the persisting, bounded residual (FND-9735a2fbe37a) is unaffected — no change to evaluateLiteEligibility or the lite_eligibility bounds since it was found.",
+      "evidence": [
+        "git diff a537e98 -- scripts/check-lite-eligible.mjs .sdd/bounds.yml: empty. The ~75,000-character (max_changed_lines x max_line_length) hard ceiling this residual describes is unchanged; --inline (this round's only new surface) does not import lite's bounds at all (D-2), so it cannot inherit this specific residual — see v11 below for --inline's own, distinct size-disclosure surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-9735a2fbe37a",
+        "status": "OPEN",
+        "first_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
+        "last_seen_commit": "a537e98a7c241b23ff826885973ac39df97e4b28",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged from baseline: add a third, product-level bound (total changed bytes/characters), or tighten max_changed_lines/max_line_length so their product is closer to the lite lane's own stated use case. Persisting, out of PL-12's own scope (PL-12 does not touch check-lite-eligible.mjs or bounds.yml).",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516 for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/check-lite-eligible.mjs:220-290",
+        ".sdd/bounds.yml:108-111"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/ledger-append.mjs's --inline ticket cross-check (readInlineArgs / the specTicketId !== inlineArgs.ticket refusal) (PL-12 new surface)|v7-inline-ticket-identity",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/ledger-append.mjs's --inline ticket cross-check (readInlineArgs / the specTicketId !== inlineArgs.ticket refusal) (PL-12 new surface)",
+      "attack_path_version": "v7-inline-ticket-identity",
+      "attempt": "Attempted to make --inline attribute a run to a ticket other than the one spec.json actually describes (the same class of laundering v2's fix closed on the plain path) — via a wrong --ticket value, a missing --ticket, and duplicate --ticket flags with the correct value first and a forged value second (to test whether the SECOND occurrence, rather than the recorded one, could be smuggled through).",
+      "evidence": [
+        "Read scripts/ledger-append.mjs:1222-1235 (readInlineArgs) and :1532-1542 (the cross-check) directly: `--inline` refuses with no `--ticket` at all (readTicketFlag returns null -> fail), and refuses when `extractTicketId(specJson.ticket) !== inlineArgs.ticket` (EC-2).",
+        "readTicketFlag (scripts/ledger-append.mjs:1182-1193) uses `argv.indexOf('--ticket')`, which resolves to the FIRST occurrence — traced by hand: `--inline --ticket <correct> --ticket <forged> --why-inline \"...\"` reads the FIRST (correct) value for the cross-check, so a forged second occurrence cannot substitute a different ticket into the check. Separately confirmed the recorded ticket in entry.json (`ticketId`) is derived from `specJson.ticket` itself (line ~1699), never from the `--ticket` flag's value at all — the flag is consulted only for the refusal check, never written into the durable record — so even a successful flag manipulation could not change what gets recorded.",
+        "Independently re-ran `[inline] --inline without --ticket is refused...` and `[inline] --inline --ticket that does not match spec.json's own ticket is refused...` (scripts/ledger-append.test.mjs) this session: both pass, and read their bodies directly — both invoke the real CLI as a subprocess and assert `assertNothingWritten`."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/ledger-append.test.mjs (filter: \"inline .*ticket\"); read readInlineArgs/readTicketFlag and the cross-check at scripts/ledger-append.mjs:1177-1235,1528-1542 directly.",
+      "code_references": [
+        "scripts/ledger-append.mjs:1177-1235",
+        "scripts/ledger-append.mjs:1528-1542"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/ledger-append.mjs's --inline/--lite/--re-gate/--hotfix mutual-exclusion and composition handling (PL-12 new surface)|v8-inline-lane-composition",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/ledger-append.mjs's --inline/--lite/--re-gate/--hotfix mutual-exclusion and composition handling (PL-12 new surface)",
+      "attack_path_version": "v8-inline-lane-composition",
+      "attempt": "Attempted every composition of --inline with the other lane flags to see whether any relaxes a gate or produces an ambiguous/mislabeled entry: --inline --lite, --inline --re-gate, --inline --hotfix (in both flag orders, including placing --inline after --hotfix's --files, which consumes the rest of argv), and --inline with --override-review/--override-security (the one composition the spec says MUST be accepted).",
+      "evidence": [
+        "--inline --lite and --inline --re-gate: both refused (scripts/ledger-append.mjs:1375-1393) before any `.pipeline/` file is read — traced the exact call order in main(): `assertKnownFlags` -> `lite`/`inline` boolean derivation -> `readOverrideReason` x2 (pure argv) -> `readRegateArgs` (pure argv) -> the `if (lite){...}`/`if (inline){...}` mutual-exclusion blocks -> `readInlineArgs` -> ONLY THEN `readReviewJson(pipelineDir)`, the first disk read. Confirmed by the test fixture's own construction (`[inline] --inline --lite and --inline --re-gate are each refused... before any .pipeline/ file is read`): the fixture's `.pipeline/` directory is deliberately empty, so a refusal could only have come from the argv-only checks.",
+        "One caveat traced directly (matches review's own Suggestion #2, independently re-derived rather than taken on its word): `--inline --re-gate --ticket X --why-inline Y` WITHOUT `--tester-ran` surfaces readRegateArgs's own \"--re-gate requires --tester-ran\" refusal (line ~1309) rather than the `--inline --re-gate` mutual-exclusion message, because `readRegateArgs(argv, { inline })` runs (line 1347) before the mutual-exclusion block (line 1375). This still refuses, still before any `.pipeline/` read, and writes nothing — the ONLY effect is which message the caller sees, never a relaxed gate. With the full re-gate arg set (`--tester-ran true --ticket X`), the correct `--inline --re-gate` message fires as documented.",
+        "--inline --hotfix: `--hotfix` is dispatched BEFORE main() even runs (`if (process.argv.includes('--hotfix')) runHotfix(...) else main()`), and runHotfix's own `assertKnownFlags(argv, { knownFlags: HOTFIX_KNOWN_FLAGS, ... })` does not include `--inline` in its known-flags set. Traced both orderings: `--hotfix --inline ...` fails immediately with `unrecognized argument \"--inline\"` (nothing written); `--hotfix ... --files --inline` treats the literal string \"--inline\" as one more file path in the `--files` list (harmless — `--files` consumes every remaining token verbatim once reached) — in neither ordering does `--inline` invoke any inline-lane logic at all inside a hotfix run.",
+        "--inline --override-review/--override-security: traced as the one composition that MUST succeed (not a bypass finding) — confirmed both flags are read via the shared, unconditional `readOverrideReason` (argv-only, before any lane-specific branch) and thread into the SAME `reviewOverridden`/`securityOverridden`/`bypass` logic every other lane uses; independently re-ran `[inline] a non-PASS gate accepted via --override-* composes with the inline disclosure...` this session and read its assertions directly: `bypass: true`, excluded from index.json, `(INLINE) (OVERRIDE)` title, `inline` object intact and unmodified by the override."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/ledger-append.test.mjs (filter: \"inline\"); manually traced main()'s control flow at scripts/ledger-append.mjs:1340-1543 and runHotfix's dispatch at :902,829-831.",
+      "code_references": [
+        "scripts/ledger-append.mjs:1340-1543",
+        "scripts/ledger-append.mjs:829-831,902-905"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/ledger-append.mjs's --inline handling of a leftover .pipeline/red.json (never read, never copied) (PL-12 new surface)|v9-inline-red-json-non-laundering",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/ledger-append.mjs's --inline handling of a leftover .pipeline/red.json (never read, never copied) (PL-12 new surface)",
+      "attack_path_version": "v9-inline-red-json-non-laundering",
+      "attempt": "Attempted to make a leftover (or maliciously crafted) .pipeline/red.json from an earlier, unrelated ticket appear as this inline run's own red-test coverage in entry.json/entry.md/the ledger copy.",
+      "evidence": [
+        "Read scripts/ledger-append.mjs:1457 directly: `const redJson = (lite || inline) ? null : readRedJson(...)` — red.json is never read at all on the inline path, regardless of its content.",
+        "`INLINE_SIDECAR_NAMES` (line 1175) omits `red.json` from the set `copySidecarsIntoLedger` copies — even a well-formed, present red.json is never copied into `.sdd/ledger/<runId>/`.",
+        "`redTestPaths` is forced to `[]` and `redAbsenceNote` to the fixed `INLINE_RED_ABSENCE_NOTE` constant (lines 1703,1727-1728) regardless of what red.json on disk contains.",
+        "Independently re-ran `[inline] a leftover red.json is never read, never copied, and never contributes to redTestPaths...` this session with the exact fixture the test constructs (a red.json naming a foreign test path) and confirmed: exit 0, no red.json in the run directory, `redTestPaths: []`, `redAbsenceNote` matches `INLINE_RED_ABSENCE_NOTE` exactly, and the foreign test path string does not appear anywhere in entry.md."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/ledger-append.test.mjs (filter: \"leftover red.json\"); read scripts/ledger-append.mjs:1455-1457,1171-1175,1703,1725-1731 directly.",
+      "code_references": [
+        "scripts/ledger-append.mjs:1455-1457",
+        "scripts/ledger-append.mjs:1171-1175"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/build-ledger-index.mjs's verdicts gate — whether declaring `inline` on an entry.json buys any widening of the required { review: PASS, security: PASS } shape (PL-12 new surface)|v10-inline-verdicts-gate-non-widening",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/build-ledger-index.mjs's verdicts gate — whether declaring `inline` on an entry.json buys any widening of the required { review: PASS, security: PASS } shape (PL-12 new surface)",
+      "attack_path_version": "v10-inline-verdicts-gate-non-widening",
+      "attempt": "Attempted to launder a non-PASS or skipped security verdict through the index by hand-crafting an entry.json that declares itself `inline` while claiming `security: \"SKIPPED_LITE\"` (borrowing the lite lane's own widened literal) or a fabricated `security: \"SKIPPED_INLINE\"` literal.",
+      "evidence": [
+        "Read scripts/build-ledger-index.mjs's readEntryJson directly: `isDeclaredLite = lite !== null && lite.skippedStages.includes('security')` reads ONLY the `lite` field — `inline` is read (line ~186) and carried forward, but never consulted by this gate at all. The expected shape stays `{ review: 'PASS', security: 'PASS' }` for every entry whose `lite` field is null, `inline` or not.",
+        "Independently re-ran `[inline] the verdicts gate is unchanged: an inline entry is held to PASS/PASS byte-for-byte, and inline is not a second widening case` (scripts/build-ledger-index.test.mjs) this session: (a) a genuine inline entry (PASS/PASS) indexes and is decorated with `inline: { skippedStages }` — confirmed positive control; (b) an entry.json declaring `inline` non-null but `verdicts.security: \"SKIPPED_LITE\"` is REFUSED (non-zero exit, no index.json written); (c) the same with a fabricated `\"SKIPPED_INLINE\"` literal is likewise refused — no new literal for this lane is recognized anywhere in the gate."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/build-ledger-index.test.mjs (filter: \"verdicts gate is unchanged\"); read scripts/build-ledger-index.mjs's readEntryJson directly.",
+      "code_references": [
+        "scripts/build-ledger-index.mjs (readEntryJson, isDeclaredLite)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|/inline-edit's D-2 (deliberately no mechanical size bound) — whether the lane's lack of a size gate allows escaping security scrutiny by size (PL-12 new surface, reviewed from the attacker's chair per this run's own instructions)|v11-inline-unbounded-size-D2",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "/inline-edit's D-2 (deliberately no mechanical size bound) — whether the lane's lack of a size gate allows escaping security scrutiny by size (PL-12 new surface, reviewed from the attacker's chair per this run's own instructions)",
+      "attack_path_version": "v11-inline-unbounded-size-D2",
+      "attempt": "Constructed and traced the worst case the ticket's own spec explicitly calls out as approver-reversible (D-2): a change far past every one of the lite lane's own bounds (file count, changed lines, line length) AND touching a path in the lite lane's own barred-path union (services/core/src/services/**), submitted via --inline, to determine whether the absence of a mechanical size bound on this lane allows a large or security-sensitive change to be indexed WITHOUT security's own scrutiny — the actual attack D-2 could enable, as distinct from the disclosed-but-accepted D-018 test-ordering tradeoff.",
+      "evidence": [
+        "Traced main()'s control flow directly: the `securityJson.verdict !== 'PASS'` gate (scripts/ledger-append.mjs:1441-1447) and `refuseIfStale('security.json', ...)` (line 1439) are UNCONDITIONAL on the non-lite path — `inline` never enters that branch's condition at all (`if (lite) {...} else { securityJson = readSecurityJson(...); ... }`, line 1420). There is no code path by which a large `--inline` change reaches the ledger without security.json showing PASS (or an explicit, disclosed `--override-security`).",
+        "Independently re-ran `[inline] a change far past every lite bound — file count, changed lines, line length, and a barred path — is recorded, not refused: the measurement gates nothing` (scripts/ledger-append.test.mjs) this session: a 9-file, >150-changed-line, >2000-char-line change touching `services/core/src/services/technicalTreeService.ts` (in the lite lane's own barred union) still requires a genuine, independently-produced, PASS `security.json`/`security-history/` run to succeed at all (the fixture's `runInline` only succeeds because the fixture also supplies one) — the test demonstrates the size measurement gates NOTHING, but does not, and structurally cannot, demonstrate that security scrutiny itself was skipped, because the harness never lets an inline run reach `entry.json` without a real security PASS in the fixture.",
+        "This is a materially different risk shape from SEC-10 v4/v5/v6 (the lite lane's own size-bound gaps): those are exploitable specifically BECAUSE `security` never runs at all on `--lite` — size was the ONLY compensating control, and it was shown to have real gaps. On `--inline`, `security` is unconditional and full regardless of measured size, so \"escape scrutiny via size\" is blocked at every size, not merely below some threshold.",
+        "The residual D-2 leaves genuinely open — tests are written after the diff exists (the D-018 inversion), at any size, with no mechanical bound — is a disclosed, structural property of the lane (`.sdd/pipeline.md`'s /inline-edit \"Honest limits\" (a), spec.md's D-2, review.md's own \"D-2 adjudication\" section with its honesty note) and is compensated by `security` genuinely reviewing the change in full, the same compensating control the full, ordinary `/pipeline` lane already relies on for arbitrarily large `dev`-authored diffs today (the full lane also carries no mechanical size bound on `dev`'s own output) — D-2 does not lower this lane's risk profile below what an unbounded, ordinary /pipeline diff already carries; it forgoes only what a bounded /pipeline-lite diff's SKIPPED security stage would otherwise have needed size to compensate for."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/ledger-append.test.mjs (filter: \"far past every lite bound\"); read scripts/ledger-append.mjs:1412-1448 (the unconditional non-lite security gate) directly.",
+      "code_references": [
+        "scripts/ledger-append.mjs:1412-1448",
+        ".sdd/pipeline.md (/inline-edit, Honest limits)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked package.json's diff for new dependencies.",
+      "evidence": [
+        "`git diff a537e98 -- package.json package-lock.json` is empty — PL-12 adds no new script/dependency of any kind (no new script file, per its own explicit scope decision)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff a537e98 -- package.json package-lock.json.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for new install/build-time code execution.",
+      "evidence": [
+        "No package.json change at all in this diff; no postinstall hook."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read package.json's scripts block.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for an automated dependency-vulnerability/SBOM scanning gate in CI.",
+      "evidence": [
+        "Re-read the current .github/workflows/ci.yml in full: still no npm audit step, no dependabot.yml/renovate.json, no SBOM-generation step anywhere. Unaffected by PL-12 (ci.yml untouched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-d26b84ebd646",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
+        "last_seen_commit": "a537e98a7c241b23ff826885973ac39df97e4b28",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Add a CI-integrated dependency-scanning gate (npm audit, Dependabot, or equivalent). Still no tracked ticket. Persisting, out of PL-12's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "npm audit --omit=dev from repo root; ls .github/ for a dependabot.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked CI trigger/permission scope for fork/PR write-token exposure.",
+      "evidence": [
+        "Triggers remain plain push/pull_request; unaffected by PL-12 (ci.yml untouched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read ci.yml's `on:` block.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked CI steps for untrusted-value interpolation into a shell command.",
+      "evidence": [
+        "No new `run:` line; unaffected by PL-12 (ci.yml untouched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff a537e98 -- .github/workflows/ci.yml (empty).",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether third-party GitHub Actions are pinned to a commit SHA rather than a mutable tag.",
+      "evidence": [
+        "actions/checkout@v4, actions/setup-node@v4, actions/setup-python@v5 remain pinned to major-version tags, not commit SHAs — unaffected by PL-12 (ci.yml untouched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-ef0066ad43ed",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
+        "last_seen_commit": "a537e98a7c241b23ff826885973ac39df97e4b28",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Pin actions/checkout, actions/setup-node, actions/setup-python to commit SHAs rather than major-version tags. Persisting, out of PL-12's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read ci.yml's `uses:` lines.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for container/Dockerfile changes.",
+      "evidence": [
+        "No Dockerfile or container config touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for network-exposure config changes (CI service containers).",
+      "evidence": [
+        "ci.yml's service blocks remain pre-existing and unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for IAM/cloud-role config changes.",
+      "evidence": [
+        "No IAM/cloud config touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for cross-environment credential/config crossover.",
+      "evidence": [
+        "No environment-specific credential/URL config touched; ci.yml unaffected."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read ci.yml's env blocks.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for TLS/certificate/proxy configuration changes.",
+      "evidence": [
+        "No TLS/cert/proxy config touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1-parser-perf",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1-parser-perf",
+      "attempt": "Confirmed no regression: pipeline-contracts.mjs is untouched by PL-12's diff.",
+      "evidence": [
+        "git diff a537e98 -- scripts/pipeline-contracts.mjs: empty. node --test scripts/*.test.mjs (this session): 458/459, including the parser-perf regression test."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff a537e98 -- scripts/pipeline-contracts.mjs; node --test scripts/*.test.mjs.",
+      "code_references": [
+        "scripts/pipeline-contracts.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for DB/graph migration code changes.",
+      "evidence": [
+        "No migration code touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this run's persisting open findings (SC-03, SC-06, and pipeline-side SEC-09/SEC-10 v3/v6) have an owner, due date, or tracked exception.",
+      "evidence": [
+        "All carry owner: null, due_at: null, and no linked tracking ticket, unchanged from baseline."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Inspect this run's own OPEN finding objects.",
+      "code_references": []
+    }
+  ]
+}

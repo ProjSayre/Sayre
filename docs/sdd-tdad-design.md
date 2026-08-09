@@ -1,12 +1,58 @@
 # SDD/TDAD methodology — design
 
-**Status:** design approved 2026-07-31, not yet planned or implemented.
+**Status:** design approved 2026-07-31. Substantially implemented — see *Implementation status* below,
+which supersedes any conflicting claim in the body. The body is preserved as the design record; it is
+not rewritten as things land, following the decision log's supersede-don't-rewrite convention.
 **Origin:** onboarding a nontechnical cofounder (Victor) working through a Codex account, against
 the existing five-agent pipeline.
 **Related decisions:** D-005 (SDD port), D-014 (clone-to-running test), D-016 (containerization),
 D-017 (E2E seam, operational layer), D-018 (tests written against the implementation), D-019
 (multi-client config), D-020 (ephemeral plans, PR templates), D-021 (TDAD, loop engineering),
 D-022 (Position B).
+
+---
+
+## Implementation status (2026-08-04)
+
+| Ticket | State |
+|---|---|
+| PL-03a — cross-runtime `.sdd/` foundation | Landed, `e3134fe` |
+| PL-03b — impact resolver | Landed on `feat/tdad-impact-resolver`; **wired into `red`/`tester`** (this wiring pass) |
+| PL-03c — `red` stage, `tester` rewire, durable ledger | Landed, `07306d5` |
+| PL-03d — `pr-review` + bounds | Stage definition, `bounds.yml`, `check-bounds.mjs` + 12 tests, skill wrapper, and now **registered in `runtimes.yml`** and added to `guard-checker-readonly.mjs`'s `READ_ONLY_AGENTS` (this wiring pass) |
+| PL-03e — Victor's surface | Issue template + PR template landed; planner Ticket-Check + `lane`-into-`spec.json` wiring **landed** (this wiring pass) |
+| PL-03f — `dev` reads `security-report.md` | **Landed** (this wiring pass) — `dev` re-reads `security-report.md`/`security.json` on a `BLOCKED` re-invocation, same handling as a `NEEDS_FIXES` review |
+| PL-03g — real read-only enforcement | **Landed and live-verified** |
+| PL-03h — structural extraction | In progress |
+| PL-03i — impact resolver: barrel-hop ranking distortion | Opened (this wiring pass) — a real finding recorded, not fixed; see `docs/PRD_Tickets.md` |
+| D-005 #3 — `/hotfix` sanctioned bypass | `.sdd/hotfix.md` + skill landed earlier; `scripts/ledger-append.mjs --hotfix` and `.sdd/pipeline.md` entry-point wiring **landed** (this wiring pass) |
+
+### Two claims in the body below are now wrong, and the corrections matter
+
+**1. Read-only enforcement exists, and the body says it doesn't.** Section 1 and Section 3 state that
+cross-runtime guarantees must be verification-based because hooks can't be relied on. That reasoning
+was built on a mistaken premise. A 2026-07-31 diagnostic found `PreToolUse` hooks declared in
+*subagent frontmatter* never fire — so `review` and `security-checker` had never been read-only for
+`Write` either, making D-005's finding roughly twice its recorded size. A 2026-08-04 payload probe
+then found the hook payload carries `agent_type`, which is what makes per-agent scoping possible at
+all: one settings-level hook can constrain the checker stages without blocking `dev`, which must
+write code.
+
+`scripts/guard-checker-readonly.mjs` is wired in `.claude/settings.json` and verified live — a
+`review` subagent's write to repo root was blocked with no file created; its write inside
+`.pipeline/` succeeded.
+
+**2. The `Bash` hole is not closed, and the body says a Section 1 fix covers it.** It doesn't; that
+fix was deleted. An allowlist over commands was built, then abandoned after four rounds found four
+bypass classes — decisively, `poetry run pytest` executes `conftest.py`, so a single allowed command
+is arbitrary code execution and command-layer default-deny buys nothing. The guard covers `Write`,
+`Edit`, and `NotebookEdit`. **`Bash` remains an unguarded write path for the checker stages**, stated
+here rather than left implied, per D-016's deferred-control-register discipline.
+
+### Still unverified
+
+**Codex parity has never been observed against a real Codex session.** It is the headline claim of
+the cross-runtime work, argued structurally across every review round and never tested.
 
 ---
 

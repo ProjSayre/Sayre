@@ -2,10 +2,13 @@
 // (W3-10). Mirrors src/db/rls.test.ts's conventions (node:test, dedicated
 // throwaway database off DATABASE_ADMIN_URL, migrated fresh) — run via:
 //
-//   node --env-file=../../infra/.env --import tsx --test src/db/jiraConnectionStore.rls.test.ts
+//   NODE_ENV=test node --env-file=../../infra/.env --import tsx --test src/db/jiraConnectionStore.rls.test.ts
 //
 // (from services/core/), or add an npm script mirroring test:rls if this is
-// promoted into the standing suite. Requires a live local Postgres (the
+// promoted into the standing suite. NODE_ENV=test is required here (not just
+// convention) — see the `before()` hook below, which uses the
+// setSecretBackendForTests seam, and that seam's requireTestEnvironment()
+// guard throws otherwise. Requires a live local Postgres (the
 // sayre-postgres docker-compose service) — this is intentionally NOT part of
 // the vitest run (src/db/** is excluded there, same as rls.test.ts).
 //
@@ -20,7 +23,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { getSecret } from '@sayre/config';
+import { getSecret, resetSecretsForTests, setSecretBackendForTests } from '@sayre/config';
 import { createDb, createPool, withOrgContext, type Db } from './client';
 import { PostgresJiraConnectionStore } from './jiraConnectionStore';
 
@@ -83,17 +86,23 @@ let orgA: { orgId: string; userId: string };
 let orgB: { orgId: string; userId: string };
 
 before(async () => {
-  // Real environment-backed getSecret (same as rls.test.ts) — NOT the
-  // vitest-only setSecretBackendForTests seam, which requires
-  // process.env.NODE_ENV === 'test' and this file runs under node:test via
-  // `--import tsx --test`, not vitest. infra/.env has no real
-  // JIRA_TOKEN_ENC_KEY provisioned yet (W3-10 is still mid-pipeline), so set
-  // it directly here before jiraTokenCipher's first getSecret() call caches it.
-  if (!process.env.JIRA_TOKEN_ENC_KEY) {
-    process.env.JIRA_TOKEN_ENC_KEY = JIRA_TOKEN_ENC_KEY;
-  }
-
+  // Resolve DATABASE_ADMIN_URL first, via the real environment-backed
+  // getSecret (same as rls.test.ts) — before swapping the backend below.
   const adminUrl = await requireAdminUrl();
+
+  // infra/.env has no real JIRA_TOKEN_ENC_KEY provisioned yet (W3-10 is
+  // still mid-pipeline). Rather than writing process.env directly (forbidden
+  // outside the loader — see check-secret-access.mjs / .claude/rules/
+  // security-multitenancy.md), install a fixed test value through the
+  // sanctioned setSecretBackendForTests seam before jiraTokenCipher's first
+  // getSecret('env://JIRA_TOKEN_ENC_KEY') call caches it. Nothing in this
+  // file requests any other secret after this point, so the swap (and its
+  // cache-clear) doesn't affect the already-resolved adminUrl above.
+  setSecretBackendForTests(async (ref) => {
+    if (ref === 'env://JIRA_TOKEN_ENC_KEY') return JIRA_TOKEN_ENC_KEY;
+    throw new Error(`jiraConnectionStore.rls.test.ts: unexpected secret request ${ref}`);
+  });
+
   await ensureTestDatabaseExists(adminUrl, TEST_DB_NAME);
   const testDbUrl = withDatabaseName(adminUrl, TEST_DB_NAME);
 
@@ -118,6 +127,7 @@ before(async () => {
 after(async () => {
   await pool.query('TRUNCATE organizations CASCADE');
   await pool.end();
+  resetSecretsForTests();
 });
 
 function futureExpiry(minutes: number): Date {

@@ -14,5 +14,18 @@
       "Read(/infra/*.txt)",
       "Edit(/infra/*.txt)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/guard-checker-readonly.mjs"
+          }
+        ]
+      }
+    ]
   }
 }

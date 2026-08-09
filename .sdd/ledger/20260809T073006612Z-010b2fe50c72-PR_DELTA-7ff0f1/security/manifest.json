@@ -1,0 +1,300 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-09T07:26:00.000Z",
+  "completed_at": "2026-08-09T07:45:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre"
+  },
+  "target": {
+    "commit_sha": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+    "branch": "fix/pl-04-pipeline-defects",
+    "dirty": true,
+    "environment": "local development checkout — static analysis + local test/validator suites only; no live/staging/production target, no runtime penetration test",
+    "base_urls": [],
+    "changed_paths": [
+      "apps/web/.claude/skills/redteam-ux/driver.mjs",
+      "scripts/check-secret-access.mjs",
+      ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260809T065405029Z-010b2fe50c72-PR_DELTA-877e84",
+    "commit_sha": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+    "comparable": true,
+    "selection_reason": "Human-specified baseline (audit-contract order item 1): the coordinator designated this run's own immediately-prior run, 877e84, as baseline, since the PL-13 diff under audit is byte-identical (independently re-hashed this session: `git diff HEAD -- apps/web/.claude/skills/redteam-ux/driver.mjs scripts/check-secret-access.mjs | git hash-object --stdin` -> c224667518da584d800ef0926e28d1df73c31307, matching review.md pass 3's own re-hash exactly) and this run exists solely to give the ledger-append step a fresh, truthful review/security stamp after a torn append was reconciled, not because anything about the audited code changed. Independently verified comparable rather than taken on the coordinator's word: same commit_sha (010b2fe... — literally the same tree state security last audited, not merely an ancestor), same repository, same environment string, same empty tenant_fixtures. 877e84's own immutable .pipeline/security-history/ twin is confirmed still present on disk (untouched by the ledger-directory deletion the coordinator described, which only removed the now-superseded .sdd/ledger/ copy that never should have existed given the append tore before completing).",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "PL-13 — Secret-access gate: clear the four boundary violations on fix/pl-04-pipeline-defects",
+    "phase": "Re-run following a ledger-append tear: the first attempt to append PL-13's ledger entry (using 877e84 as its security run id) tore at index-regeneration on a pre-existing, merge-inherited defect — a legacy main-side ledger entry, `20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa`, committed with `entry.md` but no `entry.json` sidecar (predates the PL-03h round-4 entry.json-is-authoritative contract). The coordinator reconciled this with review verification at each step: backfilled `d441aa`'s `entry.json` by hand per `.sdd/ledger/README.md`'s documented PL-03a one-time migration precedent (independently re-verified this session, not merely trusted — see the new SEC-10 observation below); deleted the torn, uncommitted `.sdd/ledger/20260809T065405029Z-010b2fe50c72-PR_DELTA-877e84/` directory (877e84's `.pipeline/security-history/` twin, this run's own baseline material, is untouched); parked 42 unrelated untracked files outside the repo; regenerated `.sdd/ledger/index.json` (independently re-ran `npm run check:ledger-index` this session: exit 0, \"up to date (98 file(s), 4 run(s))\", matching the coordinator's account exactly). `.pipeline/review.json` re-stamped fresh at pass 3 (treeHash `32e23774f996688b1b0b7a7cc39819f9ffb9ae76788c2288142d3df4b6864c8e`) after review independently re-verified the cleaned tree and the backfill's field-for-field honesty; independently re-verified fresh this session via `node scripts/check-stamp-freshness.mjs review.json` (exit 0, status \"fresh\") before this run proceeded.",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".pipeline/review.json",
+      ".pipeline/security-history/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/ (this run's own baseline)",
+      ".pipeline/review.md (pass 3, clean-tree re-verification)",
+      ".sdd/ledger/README.md (\"entry.json is authoritative\" / one-time migration affordance)",
+      ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/ (the backfilled entry, independently re-verified this session)"
+    ],
+    "documentation_code_drift": [
+      "None newly observed. review.md pass 3's own Warning 1 discloses a pre-existing, out-of-scope quirk (the committed .sdd/ledger/index.json still carries ~42-44 file keys pointing at untracked paths since parked outside the repo, all owned by the already-committed PL-11 run 728516, whose own append ran on a then-dirty tree) — independently spot-checked this session (44 keys matched by a slightly broader glob than review's own count, the difference being legitimate docs/ files bf73ea genuinely touched, not junk) and confirmed pre-existing/committed, not introduced by this reconciliation."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode.",
+      "rationale": "PL-13's diff (apps/web/.claude/skills/redteam-ux/driver.mjs, scripts/check-secret-access.mjs) touches no persistence, graph-write, or org_id-stamping code — confirmed via `git diff HEAD --stat -- 'services/**' 'apps/**' 'packages/**' 'infra/**'`, which returns only driver.mjs (a dev-only agent-tooling skill script under apps/web/.claude/skills/, not app/route/persistence code).",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No route/resolver/graph-query-service/graphology code touched by this diff — driver.mjs is a local Puppeteer CLI driver invoked outside any request path, not a route or resolver.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check. This is the ticket's own subject: migrating driver.mjs off direct process.env reads and onto the central config loader, plus one new check-secret-access.mjs ALLOWLIST entry.",
+      "rationale": "Read both files' full current content and the exact diff; independently ran the config loader (getOptionalConfig) against unset/empty/whitespace/bogus PUPPETEER_EXECUTABLE_PATH values; independently ran check:secret-access, test:secret-access, test:readonly-guard. See CORE-03/SEC-01 below for full evidence.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs",
+        "packages/config/src/config.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/core/src/webhooks/** changes in this diff.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/workers/** changes in this diff.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "Read every changed line in both files for shell/SQL/Cypher/queue concatenation from untrusted input: driver.mjs passes executablePath directly as a puppeteer.launch() constructor argument (no shell, no string interpolation into a command line); check-secret-access.mjs's regex construction is 100% static (its own source), never built from file contents or argv.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs:226-230",
+        "scripts/check-secret-access.mjs:6-18"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "Neither changed file is under services/workers/**, packages/graph-schema/**, or matches *embedding*/*retriev*/*prompt*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "Neither changed file is under services/workers/**, services/core/**, infra/**, or matches *provider*/*egress*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered by this diff's own changed paths.",
+      "rationale": "Neither changed file matches services/core/src/mcp/**, *mcp*, or *api-key*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered by this diff's own changed paths.",
+      "rationale": "Neither changed file matches services/gateway/**, *realtime*, *websocket*, or *redis*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "Neither changed file matches services/workers/**, *queue*, *webhook*, *integration*, *sqs*, or *bullmq*.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "PR_DELTA trigger-path match: apps/web/** (driver.mjs). Not selected by the PL-12 baseline (apps/web/** was untouched then) — this is the first PL-04-round run where this surface's trigger path is genuinely hit.",
+      "rationale": "Read the full file: driver.mjs is a local Node CLI script under apps/web/.claude/skills/redteam-ux/ (agent tooling), never imported by any apps/web route/page/component (grepped apps/web for \"redteam-ux\"/\"driver.mjs\" across *.ts/*.tsx/*.js/*.jsx/*.mjs/*.cjs/*.json — zero references outside the driver's own file and its sibling SKILL.md doc), and is not part of the Next.js build graph. The actual web-api-client surface (real routes/API) is untouched by this diff. See WEB-01..12 below for the per-check disposition against this specific asset.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "PR_DELTA trigger-path match: scripts/** (check-secret-access.mjs) and **/*secret* (both changed files' subject matter). This is the ticket's own primary surface.",
+      "code_references": [
+        "apps/web/.claude/skills/redteam-ux/driver.mjs",
+        "scripts/check-secret-access.mjs"
+      ],
+      "rationale": "Full PR_DELTA scope: every checklist ID (SEC-01..14) run against the new diff's own target asset, plus full re-verification (unaffected) of the eleven persisting SEC-10 ledger/lite-lane attack-path-versions carried from baseline, since scripts/ledger-append.mjs and scripts/check-lite-eligible.mjs are confirmed untouched by this diff."
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Not triggered by this diff's own changed paths (ci.yml/package.json/package-lock.json untouched — confirmed via `git diff HEAD --stat`, empty). Selected anyway as sibling-path continuity for the persisting SC-03/SC-06 findings, per the coordinator's explicit instruction to weigh persisting findings on their own merits — same treatment baseline gave this surface for PL-12.",
+      "rationale": "No incremental change to ci.yml/package.json/package-lock.json since baseline (confirmed empty diff, this session).",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "package.json"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "progress-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "security-stage",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle-attacker",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure-attacker",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    },
+    {
+      "agent_id": "web-api-client-attacker",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    }
+  ],
+  "limitations": [
+    "CORE-01/02/04/05 remain UNVERIFIED for this diff's own code (no application/persistence/webhook/ingestion code touched — driver.mjs is dev-only agent tooling under apps/web/.claude/skills/, not app code).",
+    "No dynamic/runtime testing against a live service was performed (authorization.runtime_tests_authorized is false). Dynamic-adjacent evidence this run: independently ran `node scripts/check-secret-access.mjs` (exit 0), `npm run test:secret-access` (38/38), `npm run test:readonly-guard` (23/23), `node --check driver.mjs` (exit 0), and exercised `getOptionalConfig('PUPPETEER_EXECUTABLE_PATH')` live (unset/empty/whitespace/bogus-path cases) both from the repo root and from the driver's own directory, confirming the loader resolves from apps/web/.claude/skills/redteam-ux/ (closing spec.md's one open precondition, EC-4's fallback not triggered).",
+    "Did not launch a real Chrome/Puppeteer browser session this run (no headed/headless launch performed) — findChrome()'s final executablePath selection and puppeteer.launch()'s own child-process env propagation were verified statically (code reading + the isolated getOptionalConfig calls above), not by an actual end-to-end browser launch. review.md records that tester/review did perform a live candidate-list run and an override-precedence run on this machine; this run did not independently repeat the full live launch, relying instead on the isolated config-loader-level reproduction above plus static code reading of the unchanged puppeteer.launch() call site.",
+    "GAP-02 (Bash unguarded by the read-only hook) unaffected by this round's diff, not re-litigated.",
+    "SEC-09 (actor identity, LOW, persisting) re-weighed again this run: this is now the SECOND consecutive /inline-edit-lane run (PL-12, then PL-13) landing on this branch with self-authored changes.md/changes.json and no dev-stage isolation. See SEC-09's own observation for the full re-weighing; severity is unchanged (LOW) per the same systemic, not-this-run's-regression reasoning baseline gave, but the recommendation now names the two-consecutive-run pattern as a reason to prioritize the pre-existing remediation rather than continue treating it as hypothetical.",
+    "SEC-01 v2 (new this run): the new scripts/check-secret-access.mjs ALLOWLIST entry for scripts/guard-checker-readonly.test.mjs is a whole-file, permanent exemption with no mechanical narrowing to the one sanctioned line — a real, disclosed residual (spec.md EC-5), assessed here as FAIL/MEDIUM rather than accepted silently. See that observation for the full mitigant weighing.",
+    "This run adds exactly one new examined artifact relative to 877e84: the hand-backfilled .sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json. See the new SEC-10 observation (v12-ledger-backfill-honesty) for the full provenance check. Everything else in this run's results.json is a re-verified carry-forward of 877e84's own findings against a byte-identical diff, not fresh re-derivation from scratch."
+  ]
+}

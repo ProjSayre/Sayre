@@ -1,0 +1,111 @@
+# Lane definitions — the machine-readable half of .sdd/bounds.md.
+#
+# WHY THIS IS DATA AND NOT THE MARKDOWN TABLE (PL-03d):
+# bounds.md originally carried the lane vocabulary as a prose table. Reading it would have meant
+# parsing a natural-language document to reach a control decision — precisely the defect PL-03h
+# spent four rounds removing from the ledger and integrity gates. Lane globs live here; bounds.md
+# explains them for humans. If the two disagree, this file is authoritative and that disagreement
+# is a bug.
+#
+# A lane is a name plus path globs. A ticket carries exactly one lane. A change is in-bounds when
+# every path in `git diff --name-only base...head` matches at least one glob in the assigned lane.
+# The verdict is computed by scripts/check-bounds.mjs, never judged by an agent.
+
+version: 1
+
+lanes:
+  frontend:
+    description: >-
+      The visualization client and documentation. No access implied to services/, packages/,
+      or infra/ — a change there from this lane is a violation even when it is a good change.
+    allow:
+      - apps/web/**
+      - docs/**
+
+  full:
+    description: >-
+      No restriction. The default for contributors and tickets that are not explicitly fenced.
+    allow:
+      - "**"
+
+# Paths that are never in-bounds for a fenced (non-`full`) lane, regardless of that lane's globs.
+# These govern who may change the rules themselves: a fenced contributor must not be able to widen
+# their own lane, alter the guard that constrains the checker stages, edit the script that computes
+# the bounds verdict itself, or edit the pipeline's stage definitions as part of an ordinary ticket.
+# Doing any of those is legitimate work — it just is not fenced work, and it needs a human deciding
+# rather than a lane glob permitting.
+#
+# scripts/check-bounds.mjs is listed explicitly, not covered by scripts/guard-checker-readonly.mjs's
+# entry above it: without this line, a fenced lane whose globs happen to include scripts/** (none
+# does today) could edit the very script that checks its own fence — see .pipeline/review.md's W3.
+deny_for_fenced_lanes:
+  - .sdd/**
+  - .claude/**
+  - .github/workflows/**
+  - scripts/guard-checker-readonly.mjs
+  - scripts/check-bounds.mjs
+  - .gitignore
+  - CLAUDE.md
+  - AGENTS.md
+
+# Paths a `/hotfix` bypass entry may never touch (GAP-01 / security round 6; widened PL-11 / security
+# round FND-b731f500c5b8 — see .sdd/hotfix.md's "Honest limits" section: org_id handling, RBAC
+# filtering, MCP key issuance, the ingestion worker fleet, the WebSocket gateway's RBAC re-filtering,
+# secrets, webhook validation, or the Graph Query Service). A hotfix skips the security stage
+# entirely, so these are exactly the paths where .sdd/hotfix.md says "the adversarial pass is
+# load-bearing, and the blast radius of getting one wrong is not recoverable by a fast follow-up."
+#
+# This is a different list from deny_for_fenced_lanes above, and answers a different question: that
+# one is about who may change the pipeline's own governing rules; this one is about which
+# product-code paths a bypass may never touch, regardless of lane. It is necessarily a curated,
+# best-effort list, not a complete classifier of "every security-sensitive line of code" — see
+# scripts/ledger-append.mjs's runHotfix() for exactly what this mechanical check does and does not
+# cover, and .sdd/hotfix.md for the human-judgment gates ("is production actually broken," "is
+# rollback better") this file cannot express and does not attempt to.
+#
+# PL-11's lite lane (below) reuses this SAME list — via scripts/check-lite-eligible.mjs's
+# liteBarredPaths(), union with deny_for_fenced_lanes, still no third list — as its own barred-path
+# gate. Security round PR_DELTA-a208f9 (FND-b731f500c5b8, HIGH) found the original six entries below
+# did not cover services/core/src/services/** (the service layer that stamps org_id on every write —
+# CLAUDE.md's "Architecture rules"), services/core/src/routes/** (request entry points ahead of RBAC
+# filtering), services/core/src/mcp/** (MCP tool handlers and key issuance/verification — CLAUDE.md's
+# "MCP keys" convention), services/workers/** (the Python ingestion fleet: scratch-clone handling and
+# the credential loader security-multitenancy.md documents), or services/gateway/** (the WebSocket
+# gateway's per-push RBAC re-filtering). A ~44KB single-line replacement of a services/core/src/
+# services/** file was reproduced measuring 2 "changed lines" and reading ELIGIBLE for the lite lane
+# before this fix. Widening this list closes that gap for BOTH /hotfix and /pipeline-lite, since both
+# read it — a deliberate, disclosed narrowing of what /hotfix may touch too, not only of the lite
+# lane; see .pipeline/spec.md's amendment section for the full reasoning.
+hotfix_barred_paths:
+  - services/core/src/security/**
+  - services/core/src/graph-query/**
+  - services/core/src/webhooks/**
+  - services/core/src/integrations/tickets/jira/**
+  - services/core/src/github/**
+  - packages/graph-schema/**
+  - services/core/src/services/**
+  - services/core/src/routes/**
+  - services/core/src/mcp/**
+  - services/workers/**
+  - services/gateway/**
+
+# Lite-lane eligibility (PL-11). A different axis from `lanes:` above: `lanes` fence WHICH PATHS a
+# ticket may touch; this block bounds HOW SMALL a change must be to skip `red` and `security` via
+# /pipeline-lite. All three bounds are checked mechanically by scripts/check-lite-eligible.mjs and
+# re-checked against the live diff by scripts/ledger-append.mjs --lite before it writes anything.
+#
+# max_line_length (security round FND-22ef4b5c746e, MEDIUM): max_changed_lines alone counts LINES,
+# not their size, so a diff shaped as a very few, very long lines (e.g. one line replaced with
+# ~20,000+ characters) can measure as trivially few "changed lines" while carrying tens of KB of real
+# content — reproduced live, measuring changedLines: 2 for a ~44KB single-line change. This is the
+# orthogonal, size-of-a-single-line bound that catches that shape, enforced by
+# scripts/check-lite-eligible.mjs's maxChangedLineLength()/evaluateLiteEligibility(), fail-closed
+# exactly like the other two (EC-16: a missing bound is never read as "no bound").
+#
+# There is deliberately NO third barred-path list here: the lite lane's barred set is the computed
+# union of `hotfix_barred_paths` and `deny_for_fenced_lanes` above (see
+# scripts/check-lite-eligible.mjs's `liteBarredPaths`).
+lite_eligibility:
+  max_files: 5
+  max_changed_lines: 150
+  max_line_length: 500

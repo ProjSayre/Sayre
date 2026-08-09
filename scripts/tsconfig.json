@@ -1,0 +1,96 @@
+{
+  // PL-04 / item 4: the root tsconfig.json's "include" is ["src"] only (apps/web's TypeScript
+  // source) — `npx tsc --noEmit` from the repo root has never type-checked anything under scripts/,
+  // so every "tsc clean" this control-plane tooling has reported was vacuous for it: a call to a
+  // function that doesn't exist, a typo'd property, or a wrong argument count in any script here
+  // would only ever be caught by a test actually exercising that code path, never by the type-check
+  // step CLAUDE.md's own Verification order names first.
+  //
+  // This is the cheap option the ticket names: `checkJs` over the existing plain-JS `.mjs` files, no
+  // new build step, no source rewrite. Not extending the root tsconfig.json on purpose — that config
+  // is shaped for apps/web's browser/React code (`jsx`, the DOM lib, `useDefineForClassFields`), none
+  // of which applies to a Node CLI script, and its `include`/`exclude` are unrelated to this
+  // directory. `strict`/`noImplicitAny` are deliberately NOT enabled here (see README-less rationale
+  // inline below): these files were written with no type annotations and only prose JSDoc, so turning
+  // strict mode on today would surface a large batch of implicit-`any`-shaped findings unrelated to
+  // any real defect, drowning out the signal this ticket actually wants — a wrong argument count, an
+  // unresolvable import, a reference to a property that was renamed in one call site but not another.
+  // `checkJs` alone already catches all of those. Tightening further (JSDoc `@param`/`@returns` types
+  // on exported functions, then `strict: true`) is real future work, not done here — see this
+  // ticket's own "judge how far to go" instruction.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  // Scoped to the SDD pipeline control plane specifically — the tooling planner/red/dev/tester/
+  // review/security-checker, the ledger, and CI itself actually depend on for a correct verdict —
+  // not literally every ".mjs" under scripts/. `scripts/` also holds a handful of marketing-site /
+  // secret-scanning utilities (og.mjs, render-anime-hero.mjs, smoke.mjs, test-waitlist.mjs,
+  // export-tree.mjs, check-secret-access.mjs(+.test.mjs), check-org-secret-access.mjs(+.test.mjs))
+  // that are a different subsystem entirely (marketing-site rendering/QA, and a pre-install secrets
+  // guard — see ci.yml's separate "Secret-access boundary" step) and own no pipeline-tooling behavior
+  // — that "different subsystem" argument is the actual reason these nine stay excluded, on its own,
+  // independent of whether any of them happens to be clean.
+  //
+  // CORRECTED (PL-04 review pass 1 / W4): this comment previously also claimed all nine "carry
+  // pre-existing, unrelated checkJs findings of their own," offered as a second, independent reason to
+  // exclude them. That was only true of five. Re-verified directly here (`npx tsc --noEmit` against
+  // each of the nine, individually and as a group, with this same config's compilerOptions): five
+  // genuinely fail — check-secret-access.test.mjs (6 findings — an `Error.code` access pattern, a
+  // dynamically-typed `chalk`-shaped call), export-tree.mjs (2 — a resvg `fitTo` options-shape
+  // mismatch), render-anime-hero.mjs (8 — `window`/`document`/`requestAnimationFrame` needing the
+  // "dom" lib), smoke.mjs (22 — the same DOM-global gap, throughout a Puppeteer `page.evaluate`
+  // callback, plus two unrelated findings), and test-waitlist.mjs (1 — a dynamic `import()` given a
+  // `URL` instead of a string specifier). The other four — og.mjs, check-secret-access.mjs,
+  // check-org-secret-access.mjs, check-org-secret-access.test.mjs — are clean today and could be
+  // folded into `include` at zero cost; they stay excluded anyway, because the "different subsystem"
+  // reasoning above already justifies it on its own and this config's job is to gate the pipeline
+  // control plane, not to accumulate every clean script in the directory. Folding the five genuinely
+  // dirty files in would mean either fixing code this ticket has no mandate to touch, or leaving this
+  // check permanently red for reasons unrelated to the pipeline — either one defeats "make the command
+  // that claims to check actually check." Extending this config's scope to cover any of the nine is
+  // real, separate future work, not assumed done here.
+  //
+  // Every file listed below DOES type-check clean as of this round (verified: `npx tsc --noEmit -p
+  // scripts/tsconfig.json` exits 0) — two real findings surfaced along the way and were fixed, not
+  // suppressed: a stray 4th argument to `assert.equal` in check-red-integrity.test.mjs (silently
+  // discarded at runtime, never a test failure, but genuinely dead code) and this file's own new
+  // `assertKnownFlags` helper needing an explicit JSDoc parameter type (an inference gap the helper's
+  // own multiple call sites exposed, not a defect in the flags logic itself).
+  "include": [
+    "build-ledger-index.mjs",
+    "build-ledger-index.test.mjs",
+    "check-bounds.mjs",
+    "check-bounds.test.mjs",
+    "check-lite-eligible.mjs",
+    "check-lite-eligible.test.mjs",
+    "check-red-integrity.mjs",
+    "check-red-integrity.test.mjs",
+    "check-stamp-freshness.mjs",
+    "check-stamp-freshness.test.mjs",
+    "generate-agent-shims.mjs",
+    "generate-agent-shims.test.mjs",
+    "guard-checker-readonly.mjs",
+    "guard-checker-readonly.test.mjs",
+    "ledger-append.mjs",
+    "ledger-append.test.mjs",
+    "pipeline-contracts.mjs",
+    "pipeline-contracts.test.mjs",
+    "sdd-completeness.test.mjs",
+    "validate-security-audit-agents.mjs",
+    "validate-security-audit-agents.test.mjs",
+    "validate-security-audit-run.mjs",
+    "validate-security-audit-run.test.mjs",
+    "write-stamp.mjs",
+    "write-stamp.test.mjs"
+  ]
+}

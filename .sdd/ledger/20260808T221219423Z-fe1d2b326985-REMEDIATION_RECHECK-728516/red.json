@@ -1,0 +1,91 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/check-lite-eligible.test.mjs",
+      "sha256": "97d229331beb097b4cfe31c1cabeef3a07f75741cc0103ff9f5259573d64e1da",
+      "specIds": [
+        "AC-6",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-16",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/check-bounds.test.mjs",
+      "sha256": "305dc3af6666c9e568ec62ba360c98bdc641cdb1af53c55b96de729e13041e3c",
+      "specIds": [
+        "AC-5",
+        "EC-16"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/ledger-append.test.mjs",
+      "sha256": "ba9705ec732bdc4ea9c7a06e1adeeb23f4e799e36775759b3e49d7de31ba1eb6",
+      "specIds": [
+        "AC-3",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "EC-2",
+        "EC-3",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-16",
+        "EC-17",
+        "EC-18",
+        "EC-19"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/build-ledger-index.test.mjs",
+      "sha256": "1f3dcd3ab923f9d363eebc8eed299ab764648b3e7ea5eb190f700b27f641a6b1",
+      "specIds": [
+        "AC-11",
+        "EC-15",
+        "EC-20"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "sha256": "184151b6cf9b89c8b3dd6c41c5c99b889a1407354e763714fa058a52263511ac",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "EC-1"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "1cec313c943dbb24ccd1e05d2d6160e8b9e0a5d7d3b5c3490e7694c241046460",
+    "headSha": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+    "dirty": true,
+    "writtenAt": "2026-08-08T19:20:46.295Z"
+  }
+}

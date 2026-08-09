@@ -1,0 +1,73 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/ledger-append.test.mjs",
+      "sha256": "ba34dfdd7cb78b9b86b64df4de8af80c6696fd28a3845152c5c96157c27a6119",
+      "specIds": [
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-15"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/build-ledger-index.test.mjs",
+      "sha256": "b7cd85004121cb4aa64f54d74e6e81eb4fbe737f3a0db305a143d29f9e5910ea",
+      "specIds": [
+        "AC-20",
+        "EC-16",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "sha256": "3f4df8ce9855faffa2c5cf4e396fefeed73ecbd08a32487879f77148e8e64f7e",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-21",
+        "EC-18",
+        "EC-19",
+        "EC-20"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "e63fff19d4a78ab9e47ad45ca954f3266ce13c7d47e658f99075ae06ef9ed7b2",
+    "headSha": "a537e98a7c241b23ff826885973ac39df97e4b28",
+    "dirty": true,
+    "writtenAt": "2026-08-09T00:49:22.710Z"
+  }
+}

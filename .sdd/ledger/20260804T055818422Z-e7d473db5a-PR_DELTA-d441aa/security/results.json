@@ -1,0 +1,877 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+  "baseline_run_id": "20260727T042955000Z-fd80b6e8dc-PR_DELTA-281eeb",
+  "generated_at": "2026-08-04T06:35:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 6,
+      "NOT_APPLICABLE": 24,
+      "FAIL": 1,
+      "UNVERIFIED": 1
+    },
+    "result_transitions": {
+      "NOT_COMPARABLE": 32
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 32
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 12,
+      "PARTIAL": 2
+    },
+    "readiness_transitions": {
+      "NOT_COMPARABLE": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|dependency-manifest-and-mcp-gateway-diff|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "dependency-manifest-and-mcp-gateway-diff",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed every changed file for a new or modified persistence/query write, and for any change to how gateway.ts's tool handlers source org_id. Attempted to trace whether the two `as any` schema casts could allow a client-supplied org_id/tenant field to reach any handler.",
+      "evidence": [
+        "Full changed-file list (DEPENDENCIES.md, package-lock.json, services/core/package.json, services/core/src/mcp/gateway.ts, services/workers/pyproject.toml, services/workers/poetry.lock, scripts/dependency-baseline.test.mjs, scripts/dependency-install.test.mjs) contains zero files under services/core/src/db/**, graph-query/**, graph-write/**, or any route/service file.",
+        "gateway.ts:127-266 -- every registerTool handler still sources tenant identity exclusively from `credential.context` (resolved server-side by resolveMcpCredential from the Bearer token), never from `query`/`node_id`/`intent` tool arguments; this call path is unchanged by the diff (only the `inputSchema:` value's TypeScript type changed, not any handler body)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable -- no persistence/query write boundary exists in this diff. No exploit attempted; no cleanup needed. Recheck scope if a future change to gateway.ts alters how credential.context.orgId is sourced.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:127-266"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed via the full changed-file list that this diff touches zero files under graph-query/, graph-write/, or any graphology/canvas client code.",
+      "evidence": [
+        "git status/diff inventory: no file under services/core/src/graph-query/**, services/core/src/graph-write/**, or apps/web canvas components anywhere in this diff"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "services/core/src/graph-query/ (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|dependency-manifest-and-mcp-gateway-diff|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "dependency-manifest-and-mcp-gateway-diff",
+      "attack_path_version": "v1",
+      "attempt": "Ran a credential-pattern grep (AWS access-key IDs, OpenAI/GitHub/Slack token prefixes, PEM private-key headers, inline password=/api_key= literals) across all six changed manifest/source files plus the two new test scripts. Read DEPENDENCIES.md's full diff and the new gateway.ts comment block line-by-line for anything credential-shaped. Independently cross-checked the new package-lock.json zod entry's integrity hash against the live npm registry.",
+      "evidence": [
+        "`grep -nE '(AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{20,}|xox[baprs]-[0-9a-zA-Z-]+|-----BEGIN|password\\s*[:=]|api[_-]?key\\s*[:=])' DEPENDENCIES.md package-lock.json services/core/package.json services/core/src/mcp/gateway.ts services/workers/pyproject.toml services/workers/poetry.lock` -- zero hits",
+        "`npm view zod@4.4.3 dist.integrity` returns sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ== -- byte-identical to the integrity value committed in package-lock.json's new `services/core/node_modules/zod` entry, confirming it is a genuine registry-resolved artifact, not a fabricated/tampered entry",
+        "DEPENDENCIES.md's new/edited rows (@sigma/node-border, @sayre/config x2, @sayre/shared-types, react-test-renderer, packages/config section, PyJWT[crypto], httpx, zod) reference only architecture docs (W0-07, docs/wave0-foundation-contracts.md, .claude/rules/security-multitenancy.md) and ticket IDs, never a literal secret value",
+        "gateway.ts's 16-line new comment block (lines 31-46) explains a TypeScript module-resolution mechanism only; no credential-shaped content",
+        "This diff introduces zero new secret-loader call sites (no new getSecret/getConfig usage; @sayre/config's existing loader boundary from W0-07 is unchanged)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No exploit found; no cleanup needed. Recheck scope if a future DEPENDENCIES.md edit or lockfile regeneration touches these same files again.",
+      "code_references": [
+        "DEPENDENCIES.md",
+        "package-lock.json",
+        "services/core/src/mcp/gateway.ts:31-46"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|webhook-receivers|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "webhook-receivers",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no webhook-receiver file appears anywhere in this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under services/core/src/webhooks/**, no githubWebhookService.ts, no jiraPoller.ts, no linear equivalent"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "services/core/src/webhooks/ (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|ingestion-worker-scratch-clone|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ingestion-worker-scratch-clone",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed services/workers/sayre_workers/** (the actual ingestion runtime) is entirely untouched; the only services/workers changes are a manifest pin-style edit and a lockfile content-hash regeneration.",
+      "evidence": [
+        "Full changed-file list reviewed: only services/workers/pyproject.toml and services/workers/poetry.lock touched under services/workers/",
+        "`git diff services/workers/poetry.lock` shows exactly one changed line (`content-hash = ...`); every resolved package version is byte-identical to before (confirmed by review.md and independently re-diffed this run)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/ (untouched by this diff)",
+        "services/workers/poetry.lock"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|mcp-gateway-tool-input-schemas|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway-tool-input-schemas",
+      "attack_path_version": "v1",
+      "attempt": "Verified whether the `as any` widening of NODE_ID_SCHEMA/QUERY_SCHEMA (passed to registerTool's inputSchema) changes the actual runtime validation applied to incoming MCP tool-call arguments. Wrote and ran a disposable dynamic probe (services/core/__security_audit_scratch_probe.ts, created and deleted within this session) that spins up createMcpGatewayRouter on a local ephemeral port and sends 7 deliberately malformed tool calls through the real @modelcontextprotocol/sdk Client/Server round trip: empty QUERY, oversized QUERY (>2000 chars), QUERY/NODE_ID containing a NUL byte, empty NODE_ID, oversized NODE_ID (>512 chars), and a NODE_ID with leading whitespace.",
+      "evidence": [
+        "gateway.ts:59-60 -- `const NODE_ID_SCHEMA = NODE_ID as any;` / `const QUERY_SCHEMA = QUERY as any;` -- `as any` is a TypeScript compile-time-only annotation with zero JavaScript runtime effect; NODE_ID_SCHEMA/QUERY_SCHEMA are literally the same object references as NODE_ID/QUERY (not clones, not re-derived schemas), so the real `.min()/.max()/.refine()` zod validators are unchanged and identical to pre-bump behavior",
+        "Live dynamic probe output (this run): 'REJECTED :: find_relevant_nodes :: empty QUERY (violates .min(1))'; 'REJECTED :: find_relevant_nodes :: oversized QUERY (violates .max(2000))'; 'REJECTED :: find_relevant_nodes :: QUERY containing null byte (violates .refine)'; 'REJECTED :: get_node_context :: empty NODE_ID (violates .min(1))'; 'REJECTED :: get_node_context :: oversized NODE_ID (violates .max(512))'; 'REJECTED :: get_node_context :: NODE_ID with leading whitespace (violates .refine trim check)'; 'REJECTED :: get_node_context :: NODE_ID containing null byte (violates .refine)'; a matching valid call ('file-1') succeeded (isError=undefined) -- confirming the rejections are genuine validation failures, not a broken/always-failing endpoint. All 7 malformed inputs rejected.",
+        "gateway.test.ts's pre-existing live HTTP round-trip through all nine registerTool schemas -- independently rerun this pass via `npx vitest run src/mcp/gateway.test.ts`, 3/3 passed",
+        "`npx tsc --noEmit` and `npx eslint src/mcp/gateway.ts` in services/core -- independently rerun this pass, both clean, zero output",
+        "Scratch probe file deleted immediately after use; `git status --porcelain` confirmed zero residual files in the working tree",
+        "No Cypher/SQL/shell/queue code exists anywhere in this diff -- the MCP tool-input schema boundary above is the only injection-adjacent surface this diff touches"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No exploit found. Reproduction: create a throwaway script importing createMcpGatewayRouter, mount it on an ephemeral express server, connect a real @modelcontextprotocol/sdk Client, and call find_relevant_nodes/get_node_context with an empty string, a >2000/512-char string, or a string containing '\\0' -- expect isError:true on every case. Cleanup: none needed (probe script already deleted, never committed). Recheck scope: any future change to NODE_ID/QUERY's own .min()/.max()/.refine() definitions, or any future change to which object is passed as inputSchema.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:47-60,146,159,177,190,203,216,229,242,258"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|npm-and-poetry-lockfiles|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "npm-and-poetry-lockfiles",
+      "attack_path_version": "v1",
+      "attempt": "Verified the two manifest edits (zod 3.25.76->4.4.x in services/core/package.json; openai>=2.45.0,<2.46.0 -> openai==2.45.* in services/workers/pyproject.toml) and their corresponding lockfile regenerations do not introduce a float, an unpinned range, a typosquat-shaped package name, or an unverifiable install source.",
+      "evidence": [
+        "services/core/package.json -- `\"zod\": \"4.4.x\"` (PRD-style minor-line pin, not a bare `^`/`~`/`*`); services/workers/pyproject.toml -- `\"openai==2.45.*\"` (exact style match to every other Python pin)",
+        "package-lock.json's new `services/core/node_modules/zod` entry: `{\"version\":\"4.4.3\",\"resolved\":\"https://registry.npmjs.org/zod/-/zod-4.4.3.tgz\",\"integrity\":\"sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==\"}` -- standard npmjs.org registry URL, non-scoped well-known package name (no typosquat pattern), integrity hash independently confirmed live via `npm view zod@4.4.3 dist.integrity` to be byte-identical",
+        "`npm ls zod --workspaces --include-workspace-root` (rerun this pass) shows exactly the dual-copy layout changes.md/review.md describe: workspace-root `zod@3.25.76` (held down by `puppeteer-core@25.3.0`'s transitive `chromium-bidi@16.0.1` -> `zod` dedupe) plus `@sayre/core`'s own real `zod@4.4.3` -- independently confirms the stated root-cause explanation rather than taking it on trust",
+        "services/workers/poetry.lock diff is exactly the `content-hash` line (`git diff` reviewed this pass) -- openai's resolved version (`openai==2.45.0` per changes.md) is unchanged, zero drift from the pin-style edit",
+        "Neither package introduces a new npm registry scope or a private/alternate registry; no `.npmrc`/pip index-url change anywhere in this diff",
+        "changes.md/review.md record an independently-performed clean-state `npm ci`/`poetry install` (node_modules and the Poetry venv both removed first) that exited 0 with zero ERESOLVE/peer-conflict/SolverProblem output -- this run did not repeat the full clean-install itself (see manifest limitations) but the static evidence above corroborates the same conclusion"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No exploit found; no cleanup needed.",
+      "code_references": [
+        "services/core/package.json",
+        "package-lock.json",
+        "services/workers/pyproject.toml",
+        "services/workers/poetry.lock"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|npm-and-poetry-install-scripts|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "npm-and-poetry-install-scripts",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether zod@4.4.3 (the new dependency version) or the openai pin-style edit introduces any install/postinstall/preinstall script, and whether either of the two new scripts/dependency-*.test.mjs files execute code influenced by untrusted repository or PR content.",
+      "evidence": [
+        "package-lock.json's `services/core/node_modules/zod` entry has no `hasInstallScript` flag (npm sets this explicitly when a package declares an install-time script) -- confirmed via direct JSON inspection this run",
+        "services/core/package.json's own `scripts` block is unchanged by this diff (only the `zod` dependency version line changed)",
+        "scripts/dependency-install.test.mjs invokes `spawnSync('npm', ['ci'], ...)` and `spawnSync('poetry', ['install'], ...)` with fixed, hardcoded argument arrays -- no argument is built from an environment variable, request, branch name, commit message, or any other externally-influenced value",
+        "scripts/dependency-baseline.test.mjs contains zero `spawnSync`/`execFileSync`/`exec(` calls (confirmed via grep) -- purely mechanical manifest/DEPENDENCIES.md diffing"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No exploit found; no cleanup needed.",
+      "code_references": [
+        "package-lock.json",
+        "scripts/dependency-install.test.mjs",
+        "scripts/dependency-baseline.test.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|ci-dependency-vulnerability-scanning|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-dependency-vulnerability-scanning",
+      "attack_path_version": "v1",
+      "attempt": "Since this diff bumps a load-bearing dependency (zod, a full major version) and this run selected supply-chain-infrastructure, checked whether CI has any automated dependency/image vulnerability scanning, SBOM generation, or license/provenance recording that would have caught a genuinely vulnerable package in this same change shape.",
+      "evidence": [
+        ".github/workflows/ci.yml read in full (both the 'web + core' and 'workers' jobs) -- every `run:` step enumerated; none invoke `npm audit`, `pip-audit`, `poetry audit`/`safety`, a Dependabot/Snyk/Trivy/OSV-Scanner action, or any SBOM-generation step",
+        "`ls .github/dependabot.yml` -- not found; no Dependabot configuration exists in the repository",
+        "`grep -ln 'audit|dependabot|snyk|trivy|osv' .github/workflows/*.yml` -- only incidental prose-comment matches (an unrelated 'source audit' comment), no actual scanning tool invocation"
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-247fa22c08be",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "No exploit performed (no vulnerable package was introduced or simulated this pass, per the brief's 'do not introduce a vulnerable package' rule) -- this is a control-absence finding, not an exploited weakness. Reproduction: read .github/workflows/ci.yml end to end; confirm no dependency-vulnerability-scanning step exists for either the npm workspace or the Poetry project. Scored LOW severity because no currently-known-vulnerable package was found in this diff or the wider lockfiles this pass (zod 4.4.3 and openai 2.45.0 are both current, recently-released lines), and because a manual DEPENDENCIES.md-based pinning discipline is otherwise well maintained (SC-01 PASS) -- but the codebase currently has no automated backstop for a future CVE landing in an already-pinned dependency. Not introduced by this diff (no CI file is touched here); pre-existing and repo-wide. Recommended remediation: add an `npm audit --omit=dev` / `pip-audit` (or a Dependabot/OSV-Scanner) step to .github/workflows/ci.yml, with an owner and expiry for any accepted exceptions going forward. Recheck scope: rerun SC-03 once a scanning step is added to ci.yml, or once any future dependency bump specifically claims to fix a CVE.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|ci-workflow-triggers|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-workflow-triggers",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no .github/** file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under .github/"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        ".github/workflows/ci.yml (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|ci-workflow-injection-surface|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-workflow-injection-surface",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no .github/** file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under .github/"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        ".github/workflows/ci.yml (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|ci-action-and-artifact-pinning|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-action-and-artifact-pinning",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no .github/** or Dockerfile* is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under .github/ or matching Dockerfile*"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        ".github/workflows/ci.yml (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|container-images|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "container-images",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no Dockerfile* or infra/** file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under infra/ or matching Dockerfile*"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "infra/docker-compose.yml (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|infra-network-exposure|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "infra-network-exposure",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no infra/** file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under infra/"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "infra/docker-compose.yml (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|cloud-iam-roles|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "cloud-iam-roles",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no infra/** or IAM-related configuration file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under infra/, no IAM policy document anywhere in this diff"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "infra/ (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|environment-separation|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "environment-separation",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no infra/.env.example, docker-compose, or environment-configuration file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under infra/"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "infra/.env.example (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|tls-and-configuration-posture|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "tls-and-configuration-posture",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no infra/** or TLS/proxy configuration file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under infra/"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "infra/ (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|availability-and-recovery|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "availability-and-recovery",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no infra/**, quota, autoscaling, or backup-related file is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero files under infra/"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "infra/ (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|db-graph-migrations|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "db-graph-migrations",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no migration file (services/core/drizzle/**, services/workers/graph-migrations/**) is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: zero migration files anywhere in this diff"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable this run.",
+      "code_references": [
+        "services/core/drizzle/ (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|vulnerability-exception-lifecycle|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "vulnerability-exception-lifecycle",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether any currently-tracked vulnerable dependency or temporary security exception exists that this diff's zod/openai pin changes should be evaluated against for owner/deadline/monitoring/closure.",
+      "evidence": [
+        "No vulnerability-exception record, waiver file, or CVE tracker exists anywhere in the repository (grepped for 'CVE-', 'exception', 'waiver' near dependency files -- no structured exception-lifecycle artifact found)",
+        "SC-03 (this same run) establishes that no automated scanner exists to have flagged a vulnerability in the first place, so there is no exception scenario to evaluate the lifecycle of"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Cannot be verified either way: no exception/waiver process artifact exists to inspect for owner/deadline/monitoring/closure, because (per SC-03) no scanner has ever flagged anything requiring one. This is distinct from SC-03's FAIL (control-absence); SC-14 is UNVERIFIED rather than FAIL because the underlying process may exist informally (e.g., manual PRD/DEPENDENCIES.md sign-off, as this exact ticket's O-1 human-sign-off convention demonstrates for a plain version bump) but was not exercised or evidenced against an actual flagged vulnerability this run. Recheck scope: once SC-03's scanning gap is closed and a real exception is ever recorded, re-verify SC-14 against that concrete case.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-01|mcp|mcp-streamable-http-origin-validation|v1",
+      "check_id": "MCPT-01",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-streamable-http-origin-validation",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed originAllowed()/parseAllowedOrigins() are unmodified by this diff.",
+      "evidence": [
+        "`git diff -- services/core/src/mcp/gateway.ts` shows the only changed lines are the 16-line comment block (31-46) plus NODE_ID_SCHEMA/QUERY_SCHEMA (59-60) and 8 `inputSchema:` call-site substitutions -- originAllowed() (122-125) and parseAllowedOrigins() (75-94) are byte-identical before and after"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:75-94,122-125"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-02|mcp|mcp-streamable-http-authentication|v1",
+      "check_id": "MCPT-02",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-streamable-http-authentication",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed bearerToken()/resolveCredential() dispatch and the 401/403/405 error paths are unmodified by this diff.",
+      "evidence": [
+        "gateway.ts:116-120 (bearerToken), 269-324 (createMcpGatewayRouter's auth dispatch and GET/DELETE 405 handlers) are byte-identical before and after this diff",
+        "gateway.test.ts's 'returns a fixed unauthorized response without reflecting the token' test -- independently rerun this pass (`npx vitest run`), passed"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path, positively reconfirmed still working via the existing test). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:116-120,269-324"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-03|mcp|mcp-session-lifecycle|v1",
+      "check_id": "MCPT-03",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-session-lifecycle",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed StreamableHTTPServerTransport's session configuration is unmodified by this diff.",
+      "evidence": [
+        "gateway.ts:294-300 -- `sessionIdGenerator: undefined, enableJsonResponse: true, ... enableDnsRebindingProtection: true` -- byte-identical before and after this diff"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-04|mcp|mcp-cross-session-event-injection|v1",
+      "check_id": "MCPT-04",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-cross-session-event-injection",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no session/stream-multiplexing code is touched by this diff (a new McpServer/transport pair is created per request at line 294-295, unchanged).",
+      "evidence": [
+        "gateway.ts:294-315 -- unchanged; a fresh McpServer + StreamableHTTPServerTransport is instantiated per POST /mcp request"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-315"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-05|mcp|mcp-replay-and-resumption|v1",
+      "check_id": "MCPT-05",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-replay-and-resumption",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no replay/resumption/cursor-handling code is touched by this diff.",
+      "evidence": [
+        "gateway.ts's transport construction (294-300) and request handling (301-314) are unchanged; no resumption/Last-Event-ID logic exists in this file at all (delegated entirely to the unmodified SDK transport)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-315"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-06|mcp|mcp-protocol-lifecycle-version-handling|v1",
+      "check_id": "MCPT-06",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-protocol-lifecycle-version-handling",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed McpServer construction/instructions and the GET/DELETE 405 method-not-allowed handlers (the only lifecycle-adjacent code in this file) are unmodified by this diff.",
+      "evidence": [
+        "gateway.ts:131-137 (McpServer constructor/instructions) and 317-322 (GET/DELETE 405 handlers) byte-identical before and after this diff; protocol-version negotiation itself is delegated to the unmodified SDK"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:131-137,317-322"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-07|mcp|mcp-gateway-tool-input-schemas|v1",
+      "check_id": "MCPT-07",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway-tool-input-schemas",
+      "attack_path_version": "v1",
+      "attempt": "This is the check most directly implicated by the diff. Same dynamic probe and reasoning as CORE-06: sent 7 malformed JSON-RPC tool-call argument sets (empty/oversized/NUL-byte/leading-whitespace strings) through the live gateway and confirmed the SDK's JSON-RPC parameter validation, built from the widened-type-but-identical-runtime-object NODE_ID_SCHEMA/QUERY_SCHEMA, still rejects every one.",
+      "evidence": [
+        "Same dynamic probe as CORE-06 (services/core/__security_audit_scratch_probe.ts, created/run/deleted this session): all 7 malformed find_relevant_nodes/get_node_context calls REJECTED (isError:true); the matching valid call succeeded",
+        "gateway.ts:59-60 -- `as any` is compile-time only; NODE_ID_SCHEMA/QUERY_SCHEMA are the same object references as NODE_ID/QUERY at runtime",
+        "gateway.test.ts's live round trip (3/3, independently rerun) covers well-formed JSON-RPC tool calls across all nine tools without error"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No exploit found; see CORE-06 for the exact reproduction steps (same probe). No cleanup needed (probe already deleted).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:47-60,146,159,177,190,203,216,229,242,258"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-08|mcp|mcp-streaming-resource-limits|v1",
+      "check_id": "MCPT-08",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-streaming-resource-limits",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no streaming/concurrency/resource-limit code is touched by this diff.",
+      "evidence": [
+        "No rate-limit, connection-pool, or streaming-concurrency code exists in gateway.ts itself (delegated to rateLimit.ts and the SDK transport, both unmodified by this diff -- not in the changed-file list)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/mcp/rateLimit.ts (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|mcp-api-key-generation-and-storage|v1",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-api-key-generation-and-storage",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed services/core/src/services/mcpKeyService.ts (key generation/hashing/storage) is not in this diff's changed-file list.",
+      "evidence": [
+        "Full changed-file list reviewed: mcpKeyService.ts not present"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-10|mcp|mcp-api-key-issuance-scope|v1",
+      "check_id": "MCPT-10",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-api-key-issuance-scope",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no key-issuance/admin-scope code is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: no key-issuance route/service present"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-11|mcp|mcp-api-key-rotation-expiry-revocation|v1",
+      "check_id": "MCPT-11",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-api-key-rotation-expiry-revocation",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no key-rotation/expiry/revocation code is touched by this diff.",
+      "evidence": [
+        "Full changed-file list reviewed: mcpKeyService.ts not present"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable to this diff (unmodified code path). See manifest limitations for MILESTONE/FULL recheck recommendation.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts (untouched by this diff)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-12|mcp|mcp-tool-listing-and-response-metadata|v1",
+      "check_id": "MCPT-12",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-tool-listing-and-response-metadata",
+      "attack_path_version": "v1",
+      "attempt": "Called listTools() against the live gateway (disposable probe, this session) and inspected the advertised JSON schema for get_node_context/find_relevant_nodes/traverse_from for hidden tools, internal topology, key IDs, org IDs, stack traces, or unauthorized properties -- and specifically to check whether the `as any` widening changed what is exposed in the client-facing tool listing.",
+      "evidence": [
+        "listTools() response (this run's probe, and gateway.test.ts's pre-existing assertion) lists exactly the 9 expected tool names, each with `annotations.readOnlyHint: true` -- no extra/hidden tool, no internal topology string, no key ID, no org ID",
+        "Live probe's `get_node_context` inputSchema: `{\"type\":\"object\",\"properties\":{\"node_id\":{\"type\":\"string\"}},\"required\":[\"node_id\"],\"$schema\":\"http://json-schema.org/draft-07/schema#\"}` -- NOTE: this no longer shows `minLength`/`maxLength` for node_id (a zod .min(1).max(512) schema would normally advertise those in a JSON-Schema conversion). This is a side effect of the zod 4.4.x bump this ticket makes (the SDK's zod-to-json-schema conversion routine does not fully introspect a real zod v4 object's internal shape) -- it is unrelated to over-exposure (MCPT-12's actual concern) and does NOT weaken enforcement: CORE-06/MCPT-07's dynamic probe (same session) proves the real .min()/.max()/.refine() checks still reject malformed input server-side regardless of what the advertised schema shows.",
+        "gateway.test.ts's 'returns a fixed unauthorized response without reflecting the token' test -- independently rerun, confirms the token itself is never echoed in any response"
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No over-exposure found; scored PASS. LOW-severity awareness note only (not a security finding, and not gating): the advertised tools/list JSON schema for node_id/query lost its minLength/maxLength annotations after the zod 4.4.x bump, likely because @modelcontextprotocol/sdk@1.29.0's schema-to-JSON-Schema conversion does not fully recognize a real zod v4 object's internal shape. Real server-side enforcement is unaffected (see CORE-06/MCPT-07). Suggested follow-up: file a small ticket to verify/restore full JSON-Schema fidelity for MCP tool listings under zod 4.x (informational only, does not block this PASS).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:47-60"
+      ]
+    }
+  ]
+}
