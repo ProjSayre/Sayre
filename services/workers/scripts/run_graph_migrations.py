@@ -8,7 +8,7 @@ Usage:
     poetry run python scripts/run_graph_migrations.py            # apply pending, target=neo4j
     poetry run python scripts/run_graph_migrations.py --status   # print applied vs pending, apply nothing
     poetry run python scripts/run_graph_migrations.py --dry-run  # print plan, touch nothing
-    poetry run python scripts/run_graph_migrations.py --target neptune   # skip 003
+    poetry run python scripts/run_graph_migrations.py --target neptune   # skip Neo4j-only physical DDL
 
 Opens the Neo4j driver + a psycopg connection from env (fails fast on missing
 `NEO4J_PASSWORD`/`DATABASE_ADMIN_URL` -- see `neo4j_driver_from_env`/`pg_connection_from_env`
@@ -78,13 +78,14 @@ def _print_summary(results) -> None:
         status = "skipped" if result.skipped else "applied"
         print(
             f"  [{status}] version={result.version:03d} file={result.filename} "
+            f"layer={result.layer} target={result.target} "
             f"statements_run={result.statements_run}",
             flush=True,
         )
 
 
-async def _run_status() -> int:
-    """`--status`: report applied vs. pending against the current DB, mutate nothing."""
+async def _run_status(target: str) -> int:
+    """`--status`: report applied vs. pending against `target`, mutate nothing."""
     try:
         pg_conn = await pg_connection_from_env()
     except Exception:
@@ -93,24 +94,28 @@ async def _run_status() -> int:
     operation_failed = False
     try:
         ensure_tracking_table(pg_conn)
-        recorded = applied_versions(pg_conn)
+        recorded = applied_versions(pg_conn, target=target)
         migrations = discover_migrations(DEFAULT_MIGRATIONS_DIR)
         print("Graph migration status:", flush=True)
         for migration in migrations:
-            if migration.version not in recorded:
+            key = (migration.layer, migration.version)
+            if key not in recorded:
                 print(
-                    f"  [pending] version={migration.version:03d} file={migration.filename}",
+                    f"  [pending] version={migration.version:03d} file={migration.filename} "
+                    f"layer={migration.layer} target={target}",
                     flush=True,
                 )
-            elif recorded[migration.version] != migration.checksum:
+            elif recorded[key] != migration.checksum:
                 print(
                     f"  [MISMATCH] version={migration.version:03d} file={migration.filename} "
+                    f"layer={migration.layer} target={target} "
                     "-- on-disk checksum differs from recorded checksum",
                     flush=True,
                 )
             else:
                 print(
-                    f"  [applied] version={migration.version:03d} file={migration.filename}",
+                    f"  [applied] version={migration.version:03d} file={migration.filename} "
+                    f"layer={migration.layer} target={target}",
                     flush=True,
                 )
     except Exception:
@@ -147,12 +152,13 @@ async def main() -> int:
         "--target",
         choices=["neo4j", "neptune"],
         default="neo4j",
-        help="'neptune' skips Neo4j-only DDL files (currently just 003).",
+        help="'neptune' skips any file whose '// Targets:' header does not list it "
+        "(currently the Neo4j-only physical DDL files, 003 and 005).",
     )
     args = parser.parse_args()
 
     if args.status:
-        return await _run_status()
+        return await _run_status(args.target)
 
     try:
         pg_conn = await pg_connection_from_env()

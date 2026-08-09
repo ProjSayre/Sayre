@@ -1,6 +1,9 @@
 // 001_init_node_labels.cypher
 // W0-02 — Graph DB schema & openCypher migrations
 //
+// Layer: logical
+// Targets: neo4j, neptune
+//
 // Purpose: declare all 13 node labels in the graph schema (packages/graph-schema/schema.md
 // is the canonical reference this file implements). A graph DB has no DDL to "declare a
 // label" without either a node bearing it or a constraint referencing it, so this file

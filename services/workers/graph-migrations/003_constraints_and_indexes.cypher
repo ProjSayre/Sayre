@@ -1,6 +1,9 @@
 // 003_constraints_and_indexes.cypher
 // W0-02 — Graph DB schema & openCypher migrations
 //
+// Layer: physical
+// Targets: neo4j
+//
 // Purpose: constraint/index DDL for the 13 node labels + 3 relationship property
 // indexes declared in 001/002. Idempotency uses `IF NOT EXISTS` (there is no
 // `MERGE CONSTRAINT`/`MERGE INDEX` — `IF NOT EXISTS` is the DDL equivalent of the
