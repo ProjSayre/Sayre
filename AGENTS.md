@@ -23,6 +23,34 @@ When documentation and the checked-out implementation disagree about an executab
 path, verify against the files on disk and report the mismatch; do not invent missing scripts or
 directories.
 
+## Secret paths — `.agentignore`
+
+`.agentignore` lists the paths no agent may read or write. It is runtime-neutral, uses gitignore
+pattern syntax, and is the **only** source for the `Read()`/`Edit()` entries in
+`.claude/settings.json`'s `permissions.deny` — `npm run generate:agent-ignore` regenerates them and
+CI's `npm run check:agent-ignore` fails if the two have drifted. Add a secret path there, never to
+the settings file directly.
+
+Be precise about what this does and does not buy you, because the difference is the whole point:
+
+- **Claude Code enforces it.** The generated deny rules are applied by Claude Code itself, not by
+  the model, so no prompt or instruction can talk its way past them. They cover the built-in file
+  tools and the file commands Claude Code recognizes in Bash (`cat`, `head`, `tail`, `sed`).
+- **They do not cover arbitrary subprocesses.** A Node or Python script that opens the file itself
+  is outside this mechanism. For an OS-level boundary, that needs sandboxing, which this repo does
+  not currently enable.
+- **No other runtime reads `.agentignore` today.** There is no `.claudeignore`, and Codex/Cursor
+  have no equivalent this file plugs into. For every runtime except Claude Code, treat it as a
+  declaration of intent, not a control — and act accordingly when working in one.
+- **Deny rules cannot carry exceptions.** A leading `!` enforces nothing (verified, not assumed),
+  which is why the patterns are written narrowly enough to never match a tracked, placeholder-only
+  `.env.example`. Those templates stay readable on purpose; onboarding depends on them. The
+  consequence is that a secret-bearing `.env.<name>` outside the listed forms is not covered —
+  `.gitignore` still stops it being committed, but an agent could read it.
+
+Secret *values* are governed separately and more strictly: see `SECRETS.md` for the closed catalog
+of secret names, and `.claude/rules/security-multitenancy.md` for the never-log/never-commit rules.
+
 ## Repo shape
 
 **Both of these are true at once, not either/or:** the repository root is a Vite/React marketing
@@ -44,20 +72,27 @@ list). Run the narrowest relevant one for what you're actually changing rather t
 
 Sayre's delivery pipeline is six stages — `planner` → `red` → `dev` → `tester` → `review` →
 `security` — defined once, runtime-neutral, in `.sdd/`, plus a ledger-append step once a run reaches
-terminal `PASS`. Four commands compose the stages:
+terminal `PASS`. Five commands compose the stages: four that run some or all of them, and `/hotfix`,
+which deliberately runs none of them.
 
 - `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
 - `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
 - `/pipeline-status` — report the current pipeline state without changing it.
 - `/security-recheck` — repeat only the final security assessment.
+- `/hotfix <what's broken>` — the sanctioned bypass for a production incident that cannot wait for
+  the full sequence; skips every stage above and writes a bypass ledger entry instead — see
+  `.sdd/hotfix.md`, the authoritative, runtime-neutral definition of this path.
 
 Each command's exact procedure is defined in `.sdd/pipeline.md`, not here — read it before running
 one. Do not skip a missing stage or let a stage invent a replacement for a missing input; if a
 required `.pipeline/` artifact doesn't exist, say which stage needs to run first. Pipeline artifacts
 live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history) —
-except the one thing that's durable by design: `.sdd/ledger/<run-id>/{spec.md,entry.md}`, committed
-once a run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the
-file→spec query path.
+except the one thing that's durable by design:
+`.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}` (plus a copy of
+`red.json`/`changes.json`/`review.json`/`security.json` when present for the run — `entry.json` is
+the machine-facing, authoritative half; `entry.md` is the human-facing rendering), committed once a
+run reaches terminal `PASS`. See `.sdd/ledger/README.md` for the entry format and the file→spec
+query path.
 
 Architecture rules, the service-layer boundary, RBAC/tenant-isolation requirements, and the
 project's "Don't" list are defined once in `CLAUDE.md` and are not restated here — copying them into

@@ -26,14 +26,54 @@ code to decide what a test *should assert* is the one thing this stage exists to
 
 ## Required inputs
 
-1. Read `.pipeline/spec.md` in full. Every `AC-*` and `EC-*` item needs a test — planner's stable IDs
-   exist specifically so you have something to cite.
-2. Check whether an impact map exists (the output of the test-impact resolver, PL-03b). **It does not
-   exist in this repository today.** Its absence never blocks this stage — but silently proceeding as
-   though there were nothing to disclose is exactly the anti-pattern D-006 credits this project for
-   otherwise avoiding. State the absence explicitly in `.pipeline/red.md` (see Output contract). If a
-   future ticket adds the resolver, read it and use it only to see which *existing* tests are at risk
-   from this change — it has no bearing on which *new* tests you author below.
+1. Read `.pipeline/spec.md` in full. If it doesn't exist, stop and say planner needs to run first
+   (`/planner <ticket>`) — don't improvise a spec of your own. Every `AC-*` and `EC-*` item needs a
+   test — planner's stable IDs exist specifically so you have something to cite.
+2. Check whether the impact resolver (PL-03b's `services/workers/scripts/affected_tests.py`) is
+   **usable in this checkout right now.** The resolver itself lives on this branch, but it needs the
+   workers' Poetry environment (Python 3.12 + Tree-sitter's native grammars) to actually run — a
+   checkout without that environment set up cannot use it, even though the script exists in the
+   repository. Its unavailability never blocks this stage — but silently proceeding as though there
+   were nothing to disclose is exactly the anti-pattern D-006 credits this project for otherwise
+   avoiding. State which case you're in explicitly in `.pipeline/red.md` (see Output contract), via
+   `red.json`'s required `impactMapPresent` boolean.
+
+   When it is usable, run it from `services/workers/` against spec.md's "Affected files" paths:
+   `poetry run python scripts/affected_tests.py <affected file paths...> --format json` (it also
+   accepts `--diff-base`/`--staged`, but a plain path list is usually right here — `dev` hasn't run
+   yet, so there is no diff for it to read). Use its ranked results only to see which *existing*
+   tests are at risk from this change — it has no bearing on which *new* tests you author below, and
+   a high-ranked existing test is never a substitute for a missing `AC-*`/`EC-*` test of your own.
+
+   Exit codes (PL-04, so this stage never needs to open the script to know what a non-zero exit
+   means): `0` on success, always — even when some paths land in `unanalyzable`, that is reported in
+   the JSON output, not signaled by a non-zero exit. `2` on invalid arguments (a bad flag). Any other
+   non-zero exit, or a Python traceback on stderr, is a tooling failure, not "no affected tests" —
+   treat it the same as "not usable in this checkout" below, and say so explicitly rather than
+   treating an empty result as a clean answer.
+
+   Output shape (stdout, `--format json`):
+   ```json
+   { "tests": [ { "path": "...", "depth": 1, "coupling": 3, "rank": 1 }, ... ],
+     "truncated": { "shown": 15, "total": 42, "reason": "..." | null },
+     "confidence": "high" | "partial",
+     "unanalyzable": [ { "path": "...",
+                          "reason": "file_not_found" | "no_import_graph_signal" | "decode_error" |
+                                     "parse_error" | "dynamic_import" | "unresolvable_specifier" |
+                                     "re_export_barrel" } ] }
+   ```
+   `tests` is already ranked (lowest `rank` = most likely affected) — use it as given, don't re-sort
+   by `depth`/`coupling` yourself. A non-empty `unanalyzable` array is why `confidence` reads
+   `"partial"` rather than `"high"` — name both in the Impact map paragraph below, not just the test
+   list.
+
+   When it is not usable — the workers' Poetry environment is not available in this checkout — say so
+   plainly, the same as if the tool didn't exist at all, rather than guessing at what it would have
+   returned. (A known, separate limitation of the resolver itself, tracked as PL-03i rather than
+   fixed here: its ranking is distorted by re-export barrels, which each cost a full depth level in
+   its BFS exactly like a real import would — this can rank a file's own direct test behind a test
+   that only reaches it through a barrel. That is a ranking-quality issue in the tool, not a reason to
+   distrust or withhold its "usable" disclosure.)
 
 ## Procedure
 
@@ -74,8 +114,9 @@ tooling can parse them mechanically:
 
 ```
 ## Impact map
-<one paragraph: present, with what it changed about which tests you ran or skipped; or explicitly
-absent, and why that's the expected state today (PL-03b is unbuilt) rather than a silent gap>
+<one paragraph: usable, naming which existing tests it ranked as at-risk and how that did or didn't
+change which tests you ran or skipped; or explicitly unavailable, naming the concrete reason (e.g.
+"the workers' Poetry environment is not set up in this checkout") rather than a silent gap>
 
 ## Test paths
 - path/to/first.test.ts
@@ -104,6 +145,53 @@ absent, and why that's the expected state today (PL-03b is unbuilt) rather than 
 No `RED-BROKEN` entry may appear anywhere in a finished `red.md` (see step 5 above). `review` later
 rehashes every file listed under "Content hashes" against this table; an undeclared mismatch fails
 review (see `.sdd/stages/review.md`).
+
+7. Write `.pipeline/red.json` alongside `red.md` — PL-03h round 4's JSON-sidecar contract (see
+   `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence). This is what
+   `check-red-integrity.mjs` actually reads for the Red-test integrity and Spec trace checks;
+   `red.md` remains the human-facing record and is never parsed for a control decision. Exact shape:
+   ```
+   { "impactMapPresent": <true if the impact resolver (PL-03b) was usable in this checkout and was
+                           consulted, false if it was not usable (or genuinely absent) — always one
+                           or the other, per "Required inputs" step 2 above; never omit this field to
+                           mean "not usable," since an omitted field fails validation rather than
+                           being read as false>,
+     "tests": [
+       { "path": "path/to/first.test.ts",
+         "sha256": "<the same hex digest recorded under 'Content hashes'>",
+         "specIds": ["AC-1", "AC-2"],
+         "classification": "RED-CORRECT" },
+       { "path": "path/to/second.test.ts",
+         "sha256": "<hex digest>",
+         "specIds": ["EC-3"],
+         "classification": "RED-DEFERRED" }
+     ] }
+   ```
+   `classification` must be exactly `"RED-CORRECT"` or `"RED-DEFERRED"` — there is no `"RED-BROKEN"`
+   literal to write here at all (step 5's rule is enforced by this field simply not accepting it).
+   Every test you authored appears exactly once in `tests`, in the same order as `red.md`'s own
+   "Test paths" list; a path may not repeat (two entries for one path is refused, the same
+   "fail closed on ambiguity" invariant the old markdown parser used to enforce via duplicate-heading
+   detection, now enforced as a duplicate-array-entry check instead). This shape also carries a
+   `stamp` field, attached by step 8 below — omit it when first writing the file.
+8. Run `node scripts/write-stamp.mjs .pipeline/red.json` (equivalently `npm run stamp --
+   .pipeline/red.json`) — attaches the `stamp` field every `.pipeline/*.json` sidecar carries (see
+   `.sdd/pipeline.md`'s "Staleness stamps" section and `.sdd/stages/planner.md`'s step 5, which does
+   the same thing for `spec.json`). Exit `0` on success; a non-zero exit means `red.json` was not
+   written correctly in step 7 — fix that before finishing this stage.
+
+## Staleness of required inputs (PL-04)
+
+- `spec.md`/`spec.json` — **trusted-fresh**. Every test you author is authored strictly from
+  spec.md's content. Run `node scripts/check-stamp-freshness.mjs spec.json` (exit `0` = not stale,
+  `1` = stale, `2` = the check itself failed — see that script's own header) before you finish this
+  stage; if it reports `"stale"` (e.g. spec.md was hand-edited after `spec.json` was written, or the
+  branch moved on since planner ran), state that plainly in the Impact map paragraph below — the same
+  place you already disclose the resolver's usability — and proceed against spec.md's current on-disk
+  content. Do not refuse; only `security` refuses on a stale trusted-fresh input (see
+  `.sdd/pipeline.md`'s "Staleness stamps" section).
+- Impact resolver output — **re-derived**. You invoke `affected_tests.py` fresh every run; there is
+  no stored result with a `stamp` to go stale in the first place.
 
 Model tier `opus` — this stage runs at low volume and high judgment, the same reasoning as `planner`:
 a wrongly-classified test or a missed acceptance criterion here propagates through every downstream

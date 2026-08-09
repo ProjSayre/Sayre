@@ -1,5 +1,31 @@
 {
   "permissions": {
-    "deny": []
+    "deny": [
+      "Read(/**/.env)",
+      "Edit(/**/.env)",
+      "Read(/**/.env.local)",
+      "Edit(/**/.env.local)",
+      "Read(/**/.env.*.local)",
+      "Edit(/**/.env.*.local)",
+      "Read(/**/*.pem)",
+      "Edit(/**/*.pem)",
+      "Read(/**/*.key)",
+      "Edit(/**/*.key)",
+      "Read(/infra/*.txt)",
+      "Edit(/infra/*.txt)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/guard-checker-readonly.mjs"
+          }
+        ]
+      }
+    ]
   }
 }

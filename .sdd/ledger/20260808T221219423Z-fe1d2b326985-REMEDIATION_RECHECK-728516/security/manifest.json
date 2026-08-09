@@ -1,0 +1,242 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+  "mode": "REMEDIATION_RECHECK",
+  "status": "COMPLETE",
+  "started_at": "2026-08-08T21:55:00.000Z",
+  "completed_at": "2026-08-08T22:25:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre"
+  },
+  "target": {
+    "commit_sha": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+    "branch": "fix/pl-04-pipeline-defects",
+    "dirty": true,
+    "environment": "local development checkout — static analysis + local test/validator suites only; no live/staging/production target, no runtime penetration test",
+    "base_urls": [],
+    "changed_paths": [
+      ".claude/skills/pipeline-lite/SKILL.md",
+      ".github/workflows/ci.yml",
+      ".sdd/README.md",
+      ".sdd/bounds.md",
+      ".sdd/bounds.yml",
+      ".sdd/hotfix.md",
+      ".sdd/ledger/README.md",
+      ".sdd/pipeline.md",
+      ".sdd/stages/CHANGELOG.md",
+      ".sdd/stages/tester.md",
+      "CLAUDE.md",
+      "package.json",
+      "scripts/build-ledger-index.mjs",
+      "scripts/build-ledger-index.test.mjs",
+      "scripts/check-bounds.mjs",
+      "scripts/check-bounds.test.mjs",
+      "scripts/check-lite-eligible.mjs",
+      "scripts/check-lite-eligible.test.mjs",
+      "scripts/ledger-append.mjs",
+      "scripts/ledger-append.test.mjs",
+      "scripts/sdd-completeness.test.mjs",
+      "scripts/tsconfig.json"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260808T204649727Z-fe1d2b326985-PR_DELTA-a208f9",
+    "commit_sha": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+    "comparable": true,
+    "selection_reason": "Explicit human-specified baseline (audit-contract's order item 1): this stage's own immediately prior run, the one that returned BLOCKED on FND-b731f500c5b8/FND-22ef4b5c746e, per the coordinator's explicit instruction to run this REMEDIATION_RECHECK against it. Same commit_sha (fe1d2b3269858778aaefb41b10776fcf5fd50d77) as this run — no new commit landed; both runs observe the same dirty tree at two points in its accumulating uncommitted history (dev's third fix round + review pass 3 + the spec amendment all landed as further uncommitted edits, not a new commit). `git merge-base --is-ancestor` is trivially true for a commit compared with itself. Same repository, same local-dev-only environment class, same tenant_fixtures (both empty). This run reuses that baseline's own observation_key/target_asset text verbatim for every check whose underlying diff scope is unchanged, per this lineage's own established convention (see that run's own baseline note for why).",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "PL-11 — a proportionate /pipeline-lite lane for genuinely small tickets — security-fix round (dev round 3, review pass 3) closing this stage's own prior BLOCKED verdict",
+    "phase": "REMEDIATION_RECHECK (PR_DELTA's follow-up), run per explicit coordinator instruction against the current tree. review.json is pass 3 of this run overall — PASS on the merits, explicitly stated as such (the dev loop cap of 3 attempts was reached, but review's own verdict text states plainly that both of tester's reported gaps would be Warnings in any round, cap or no cap). Independently re-verified fresh via `node scripts/check-stamp-freshness.mjs review.json` (exit 0, status \"fresh\") before this run proceeded — not taken on the caller's word. `check-red-integrity.mjs` independently re-run: exit 0 (implicit — \"no violations found\"), `violations: []`, four declared red-file hash changes in `notes` (`check-lite-eligible.test.mjs`, `check-bounds.test.mjs` newly touched this round, `ledger-append.test.mjs`, `sdd-completeness.test.mjs` byte-unchanged since round 2) — matching review pass 3's own account exactly.",
+    "source_references": [
+      ".pipeline/spec.md (## Amendment (security-fix round) section)",
+      ".pipeline/changes.md",
+      ".pipeline/review.md (pass 3)",
+      ".pipeline/review.json",
+      ".sdd/stages/CHANGELOG.md",
+      ".pipeline/security-history/20260808T204649727Z-fe1d2b326985-PR_DELTA-a208f9/ (this run's own baseline)"
+    ],
+    "documentation_code_drift": [
+      "None newly observed this run beyond what the baseline already recorded (which dev's fix round corrected: spec.md's Ticket Check overstatement is now corrected in place, independently re-read this session — the bullet now says 'a curated, best-effort list ... not a complete classifier' and states plainly that it previously overstated the gate). One new, narrower drift identified by this run's own sibling-path sweep: spec.md's Amendment section documents `max_line_length` as closing FND-22ef4b5c746e without qualification; it does not disclose that `max_changed_lines` and `max_line_length` compose multiplicatively (a ~75,000-character worst case) rather than each independently bounding total content — see SEC-10 (v6) below, a new finding from this run's own sibling-path sweep, not a claim dev's amendment makes and fails to deliver on."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode.",
+      "rationale": "Round 3's fix diff (bounds.yml, check-bounds.mjs, check-lite-eligible.mjs, ledger-append.mjs, spec.md amendment, doc updates) touches zero services/**, apps/web/**, or packages/** application/persistence code — confirmed via `git diff HEAD --stat -- 'services/**' 'apps/**' 'packages/**' 'infra/**'` (empty), independently re-run this session.",
+      "code_references": ["services/core/src/security/tenantIsolation.penetration.test.ts"]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No route/resolver/graph-query/graphology code touched by round 3's fix diff.",
+      "code_references": ["services/core/src/services/technicalTreeService.ts"]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "Independently re-grepped this session for process.env access and credential patterns across every file round 3 touched — zero matches beyond pre-existing dummy-local CI values.",
+      "code_references": ["scripts/check-secret-access.mjs", "scripts/check-org-secret-access.mjs"]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/core/src/webhooks/** changes. Still separately, structurally barred from the lite lane (unchanged from baseline).",
+      "code_references": ["services/core/src/webhooks/githubSignature.ts"]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/workers/** changes touched by round 3's own diff. NOTE (advanced since baseline, see SEC-10 v4): services/workers/** is now IN the lite lane's barred union, independently confirmed live this session — a genuine improvement to this surface's protection from the lite lane specifically.",
+      "code_references": ["services/workers/sayre_workers/ingestion/repository.py"]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "Read the new maxChangedLineLength/parseLiteEligibility code directly: git diff invoked via execFileSync with a fixed argument array (including a raised maxBuffer, not a shell option), no eval/Function()/execSync. Independently re-ran the full suite (419/420, TAP reporter) and both typecheck configs (clean) this session.",
+      "code_references": ["scripts/check-lite-eligible.mjs:176-210", "scripts/ledger-append.mjs:1381-1398"]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED", "previous_readiness": "IMPLEMENTED", "readiness_transition": "UNCHANGED",
+      "changed": false, "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "No file under this surface's trigger paths changed in round 3's diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED", "previous_readiness": "IMPLEMENTED", "readiness_transition": "UNCHANGED",
+      "changed": false, "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "No file under this surface's trigger paths changed in round 3's diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED", "previous_readiness": "IMPLEMENTED", "readiness_transition": "UNCHANGED",
+      "changed": false, "selected": false,
+      "selection_reason": "Not triggered by round 3's own changed paths. NOTE (advanced since baseline): services/core/src/mcp/** is now IN the lite lane's barred union (SEC-10 v4 RESOLVED).",
+      "rationale": "No file under this surface's trigger paths changed in round 3's diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED", "previous_readiness": "IMPLEMENTED", "readiness_transition": "UNCHANGED",
+      "changed": false, "selected": false,
+      "selection_reason": "Not triggered by round 3's own changed paths. NOTE (advanced since baseline): services/gateway/** is now IN the lite lane's barred union (SEC-10 v4 RESOLVED).",
+      "rationale": "No file under this surface's trigger paths changed in round 3's diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED", "previous_readiness": "IMPLEMENTED", "readiness_transition": "UNCHANGED",
+      "changed": false, "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "No file under this surface's trigger paths changed in round 3's diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED", "previous_readiness": "IMPLEMENTED", "readiness_transition": "UNCHANGED",
+      "changed": false, "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths (apps/web/** untouched by round 3's own diff — SEC-10 v6's reproduction fixture targets this directory only to demonstrate a lite-lane-consumed gap, not because this diff itself edits apps/web/**).",
+      "rationale": "No file under this surface's trigger paths changed in round 3's diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "PR_DELTA/REMEDIATION_RECHECK trigger-path match: .github/**, scripts/**. This is where both of baseline's BLOCKED findings (SEC-10 v4, v5) live, and where this run's remediation-recheck evidence, the persisting findings, and the one new sibling finding (SEC-10 v6) all live.",
+      "code_references": ["scripts/check-lite-eligible.mjs", "scripts/ledger-append.mjs", "scripts/check-bounds.mjs", ".sdd/bounds.yml"],
+      "rationale": "Full recheck scope per this stage's REMEDIATION_RECHECK procedure: rerun the prior failing observations, bypass variants, and sibling paths using the same underlying control (readBounds()/liteBarredPaths()/evaluateLiteEligibility()/maxChangedLineLength())."
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "PR_DELTA/REMEDIATION_RECHECK trigger-path match: .github/**, **/package.json. No incremental change to ci.yml/package.json since this run's own baseline (confirmed via `git diff HEAD -- .github/workflows/ci.yml package.json`, identical to baseline's own diff, this session).",
+      "rationale": "Carried forward as sibling-path continuity for the persisting SC-03/SC-06 findings, per the coordinator's explicit instruction to weigh persisting findings on their own merits.",
+      "code_references": [".github/workflows/ci.yml", "package.json"]
+    }
+  ],
+  "agent_versions": [
+    { "agent_id": "audit-contract", "source": "security-attacker-agents/audit-contract.md", "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b" },
+    { "agent_id": "progress-orchestrator", "source": "security-attacker-agents/progress-audit-orchestrator.md", "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d" },
+    { "agent_id": "agent-registry", "source": "security-attacker-agents/agent-registry.json", "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b" },
+    { "agent_id": "security-stage", "source": ".sdd/stages/security.md", "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68" },
+    { "agent_id": "security-checker", "source": ".claude/agents/security-checker.md", "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b" },
+    { "agent_id": "secrets-audit-data-lifecycle-attacker", "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md", "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb" },
+    { "agent_id": "supply-chain-infrastructure-attacker", "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md", "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f" }
+  ],
+  "limitations": [
+    "CORE-01/02/04/05 remain UNVERIFIED for this diff's own code (still no application/persistence code touched, this round or cumulatively) — unchanged scope from every prior pipeline-control-plane-only round.",
+    "No dynamic/runtime testing against a live service was performed (authorization.runtime_tests_authorized is false). Dynamic evidence this run (SEC-10 v4/v5/v6, CORE-06) is 'executed the real, current scripts against isolated throwaway git fixtures independently constructed by this run' — including, for v4/v5/v6, a full fixture reproducing the actual `ledger-append.mjs --lite` entry point end-to-end (not only the check-lite-eligible.mjs CLI), per the coordinator's explicit instruction not to take the test suite's word.",
+    "GAP-02 (Bash unguarded by the read-only hook) unaffected by round 3's diff, not re-litigated.",
+    "SEC-10 (v6) is a narrower, bounded residual discovered by this run's own sibling-path sweep, not a failure of dev's fix to do what it claimed: the fix closes the specific reproduced exploit (a single very long line) completely, in both entry points. v6 is the natural, disclosed-in-spirit consequence of composing two independent per-line/per-count bounds without also bounding their product — see that observation for the full reasoning on why it is rated MEDIUM and non-blocking rather than a regression or an incomplete fix of v5.",
+    "entry.json's `lite.eligibility` object still does not record the measured `lineLength`/`maxLineLength` values (spec.md's Amendment section discloses this explicitly as a deliberate ledger-completeness scope reduction, not an oversight, and confirms the refusal message itself does name the measured length) — noted here as a minor, already-disclosed transparency gap, not a new finding.",
+    "Review pass 3's W-4 (maxChangedLineLength unit-test completeness: multi-file max-across-files, empty-list-to-0, export-loop naming) and W-5 (doc-prose pins for max_line_length/the widened barred set) are independently re-read and judged non-blocking by this run on the same basis review reached: every security-mandated behavior is pinned at the CLI, evaluate, and real --lite levels against the real files; what's missing is unit-level completeness and doc-prose regression pins, not enforcement. This run reaches this rating independently, not by inheriting review's — see report.md's own W-4/W-5 disposition."
+  ]
+}

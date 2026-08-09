@@ -706,6 +706,44 @@ own JSON report rather than an uncaught `EISDIR` crash; the three tests marked s
 `scripts/build-ledger-index.test.mjs` and `scripts/check-red-integrity.test.mjs` (each referencing
 this ticket) are un-skipped and pass unmodified.
 
+### **PL-03i — Impact resolver: traverse re-export barrels as transparent zero-cost hops** **_(finding surfaced while wiring PL-03b into `red`/`tester`)_**
+
+**Depends on:** PL-03b · **Executor:** AI agent
+
+A real ranking distortion, found while wiring the resolver into `red`/`tester` (not fixed there,
+deliberately — see that ticket's own note): every barrel hop the resolver's reverse-import BFS
+crosses inflates `depth` by a full level, exactly like a real (non-barrel) import would. Concretely,
+on this repo, changing `services/workers/sayre_workers/parsing/coverage.py` ranks
+`services/workers/tests/test_test_coverage.py` — the test *for* that file — 6th at depth 3, behind
+`services/workers/tests/test_affected_tests.py` at depth 2, because tests import via the
+`sayre_workers.parsing` package's re-export barrel rather than the module directly, and each barrel
+hop costs a full depth level the same as a real coupling point would. `affected_tests.py` already
+detects a re-export barrel (`_has_reexport_barrel_pattern`, PL-03b) and reports it under
+`unanalyzable`'s `re_export_barrel` reason for a *changed* file that is itself a barrel — but that
+detection is never consulted by the BFS to treat a barrel crossed *en route* to some other file as a
+zero-cost pass-through rather than a real hop.
+
+**What it should look like:** when the reverse-traversal BFS crosses a node identified as a
+re-export barrel, that hop should not count against the `depth` of whatever it forwards to — treated
+as a transparent pass-through the same way a re-export in a real module resolver is, not a genuine
+coupling point. This is a ranking-quality fix, not a correctness fix: the tool's current behavior is
+never dishonest (no `unanalyzable` file is ever silently misreported as covered), it just under-ranks
+tests that reach a changed file only through a barrel relative to tests that import it directly,
+which is exactly backwards for judging risk — the barrel-mediated test is not less at-risk, it is
+just one import hop removed from looking that way.
+
+**Acceptance criteria:** on this repo, `python services/workers/scripts/affected_tests.py
+sayre_workers/parsing/coverage.py --format json` (run from `services/workers/`, with the Poetry
+environment available) ranks `test_test_coverage.py` at or above every test that reaches
+`coverage.py` only through a deeper barrel chain of the same or greater real (non-barrel) distance; a
+fixture with a re-export barrel sitting between a changed file and its direct test demonstrates the
+rank improvement directly (before: the barrel hop counts, and the direct test ranks behind a
+same-real-distance non-barrel test; after: it ranks at or above it); no existing
+`affected_tests.py`/`test_affected_tests.py` test regresses; the existing `re_export_barrel`
+`unanalyzable` disclosure for a *changed* file that is itself a barrel is unaffected by this change —
+that is a different case (a changed file that IS a barrel, not a barrel merely crossed en route to a
+test) and must keep working exactly as it does today.
+
 ### **PL-04 — COVERS edge weighting + ranked, bounded `get_covering_tests`** **_(contract fix)_**
 
 **Depends on:** W2-07, W4-03, W4-06 · **Executor:** AI agent (contract change reviewed by human)
@@ -745,6 +783,26 @@ A deliberate pass asking, for each MCP tool, what the graph knows that a local s
 D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the best use of founder time. The SDD/TDAD design pushed the opposite way: `sayre_workers.parsing` is pure, in-memory, graph-free, already covers Python/JS/TS/Go, and turned out to be directly reusable standalone — a useful tool was designed around it while skipping the graph entirely. The expensive and still-unproven part is the distributed pipeline wrapped around it (D-017 #1: no end-to-end test across webhook → SQS → parse → Neo4j → SNS → WebSocket). So the sharper question is not whether to outsource structural parsing but whether the ingestion pipeline earns its cost relative to the modules it wraps. Multi-tenancy, incremental delta updates, and scale probably justify it — but for a single-tenant BYOC deployment (D-013) a much thinner path may exist, and that is worth knowing before quoting a BYOC deal rather than during one.
 
 **Acceptance criteria:** a written answer naming which pipeline capabilities are load-bearing for multi-tenant SaaS and which are not required for single-tenant BYOC; either a recorded decision that the current architecture stands, or a scoped follow-up ticket; the answer lands in the founder decision log, not only here.
+
+### **PL-09 — Disconnect the dead Cloudflare Workers build from the repo** **_(observed 2026-08-04)_**
+
+**Depends on:** none · **Executor:** Human (Cloudflare account settings — no repo change exists)
+
+A Cloudflare **Workers** service named `sayre`, on account `791596923276fe565adfc43b1fff1a2b`, is connected to this repo and posts a `Workers Builds: sayre` check on every commit and PR. It has **failed on every commit** since it first appears at `e37e009` (2026-07-27), because there is no Worker source to build: no `wrangler.toml`/`.jsonc`, no `_worker.js`, and none anywhere in git history (`git log --all --diff-filter=D` over those paths is empty). It deploys nothing and verifies nothing — it is pure red noise on every PR, which is corrosive precisely because it trains reviewers to ignore a failing check.
+
+Verified not connected to the live site before recommending removal: the deployment that actually succeeds is **Cloudflare Pages** — a *different* account (`9b15e5f59433622fdb582ece92652441`), same project name `sayre`, publishing to `sayre.pages.dev`. Separately, `trysayre.com` is not pointed at Cloudflare at all: it resolves to Namecheap parking (`192.64.119.121`; `www` → `parkingpage.namecheap.com`) and refuses connections on 443, so no Worker route can be serving it. The one check not closable from outside the account is whether that Worker has routes bound in the dashboard.
+
+**Do not** revoke repo access from the "Cloudflare Workers and Pages" GitHub App to achieve this — Pages runs through the same installation and would be taken down with it. The disconnect is Workers & Pages → `sayre` → Settings → Build → disconnect repository, on the `791596…` account only.
+
+**Acceptance criteria:** the `Workers Builds: sayre` check no longer appears on new commits; the `Cloudflare Pages` check still appears and still passes; `sayre.pages.dev` still serves the site.
+
+### **PL-10 — `main` is red: `check:secret-access` fails in CI** **_(observed 2026-08-04)_**
+
+**Depends on:** none · **Executor:** AI agent
+
+The `web + core (lint, typecheck, test)` job fails on `main` and on both open PRs (#76, #77), at the **"Secret-access boundary"** step — `npm run check:secret-access` (`scripts/check-secret-access.mjs`). This is a governing security check per `.claude/rules/security-multitenancy.md`, so a red result here is not cosmetic: while it stays red, no one can distinguish a real secret-access violation from the standing failure. Root cause not yet diagnosed — that is the first task, not an assumption to carry in.
+
+**Acceptance criteria:** the underlying violation is fixed (not the check weakened) or, if the check itself is wrong, its defect is fixed and a regression test pins the corrected behaviour; `web + core` passes on `main`; the reason it was red is recorded so the same class is recognisable next time.
 
 ## **Quick-reference dependency table** 
 
@@ -803,11 +861,14 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 |PL-03f|PL-03a|Platform|
 |PL-03g|PL-03a|Platform|
 |PL-03h|PL-03c|Platform|
+|PL-03i|PL-03b|Platform|
 |PL-04|W2-07, W4-03, W4-06|Platform|
 |PL-05|PL-04 (gate)|Platform|
 |PL-06|W4-06|Platform|
 |PL-07|W4-06|Platform|
 |PL-08|PL-01 (gate)|Platform|
+|PL-09|none|Platform|
+|PL-10|none|Platform|
 
 
 

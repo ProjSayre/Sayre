@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseJsonOrThrow } from './pipeline-contracts.mjs';
 
 const root = process.cwd();
 const registryPath = 'security-attacker-agents/agent-registry.json';
@@ -12,12 +13,31 @@ function read(path) {
   return readFileSync(resolve(root, path), 'utf8');
 }
 
+// CORRECTED (round G1 / A4 — "the one remaining raw JSON.parse"): this file previously reasoned that
+// plain `JSON.parse` was fine here because `security-attacker-agents/agent-registry.json` and the two
+// JSON Schema files it points at (`registry.manifest_schema`/`registry.results_schema`) are static,
+// git-tracked repository configuration, reviewed the normal way through a diff — unlike
+// `security-history/<run-id>/{manifest,results}.json`, which is per-run agent output and which
+// `scripts/validate-security-audit-run.mjs` already reads through `pipeline-contracts.mjs`'s
+// `readJsonFile` for that reason (SEC-10). That distinction (static config vs. per-run output) is
+// real and still holds — it is why `.sdd/bounds.yml` and `package.json` don't get this treatment
+// either. But it answers the wrong question for THIS file specifically. "Reviewed the normal way
+// through a diff" assumes a human reviewer would notice a duplicate key; a duplicate top-level
+// `"agents"` array (or a duplicate entry inside it) resolves silently to "last one wins" under plain
+// `JSON.parse`, and this registry's `agents` array is exactly what decides which security-attacker
+// briefs run — a change here does not fail loud, it fails by silently narrowing what gets checked at
+// all, which is the same "accepted by comment" shape SEC-10 and the markdown-parsing rounds before it
+// each turned out to hide a real gap. `parseJsonOrThrow` (scripts/pipeline-contracts.mjs) rejects a
+// duplicate key outright rather than resolving it, at the cost of one import and no behavior change
+// for any registry that was already well-formed. If a future change reintroduces plain `JSON.parse`
+// here, that is only safe if a duplicate key in this specific file can no longer change which checks
+// run — e.g. if `mandatory_core_checks`/`agents` moved to a format where a repeated key is a syntax
+// error on its own, not merely a redundant-looking write. Absent that, this stays on the strict
+// parser deliberately.
 function parseJson(path) {
-  try {
-    return JSON.parse(read(path));
-  } catch (error) {
-    fail(`${path} is not valid JSON: ${error.message}`);
-  }
+  // parseJsonOrThrow already fails with a message prefixed by `path` (passed as its `label`) — no
+  // need to wrap it a second time the way a plain `JSON.parse` catch block would have to.
+  return parseJsonOrThrow(read(path), path);
 }
 
 function assert(condition, message) {

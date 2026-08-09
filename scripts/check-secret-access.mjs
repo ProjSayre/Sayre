@@ -8,6 +8,13 @@ const ALLOWLIST = new Set([
   'packages/config/src/secrets.ts',
   'services/workers/sayre_workers/config/config.py',
   'services/workers/sayre_workers/config/secrets.py',
+  // Controlled child-process env injection IS the tested behavior: the [C4-mirror]
+  // cases point TMP/TEMP/TMPDIR inside the checkout for the spawned guard while
+  // inheriting PATH/SystemRoot from the parent via `{ ...process.env, ...env }`.
+  // No per-name loader can express "inherit the parent environment". Reads no
+  // secret-class values. Same precedent as jiraConnectionStore.rls.test.ts on
+  // the org-secret-access gate (7981c21).
+  'scripts/guard-checker-readonly.test.mjs',
 ]);
 
 const SOURCE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|py)$/i;

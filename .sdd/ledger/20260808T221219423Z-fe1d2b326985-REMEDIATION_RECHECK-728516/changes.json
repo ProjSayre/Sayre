@@ -1,0 +1,49 @@
+{
+  "filesChanged": [
+    "scripts/check-lite-eligible.mjs",
+    ".claude/skills/pipeline-lite/SKILL.md",
+    ".sdd/bounds.yml",
+    "scripts/check-bounds.mjs",
+    "scripts/ledger-append.mjs",
+    "scripts/build-ledger-index.mjs",
+    ".sdd/pipeline.md",
+    ".sdd/bounds.md",
+    ".sdd/hotfix.md",
+    ".sdd/ledger/README.md",
+    ".sdd/README.md",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/CHANGELOG.md",
+    "CLAUDE.md",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "scripts/tsconfig.json",
+    "scripts/ledger-append.test.mjs",
+    "scripts/sdd-completeness.test.mjs",
+    "scripts/check-lite-eligible.test.mjs",
+    "scripts/check-bounds.test.mjs"
+  ],
+  "redTestChanges": [
+    {
+      "path": "scripts/ledger-append.test.mjs",
+      "reason": "Fixture/harness completeness gap, not a spec correction, verified on disk at these exact locations: (1) fixtureRepo() (line 210), realGitignoreFixtureRepo() (line 253), and the AC-10 standalone fixture (line 960) did not copy the new scripts/check-lite-eligible.mjs into the fixture's scripts/ directory, so every fixture-based run of the real ledger-append.mjs source (which at line 196 imports countChangedLines/evaluateLiteEligibility from it in-process, the spec-mandated reuse design) failed at ESM import resolution (ERR_MODULE_NOT_FOUND), not only the [lite] cases; all three call sites now also write checkLiteEligibleSource into the fixture. Inlining a duplicate of those two functions directly into ledger-append.mjs instead of importing them was considered and rejected: it would have recreated the 'copied instead of shared' failure this repo's own conventions (and spec.md's own header note that --lite 'shares... filesTouched' with the plain path) exist to prevent. (2) boundsYmlWithoutLiteBlock() (line 1801)'s stripping regex now uses \\r?\\n throughout instead of a literal \\n, because the real .sdd/bounds.yml is CRLF in this working tree and the literal-\\n version silently never removed the lite_eligibility block, caught by the function's own defensive assert.ok(!/^lite_eligibility:/m.test(stripped), ...) check. -- SECURITY-FIX ROUND (sanctioned 'spec was wrong' amendment, per spec.md's Amendment section, findings FND-b731f500c5b8/FND-22ef4b5c746e): two NEW [lite] tests added, both reproducing security's live-fixture findings against a realized diff. (3) '[lite] a realized diff shaped as very few, very long lines is refused via max_line_length, even though max_changed_lines alone would not catch it' -- writes a single ~20,000-character line to an untracked file and asserts --lite refuses citing 'line-length'/'max_line_length' and the bound (500) in stderr; reproduces FND-22ef4b5c746e (max_changed_lines alone measuring changedLines:1 for this shape) against the real ledger-append.mjs --lite path, not only the standalone CLI. (4) '[lite] a realized diff touching one of the five widened hotfix_barred_paths directories (service layer, routes, MCP, workers, gateway) is refused' -- iterates a realized diff against services/core/src/services/technicalTreeService.ts, services/core/src/routes/graph.ts, services/core/src/mcp/tools.ts, services/workers/ingest.py, and services/gateway/socket.ts, asserting each is refused citing hotfix_barred_paths; reproduces FND-b731f500c5b8's exact exploit class against the real --lite path. This is the sanctioned spec-amendment case, not a harness-completeness gap: spec.md's EC-2/EC-3/EC-21 were amended by this round to name these two bounds, and these tests assert the amended behavior directly."
+    },
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "reason": "Two narrow sectionBetween anchor fixes in [lite] tests targeting files this ticket edits, not a spec correction, verified on disk at these exact locations (lines 1036-1052): (1) the CLAUDE.md relatedCommands assertion's sectionBetween end-anchor changed from '\\n## ' to '' (line ~1041) -- CLAUDE.md's '## Agent pipeline' is that file's own last H2 section in this checkout, so a next-heading end-anchor has nothing to find; '' is sectionBetween's own already-documented fallback for a falsy endAnchor (if (!endAnchor) return text.slice(from);), not a new code path. (2) the .sdd/README.md skills-paragraph assertion's start-anchor changed from '.claude/skills/' to the backtick-quoted '`.claude/skills/*/SKILL.md`' (line ~1052) -- the bare substring's first occurrence in that file is in the much earlier 'Why this exists' section (describing the pre-.sdd/ Claude Code copy this document contrasts itself with), not the 'entry-point commands' paragraph the assertion means to scope to; sectionBetween always resolves to the first occurrence, so the original anchor silently scoped the whole check to the wrong section. The more specific anchor is verified unique in the file and resolves to the intended paragraph -- this fix strengthens the assertion rather than weakening it. Neither change alters what either assertion checks once it resolves to the correct span of text. -- SECURITY-FIX ROUND: no further change was made to this file in this round; the doc edits (bounds.md, hotfix.md, pipeline.md) were re-verified against this suite's existing [lite] assertions (all still pass) rather than requiring new assertions."
+    },
+    {
+      "path": "scripts/check-lite-eligible.test.mjs",
+      "reason": "Fixture/harness completeness gap, not a spec correction. Re-derived directly from the file rather than from memory, per review's fix-list item 1: boundsYml()'s doc comment (function definition at line 57) gained one JSDoc @param block, quoted verbatim in the prior round's declaration. -- SECURITY-FIX ROUND (sanctioned 'spec was wrong' amendment, per spec.md's Amendment section, findings FND-b731f500c5b8/FND-22ef4b5c746e): this file changed substantially further this round, all in service of the amended spec (EC-2/EC-3/EC-21, AC-4/AC-5/AC-6): (1) boundsYml()'s default `lite` parameter gained `max_line_length: 100000` (a deliberately generous default so every OTHER, unrelated test in this suite is unaffected) and its object-branch template now emits `max_line_length` alongside the other two keys; its JSDoc @param type gained `max_line_length?: number`. (2) boundsYml()'s hardcoded hotfix_barred_paths list gained the same five entries security's finding named (services/core/src/services/**, services/core/src/routes/**, services/core/src/mcp/**, services/workers/**, services/gateway/**), mirroring the real .sdd/bounds.yml widening -- this fixture is deliberately independent of the real file (per this suite's own header comment), so it needed its own copy of the widened list for the barred-union tests to exercise the same set the real lite lane does. (3) boundsObject()'s default liteEligibility gained `maxLineLength: 100000` for the same reason. (4) The LITE_VIOLATION_KINDS array assertion updated from 4 to 5 entries, adding 'line-length' -- this is production code (check-lite-eligible.mjs) actually gaining a fifth violation kind (spec.md's Interfaces section for LITE_VIOLATION_KINDS was amended to match), not a test-only change. (5) The malformed-lite_eligibility-block test gained a third case: max_files/max_changed_lines valid, max_line_length absent -- asserts CANNOT_RUN, extending EC-16's 'a missing bound is never read as no bound' to the new key. (6) Five new tests added: 'the widened hotfix_barred_paths union also bars the service layer, routes, MCP handlers, the worker fleet, and the gateway' (EC-3), 'a diff shaped as very few, very long lines is ineligible via max_line_length...' and 'a changed line under max_line_length does not trip the new bound' (both CLI-level, EC-2/EC-21), and two pure evaluateLiteEligibility tests for the line-length dimension (over-long-line violation, and lineLength:null as unmeasured). This is the sanctioned spec-amendment case: spec.md's own Amendment section documents both findings and directs exactly this test coverage; these are not fixture bugs, they assert new, amended spec behavior."
+    },
+    {
+      "path": "scripts/check-bounds.test.mjs",
+      "reason": "SECURITY-FIX ROUND (sanctioned 'spec was wrong' amendment, per spec.md's Amendment section, finding FND-22ef4b5c746e) -- newly touched this round; not modified in any prior round of this run. (1) The '[lite] readBounds() reports the real .sdd/bounds.yml's lite_eligibility block...' test's deepEqual expectation changed from `{ maxFiles: 5, maxChangedLines: 150 }` to `{ maxFiles: 5, maxChangedLines: 150, maxLineLength: 500 }`, matching AC-5's amended return shape and the real .sdd/bounds.yml's new max_line_length: 500 key. (2) The malformed-lite_eligibility-block test's five existing YAML fixtures each gained a trailing `\\n  max_line_length: 500` line so they continue to test their OWN named defect (a bad max_files, a missing max_changed_lines, etc.) in isolation rather than incidentally also being 'missing max_line_length' cases; a sixth case was added, 'max_line_length missing entirely' (valid max_files/max_changed_lines, no max_line_length), asserting CANNOT_RUN -- the direct, isolated test of the new key's own EC-16 requirement. Both changes assert the amended AC-5/EC-16 behavior spec.md's Amendment section directs; neither weakens or removes any existing assertion."
+    }
+  ],
+  "stamp": {
+    "treeHash": "a5f0e9eef4035a8caa843cb062633a25d5f879fb68e44259bbdcd9ba6eda3b6d",
+    "headSha": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+    "dirty": true,
+    "writtenAt": "2026-08-08T21:33:37.417Z"
+  }
+}

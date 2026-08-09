@@ -147,6 +147,7 @@ def test_package_declares_all_worker_and_migration_console_scripts() -> None:
         "sayre-onboarding-worker": "sayre_workers.cli:onboarding_main",
         "sayre-embedding-worker": "sayre_workers.cli:embedding_main",
         "sayre-graph-migrate": "scripts.run_graph_migrations:console_main",
+        "sayre-affected-tests": "scripts.affected_tests:console_main",
     }
 
 

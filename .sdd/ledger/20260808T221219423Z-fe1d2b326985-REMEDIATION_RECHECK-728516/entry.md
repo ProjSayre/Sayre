@@ -1,0 +1,99 @@
+# Ledger entry — 20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516
+
+## Date
+2026-08-08
+
+## Ticket
+PL-11
+
+PL-11 — A proportionate lite lane for genuinely small tickets
+
+## Spec Goal
+Give routine, very-small work a sanctioned, proportionate path through the pipeline — a /pipeline-lite lane that runs planner -> dev -> tester -> review -> ledger, deliberately skipping red and security, gated by mechanically-checkable smallness/sensitivity bounds and recorded in the ledger as a visibly-distinct lite entry that names exactly which stages were skipped. Today the only alternatives for a one-file maintenance fix are the full six-stage run (disproportionate), /hotfix (requires a production incident), or an unrecorded hand-edit — the D-005 #3 failure the pipeline exists to prevent.
+
+## Files touched
+- .claude/skills/pipeline-lite/SKILL.md
+- .github/workflows/ci.yml
+- .pipeline-backup-pl04-20260808/README.md
+- .pipeline-backup-pl04-20260808/c2-changes.md
+- .pipeline-backup-pl04-20260808/changes.json
+- .pipeline-backup-pl04-20260808/changes.md
+- .pipeline-backup-pl04-20260808/g1-changes.md
+- .pipeline-backup-pl04-20260808/g2-changes.md
+- .pipeline-backup-pl04-20260808/g3-changes.md
+- .pipeline-backup-pl04-20260808/review.json
+- .pipeline-backup-pl04-20260808/review.md
+- .pipeline-backup-pl04-20260808/security-report.md
+- .pipeline-backup-pl04-20260808/security.json
+- .pipeline-backup-pl04-20260808/spec.json
+- .pipeline-backup-pl04-20260808/spec.md
+- .pipeline-backup-pl04-20260808/test-results.md
+- .playwright-mcp/page-2026-08-06T21-11-49-004Z.yml
+- .playwright-mcp/page-2026-08-06T21-12-04-514Z.yml
+- .playwright-mcp/page-2026-08-06T21-12-14-114Z.yml
+- .playwright-mcp/page-2026-08-06T21-12-20-572Z.yml
+- .playwright-mcp/page-2026-08-06T21-12-32-900Z.yml
+- .playwright-mcp/page-2026-08-06T21-12-44-281Z.yml
+- .playwright-mcp/page-2026-08-06T21-12-50-946Z.yml
+- .playwright-mcp/page-2026-08-06T21-13-09-087Z.yml
+- .sdd/README.md
+- .sdd/bounds.md
+- .sdd/bounds.yml
+- .sdd/hotfix.md
+- .sdd/ledger/README.md
+- .sdd/pipeline.md
+- .sdd/stages/CHANGELOG.md
+- .sdd/stages/tester.md
+- CLAUDE.md
+- docs/PRD_Tickets.md
+- docs/architecture-assessment-2026-07.md
+- docs/deep-audit-2026-07-31.md
+- docs/deep-audit-2026-07-31/audit-01-tenant-rbac.md
+- docs/deep-audit-2026-07-31/audit-02-auth-mcp-keys.md
+- docs/deep-audit-2026-07-31/audit-03-routes-http.md
+- docs/deep-audit-2026-07-31/audit-04-webhooks-git.md
+- docs/deep-audit-2026-07-31/audit-05-ticket-integrations.md
+- docs/deep-audit-2026-07-31/audit-06-db-schema.md
+- docs/deep-audit-2026-07-31/audit-07-queues-messaging.md
+- docs/deep-audit-2026-07-31/audit-08-gateway-ws.md
+- docs/deep-audit-2026-07-31/audit-09-python-ingestion-parsing.md
+- docs/deep-audit-2026-07-31/audit-10-ai-enrichment.md
+- docs/deep-audit-2026-07-31/audit-11-retrieval-telemetry.md
+- docs/deep-audit-2026-07-31/audit-12-web-frontend.md
+- docs/deep-audit-2026-07-31/audit-13-test-coverage.md
+- docs/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md
+- docs/deep-audit-2026-07-31/audit-15-secrets-deps.md
+- docs/deep-audit-2026-07-31/audit-16-core-correctness.md
+- docs/deep-audit-2026-07-31/audit-17-build-verification.md
+- docs/deep-audit-2026-07-31/audit-18-infra-cicd.md
+- package.json
+- scripts/build-ledger-index.mjs
+- scripts/build-ledger-index.test.mjs
+- scripts/check-bounds.mjs
+- scripts/check-bounds.test.mjs
+- scripts/check-lite-eligible.mjs
+- scripts/check-lite-eligible.test.mjs
+- scripts/ledger-append.mjs
+- scripts/ledger-append.test.mjs
+- scripts/sdd-completeness.test.mjs
+- scripts/tsconfig.json
+
+## Verdicts
+- review: PASS
+- security: PASS
+
+## Overrides
+(none — both gates passed on their own; nothing here was overridden)
+
+## Red-test paths
+- scripts/check-lite-eligible.test.mjs
+- scripts/check-bounds.test.mjs
+- scripts/ledger-append.test.mjs
+- scripts/build-ledger-index.test.mjs
+- scripts/sdd-completeness.test.mjs
+
+## Security run ID
+.pipeline/security-history/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/
+
+## Commit
+fe1d2b3269858778aaefb41b10776fcf5fd50d77 (worktree was dirty when the security run audited it — the commit that actually lands this work may differ once it's committed)
