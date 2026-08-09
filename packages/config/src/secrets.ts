@@ -18,7 +18,7 @@ export const SECRET_NAMES = [
   // `jira_connections` (Postgres), resolved through `getOrgSecret` --
   // `JIRA_ACCESS_TOKEN`/`JIRA_REFRESH_TOKEN` are REMOVED from this catalog
   // (they were the exact "one Jira workspace per instance" defect the ticket
-  // closes; see docs/PRD_Tickets.md W3-10 and docs/post-mvp-backlog.md).
+  // closes; see docs/product/Ticket-Backlog-by-Feature-2.md W3-10 and docs/post-mvp-backlog.md).
   // `JIRA_TOKEN_ENC_KEY` is the new application-level encryption key for
   // those stored tokens (AES-256-GCM, jiraTokenCipher.ts).
   'JIRA_TOKEN_ENC_KEY',

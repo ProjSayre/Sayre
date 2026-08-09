@@ -250,7 +250,10 @@ const MOVED_FILE_DIGESTS = [
   // line is a provenance comment naming `scripts/export-tree.mjs`, which AC-12 requires repointed.
   // Its own test below pins everything except that line. Original digest, for the record:
   // ['docs/design-system/filetree-graph.svg', 'Design System/filetree-graph.svg', '82454c5c887839e6307dd8b62a1606811165127916d6169b04968b4dbbd01761'],
-  ['docs/product/PRD-V1.pdf', 'Documents/PRD/PRD V1.pdf', 'ec86702be7d65a05bba3975789a4d16c9257570ec2148be6c285290935b4f0f7'],
+  // docs/product/PRD-V1.pdf's PR #85 move-digest pin was removed here when a later change
+  // (the docs/product PRD consolidation) superseded the PDF with docs/product/PRD-V1.md and
+  // deleted the PDF -- the move it recorded is still historically true, just no longer an
+  // ongoing repo-state fact this suite should keep asserting.
   ['docs/audits/architecture-assessment-2026-07.md', 'docs/architecture-assessment-2026-07.md', 'a9c43a63a5bafab0702cca4e4b01254b839b3dd34cbf7ea89e129227cfc312fc'],
   ['docs/audits/deep-audit-2026-07-31.md', 'docs/deep-audit-2026-07-31.md', '42ff75684cc2590ecd0e8785cc40d2f66e6d638f4300f88c5ad4d3a47fd1e4d1'],
   ['docs/audits/deep-audit-2026-07-31/audit-01-tenant-rbac.md', 'docs/deep-audit-2026-07-31/audit-01-tenant-rbac.md', '8f732339c8d70de92a44bdae88e6c8545fa4a6fae86ec4074a08345636809612'],
@@ -267,7 +270,10 @@ const MOVED_FILE_DIGESTS = [
   ['docs/audits/deep-audit-2026-07-31/audit-12-web-frontend.md', 'docs/deep-audit-2026-07-31/audit-12-web-frontend.md', '9fe0e4b124afa717943c6c97bc3f305a258b3ca4830f16a56c2c0c5d55121e1d'],
   ['docs/audits/deep-audit-2026-07-31/audit-13-test-coverage.md', 'docs/deep-audit-2026-07-31/audit-13-test-coverage.md', '522b11ac65ca088578ea7f21ca1f850d8f4256ef6ac9c5e2acee40cce65550b4'],
   ['docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md', 'docs/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md', 'f2383abbe36a9a4b3c29dcdceedcb3f40c0a876448ebca3ab29b44a14228eb62'],
-  ['docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md', 'docs/deep-audit-2026-07-31/audit-15-secrets-deps.md', 'd1338290850d8b4ab6b69c6e83bceecc27b270c0587567f304f903acf4f72a96'],
+  // Updated again (docs/product PRD consolidation): this file's docs/PRD_Tickets.md citation
+  // was repointed to docs/product/Ticket-Backlog-by-Feature-2.md -- a documentation path fix
+  // unrelated to and not reopening the prior redaction rounds' secret-content pin.
+  ['docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md', 'docs/deep-audit-2026-07-31/audit-15-secrets-deps.md', 'e89e9267361c5526fbccb0744fa7609de880b645c2562ad19125d0412108fa15'],
   ['docs/audits/deep-audit-2026-07-31/audit-16-core-correctness.md', 'docs/deep-audit-2026-07-31/audit-16-core-correctness.md', 'd7c78ae26098993e0fe6ebc042ab68659e841ba88451bfcb1d7f93daceb481f0'],
   ['docs/audits/deep-audit-2026-07-31/audit-17-build-verification.md', 'docs/deep-audit-2026-07-31/audit-17-build-verification.md', '17855a0cf737143779914491259132e6557cdae3bf27f38f50a191d6a5383082'],
   ['docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md', 'docs/deep-audit-2026-07-31/audit-18-infra-cicd.md', '373e20bbaf9526caf3b0d435947b9c83f79ca28fc9370c64515857d7547aecf9'],
@@ -810,10 +816,14 @@ test('[AC-8][EC-4] the loose top-level directories are placed, and no repo-root 
 
   assert.deepEqual(walk('docs/product'), [
     'Audit-Rebuild-Cheat-Sheet.md',
-    'PRD-V1.pdf',
+    'PRD-V1.md',
     'SAYRE_FRONTEND_SPEC.md',
+    'Ticket-Backlog-Flat.md',
     'Ticket-Backlog-by-Feature-2.md',
   ]);
+  // Default JS string sort is code-point order, so the capital 'F' in
+  // Ticket-Backlog-Flat.md sorts before the lowercase 'b' in
+  // Ticket-Backlog-by-Feature-2.md -- not alphabetical-insensitive order.
 
   // The exported SVG is a generated artifact whose first line records its generator. AC-12 requires
   // that reference repointed; nothing else in the 147-line file may drift (it is a design asset, and
@@ -841,7 +851,10 @@ test('[EC-5] the Documents/ -> docs/product/ move lost nothing to the case-insen
   assert.deepEqual(leftovers, [], `paths still tracked under Documents/: ${leftovers.join(', ')}`);
 
   assert.equal(tracked.filter((p) => p === 'docs/product/SAYRE_FRONTEND_SPEC.md').length, 1);
-  assert.equal(tracked.filter((p) => p === 'docs/product/PRD-V1.pdf').length, 1);
+  // docs/product/PRD-V1.pdf itself was later superseded by docs/product/PRD-V1.md and
+  // deleted (the docs/product PRD consolidation) -- this EC-5 check remains about the
+  // Documents/ -> docs/product/ move itself, not about the PDF specifically surviving.
+  assert.equal(tracked.filter((p) => p === 'docs/product/PRD-V1.md').length, 1);
 
   // A silent case-merge shows up as two tracked paths that differ only in case.
   const byLower = new Map();

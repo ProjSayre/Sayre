@@ -1390,7 +1390,7 @@ test('[inline] coverage and wiring: [inline]-tagged cases in the three existing 
   // correct pin only during PL-12's own run — as a permanent test it failed on ANY later,
   // legitimate uncommitted edit to these files, while gating nothing in CI (clean checkout ⇒ empty
   // diff). These content assertions pin the same facts by keying on tokens unique to PL-12's
-  // feature — the exact pattern the docs/PRD_Tickets.md clauses below already document. Whether an
+  // feature — the exact pattern the docs/product/Ticket-Backlog-by-Feature-2.md clauses below already document. Whether an
   // unrelated ticket may touch these files is that ticket's own review/bounds question, not this
   // test's (PL-14 spec EC-9).
   assert.ok(!Object.entries(JSON.parse(read('package.json')).scripts).some(([k, v]) => k.includes('inline') || String(v).includes('inline')),
@@ -1416,12 +1416,12 @@ test('[inline] coverage and wiring: [inline]-tagged cases in the three existing 
   assert.ok(!readdirSync(resolve(repoRoot, '.claude', 'agents')).some((f) => f.includes('inline')),
     '.claude/agents/** must carry no inline agent — /inline-edit is an entry point that composes existing stages, not a new stage');
 
-  // docs/PRD_Tickets.md is asserted BY CONTENT, not by the diff: this checkout already carries an
+  // docs/product/Ticket-Backlog-by-Feature-2.md is asserted BY CONTENT, not by the diff: this checkout already carries an
   // unrelated, pre-existing modification to that file (it is dirty against HEAD before PL-12 starts),
   // so a `changed.includes(...)` assertion here would fail for a reason that has nothing to do with
   // this ticket and could only be "fixed" by reverting someone else's in-flight work. What the ticket
   // actually forbids is registering PL-12 there, which is exactly what this checks.
-  const prd = read('docs/PRD_Tickets.md');
-  assert.ok(!prd.includes('inline-edit'), 'docs/PRD_Tickets.md must not be edited by this run — the ticket forbids it');
-  assert.ok(!prd.includes('PL-12'), 'PL-12 is deliberately not registered in docs/PRD_Tickets.md by this run');
+  const prd = read('docs/product/Ticket-Backlog-by-Feature-2.md');
+  assert.ok(!prd.includes('inline-edit'), 'docs/product/Ticket-Backlog-by-Feature-2.md must not be edited by this run — the ticket forbids it');
+  assert.ok(!prd.includes('PL-12'), 'PL-12 is deliberately not registered in docs/product/Ticket-Backlog-by-Feature-2.md by this run');
 });

@@ -25,7 +25,7 @@ function check(lane, files, extra = []) {
 }
 
 test('a change entirely inside the lane is in bounds', () => {
-  const { code } = check('frontend', ['apps/web/app/page.tsx', 'docs/prd.md']);
+  const { code } = check('frontend', ['apps/web/app/page.tsx', 'docs/product/PRD-V1.md']);
   assert.equal(code, IN_BOUNDS);
 });
 

@@ -130,7 +130,7 @@ session), and `review`/`security-checker`/`pr-review` are all registered in that
 `READ_ONLY_AGENTS` set — see `scripts/guard-checker-readonly.mjs` and its test suite. "Read-only" for
 those three stages is now real, structural enforcement for `Write`/`Edit`/`NotebookEdit`, not merely
 a reviewed convention. The one honest limit that remains, and is not expected to close (see PL-03g's
-own rejected-approach catalogue in `docs/PRD_Tickets.md`): the guard does not cover `Bash` — a
+own rejected-approach catalogue in `docs/product/Ticket-Backlog-by-Feature-2.md`): the guard does not cover `Bash` — a
 command-allowlist over Bash was tried and rejected on the merits, since a single allowed command that
 executes project code (`poetry run pytest` running `conftest.py`) makes command-layer default-deny
 meaningless.

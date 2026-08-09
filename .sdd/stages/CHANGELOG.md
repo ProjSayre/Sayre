@@ -46,7 +46,7 @@ out of a stage file is about removing *dated narration*, never about removing a 
   everyone or block no one"). `review`, `security-checker`, and `pr-review` are all in that script's
   `READ_ONLY_AGENTS` set. The one gap that did **not** close: the guard covers `Write`/`Edit`/
   `NotebookEdit`, never `Bash` — a command-allowlist over `Bash` was tried and rejected on the
-  merits (`docs/PRD_Tickets.md`'s PL-03g section has the rejected-approach catalogue; the short
+  merits (`docs/product/Ticket-Backlog-by-Feature-2.md`'s PL-03g section has the rejected-approach catalogue; the short
   version is that a single allowed command which executes project code, e.g. `poetry run pytest`
   running `conftest.py`, makes command-layer default-deny meaningless).
 

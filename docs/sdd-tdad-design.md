@@ -24,7 +24,7 @@ D-022 (Position B).
 | PL-03f — `dev` reads `security-report.md` | **Landed** (this wiring pass) — `dev` re-reads `security-report.md`/`security.json` on a `BLOCKED` re-invocation, same handling as a `NEEDS_FIXES` review |
 | PL-03g — real read-only enforcement | **Landed and live-verified** |
 | PL-03h — structural extraction | In progress |
-| PL-03i — impact resolver: barrel-hop ranking distortion | Opened (this wiring pass) — a real finding recorded, not fixed; see `docs/PRD_Tickets.md` |
+| PL-03i — impact resolver: barrel-hop ranking distortion | Opened (this wiring pass) — a real finding recorded, not fixed; see `docs/product/Ticket-Backlog-by-Feature-2.md` |
 | D-005 #3 — `/hotfix` sanctioned bypass | `.sdd/hotfix.md` + skill landed earlier; `scripts/ledger-append.mjs --hotfix` and `.sdd/pipeline.md` entry-point wiring **landed** (this wiring pass) |
 
 ### Two claims in the body below are now wrong, and the corrections matter
@@ -493,5 +493,5 @@ run; they are tracked as PL-03a…PL-03d.
    Accepted as a feature here, but the first three runs should be watched for whether rewrite churn
    exceeds the value of the guarantee.
 3. **Where do Victor's tickets come from?** This design assumes GitHub Issues with a lane template;
-   `docs/PRD_Tickets.md` remains the authoritative backlog, so the mapping between the two needs a
+   `docs/product/Ticket-Backlog-by-Feature-2.md` remains the authoritative backlog, so the mapping between the two needs a
    convention.

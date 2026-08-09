@@ -1,7 +1,7 @@
 # Wave 0 Foundation Contracts
 
 This document is the concise cross-ticket contract for Wave 0. The product requirements in
-`docs/prd.md` and the ticket definitions in `docs/PRD_Tickets.md` remain authoritative; this file
+`docs/product/PRD-V1.md` and the ticket definitions in `docs/product/Ticket-Backlog-by-Feature-2.md` remain authoritative; this file
 records the shared decisions that foundation and downstream tickets must preserve.
 
 ## Runtime and dependency baseline

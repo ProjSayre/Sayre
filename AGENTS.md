@@ -105,13 +105,13 @@ a second file is exactly the kind of drift this file exists to stop causing.
 ## Long-running and multi-ticket branch policy
 
 - Before planning or implementing tickets, fetch `origin/main` and read the current PRD and backlog
-  from that fetched revision. On the current repository, `docs/prd.md` and `docs/PRD_Tickets.md`
+  from that fetched revision. On the current repository, `docs/product/PRD-V1.md` and `docs/product/Ticket-Backlog-by-Feature-2.md`
   are authoritative; `docs/backlog.md` is an older backlog and must not override them. If the user
   supplies a newer ticket file, read it in full and report any mismatch. Do not rely on a stale
   local `main` or an earlier ticket description.
 - Until the tracked companion docs are reconciled, where product scope or tooling in `CLAUDE.md`,
   `docs/architecture.md`, `docs/migration-triggers.md`, `DEPENDENCIES.md`, or `docs/backlog.md`
-  conflicts with PRD v5 / `docs/PRD_Tickets.md`, follow the newer PRD/ticket source and call out the
+  conflicts with PRD v8 / `docs/product/Ticket-Backlog-by-Feature-2.md`, follow the newer PRD/ticket source and call out the
   drift in the ticket spec. Continue to enforce the unchanged security, multi-tenancy,
   service-layer, graph, and queue boundaries.
 - Keep the user's active/dirty checkout untouched. Use a separate Git worktree for autonomous

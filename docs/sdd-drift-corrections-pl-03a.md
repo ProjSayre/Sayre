@@ -75,7 +75,7 @@ surface (workspace `turbo run test`, RLS suites, etc.).
 ## 4. Dev stage — two places Codex was actually ahead of Claude, not behind
 
 Flagged, not silently fixed by PL-03a, since stage-content changes were explicitly out of scope for
-that ticket. **Tracked as PL-03f** (see `docs/PRD_Tickets.md`) so this becomes a universal fix
+that ticket. **Tracked as PL-03f** (see `docs/product/Ticket-Backlog-by-Feature-2.md`) so this becomes a universal fix
 rather than something only Codex happened to do right.
 
 `.codex/agents/dev.toml` said to also read `.pipeline/security-report.md` "for required fixes" on

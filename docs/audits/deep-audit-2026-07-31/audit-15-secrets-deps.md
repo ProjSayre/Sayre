@@ -214,7 +214,7 @@ The remaining 20 dev-only highs are the ESLint 8 dependency chain (`eslint`, `@t
 
 ### M-2 — `graphifyy`: legitimate, but an outsized production supply-chain surface
 
-`services/workers/pyproject.toml:12` pins `graphifyy==0.9.16` (exact, hash-locked in `poetry.lock:470-478`). **Not a typosquat** — the double-`y` distribution name is deliberate and well-documented (`docs/wave0-foundation-contracts.md:15`, `DEPENDENCIES.md:139`, `docs/PRD_Tickets.md:27`), and there is a dedicated isolation test (`services/workers/tests/test_enrichment_vendor_isolation.py`) that fails the build if anything imports `graphifyy` instead of its real module name `graphify`. That is genuinely good hygiene.
+`services/workers/pyproject.toml:12` pins `graphifyy==0.9.16` (exact, hash-locked in `poetry.lock:470-478`). **Not a typosquat** — the double-`y` distribution name is deliberate and well-documented (`docs/wave0-foundation-contracts.md:15`, `DEPENDENCIES.md:139`, `docs/product/Ticket-Backlog-by-Feature-2.md:27`), and there is a dedicated isolation test (`services/workers/tests/test_enrichment_vendor_isolation.py`) that fails the build if anything imports `graphifyy` instead of its real module name `graphify`. That is genuinely good hygiene.
 
 Two things still warrant flagging:
 
