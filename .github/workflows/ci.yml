@@ -57,6 +57,14 @@ jobs:
       - name: Install dependencies (root, single pass)
         run: npm ci
 
+      # PL-15: the marketing site moved from the repo root into apps/site/. Until now nothing in
+      # this repo ever built it — the only signal was Cloudflare Pages' own check on the PR, which
+      # is the wrong place to first learn a restructure broke the site. `npm run build --workspace`
+      # rather than a turbo filter, so this runs the site's real `tsc --noEmit && vite build`
+      # without depending on turbo's cache semantics for a package that writes outside itself.
+      - name: site — build
+        run: npm run build --workspace @sayre/site
+
       # PL-03a: .claude/agents/*.md is generated from .sdd/runtimes.yml
       # (scripts/generate-agent-shims.mjs). A hand-edited shim must fail here rather than
       # silently drift from .sdd/ again — this is the "hand-edited shim" edge case's CI gate.
@@ -187,6 +195,12 @@ jobs:
 
       - name: Dependency install — tests
         run: npm run test:dependency-install
+
+      # PL-15: the repo-restructure's own red-authored behavioral suite — the moves stayed
+      # byte-identical, the deploy shims hold, the reference sweep is clean, and the surfaces the
+      # ticket promised not to touch stayed untouched.
+      - name: Repo structure — tests
+        run: npm run test:repo-structure
 
       # PL-04 / item 4: the root tsconfig.json's "include" is ["src"] only, so `npx tsc --noEmit`
       # (the config — typecheck / web — typecheck / core — typecheck steps below) has never checked

@@ -13,6 +13,7 @@ Codebase Visualizer — an AI-powered codebase ontology and visualization platfo
 - Realtime: WebSocket gateway + Redis pub/sub
 
 ## Structure
+- `apps/site/` — Vite/React marketing site (sayre.pages.dev); its own npm workspace member, distinct from the product client below
 - `apps/web/` — Next.js visualization client
 - `services/core/` — Node.js API + service layer + Graph Query Service + BullMQ integration jobs
 - `services/core/src/mcp/` — thin MCP tool handlers over the same service layer; no business logic or direct data access
@@ -23,10 +24,11 @@ Codebase Visualizer — an AI-powered codebase ontology and visualization platfo
 - `docs/` — architecture reference and migration-trigger detail
 
 ## Commands
-- Dev: `npm run dev` (turbo: web + core + gateway)
-- Build: `npm run build`
-- Test: `npm run test`
-- Lint: `npm run lint`
+- `npm run dev` — the marketing site's dev server (delegates to `apps/site`; a Cloudflare Pages/muscle-memory deploy alias, not the product platform)
+- `npm run dev:workspaces` — the product platform via turbo: web + core + gateway
+- Build: `npm run build` (marketing site, delegates to `apps/site`) · `npm run build:workspaces` (product platform via turbo)
+- Test: `npm run test:workspaces`
+- Lint: `npm run lint:workspaces`
 - Python workers: `poetry run pytest` (from `services/workers/`)
 
 ## Verification

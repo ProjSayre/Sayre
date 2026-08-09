@@ -1,0 +1,433 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+  "mode": "REMEDIATION_RECHECK",
+  "status": "COMPLETE",
+  "started_at": "2026-08-09T11:55:00.000Z",
+  "completed_at": "2026-08-09T12:25:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre"
+  },
+  "target": {
+    "commit_sha": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+    "branch": "refactor/repo-restructure",
+    "dirty": true,
+    "environment": "local development checkout — static analysis + local test/validator suites only; no live/staging/production target, no runtime penetration test",
+    "base_urls": [],
+    "changed_paths": [
+      ".github/workflows/ci.yml",
+      ".gitignore",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "DEPENDENCIES.md",
+      "README.md",
+      "apps/site/README.md",
+      "apps/site/design/handoffs/anime-hero-animation/README.md",
+      "apps/site/design/handoffs/anime-hero-animation/project/Hero Animation (Anime) - PINNED v1.dc.html",
+      "apps/site/design/handoffs/anime-hero-animation/project/Hero Animation (Anime) - PINNED v2.dc.html",
+      "apps/site/design/handoffs/anime-hero-animation/project/Hero Animation (Anime).dc.html",
+      "apps/site/design/handoffs/anime-hero-animation/project/animations-v2.jsx",
+      "apps/site/design/handoffs/anime-hero-animation/project/filetree-data.js",
+      "apps/site/design/handoffs/anime-hero-animation/project/hero-anime-scene-v1-pinned.jsx",
+      "apps/site/design/handoffs/anime-hero-animation/project/hero-anime-scene-v2-pinned.jsx",
+      "apps/site/design/handoffs/anime-hero-animation/project/hero-anime-scene.jsx",
+      "apps/site/design/handoffs/anime-hero-animation/project/screenshots/deer-check.png",
+      "apps/site/design/handoffs/anime-hero-animation/project/screenshots/deer2.png",
+      "apps/site/design/handoffs/anime-hero-animation/project/screenshots/flora-3s.png",
+      "apps/site/design/handoffs/anime-hero-animation/project/screenshots/flora2.png",
+      "apps/site/design/handoffs/anime-hero-animation/project/screenshots/flora3.png",
+      "apps/site/design/handoffs/anime-hero-animation/project/support.js",
+      "apps/site/design/handoffs/anime-hero-animation/project/tweaks-panel.jsx",
+      "apps/site/index.html",
+      "apps/site/package.json",
+      "apps/site/public/_redirects",
+      "apps/site/public/favicon.svg",
+      "apps/site/public/media/hero-anime-final-mobile.webp",
+      "apps/site/public/media/hero-anime-final.webp",
+      "apps/site/public/media/hero-anime-mobile.mp4",
+      "apps/site/public/media/hero-anime-mobile.webm",
+      "apps/site/public/media/hero-anime-start-mobile.webp",
+      "apps/site/public/media/hero-anime-start.webp",
+      "apps/site/public/media/hero-anime.mp4",
+      "apps/site/public/media/hero-anime.webm",
+      "apps/site/public/og.png",
+      "apps/site/scripts/anime-hero-render/entry.jsx",
+      "apps/site/scripts/anime-hero-render/index.html",
+      "apps/site/scripts/export-tree.mjs",
+      "apps/site/scripts/og.mjs",
+      "apps/site/scripts/render-anime-hero.mjs",
+      "apps/site/scripts/smoke.mjs",
+      "apps/site/scripts/test-waitlist.mjs",
+      "apps/site/src/App.tsx",
+      "apps/site/src/config.ts",
+      "apps/site/src/data/copy.ts",
+      "apps/site/src/data/edges.ts",
+      "apps/site/src/data/features.ts",
+      "apps/site/src/data/index.ts",
+      "apps/site/src/data/people.ts",
+      "apps/site/src/data/personas.ts",
+      "apps/site/src/data/repo.ts",
+      "apps/site/src/data/tickets.ts",
+      "apps/site/src/data/tour.ts",
+      "apps/site/src/data/types.ts",
+      "apps/site/src/data/validate.ts",
+      "apps/site/src/demo/DemoPage.tsx",
+      "apps/site/src/demo/FeaturePanel.tsx",
+      "apps/site/src/demo/Markdown.tsx",
+      "apps/site/src/demo/Sidebar.tsx",
+      "apps/site/src/demo/StatusLine.tsx",
+      "apps/site/src/demo/TopBar.tsx",
+      "apps/site/src/demo/TreePanel.tsx",
+      "apps/site/src/demo/canvas/FeaturesView.tsx",
+      "apps/site/src/demo/canvas/FiletreeView.tsx",
+      "apps/site/src/demo/canvas/RelationsView.tsx",
+      "apps/site/src/demo/canvas/layout.ts",
+      "apps/site/src/demo/canvas/measure.ts",
+      "apps/site/src/demo/canvas/rollup.ts",
+      "apps/site/src/demo/canvas/useAnimatedPositions.ts",
+      "apps/site/src/demo/canvas/useCamera.ts",
+      "apps/site/src/demo/search/CommandK.tsx",
+      "apps/site/src/demo/search/fuzzy.ts",
+      "apps/site/src/demo/search/useFileSearch.ts",
+      "apps/site/src/demo/state.ts",
+      "apps/site/src/demo/tour/Tour.tsx",
+      "apps/site/src/landing/CanvasSandbox.tsx",
+      "apps/site/src/landing/FeatureDeck.tsx",
+      "apps/site/src/landing/HeroAnimeVideo.tsx",
+      "apps/site/src/landing/HeroTreeScene.tsx",
+      "apps/site/src/landing/LandingPage.tsx",
+      "apps/site/src/landing/Reveal.tsx",
+      "apps/site/src/landing/heroTreeData.ts",
+      "apps/site/src/landing/lensGraphs.ts",
+      "apps/site/src/legal/PrivacyPage.tsx",
+      "apps/site/src/main.tsx",
+      "apps/site/src/shared/Button.tsx",
+      "apps/site/src/shared/Chip.tsx",
+      "apps/site/src/shared/Modal.tsx",
+      "apps/site/src/shared/WaitlistForm.tsx",
+      "apps/site/src/styles/base.css",
+      "apps/site/src/styles/demo.css",
+      "apps/site/src/styles/landing.css",
+      "apps/site/src/styles/privacy.css",
+      "apps/site/src/styles/tokens.css",
+      "apps/site/src/vite-env.d.ts",
+      "apps/site/tsconfig.json",
+      "apps/site/turbo.json",
+      "apps/site/vite.config.ts",
+      "apps/web/.claude/skills/redteam-ux/driver.mjs",
+      "apps/web/package.json",
+      "docs/audits/architecture-assessment-2026-07.md",
+      "docs/audits/deep-audit-2026-07-31.md",
+      "docs/audits/deep-audit-2026-07-31/audit-01-tenant-rbac.md",
+      "docs/audits/deep-audit-2026-07-31/audit-02-auth-mcp-keys.md",
+      "docs/audits/deep-audit-2026-07-31/audit-03-routes-http.md",
+      "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md",
+      "docs/audits/deep-audit-2026-07-31/audit-05-ticket-integrations.md",
+      "docs/audits/deep-audit-2026-07-31/audit-06-db-schema.md",
+      "docs/audits/deep-audit-2026-07-31/audit-07-queues-messaging.md",
+      "docs/audits/deep-audit-2026-07-31/audit-08-gateway-ws.md",
+      "docs/audits/deep-audit-2026-07-31/audit-09-python-ingestion-parsing.md",
+      "docs/audits/deep-audit-2026-07-31/audit-10-ai-enrichment.md",
+      "docs/audits/deep-audit-2026-07-31/audit-11-retrieval-telemetry.md",
+      "docs/audits/deep-audit-2026-07-31/audit-12-web-frontend.md",
+      "docs/audits/deep-audit-2026-07-31/audit-13-test-coverage.md",
+      "docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md",
+      "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md",
+      "docs/audits/deep-audit-2026-07-31/audit-16-core-correctness.md",
+      "docs/audits/deep-audit-2026-07-31/audit-17-build-verification.md",
+      "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md",
+      "docs/design-system/SAYRE_DESIGN_SYSTEM.md",
+      "docs/design-system/Sayre Directions-selection.png",
+      "docs/design-system/filetree-graph-blank.png",
+      "docs/design-system/filetree-graph-labeled.png",
+      "docs/design-system/filetree-graph.png",
+      "docs/design-system/filetree-graph.svg",
+      "docs/product/PRD-V1.pdf",
+      "docs/product/SAYRE_FRONTEND_SPEC.md",
+      "docs/repo-structure.md",
+      "docs/sdd-tdad-design.md",
+      "package-lock.json",
+      "package.json",
+      "scripts/dependency-baseline.test.mjs",
+      "scripts/repo-structure-verify.mjs",
+      "scripts/repo-structure.test.mjs",
+      "scripts/tsconfig.json",
+      "tsconfig.json",
+      "vite.config.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8",
+    "commit_sha": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+    "comparable": true,
+    "selection_reason": "Human-specified compatible run (audit-contract baseline order item 1): the coordinator's own prior BLOCKED run, same commit, same 139-path diff family (only docs/audits/deep-audit-2026-07-31.md, audit-18-infra-cicd.md, spec.md, and scripts/repo-structure.test.mjs changed content since; review.md confirms path-count and per-file numstat stability across all three review passes). This is exactly the REMEDIATION_RECHECK case the audit contract describes; no ancestry check is meaningful when target and baseline share one commit, only a dirtier/cleaner worktree state, so `comparable` is asserted directly from identical commit_sha plus the independently-confirmed narrow diff between the two runs' trees.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "PL-15 — repo restructure: separate the marketing site (apps/site/) from the monorepo root; consolidate loose top-level directories under docs/; commit previously-untracked audit artifacts under docs/audits/",
+    "phase": "REMEDIATION_RECHECK, under /re-gate. Since this stage's own prior BLOCKED run: dev ran two fix rounds (masked-prefix redaction, ruled insufficient by the coordinator on its own merits — a masked fragment is still real secret material — then a full zero-character-placeholder redaction); review pass 2 (NEEDS_FIXES) then found the SAME reconnaissance class surviving in a form the value-fragment sweep structurally cannot see (exact secret-location tables/citations carrying zero value characters) plus a false completeness claim in the amendment record; the three-attempt dev loop cap was exhausted, so per `.sdd/pipeline.md`'s `/re-gate` section the coordinator hand-applied review's five-item fix list directly (`changes.md`'s \"Coordinator hand-fix round\" section is the record, honestly labeled `[coordinator hand-fix under /re-gate]` in changes.json); review pass 3 re-derived every item against disk (not the hand-fix's self-report) and returned PASS, explicitly naming this stage's independent recheck as the compensating control for implementer/coordinator being one context. review.json verdict PASS pass 3, independently re-verified fresh via `node scripts/check-stamp-freshness.mjs review.json` (exit 0, status \"fresh\", stamp treeHash 0f19b81e1b1d…) before this run proceeded.",
+    "source_references": [
+      ".pipeline/spec.md (AMENDMENT ROUND 3)",
+      ".pipeline/changes.md (\"Coordinator hand-fix round\")",
+      ".pipeline/changes.json (redTestChanges item 5)",
+      ".pipeline/review.md (pass 3)",
+      ".pipeline/review.json (pass 3)",
+      ".pipeline/test-results.md",
+      ".pipeline/security-history/20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8/ (this run's baseline — this stage's own prior BLOCKED run)"
+    ],
+    "documentation_code_drift": [
+      "spec.md's AC-9 now carries a third marked amendment (round 3) replacing round 2's false \"the two corroborating files already carried no exact-location table\" claim with the true record — independently verified against docs/audits/deep-audit-2026-07-31.md and audit-18-infra-cicd.md directly, matches."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode.",
+      "rationale": "Unaffected by the hand-fix round: still zero services/**, packages/** persistence or org_id-stamping code in this diff.",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "Unaffected by the hand-fix round: still no route/resolver/Graph Query Service/graphology code in this diff.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "This stage's own prior FAIL (CORE-03, live NEO4J_AUTH credential verbatim + masked-but-confirmed-live 12-secret inventory with exact locations) is independently re-verified RESOLVED this round: both files re-read in full, both redactions confirmed at zero real characters and zero exact-location citations, both cross-checked against a fresh full-repo adversarial sweep (value-fragment patterns, location-citation patterns, prior-round masked-prefix strings) finding no residual. See SEC-02 v1/v2.",
+      "code_references": [
+        "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:138-153",
+        "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:26-64",
+        "docs/audits/deep-audit-2026-07-31.md:89-125"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/core/src/webhooks/** changes in this diff.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "No services/workers/** changes in this diff.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check.",
+      "rationale": "scripts/repo-structure.test.mjs's spawnSync call sites are unchanged by the hand-fix round (only MOVED_FILE_DIGESTS entries and an in-file comment changed); re-confirmed by direct read this session.",
+      "code_references": [
+        "scripts/repo-structure.test.mjs:89-109",
+        "scripts/repo-structure-verify.mjs:167-183",
+        ".github/workflows/ci.yml:60-66,199-204"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "Unaffected by the hand-fix round.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "Unaffected by the hand-fix round.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered by this diff's own changed paths.",
+      "rationale": "Unaffected by the hand-fix round.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered by this diff's own changed paths.",
+      "rationale": "Unaffected by the hand-fix round.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not triggered: no changed path matches this surface's trigger paths.",
+      "rationale": "Unaffected by the hand-fix round.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Considered and not selected last round for the same reasons, re-affirmed: apps/site has no server-side route/API surface, and the hand-fix round touched only docs/audits/**, spec.md, and scripts/repo-structure.test.mjs — none of apps/site/src/**.",
+      "rationale": "Unaffected by the hand-fix round.",
+      "code_references": [
+        "apps/site/src/shared/WaitlistForm.tsx:76"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "REMEDIATION_RECHECK: rerun the prior failing observations (CORE-03, SEC-02 v1, SEC-02 v2), their bypass variants (redaction-insufficiency classes: masked-prefix fragments, exact-location citations, corroborating-file leakage), and sibling paths using the same underlying control (all 20 docs/audits/** files, not just the two named in the prior finding).",
+      "code_references": [
+        "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md",
+        "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md",
+        "docs/audits/deep-audit-2026-07-31.md",
+        "docs/audits/architecture-assessment-2026-07.md",
+        "docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md"
+      ],
+      "rationale": "Full checklist (SEC-01..14) re-emitted for continuity with the immediately-preceding run, plus a fresh SEC-02 v3 observation dispositioning the MD5 file-identity-hash residual the coordinator asked to be addressed explicitly, plus re-confirmation of the persisting SEC-01 v2 / SEC-09 / SEC-10 v3 / SEC-10 v6 findings (all four dependency files independently re-confirmed absent from every change since the prior run)."
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Sibling-control continuity with the immediately-preceding run; ci.yml/package.json/package-lock.json/apps/site/package.json unaffected by the hand-fix round (confirmed: none appear in the narrow post-BLOCKED diff).",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "package.json",
+        "package-lock.json",
+        "apps/site/package.json"
+      ],
+      "rationale": "Full checklist (SC-01..14) re-emitted for continuity; every result unchanged from the prior run, including the persisting SC-03/SC-06 findings."
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "progress-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "security-stage",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle-attacker",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure-attacker",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "CORE-01/02/04/05 remain UNVERIFIED for this diff's own code — unaffected by the hand-fix round, same reasoning as the prior run.",
+    "No dynamic/runtime testing performed this round either (authorization.runtime_tests_authorized is false); the redaction fix was verified by direct read of the current file content plus independent re-execution of node --test scripts/repo-structure.test.mjs (34/34), node scripts/check-red-integrity.mjs (clean), and npm run check:secret-access / check:org-secret-access / check:agent-shims / check:agent-ignore / typecheck:scripts (all clean, unchanged).",
+    "web-api-client not selected this round, same reasoning as the prior run.",
+    "infra/New Text Document.txt itself was independently re-confirmed present, untouched, and still outside this diff (git status --ignored=matching -- infra/ still reports it `!!`) — its deletion and the live credential rotation remain the human operator's own urgent actions, restated in this run's report per the coordinator's explicit instruction."
+  ]
+}

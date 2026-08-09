@@ -38,7 +38,7 @@ import { ConfigError, getOptionalConfig } from '@sayre/config';
 const SKILL_DIR = dirname(fileURLToPath(import.meta.url));
 const SHOTS_DIR = join(SKILL_DIR, 'shots');
 
-// Same shape as scripts/render-anime-hero.mjs's optionalConfig(): an unset or
+// Same shape as apps/site/scripts/render-anime-hero.mjs's optionalConfig(): an unset or
 // empty override is "no override", never a crash in a diagnostics driver.
 function optionalConfig(name) {
   try {

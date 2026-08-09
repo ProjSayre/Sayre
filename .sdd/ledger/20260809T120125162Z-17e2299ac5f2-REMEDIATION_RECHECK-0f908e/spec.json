@@ -1,0 +1,184 @@
+{
+  "ticket": "PL-15 \u2014 Repo restructure: separate the marketing site from the monorepo root",
+  "goal": "Make the repository root read as a monorepo root rather than as a Vite marketing site with a monorepo grafted around it: move the marketing site into its own apps/site/ workspace, give every loose top-level directory a home, commit the orphaned audit artifacts, and update every path that CI, the deploy, the docs, or a test pins \u2014 with zero change to what the deployed site serves.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "The marketing site's sources live under apps/site/ and nowhere else: `git ls-files index.html src public vite.config.ts` returns nothing, and apps/site/index.html, apps/site/vite.config.ts, apps/site/src/main.tsx, apps/site/src/App.tsx, apps/site/src/config.ts, apps/site/public/_redirects, apps/site/public/og.png, apps/site/public/favicon.svg, and apps/site/public/media/ all exist and are tracked. Every moved file's contents are byte-identical to its pre-move contents except apps/site/vite.config.ts and apps/site/src/landing/heroTreeData.ts."
+    },
+    {
+      "id": "AC-2",
+      "text": "apps/site/package.json exists, is named @sayre/site, and matches the shape in Interfaces (including every version spec carried over verbatim). The root package.json is named `sayre`, has no `dependencies` key, includes `apps/*` in `workspaces`, and retains every check:*/test:*/generate:*/ledger:*/stamp/typecheck:*/*:workspaces/workspace-pack/test:product-workspace-ux script verbatim, plus dev/build/preview as delegating aliases."
+    },
+    {
+      "id": "AC-3",
+      "text": "`npm ci` at the repo root exits 0 against the committed package-lock.json (i.e. the lockfile was regenerated in this change, not left stale)."
+    },
+    {
+      "id": "AC-4",
+      "text": "`npm run build` at the repo root exits 0 and produces, at repo-root dist/: index.html, assets/ (one .js + one .css), _redirects, og.png, favicon.svg, and media/ with all 8 files. The set of emitted paths is the same set as a pre-change build."
+    },
+    {
+      "id": "AC-5",
+      "text": "`npx tsc --noEmit` at the repo root exits 0, and the root tsconfig.json's `include` is [\"apps/site/src\"] (so the command is not vacuously passing over an empty file set)."
+    },
+    {
+      "id": "AC-6",
+      "text": ".github/workflows/ci.yml's `node` job contains a `site \u2014 build` step running `npm run build --workspace @sayre/site`, placed after the root install step."
+    },
+    {
+      "id": "AC-7",
+      "text": "scripts/ contains no marketing-site script: scripts/og.mjs, scripts/render-anime-hero.mjs, scripts/smoke.mjs, scripts/test-waitlist.mjs, scripts/export-tree.mjs, and scripts/anime-hero-render/ do not exist, and their apps/site/scripts/ counterparts do. Every scripts/*.test.mjs file and every SDD control-plane .mjs remains at scripts/ (unmoved), and scripts/tsconfig.json's compilerOptions and include array are unchanged."
+    },
+    {
+      "id": "AC-8",
+      "text": "No directory at the repo root has a name containing a space, and `Design System/`, `Documents/`, and `design/` no longer exist. docs/design-system/ holds all 6 former `Design System/` files; docs/product/ holds PRD-V1.pdf and SAYRE_FRONTEND_SPEC.md; apps/site/design/handoffs/anime-hero-animation/ holds the former design/ tree."
+    },
+    {
+      "id": "AC-9",
+      "text": "`git ls-files docs/audits` lists docs/audits/architecture-assessment-2026-07.md, docs/audits/deep-audit-2026-07-31.md, and 18 files under docs/audits/deep-audit-2026-07-31/; none of them remain at their former docs/ locations, and their contents are byte-identical to the untracked originals.",
+      "amendment": "AMENDMENT (dev attempt 2, post security-BLOCKED round, run 20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8): original text retained above unmodified. security-checker reproduced a live unredacted NEO4J_AUTH credential in docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md (CRITICAL) and a reconnaissance-grade exact-location/liveness-tagged 12-secret inventory in docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md (HIGH), corroborated by docs/audits/deep-audit-2026-07-31.md and docs/audits/architecture-assessment-2026-07.md. Corrected, for these four files only: byte-identical to the untracked originals except security-mandated redactions, which are digest-pinned post-redaction. Disposition: generalize, don't drop (narrative/category/remediation kept; exact secret value, file:line-to-secret mapping, and per-row REAL-liveness tags removed and replaced with a note that exact locations/liveness were confirmed at audit time and remain in the auditor's untracked working copy). The other 16 audit files are unaffected and remain byte-identical to the untracked originals exactly as originally required. AMENDMENT ROUND 2 (dev attempt 3, final): attempt 2's redaction still rendered masked value fragments (real leading/trailing characters of the real secrets) for the same four files; a fragment of a real secret is still real secret material once committed, so the final disposition is a zero-character placeholder (e.g. <redacted>) for every value repo-wide in docs/audits/**, with no scheme/provider-prefix rendering either. Same four files re-redacted and re-pinned to attempt-3 digests; a full docs/audits/** sweep found no additional file needing redaction (one non-secret placeholder-string rendering was also normalized in docs/audits/deep-audit-2026-07-31.md for consistency). The qualifying AC-9 text is unchanged from the first amendment; only the digests and file content changed again. AMENDMENT ROUND 3 (review pass 2, coordinator hand-fix under /re-gate): round 2's claim that the corroborating files carried no exact-location table was false \u2014 the audit index's P0-5 section still mapped exact source-file line numbers to all 13 secrets, and audit-18 cited the credential's exact line twice. Both generalized with honest removal notes; the two affected digests re-pinned; this sentence replaces the false completeness claim. AC-9's qualifying text is again unchanged."
+    },
+    {
+      "id": "AC-10",
+      "text": "debug.log does not exist at the repo root. .gitignore contains **/.fontcache/, **/.shots/, **/.tmp/, .playwright-mcp/, and .pipeline-backup-*/, no longer contains scripts/.fontcache/ or scripts/.shots/, and still contains dist/, .pipeline/**, !.pipeline/README.md, and .codex/. `git check-ignore -q .sdd/ledger/index.json` exits 1 (the ledger is still trackable)."
+    },
+    {
+      "id": "AC-11",
+      "text": "apps/site/scripts/export-tree.mjs writes its four outputs into repo-root docs/design-system/, and apps/site/scripts/anime-hero-render/entry.jsx is unmodified."
+    },
+    {
+      "id": "AC-12",
+      "text": "Reference sweep is clean. Each of these returns no hits in tracked files, excluding .sdd/ledger/** and any .pipeline* path: `Design System/`, `Documents/`, `design/handoffs/`, `scripts/og.mjs`, `scripts/smoke.mjs`, `scripts/export-tree.mjs`, `scripts/test-waitlist.mjs`, `scripts/render-anime-hero.mjs`, `scripts/anime-hero-render/`, `\"sayre-site\"`."
+    },
+    {
+      "id": "AC-13",
+      "text": "Documentation reflects reality: root README.md, apps/site/README.md, and docs/repo-structure.md satisfy the content contracts in Interfaces; AGENTS.md's \"Repo shape\" section no longer asserts the repo root is a Vite marketing site; CLAUDE.md's Structure section lists apps/site/ and its Commands section distinguishes `npm run dev` from `npm run dev:workspaces`; apps/web/package.json's description no longer says \"root Vite marketing site\"; DEPENDENCIES.md carries a PL-15 note recording the manifest split. docs/repo-structure.md records all ten deferred items D1\u2013D10 with their reasons."
+    },
+    {
+      "id": "AC-14",
+      "text": "The change to scripts/dependency-baseline.test.mjs is declared as a red-test change in .pipeline/changes.json (file path + reason + a statement that the assertion's intent is preserved or strengthened, never weakened), and that file is the only pre-existing test file this change modifies."
+    },
+    {
+      "id": "AC-15",
+      "text": "Verification matrix: every command CI runs passes locally from the repo root \u2014 check:secret-access, test:secret-access, check:org-secret-access, test:org-secret-access, npm ci, npm run build --workspace @sayre/site, check:agent-shims, test:agent-shims, test:sdd-completeness, check:agent-ignore, test:agent-ignore, check:ledger-index, test:ledger-index, test:ledger-append, test:red-integrity, check:security-audit-agents, test:security-audit-agents, test:security-audit-run, test:pipeline-contracts, test:write-stamp, test:stamp-freshness, test:bounds, test:lite-eligible, test:readonly-guard, test:dependency-baseline, test:dependency-install, typecheck:scripts, typecheck/test for @sayre/config, lint/typecheck/test for @sayre/web and @sayre/gateway, lint/typecheck for @sayre/core, and `npx tsc --noEmit`. Any command that cannot run in this environment (Docker/Postgres/Redis-gated @sayre/core suites, the Python workers job) must be reported as not run, with the reason, never as passing."
+    },
+    {
+      "id": "AC-16",
+      "text": "(Executor: Human \u2014 Cloudflare dashboard, no repo diff can do this) Before merge, in Cloudflare Pages \u2192 account 9b15e5f5\u2026 \u2192 project `sayre` \u2192 Settings \u2192 Builds & deployments, record verbatim into the PR description: Root directory, Build command, Build output directory. Confirm they are compatible with the shim (root directory / or empty; build command resolving to root `npm run build` or `npm run build --workspace @sayre/site`; output directory `dist`). If any of the three is incompatible, do not merge: either extend the shim or change the dashboard within the same merge window, and say which was done. Then confirm the `Cloudflare Pages` check on the PR is green and, after merge, that sayre.pages.dev serves the site including /privacy. Do not touch the separate Cloudflare Workers project on account 791596\u2026 (PL-09's ticket; the GitHub App installation is shared with Pages)."
+    },
+    {
+      "id": "AC-17",
+      "text": "(Executor: Human \u2014 Vercel dashboard) Determine whether a live Vercel project is connected to this repository. Record the answer (and, if one exists, its Root Directory setting) in the PR description. vercel.json is byte-unchanged by this ticket either way; the answer feeds deferred item D3."
+    },
+    {
+      "id": "AC-18",
+      "text": "Nothing in .sdd/ (including .sdd/ledger/** and .sdd/bounds.yml), .claude/, .codex/, security-attacker-agents/, infra/, packages/**, services/**, turbo.json, or vercel.json is modified, and apps/web/** is modified only in apps/web/package.json's description string. .github/ is modified only by AC-6's single added step."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "package-lock.json not regenerated after the manifests are split: `npm ci` fails with \"lock file does not satisfy package.json\". The single most likely way this change turns CI red on every job at once."
+    },
+    {
+      "id": "EC-2",
+      "text": "The Cloudflare Pages dashboard's build command is not `npm run build` (e.g. a literal `vite build`, or a --prefix/--filter form), or its output directory is not `dist`, or its root directory is not `/`. The shim then does not cover it and the site build breaks on merge. AC-16 exists to catch this before merge, not after."
+    },
+    {
+      "id": "EC-3",
+      "text": "A live Vercel project exists with Root Directory `/`. vercel.json must stay at the repo root (Vercel reads it from the configured root directory), which is why this ticket does not move it."
+    },
+    {
+      "id": "EC-4",
+      "text": "`git mv` on a directory whose name contains a space (\"Design System\") \u2014 the path must be quoted; an unquoted invocation silently moves the wrong thing or errors."
+    },
+    {
+      "id": "EC-5",
+      "text": "Case-insensitive filesystem (this checkout is Windows). None of the moves is a case-only rename, but Documents/ \u2192 docs/product/ involves an existing docs/ directory whose name differs only in case at the first letter \u2014 verify with `git ls-files docs Documents` after the move that no path was silently merged or lost."
+    },
+    {
+      "id": "EC-6",
+      "text": "dist/ already exists at the repo root with stale content from a previous build. Vite refuses to empty an outDir outside its project root unless emptyOutDir: true is set explicitly; without it the build either warns and leaves stale files or fails. With it, confirm the emitted set is complete rather than a merge of old and new."
+    },
+    {
+      "id": "EC-7",
+      "text": "A moved script's relative path resolving to a different but existing location instead of failing loudly (e.g. scripts/.fontcache now meaning apps/site/scripts/.fontcache). Verify by execution or by reading each resolved path, not by assuming."
+    },
+    {
+      "id": "EC-8",
+      "text": "Moving any scripts/*.test.mjs file out of scripts/ would break scripts/sdd-completeness.test.mjs's non-recursive readdirSync enumeration and its `scripts/([\\w.-]+\\.test\\.mjs)` package.json-value regex (the character class cannot cross a /). This ticket moves none of them; confirm that holds."
+    },
+    {
+      "id": "EC-9",
+      "text": ".claude/settings.json's PreToolUse hook runs the cwd-relative command `node scripts/guard-checker-readonly.mjs`. That script does not move; if it ever did, the review/security-checker/pr-review read-only guard would silently stop enforcing (a hook that fails to load exits 1, and only exit 2 blocks)."
+    },
+    {
+      "id": "EC-10",
+      "text": "A pre-existing red-listed test's content hash changes without being declared, which review's red-test integrity check treats as a Critical. Exactly one such file changes here (scripts/dependency-baseline.test.mjs); it must be declared in .pipeline/changes.json."
+    },
+    {
+      "id": "EC-11",
+      "text": "check:secret-access runs before `npm ci` and scans every tracked .ts/.tsx/.js/.jsx/.mjs/.cjs/.py file from `git ls-files`, excluding path segments named node_modules|.venv|venv|__pycache__|dist|build|coverage|generated|vendor. Moved files stay in scope (none lands under an excluded segment), and its ALLOWLIST contains no moved path \u2014 so the gate's verdict must be unchanged. Confirm rather than assume: this step runs first in CI."
+    },
+    {
+      "id": "EC-12",
+      "text": ".sdd/ledger/**, .sdd/stages/CHANGELOG.md, and .pipeline-backup-*/ contain many references to the old paths. These are historical records of past runs and must not be rewritten by the reference sweep; a find-and-replace there would corrupt a content-hashed ledger entry and fail test:sdd-completeness's pinned-hash assertions."
+    },
+    {
+      "id": "EC-13",
+      "text": ".sdd/bounds.yml's frontend lane allows apps/web/** and docs/**. apps/site/** is in no fenced lane, exactly as root src/** is today \u2014 leaving it alone preserves the existing fence rather than silently widening it. A deliberate non-change (D9)."
+    },
+    {
+      "id": "EC-14",
+      "text": "Turbo caching: @sayre/site's build writes outside its own package directory, so the root turbo.json's outputs: [\"dist/**\", \".next/**\"] would record an empty output set and could report a cache hit for a build that produced nothing. apps/site/turbo.json disables the cache for that one task."
+    },
+    {
+      "id": "EC-15",
+      "text": "`npm run workspace-pack` (vite-node packages/workspace-packs/src/cli-entry.ts) has no declared vite-node/vite dependency anywhere; it resolves today via hoisting. Removing vite from the root devDeps must not break it (vitest still brings vite and vite-node transitively). Verify the command still starts."
+    },
+    {
+      "id": "EC-16",
+      "text": "public/_redirects carries both the SPA fallback and the /demo \u2192 / redirect. If it fails to reach dist/_redirects, /privacy 404s on Cloudflare Pages \u2014 a break that the build exiting 0 will not reveal."
+    },
+    {
+      "id": "EC-17",
+      "text": "public/og.png, public/favicon.svg, and public/media/* are committed static binaries, not build products (npm run og / npm run hero:render regenerate them on demand). They must be moved, never regenerated \u2014 a regenerated binary is an unreviewable diff."
+    },
+    {
+      "id": "EC-18",
+      "text": "Leftover empty directories after the moves (src/, public/, Design System/, Documents/, Documents/PRD/, Documents/Spec/, design/, scripts/anime-hero-render/). Git does not track empty directories, so they will not show in a diff but will still be on disk and in a file listing \u2014 the exact complaint this ticket exists to answer."
+    },
+    {
+      "id": "EC-19",
+      "text": "apps/web/package.json's description (\"Distinct from the root Vite marketing site\") becomes false the moment the site moves. Small, but it is the kind of stale claim that teaches the next reader to distrust every other description in the repo."
+    },
+    {
+      "id": "EC-20",
+      "text": "docs/deep-audit-2026-07-31.md is an index over the 18 files in docs/deep-audit-2026-07-31/. Moving both under docs/audits/ preserves their relative positions, so intra-audit links should survive \u2014 verify at least the index's links rather than assuming."
+    },
+    {
+      "id": "EC-21",
+      "text": "A broadened .gitignore pattern (**/.tmp/, **/.shots/, **/.fontcache/) accidentally matching an existing tracked path. Confirm `git status --porcelain` reports no newly ignored tracked file, and that `git check-ignore` on a representative tracked path in each workspace exits 1."
+    },
+    {
+      "id": "EC-22",
+      "text": "Root script semantics drift: `npm run dev` must still start the marketing site on :5173 and `npm run build` must still build the site, because both names are load-bearing outside this repo (deploy) and in muscle memory. Changing dev to mean \"turbo across workspaces\" would be a defensible design and is explicitly not done here."
+    },
+    {
+      "id": "EC-23",
+      "text": "apps/site joins the apps/* workspace glob, so `turbo run lint|typecheck|test` across workspaces now includes it. @sayre/site declares no lint or test script; turbo skips missing tasks rather than failing, but confirm `npm run test:workspaces` and `npm run lint:workspaces` still exit 0."
+    },
+    {
+      "id": "EC-24",
+      "text": "engines: { \"node\": \">=20 <21\" } on @sayre/site under a Node runtime outside that range (Cloudflare Pages' default build image, a contributor on Node 22) produces an EBADENGINE warning \u2014 harmless unless engine-strict is set, but note it if the Pages build log shows it."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "71013247ef06edf95d5384a2993900f13fcf30706b1c70582bdb04784f68cc3a",
+    "headSha": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+    "dirty": true,
+    "writtenAt": "2026-08-09T09:09:46.500Z"
+  }
+}

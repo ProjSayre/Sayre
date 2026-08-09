@@ -332,16 +332,24 @@ test('[AC-9] the three migration-trigger swaps and two deliberate-non-migration 
 // ---------------------------------------------------------------------------------------------
 
 // @spec AC-8 EC-10
-test('[AC-8][EC-10] the root marketing site scripts/deps and infra image pins are unchanged', () => {
-  const root = readJson('package.json');
-  assert.equal(root.scripts.dev, 'vite', 'marketing site dev script must stay `vite`');
+// PL-15: the marketing site moved from the repo root into apps/site/ (@sayre/site). The guarantee
+// this test exists for is unchanged — only the manifest that holds the marketing site's scripts and
+// dependencies moved. Declared as a red-test change in .pipeline/changes.json.
+test('[AC-8][EC-10] the marketing site scripts/deps and infra image pins are unchanged', () => {
+  const site = readJson('apps/site/package.json');
+  assert.equal(site.scripts.dev, 'vite', 'marketing site dev script must stay `vite`');
   for (const script of ['og', 'test:waitlist', 'preview']) {
-    assert.ok(root.scripts[script], `marketing site script ${script} must remain`);
+    assert.ok(site.scripts[script], `marketing site script ${script} must remain`);
   }
   for (const dep of ['d3-hierarchy', 'react-router-dom']) {
-    assert.ok(root.dependencies[dep], `marketing site dependency ${dep} must remain`);
+    assert.ok(site.dependencies[dep], `marketing site dependency ${dep} must remain`);
   }
-  assert.ok(root.devDependencies.vite, 'marketing site vite devDependency must remain');
+  assert.ok(site.devDependencies.vite, 'marketing site vite devDependency must remain');
+
+  // The workspace root must no longer carry the site's runtime dependencies — conflating the two
+  // is exactly what PL-15 removed, and a silent regression back to it should fail here.
+  const root = readJson('package.json');
+  assert.equal(root.dependencies, undefined, 'the workspace root must declare no runtime dependencies');
 
   const compose = readText('infra/docker-compose.yml');
   for (const image of ['pgvector/pgvector:pg16', 'redis:7.4-alpine', 'neo4j:5.24-community']) {

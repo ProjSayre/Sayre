@@ -2,8 +2,9 @@ node_modules/
 dist/
 *.local
 .DS_Store
-scripts/.fontcache/
-scripts/.shots/
+**/.fontcache/
+**/.shots/
+**/.tmp/
 
 # Secrets / local env — keep *.example templates tracked
 .env
@@ -47,6 +48,10 @@ CLAUDE.local.md
 .claude/settings.local.json
 .pipeline/**
 !.pipeline/README.md
+# PL-15: MCP browser-tooling scratch and a repo-restructure's own on-disk backup snapshot — both
+# local-only working state, never source, never committed.
+.playwright-mcp/
+.pipeline-backup-*/
 
 # PL-03c: .sdd/ledger/ is deliberately NOT covered by the .pipeline/** rule above, even though it
 # holds artifacts per completed pipeline run. It lives under .sdd/ (fully tracked since PL-03a)

@@ -1,8 +1,8 @@
 # Dependency Inventory — Codebase Visualizer Product
 
 This file inventories every third-party dependency pinned for the product runtimes under W0-00
-(Dependency & Environment Baseline). It does **not** cover the root Vite marketing site
-(`package.json` at repo root) — that is a separate, unrelated package and out of scope for this
+(Dependency & Environment Baseline). It does **not** cover the marketing site's own manifest
+(`apps/site/package.json`, PL-15) — that is a separate, unrelated package and out of scope for this
 ticket (see `.pipeline/spec.md` O-1).
 
 Version policy: each manifest below pins to a minor line (or an exact patch where the ticket
@@ -198,19 +198,29 @@ volume reference only, not a multi-host exactly-once database. See `infra/docker
 |---|---|---|---|---|
 | `turbo` | root (devDep) | Orchestrates build/lint/typecheck/test across the npm-workspace packages (`apps/web`, `services/core`, `packages/shared-types`); `build` task's `dependsOn: ["^build"]` builds `packages/shared-types` before `services/core` automatically | `.pipeline/spec.md` W0-01 D-3 | — |
 
-Root `package.json` (the marketing site's, `sayre-site`) gained a `"workspaces"` field this ticket
-(`["apps/web", "services/core", "packages/*"]`) plus a `packageManager` field (required by turbo
-2.x to resolve the workspace unambiguously — discovered mid-implementation, not anticipated by the
-spec text; see `.pipeline/changes.md`). The marketing site's own `dev`/`build`/`preview`/`og`/
-`test:waitlist` scripts and dependencies are unchanged; new `dev:workspaces`/`build:workspaces`/
-`lint:workspaces`/`typecheck:workspaces`/`test:workspaces` scripts drive the workspace packages
-via `turbo` instead. `services/workers` (Poetry) is **not** part of this npm workspace at all — see
-`.pipeline/spec.md` W0-01 D-3.
+Root `package.json` (at the time still carrying the marketing site's own name and scripts directly)
+gained a `"workspaces"` field this ticket (`["apps/web", "services/core", "packages/*"]`) plus a
+`packageManager` field (required by turbo 2.x to resolve the workspace unambiguously — discovered
+mid-implementation, not anticipated by the spec text; see `.pipeline/changes.md`). The marketing
+site's own `dev`/`build`/`preview`/`og`/`test:waitlist` scripts and dependencies were unchanged at
+the time; new `dev:workspaces`/`build:workspaces`/`lint:workspaces`/`typecheck:workspaces`/
+`test:workspaces` scripts drive the workspace packages via `turbo` instead. `services/workers`
+(Poetry) is **not** part of this npm workspace at all — see `.pipeline/spec.md` W0-01 D-3.
 
 **W2-03:** `workspaces` gained `"services/gateway"` (`["apps/web", "services/core",
 "services/gateway", "packages/*"]`), so `turbo run dev/build/lint/typecheck/test` (and the
 `*:workspaces` root scripts) pick up the new Realtime Service package with no `turbo.json` change —
 turbo derives its task graph from each package's own `package.json` scripts.
+
+**PL-15:** the marketing site's manifest moved out of the workspace root entirely, into its own
+`apps/*` workspace member (`@sayre/site`). Root `package.json` is now named `sayre`, carries no
+`dependencies` key at all, and its `workspaces` array gained an `apps/*` glob so the relocated
+member resolves the same way every other workspace package does. The site's runtime dependencies
+and its own `dev`/`build`/`preview`/`og`/`hero:render`/`smoke`/`export-tree`/`test:waitlist`
+scripts moved with it, at their same pinned version specs — nothing here was upgraded, only
+relocated. Root `dev`/`build`/`preview` remain as thin delegating aliases so the external deploy
+contract (repo-root `npm run build` → repo-root `dist/`) is unaffected. See
+`docs/repo-structure.md` for the full shape and the deferred follow-ups.
 
 ## `infra/docker-compose.yml` — pinned datastore images
 

@@ -33,32 +33,29 @@
   },
   // Scoped to the SDD pipeline control plane specifically — the tooling planner/red/dev/tester/
   // review/security-checker, the ledger, and CI itself actually depend on for a correct verdict —
-  // not literally every ".mjs" under scripts/. `scripts/` also holds a handful of marketing-site /
-  // secret-scanning utilities (og.mjs, render-anime-hero.mjs, smoke.mjs, test-waitlist.mjs,
-  // export-tree.mjs, check-secret-access.mjs(+.test.mjs), check-org-secret-access.mjs(+.test.mjs))
-  // that are a different subsystem entirely (marketing-site rendering/QA, and a pre-install secrets
-  // guard — see ci.yml's separate "Secret-access boundary" step) and own no pipeline-tooling behavior
-  // — that "different subsystem" argument is the actual reason these nine stay excluded, on its own,
-  // independent of whether any of them happens to be clean.
+  // not literally every ".mjs" under scripts/. `scripts/` also holds four secret-scanning utilities
+  // (check-secret-access.mjs(+.test.mjs), check-org-secret-access.mjs(+.test.mjs)) that are a
+  // different subsystem entirely (a pre-install secrets guard — see ci.yml's separate "Secret-access
+  // boundary" step) and own no pipeline-tooling behavior — that "different subsystem" argument is
+  // the actual reason these four stay excluded, on its own, independent of whether any of them
+  // happens to be clean.
+  //
+  // PL-15: this comment previously named nine excluded scripts — the four above, plus five
+  // marketing-site rendering/QA utilities (the OG image renderer, the hero-animation renderer, the
+  // smoke test, the waitlist checker, and the filetree exporter). Those five moved out of scripts/
+  // entirely, into the new apps/site/scripts/ workspace-owned directory; they are no longer present
+  // here at all, let alone excluded from this config. Only the four secret-scanning scripts remain.
   //
   // CORRECTED (PL-04 review pass 1 / W4): this comment previously also claimed all nine "carry
   // pre-existing, unrelated checkJs findings of their own," offered as a second, independent reason to
-  // exclude them. That was only true of five. Re-verified directly here (`npx tsc --noEmit` against
-  // each of the nine, individually and as a group, with this same config's compilerOptions): five
-  // genuinely fail — check-secret-access.test.mjs (6 findings — an `Error.code` access pattern, a
-  // dynamically-typed `chalk`-shaped call), export-tree.mjs (2 — a resvg `fitTo` options-shape
-  // mismatch), render-anime-hero.mjs (8 — `window`/`document`/`requestAnimationFrame` needing the
-  // "dom" lib), smoke.mjs (22 — the same DOM-global gap, throughout a Puppeteer `page.evaluate`
-  // callback, plus two unrelated findings), and test-waitlist.mjs (1 — a dynamic `import()` given a
-  // `URL` instead of a string specifier). The other four — og.mjs, check-secret-access.mjs,
-  // check-org-secret-access.mjs, check-org-secret-access.test.mjs — are clean today and could be
-  // folded into `include` at zero cost; they stay excluded anyway, because the "different subsystem"
-  // reasoning above already justifies it on its own and this config's job is to gate the pipeline
-  // control plane, not to accumulate every clean script in the directory. Folding the five genuinely
-  // dirty files in would mean either fixing code this ticket has no mandate to touch, or leaving this
-  // check permanently red for reasons unrelated to the pipeline — either one defeats "make the command
-  // that claims to check actually check." Extending this config's scope to cover any of the nine is
-  // real, separate future work, not assumed done here.
+  // exclude them. That was only true of five — the five marketing-site scripts named above, none of
+  // which are relevant to this config any longer (PL-15). The four secret-scanning scripts that
+  // remain — check-secret-access.mjs, check-secret-access.test.mjs, check-org-secret-access.mjs,
+  // check-org-secret-access.test.mjs — are clean today and could be folded into `include` at zero
+  // cost; they stay excluded anyway, because the "different subsystem" reasoning above already
+  // justifies it on its own and this config's job is to gate the pipeline control plane, not to
+  // accumulate every clean script in the directory. Extending this config's scope to cover any of
+  // the four is real, separate future work, not assumed done here.
   //
   // Every file listed below DOES type-check clean as of this round (verified: `npx tsc --noEmit -p
   // scripts/tsconfig.json` exits 0) — two real findings surfaced along the way and were fixed, not

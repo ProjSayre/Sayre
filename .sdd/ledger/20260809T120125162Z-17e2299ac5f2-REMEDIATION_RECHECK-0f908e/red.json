@@ -1,0 +1,70 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/repo-structure.test.mjs",
+      "sha256": "b5236c5f529ef52beab28524bd8bcc91bbe0a0930f7af190fdddbbb7a5681588",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-18",
+        "EC-1",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-17",
+        "EC-18",
+        "EC-19",
+        "EC-20",
+        "EC-21",
+        "EC-22",
+        "EC-24"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/repo-structure-verify.mjs",
+      "sha256": "24cb447ee10c2bd3f39a8614b78674eda290d427b3ab2bfff2f31ea92c89249d",
+      "specIds": [
+        "AC-3",
+        "AC-14",
+        "AC-15",
+        "AC-16",
+        "AC-17",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-10",
+        "EC-23",
+        "EC-24"
+      ],
+      "classification": "RED-DEFERRED"
+    }
+  ],
+  "stamp": {
+    "treeHash": "a105a279155e5f90047f31d176b9dc7697ae5a5738ac208dbb30faf5237e6c2f",
+    "headSha": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+    "dirty": true,
+    "writtenAt": "2026-08-09T09:35:03.931Z"
+  }
+}
