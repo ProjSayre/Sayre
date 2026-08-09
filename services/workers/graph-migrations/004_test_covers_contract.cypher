@@ -1,5 +1,9 @@
 // 004_test_covers_contract.cypher
 // W2-07 — Test-node and inferred COVERS contract
+//
+// Layer: logical
+// Targets: neo4j, neptune
+//
 // Purpose: migrate the legacy static/dynamic coverage fields to PRD v5's
 // inferred/measured relationship status and Test coverage_status.
 // Neptune-replayable: YES (portable MATCH/SET/REMOVE data statements only).

@@ -104,10 +104,13 @@ def test_split_statements_drops_empty_and_whitespace_only_statements():
 # --- discover_migrations -------------------------------------------------------------
 
 
+_LOGICAL_HEADER = "// Layer: logical\n// Targets: neo4j, neptune\n"
+
+
 def test_discover_migrations_sorts_by_numeric_version_not_lexical(tmp_path: Path):
-    (tmp_path / "002_second.cypher").write_text("MERGE (:A {uid:'x'});")
-    (tmp_path / "010_tenth.cypher").write_text("MERGE (:B {uid:'x'});")
-    (tmp_path / "009_ninth.cypher").write_text("MERGE (:C {uid:'x'});")
+    (tmp_path / "002_second.cypher").write_text(_LOGICAL_HEADER + "MERGE (:A {uid:'x'});")
+    (tmp_path / "010_tenth.cypher").write_text(_LOGICAL_HEADER + "MERGE (:B {uid:'x'});")
+    (tmp_path / "009_ninth.cypher").write_text(_LOGICAL_HEADER + "MERGE (:C {uid:'x'});")
 
     migrations = discover_migrations(tmp_path)
 
@@ -120,7 +123,7 @@ def test_discover_migrations_sorts_by_numeric_version_not_lexical(tmp_path: Path
 
 
 def test_discover_migrations_ignores_non_conforming_filenames(tmp_path: Path):
-    (tmp_path / "001_ok.cypher").write_text("MERGE (:A {uid:'x'});")
+    (tmp_path / "001_ok.cypher").write_text(_LOGICAL_HEADER + "MERGE (:A {uid:'x'});")
     (tmp_path / "notes.cypher").write_text("// not a migration")
 
     migrations = discover_migrations(tmp_path)
@@ -130,13 +133,22 @@ def test_discover_migrations_ignores_non_conforming_filenames(tmp_path: Path):
 
 def test_discover_migrations_checksum_reflects_file_bytes(tmp_path: Path):
     path = tmp_path / "001_a.cypher"
-    path.write_text("MERGE (:A {uid:'x'});")
+    path.write_text(_LOGICAL_HEADER + "MERGE (:A {uid:'x'});")
     [before] = discover_migrations(tmp_path)
 
-    path.write_text("MERGE (:A {uid:'y'});")
+    path.write_text(_LOGICAL_HEADER + "MERGE (:A {uid:'y'});")
     [after] = discover_migrations(tmp_path)
 
     assert before.checksum != after.checksum
+
+
+def test_discover_migrations_raises_naming_the_file_for_a_missing_header(tmp_path: Path):
+    """EC-11: a `.cypher` file missing `// Layer:` or `// Targets:` is a hard discovery
+    error naming the file, not a silent default."""
+    (tmp_path / "001_no_header.cypher").write_text("MERGE (:A {uid:'x'});")
+
+    with pytest.raises(runner.MigrationHeaderError, match="001_no_header.cypher"):
+        discover_migrations(tmp_path)
 
 
 # --- Real .cypher files: openCypher purity + closed-set guards ----------------------
@@ -146,13 +158,15 @@ def _read(filename: str) -> str:
     return (MIGRATIONS_DIR / filename).read_text()
 
 
-def test_migrations_dir_contains_exactly_the_four_named_files():
+def test_migrations_dir_contains_exactly_the_five_named_files():
+    """W0-02 audit: 005_scope_identity_indexes.cypher joined the set (finding D2)."""
     names = {p.name for p in MIGRATIONS_DIR.glob("*.cypher")}
     assert names == {
         "001_init_node_labels.cypher",
         "002_init_edge_types.cypher",
         "003_constraints_and_indexes.cypher",
         "004_test_covers_contract.cypher",
+        "005_scope_identity_indexes.cypher",
     }
 
 
@@ -165,6 +179,7 @@ def test_each_migration_file_has_a_header_comment_stating_purpose_and_neptune_st
         "002_init_edge_types.cypher": "YES",
         "003_constraints_and_indexes.cypher": "NO",
         "004_test_covers_contract.cypher": "YES",
+        "005_scope_identity_indexes.cypher": "NO",
     }
     for filename, expected_replayability in expectations.items():
         text = _read(filename)
@@ -186,18 +201,21 @@ def test_no_apoc_or_db_procedure_calls_in_any_migration_file():
         "002_init_edge_types.cypher",
         "003_constraints_and_indexes.cypher",
         "004_test_covers_contract.cypher",
+        "005_scope_identity_indexes.cypher",
     ):
         text = _read(filename)
         assert "apoc." not in text, f"{filename} must not use APOC (openCypher only)"
         assert "CALL db." not in text, f"{filename} must not call db.* procedures"
 
 
-def test_only_003_contains_constraint_or_index_ddl():
+def test_only_003_and_005_contain_constraint_or_index_ddl():
+    """W0-02 audit: 005 (the new scope-index migration) joins 003 as physical DDL."""
     ddl_pattern = re.compile(r"\b(CREATE CONSTRAINT|CREATE INDEX)\b")
     assert not ddl_pattern.search(_read("001_init_node_labels.cypher"))
     assert not ddl_pattern.search(_read("002_init_edge_types.cypher"))
     assert not ddl_pattern.search(_read("004_test_covers_contract.cypher"))
     assert ddl_pattern.search(_read("003_constraints_and_indexes.cypher"))
+    assert ddl_pattern.search(_read("005_scope_identity_indexes.cypher"))
 
 
 def test_004_migrates_coverage_contract_without_dropping_last_run():
@@ -285,11 +303,16 @@ class _FakeDriver:
 class _FakePgConn:
     """In-memory stand-in for the tracking-table effects of ensure_tracking_table /
     applied_versions / record_applied, used via monkeypatch below so run_migrations'
-    control flow is tested without a live Postgres."""
+    control flow is tested without a live Postgres. Keyed by `(target, layer,
+    version)` -- the W0-02 audit's tracking-table reshape (AC-5) -- rather than a bare
+    `version`, so a second target's history is tracked independently."""
 
     def __init__(self):
         self.table_ensured = False
-        self.rows: dict[int, tuple[str, str]] = {}  # version -> (filename, checksum)
+        self.rows: dict[tuple[str, str, int], tuple[str, str]] = {}
+
+    def keys_for(self, target: str) -> set[tuple[str, int]]:
+        return {(layer, version) for (t, layer, version) in self.rows if t == target}
 
 
 @pytest.fixture
@@ -299,11 +322,22 @@ def fake_pg(monkeypatch) -> _FakePgConn:
     def fake_ensure_tracking_table(pg_conn: _FakePgConn) -> None:
         pg_conn.table_ensured = True
 
-    def fake_applied_versions(pg_conn: _FakePgConn) -> dict[int, str]:
-        return {version: checksum for version, (_filename, checksum) in pg_conn.rows.items()}
+    def fake_applied_versions(
+        pg_conn: _FakePgConn, *, target: str = "neo4j"
+    ) -> dict[tuple[str, int], str]:
+        return {
+            (layer, version): checksum
+            for (row_target, layer, version), (_filename, checksum) in pg_conn.rows.items()
+            if row_target == target
+        }
 
-    def fake_record_applied(pg_conn: _FakePgConn, migration: MigrationFile) -> None:
-        pg_conn.rows[migration.version] = (migration.filename, migration.checksum)
+    def fake_record_applied(
+        pg_conn: _FakePgConn, migration: MigrationFile, *, target: str = "neo4j"
+    ) -> None:
+        pg_conn.rows[(target, migration.layer, migration.version)] = (
+            migration.filename,
+            migration.checksum,
+        )
 
     monkeypatch.setattr(runner, "ensure_tracking_table", fake_ensure_tracking_table)
     monkeypatch.setattr(runner, "applied_versions", fake_applied_versions)
@@ -311,15 +345,15 @@ def fake_pg(monkeypatch) -> _FakePgConn:
     return conn
 
 
-def test_first_run_applies_all_four_real_migration_files(fake_pg):
+def test_first_run_applies_all_five_real_migration_files(fake_pg):
     driver = _FakeDriver()
 
     results = run_migrations(driver, fake_pg)
 
-    assert [r.version for r in results] == [1, 2, 3, 4]
+    assert [r.version for r in results] == [1, 2, 3, 4, 5]
     assert all(not r.skipped for r in results)
     assert all(r.statements_run > 0 for r in results)
-    assert len(fake_pg.rows) == 4
+    assert len(fake_pg.rows) == 5
     assert len(driver.calls) == sum(r.statements_run for r in results)
 
 
@@ -351,18 +385,22 @@ def test_triple_apply_stays_a_noop(fake_pg):
     run_migrations(driver, fake_pg)
 
     assert len(driver.calls) == calls_after_first
-    assert len(fake_pg.rows) == 4
+    assert len(fake_pg.rows) == 5
 
 
 def test_mutated_after_apply_file_raises_checksum_mismatch(fake_pg, tmp_path: Path, monkeypatch):
     mig_dir = tmp_path
-    (mig_dir / "001_a.cypher").write_text("MERGE (:A {uid:'x', org_id:'0'});")
+    (mig_dir / "001_a.cypher").write_text(
+        "// Layer: logical\n// Targets: neo4j, neptune\nMERGE (:A {uid:'x', org_id:'0'});"
+    )
     driver = _FakeDriver()
 
     run_migrations(driver, fake_pg, mig_dir)
 
     # Mutate the file's bytes after it was applied.
-    (mig_dir / "001_a.cypher").write_text("MERGE (:A {uid:'x', org_id:'1'});")
+    (mig_dir / "001_a.cypher").write_text(
+        "// Layer: logical\n// Targets: neo4j, neptune\nMERGE (:A {uid:'x', org_id:'1'});"
+    )
 
     with pytest.raises(MigrationChecksumMismatchError):
         run_migrations(driver, fake_pg, mig_dir)
@@ -371,6 +409,7 @@ def test_mutated_after_apply_file_raises_checksum_mismatch(fake_pg, tmp_path: Pa
 def test_partial_failure_leaves_no_tracking_row_and_clean_rerun_recovers(fake_pg, tmp_path: Path):
     mig_dir = tmp_path
     (mig_dir / "001_a.cypher").write_text(
+        "// Layer: logical\n// Targets: neo4j, neptune\n"
         "MERGE (:A {uid:'x', org_id:'0'});\nMERGE (:B {uid:'x', org_id:'0'});"
     )
     failing_driver = _FakeDriver(fail_on_statement="MERGE (:B")
@@ -380,7 +419,7 @@ def test_partial_failure_leaves_no_tracking_row_and_clean_rerun_recovers(fake_pg
 
     # Failed mid-file: no tracking row recorded, and only the first (pre-failure)
     # statement was actually issued to Neo4j.
-    assert 1 not in fake_pg.rows
+    assert ("neo4j", "logical", 1) not in fake_pg.rows
     assert failing_driver.calls == ["MERGE (:A {uid:'x', org_id:'0'})"]
 
     # A clean re-run (no failure this time) completes and records it -- no duplicates
@@ -390,7 +429,7 @@ def test_partial_failure_leaves_no_tracking_row_and_clean_rerun_recovers(fake_pg
     results = run_migrations(clean_driver, fake_pg, mig_dir)
 
     assert results[0].skipped is False
-    assert 1 in fake_pg.rows
+    assert ("neo4j", "logical", 1) in fake_pg.rows
     assert clean_driver.calls == [
         "MERGE (:A {uid:'x', org_id:'0'})",
         "MERGE (:B {uid:'x', org_id:'0'})",
@@ -409,7 +448,10 @@ def test_dry_run_mutates_neither_store(fake_pg):
     assert fake_pg.table_ensured is True
 
 
-def test_target_neptune_skips_version_3_and_does_not_record_it(fake_pg):
+def test_target_neptune_skips_physical_files_and_does_not_record_them(fake_pg):
+    """W0-02 audit: both Neo4j-only physical files (003, 005) are skipped for a
+    neptune run, data-driven from their `// Targets:` header, not a hardcoded
+    version list (finding C2)."""
     driver = _FakeDriver()
 
     results = run_migrations(driver, fake_pg, target="neptune")
@@ -419,7 +461,8 @@ def test_target_neptune_skips_version_3_and_does_not_record_it(fake_pg):
     assert by_version[2].skipped is False
     assert by_version[3].skipped is True
     assert by_version[4].skipped is False
-    assert set(fake_pg.rows.keys()) == {1, 2, 4}
+    assert by_version[5].skipped is True
+    assert fake_pg.keys_for("neptune") == {("logical", 1), ("logical", 2), ("logical", 4)}
 
 
 def test_invalid_target_raises_value_error(fake_pg):
@@ -1008,8 +1051,10 @@ def test_real_dry_run_mutates_neither_store(real_infra):
 
 
 @pytestmark_integration
-def test_real_target_neptune_skips_003_and_records_portable_migrations(real_infra):
-    """Edge case: '--target neptune' skips DDL 003 but applies portable 001/002/004."""
+def test_real_target_neptune_skips_physical_ddl_and_records_portable_migrations(real_infra):
+    """Edge case: '--target neptune' skips the Neo4j-only physical DDL (003, 005) but
+    applies the portable logical files (001/002/004), recorded under target='neptune'
+    (W0-02 audit finding C1: history is tracked per (target, layer, version))."""
     driver, pg_conn = real_infra
 
     results = run_migrations(driver, pg_conn, target="neptune")
@@ -1019,9 +1064,12 @@ def test_real_target_neptune_skips_003_and_records_portable_migrations(real_infr
     assert by_version[2].skipped is False
     assert by_version[3].skipped is True
     assert by_version[4].skipped is False
+    assert by_version[5].skipped is True
 
     with pg_conn.cursor() as cur:
-        cur.execute("SELECT version FROM graph_migrations ORDER BY version")
+        cur.execute(
+            "SELECT version FROM graph_migrations WHERE target = 'neptune' ORDER BY version"
+        )
         versions = [row[0] for row in cur.fetchall()]
     assert versions == [1, 2, 4]
 
@@ -1041,9 +1089,11 @@ def test_real_partial_failure_leaves_no_tracking_row_and_clean_rerun_recovers(re
     node from the already-idempotent first (successful) statement."""
     driver, pg_conn = real_infra
     mig_dir = tmp_path
+    header = "// Layer: logical\n// Targets: neo4j, neptune\n"
     (mig_dir / "099_broken.cypher").write_text(
-        "MERGE (:RealPartialFailureTestNode {uid:'x', org_id:'99'});\n"
-        "THIS IS NOT VALID CYPHER AT ALL;\n"
+        header
+        + "MERGE (:RealPartialFailureTestNode {uid:'x', org_id:'99'});\n"
+        + "THIS IS NOT VALID CYPHER AT ALL;\n"
     )
 
     try:
@@ -1062,7 +1112,7 @@ def test_real_partial_failure_leaves_no_tracking_row_and_clean_rerun_recovers(re
 
         # Clean re-run: bad statement removed.
         (mig_dir / "099_broken.cypher").write_text(
-            "MERGE (:RealPartialFailureTestNode {uid:'x', org_id:'99'});\n"
+            header + "MERGE (:RealPartialFailureTestNode {uid:'x', org_id:'99'});\n"
         )
         results = run_migrations(driver, pg_conn, mig_dir)
         applied = {r.version: r for r in results}
@@ -1091,6 +1141,8 @@ def test_real_comment_and_blank_statements_are_not_sent_to_neo4j(real_infra, tmp
     mig_dir = tmp_path
     (mig_dir / "050_comments.cypher").write_text(
         "// a leading comment-only line\n"
+        "// Layer: logical\n"
+        "// Targets: neo4j, neptune\n"
         "\n"
         "   ;\n"
         "MERGE (:RealCommentTestNode {uid:'y', org_id:'50'}); // trailing inline comment\n"

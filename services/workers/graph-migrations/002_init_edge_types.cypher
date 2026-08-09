@@ -1,6 +1,29 @@
 // 002_init_edge_types.cypher
 // W0-02 — Graph DB schema & openCypher migrations
 //
+// Layer: logical
+// Targets: neo4j, neptune
+//
+// W0-02 re-derivation/audit note (finding B): the COVERS anchor below used to carry a
+// `source:'static'` property, but 004_test_covers_contract.cypher REMOVEs `source` and
+// replaces it with `status`. Once 004 has run against a graph, MERGE on this file's old
+// property map no longer matched the existing anchor edge (MERGE keys on the full
+// {org_id, source} map) and re-running 002 against a Postgres-tracker-reset-but-graph-intact
+// environment created a second COVERS anchor edge -- a literal duplicate, in violation of
+// this migration set's idempotency contract. Fixed here by making 002's anchor agree with
+// 004's post-migration shape directly (`status:'inferred'`), so 002 and 004 never disagree
+// again regardless of tracker state. See test_no_migration_statement_writes_a_source_property_on_covers
+// (services/workers/tests/test_graph_migrations_audit.py) for the regression guard.
+//
+// This edit changes this file's bytes/checksum (O-3): any environment that already recorded
+// 002 as applied under the OLD checksum will now raise MigrationChecksumMismatchError on next
+// run, by design -- do not weaken the checksum check to work around it. Operator remedy: if
+// the stale (`source:'static'`) anchor edge still exists in Neo4j, delete it, then run
+// `DELETE FROM graph_migrations WHERE target='neo4j' AND layer='logical' AND version=2;`
+// (adjust `target` for any other target this was applied to) and re-run the migrations --
+// 002 will re-apply and MERGE the corrected anchor. No deployed environment is known to have
+// run these migrations yet (see O-6), so this is expected to be a no-op in practice.
+//
 // Purpose: declare all 13 relationship types in the graph schema by MERGEing one
 // representative anchor edge per type between the reserved schema-anchor nodes created
 // in 001, using the canonical directions/endpoint-labels documented in
@@ -88,9 +111,9 @@ MATCH (a:Module {uid:'__schema_anchor__', org_id:'00000000-0000-0000-0000-000000
       (b:Module {uid:'__schema_anchor__', org_id:'00000000-0000-0000-0000-000000000000'})
 MERGE (a)-[:DEPENDS_ON {org_id:'00000000-0000-0000-0000-000000000000'}]->(b);
 
-// COVERS — Test -> File. `source`/`last_run` back the coverage-freshness computation
-// (last_run intentionally omitted here — nullable for source='static', and Cypher
-// property maps cannot carry an explicit null; absence reads as null).
+// COVERS — Test -> File. `status`/`last_run` back the coverage-freshness computation
+// (last_run intentionally omitted — nullable for status='inferred'; Cypher property maps
+// cannot carry an explicit null, and absence reads as null).
 MATCH (a:Test {uid:'__schema_anchor__', org_id:'00000000-0000-0000-0000-000000000000'}),
       (b:File {uid:'__schema_anchor__', org_id:'00000000-0000-0000-0000-000000000000'})
-MERGE (a)-[:COVERS {org_id:'00000000-0000-0000-0000-000000000000', source:'static'}]->(b);
+MERGE (a)-[:COVERS {org_id:'00000000-0000-0000-0000-000000000000', status:'inferred'}]->(b);

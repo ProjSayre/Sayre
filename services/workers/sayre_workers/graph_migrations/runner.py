@@ -7,11 +7,22 @@ Python driver (new dep, pinned in `pyproject.toml`) for Neo4j and `psycopg` (exi
 dep) for the Postgres version-tracking table.
 
 Idempotency contract (`.pipeline/spec.md` W0-02 "Apply algorithm"):
-  1. `ensure_tracking_table` — idempotent `CREATE TABLE IF NOT EXISTS`.
+  1. `ensure_tracking_table` — idempotent `CREATE TABLE IF NOT EXISTS`, plus an
+     idempotent in-place reshape (add `target`/`layer` columns, re-key to
+     `(target, layer, version)`) for a table that predates the W0-02 audit's
+     per-layer/per-target tracking model.
   2. `discover_migrations` sorted ascending by numeric version (not lexical filename
      order — `010` must sort after `009`/`002`; a missing intermediate version must
-     not crash discovery).
-  3. Per migration, compare its on-disk checksum against the recorded checksum:
+     not crash discovery). Each file's `// Layer:` / `// Targets:` header directives
+     are parsed onto `MigrationFile.layer`/`.targets` — a file missing either header
+     is a hard discovery-time error naming the file (EC-11), not a silent default.
+  3. Per migration, if the run's `target` is not in the file's declared `targets`, it
+     is skipped entirely for this run and not recorded for that target (so a later run
+     against a target it *is* declared for still applies it — the W0-02 audit's
+     finding C1 fix: history is tracked per `(target, layer, version)`, not by
+     `version` alone, so a second target never silently reports "already applied").
+  4. Otherwise, compare its on-disk checksum against the checksum recorded for this
+     file's `(layer, version)` under this run's `target`:
        - already applied, checksum matches -> skip; Neo4j is never touched.
        - already applied, checksum differs -> raise (the file was mutated after being
          applied — a hard error, never a silent re-apply).
@@ -21,12 +32,6 @@ Idempotency contract (`.pipeline/spec.md` W0-02 "Apply algorithm"):
          applied ONLY after every statement in it succeeds. A partial failure leaves
          the tracking row unwritten, so a clean re-run safely re-executes the whole
          (idempotent) file with no duplicates.
-  4. `target == "neptune"` skips any file whose version is in
-     `NEPTUNE_INCOMPATIBLE_VERSIONS` (003 — constraint/index DDL, which Neptune's
-     openCypher implementation does not support) entirely: no Cypher is sent to
-     Neptune, and (per the ticket's `--target neptune` acceptance criterion) no
-     tracking row is recorded for a skipped-by-target file either, so re-running
-     against a real Neo4j target later still applies it.
   5. `dry_run=True` reports the plan (which files would apply vs. skip) without
      running any Cypher against Neo4j or inserting any tracking rows into Postgres.
      `ensure_tracking_table` still runs either way — it is itself idempotent,
@@ -53,9 +58,39 @@ if TYPE_CHECKING:  # pragma: no cover - type-checking only
 logger = logging.getLogger(__name__)
 
 DEFAULT_MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "graph-migrations"
-NEPTUNE_INCOMPATIBLE_VERSIONS = frozenset({3})  # 003 = constraint/index DDL
+
+# Migration-history layers (spec.md Interfaces 2). "logical" data migrations are pure
+# MERGE/MATCH and portable across every target; "physical" migrations are target-specific
+# DDL (constraints/indexes) that may not be portable (Neptune has no CREATE INDEX DDL).
+LOGICAL = "logical"
+PHYSICAL = "physical"
+_LAYERS = (LOGICAL, PHYSICAL)
+
+# Graph targets the runner knows how to apply against. Per-file compatibility is
+# declared by each file's own `// Targets:` header (see `_parse_header`), not by a
+# hardcoded version list — the W0-02 audit's finding C2 fix.
+TARGETS = ("neo4j", "neptune")
 
 _VERSION_PREFIX_RE = re.compile(r"^(\d+)_")
+_LAYER_HEADER_RE = re.compile(r"^//\s*Layer:\s*(.+?)\s*$", re.MULTILINE)
+_TARGETS_HEADER_RE = re.compile(r"^//\s*Targets:\s*(.+?)\s*$", re.MULTILINE)
+_QUOTED_SPAN_RE = re.compile(r"'[^'\n]*'")
+
+
+class MigrationHeaderError(ValueError):
+    """A `.cypher` migration file is missing (or declares an invalid) required
+    `// Layer:` or `// Targets:` header directive (spec.md Interfaces 2 / EC-11).
+    Raised at discovery time, naming the offending file, rather than defaulting
+    silently -- an undeclared file could otherwise be shipped to a target it was
+    never verified against (finding C2/C3)."""
+
+
+class StatementSplitError(ValueError):
+    """Raised instead of silently corrupting a `.cypher` statement whose string
+    literal contains `//` or `;` (EC-15 / finding F4). `split_statements` below is a
+    naive `//`-strip + `;`-split, not a full Cypher parser (a deliberate, documented
+    scope limit -- see spec.md Open Question O-7); this is the fail-loudly guard for
+    the one input shape it cannot safely handle, rather than a silent corruption."""
 
 
 @dataclass(frozen=True)
@@ -65,6 +100,8 @@ class MigrationFile:
     path: Path
     checksum: str  # sha256 hex of file bytes
     statements: list[str]  # split on ';' at statement boundaries, comments/blank stripped
+    layer: str  # "logical" | "physical", parsed from the file's `// Layer:` header
+    targets: frozenset[str]  # targets this file may be applied to, from `// Targets:`
 
 
 @dataclass(frozen=True)
@@ -74,15 +111,47 @@ class AppliedMigration:
     checksum: str
     statements_run: int
     skipped: bool  # True if already applied (checksum matched), dry-run, or target-skipped
+    layer: str
+    target: str
+
+
+def _line_has_marker_inside_quotes(line: str) -> bool:
+    """Heuristic guard for EC-15 / finding F4: True if a `//` or `;` on this line
+    falls inside a single-quoted string literal, where the naive comment-strip /
+    statement-split below would silently corrupt it. Deliberately not a full Cypher
+    string-literal parser (O-7) -- just enough to fail loudly instead of guessing
+    wrong when a future migration's literal (e.g. a URL) contains one of these."""
+    quoted_spans = [match.span() for match in _QUOTED_SPAN_RE.finditer(line)]
+    if not quoted_spans:
+        return False
+    for marker in ("//", ";"):
+        start = 0
+        while True:
+            index = line.find(marker, start)
+            if index == -1:
+                break
+            if any(span_start <= index < span_end for span_start, span_end in quoted_spans):
+                return True
+            start = index + 1
+    return False
 
 
 def split_statements(cypher_text: str) -> list[str]:
     """Strip `//` line comments, split on `;` statement boundaries, and drop any
     resulting blank/whitespace-only statements. No `.cypher` file in this migration
     set uses a string literal containing `//` or `;`, so a naive per-line comment
-    strip + split is sufficient (no Cypher string-literal-aware parser needed)."""
+    strip + split is sufficient for the real files (no Cypher string-literal-aware
+    parser needed, per O-7) -- but a line where that assumption is violated raises
+    `StatementSplitError` naming the line, rather than silently truncating a
+    statement (EC-15)."""
     stripped_lines = []
     for line in cypher_text.splitlines():
+        if _line_has_marker_inside_quotes(line):
+            raise StatementSplitError(
+                "split_statements: a '//' or ';' appears inside a single-quoted string "
+                "literal on this line, which the naive comment-strip/statement-split "
+                f"cannot safely handle without corrupting it: {line!r}"
+            )
         comment_index = line.find("//")
         if comment_index != -1:
             line = line[:comment_index]
@@ -92,12 +161,48 @@ def split_statements(cypher_text: str) -> list[str]:
     return [statement.strip() for statement in joined.split(";") if statement.strip()]
 
 
+def _parse_header(text: str, filename: str) -> tuple[str, frozenset[str]]:
+    """Parse the `// Layer:` / `// Targets:` header directives required on every
+    `.cypher` migration file (spec.md Interfaces 2). Raises `MigrationHeaderError`
+    naming the file and the missing/invalid directive rather than defaulting."""
+    layer_match = _LAYER_HEADER_RE.search(text)
+    if layer_match is None:
+        raise MigrationHeaderError(
+            f"{filename}: missing required '// Layer:' header directive "
+            f"(must declare one of {_LAYERS})"
+        )
+    layer = layer_match.group(1).strip()
+    if layer not in _LAYERS:
+        raise MigrationHeaderError(
+            f"{filename}: '// Layer:' must be one of {_LAYERS}, got {layer!r}"
+        )
+
+    targets_match = _TARGETS_HEADER_RE.search(text)
+    if targets_match is None:
+        raise MigrationHeaderError(
+            f"{filename}: missing required '// Targets:' header directive "
+            f"(comma-separated subset of {TARGETS})"
+        )
+    targets = frozenset(
+        part.strip() for part in targets_match.group(1).split(",") if part.strip()
+    )
+    unknown = targets - set(TARGETS)
+    if unknown or not targets:
+        raise MigrationHeaderError(
+            f"{filename}: '// Targets:' must be a non-empty comma-separated subset of "
+            f"{TARGETS}, got {sorted(targets) if targets else targets_match.group(1)!r}"
+        )
+    return layer, targets
+
+
 def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[MigrationFile]:
-    """Discover `*.cypher` files, parse their numeric version prefix, checksum their
-    raw bytes, and split their statements. Returned list is sorted ascending by the
-    parsed integer version (not lexical filename order), so `010` sorts after
-    `009`/`002` and gaps between versions never crash discovery. Files whose name
-    does not start with `<digits>_` are ignored (not a migration file)."""
+    """Discover `*.cypher` files, parse their numeric version prefix and `// Layer:`
+    / `// Targets:` headers, checksum their raw bytes, and split their statements.
+    Returned list is sorted ascending by the parsed integer version (not lexical
+    filename order), so `010` sorts after `009`/`002` and gaps between versions never
+    crash discovery. Files whose name does not start with `<digits>_` are ignored
+    (not a migration file). A file missing a required header raises
+    `MigrationHeaderError` naming it (EC-11)."""
     migrations: list[MigrationFile] = []
     for path in migrations_dir.glob("*.cypher"):
         match = _VERSION_PREFIX_RE.match(path.name)
@@ -113,7 +218,9 @@ def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[M
         version = int(match.group(1))
         raw_bytes = path.read_bytes()
         checksum = hashlib.sha256(raw_bytes).hexdigest()
-        statements = split_statements(raw_bytes.decode("utf-8"))
+        text = raw_bytes.decode("utf-8")
+        layer, targets = _parse_header(text, path.name)
+        statements = split_statements(text)
         migrations.append(
             MigrationFile(
                 version=version,
@@ -121,6 +228,8 @@ def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[M
                 path=path,
                 checksum=checksum,
                 statements=statements,
+                layer=layer,
+                targets=targets,
             )
         )
 
@@ -129,45 +238,106 @@ def discover_migrations(migrations_dir: Path = DEFAULT_MIGRATIONS_DIR) -> list[M
 
 
 def ensure_tracking_table(pg_conn: "Connection") -> None:
-    """Idempotent `CREATE TABLE IF NOT EXISTS` for the `graph_migrations` version
-    tracker. No `org_id`, no RLS -- this is global infra bookkeeping (graph schema
-    versions are cross-tenant, analogous to Drizzle's own `__drizzle_migrations`
-    table), deliberately NOT a tenant-scoped domain table (see
-    `.pipeline/spec.md` W0-02 Open Question 4 / Interfaces section 7)."""
+    """Idempotent `graph_migrations` version-tracker setup, safe to call against a
+    fresh database, a legacy (single-column `version` primary key) database, or an
+    already-migrated database (EC-3/EC-9). No `org_id`, no RLS -- this is global
+    infra bookkeeping (graph schema versions are cross-tenant, analogous to
+    Drizzle's own `__drizzle_migrations` table), deliberately NOT a tenant-scoped
+    domain table (AC-11)."""
     with pg_conn.cursor() as cur:
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS graph_migrations (
-              version    integer PRIMARY KEY,
-              filename   text NOT NULL,
-              checksum   text NOT NULL,
-              applied_at timestamptz NOT NULL DEFAULT now()
+              target      text        NOT NULL DEFAULT 'neo4j',
+              layer       text        NOT NULL DEFAULT 'logical',
+              version     integer     NOT NULL,
+              filename    text        NOT NULL,
+              checksum    text        NOT NULL,
+              applied_at  timestamptz NOT NULL DEFAULT now(),
+              PRIMARY KEY (target, layer, version)
             )
+            """
+        )
+        # Legacy shape (predates `target`/`layer`, a single-column `version` primary
+        # key): the CREATE TABLE above is a no-op against it, so backfill the missing
+        # columns onto the existing rows (the DEFAULT applies retroactively).
+        cur.execute(
+            "ALTER TABLE graph_migrations "
+            "ADD COLUMN IF NOT EXISTS target text NOT NULL DEFAULT 'neo4j'"
+        )
+        cur.execute(
+            "ALTER TABLE graph_migrations "
+            "ADD COLUMN IF NOT EXISTS layer text NOT NULL DEFAULT 'logical'"
+        )
+        # Re-key to the composite (target, layer, version) primary key, idempotently:
+        # a fresh table already has the right key from the CREATE TABLE above (no-op
+        # here), and an already-migrated table's key already matches too (also a
+        # no-op). Only a genuine legacy (`version`-only PK) table trips the swap.
+        cur.execute(
+            """
+            DO $$
+            DECLARE
+              existing_pk text;
+              pk_is_correct boolean;
+            BEGIN
+              SELECT conname INTO existing_pk
+              FROM pg_constraint
+              WHERE conrelid = 'graph_migrations'::regclass AND contype = 'p';
+
+              SELECT EXISTS (
+                SELECT 1
+                FROM pg_constraint c
+                JOIN pg_attribute a
+                  ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+                WHERE c.conrelid = 'graph_migrations'::regclass
+                  AND c.contype = 'p'
+                GROUP BY c.conname
+                HAVING array_agg(a.attname ORDER BY a.attname) = ARRAY['layer', 'target', 'version']
+              ) INTO pk_is_correct;
+
+              IF NOT COALESCE(pk_is_correct, false) THEN
+                IF existing_pk IS NOT NULL THEN
+                  EXECUTE format('ALTER TABLE graph_migrations DROP CONSTRAINT %I', existing_pk);
+                END IF;
+                ALTER TABLE graph_migrations ADD PRIMARY KEY (target, layer, version);
+              END IF;
+            END $$
             """
         )
     pg_conn.commit()
 
 
-def applied_versions(pg_conn: "Connection") -> dict[int, str]:
-    """Return `{version: checksum}` for every migration already recorded as applied."""
+def applied_versions(
+    pg_conn: "Connection", *, target: str = "neo4j"
+) -> dict[tuple[str, int], str]:
+    """Return `{(layer, version): checksum}` for every migration already recorded as
+    applied against `target` -- keyed by `(layer, version)` because `(target, layer,
+    version)` is now the tracking table's real primary key (AC-5); a given `target`'s
+    view only ever needs its own `layer`/`version` pairs."""
     with pg_conn.cursor() as cur:
-        cur.execute("SELECT version, checksum FROM graph_migrations")
+        cur.execute(
+            "SELECT layer, version, checksum FROM graph_migrations WHERE target = %s",
+            (target,),
+        )
         rows = cur.fetchall()
-    return {version: checksum for version, checksum in rows}
+    return {(layer, version): checksum for layer, version, checksum in rows}
 
 
-def record_applied(pg_conn: "Connection", migration: MigrationFile) -> None:
-    """Record `migration` as applied. `ON CONFLICT DO NOTHING` guards a concurrent
-    duplicate insert (the caller only ever invokes this after confirming the version
-    is not yet applied, but this keeps the statement itself safely idempotent too)."""
+def record_applied(
+    pg_conn: "Connection", migration: MigrationFile, *, target: str = "neo4j"
+) -> None:
+    """Record `migration` as applied against `target`. `ON CONFLICT DO NOTHING`
+    guards a concurrent duplicate insert (the caller only ever invokes this after
+    confirming the (target, layer, version) is not yet applied, but this keeps the
+    statement itself safely idempotent too)."""
     with pg_conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO graph_migrations (version, filename, checksum)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (version) DO NOTHING
+            INSERT INTO graph_migrations (target, layer, version, filename, checksum)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (target, layer, version) DO NOTHING
             """,
-            (migration.version, migration.filename, migration.checksum),
+            (target, migration.layer, migration.version, migration.filename, migration.checksum),
         )
     pg_conn.commit()
 
@@ -207,22 +377,24 @@ def run_migrations(
     migrations_dir: Path = DEFAULT_MIGRATIONS_DIR,
     *,
     dry_run: bool = False,
-    target: str = "neo4j",  # "neo4j" | "neptune"; "neptune" skips NEPTUNE_INCOMPATIBLE_VERSIONS
+    target: str = "neo4j",  # "neo4j" | "neptune"
 ) -> list[AppliedMigration]:
-    if target not in ("neo4j", "neptune"):
-        raise ValueError(f"run_migrations: target must be 'neo4j' or 'neptune', got {target!r}")
+    if target not in TARGETS:
+        raise ValueError(f"run_migrations: target must be one of {TARGETS}, got {target!r}")
 
     ensure_tracking_table(pg_conn)
     migrations = discover_migrations(migrations_dir)
-    recorded = applied_versions(pg_conn)
+    recorded = applied_versions(pg_conn, target=target)  # {(layer, version): checksum}
 
     results: list[AppliedMigration] = []
     for migration in migrations:
-        if target == "neptune" and migration.version in NEPTUNE_INCOMPATIBLE_VERSIONS:
+        if target not in migration.targets:
             logger.info(
-                "Skipping %s (version %d) -- Neo4j-only DDL, not sent to Neptune target.",
+                "Skipping %s (version %d, layer %s) -- not declared for target %s.",
                 migration.filename,
                 migration.version,
+                migration.layer,
+                target,
             )
             results.append(
                 AppliedMigration(
@@ -231,17 +403,20 @@ def run_migrations(
                     checksum=migration.checksum,
                     statements_run=0,
                     skipped=True,
+                    layer=migration.layer,
+                    target=target,
                 )
             )
             continue
 
-        recorded_checksum = recorded.get(migration.version)
+        recorded_checksum = recorded.get((migration.layer, migration.version))
         if recorded_checksum is not None:
             if recorded_checksum == migration.checksum:
                 logger.info(
-                    "Skipping %s (version %d) -- already applied, checksum matches.",
+                    "Skipping %s (version %d) -- already applied to %s, checksum matches.",
                     migration.filename,
                     migration.version,
+                    target,
                 )
                 results.append(
                     AppliedMigration(
@@ -250,23 +425,26 @@ def run_migrations(
                         checksum=migration.checksum,
                         statements_run=0,
                         skipped=True,
+                        layer=migration.layer,
+                        target=target,
                     )
                 )
                 continue
 
             raise MigrationChecksumMismatchError(
                 f"{migration.filename} (version {migration.version}) was already applied "
-                f"with checksum {recorded_checksum!r}, but the file on disk now has "
-                f"checksum {migration.checksum!r}. Migration files must never be edited "
-                "after being applied -- add a new migration file instead."
+                f"to target {target!r} with checksum {recorded_checksum!r}, but the file "
+                f"on disk now has checksum {migration.checksum!r}. Migration files must "
+                "never be edited after being applied -- add a new migration file instead."
             )
 
         if dry_run:
             logger.info(
-                "[dry-run] Would apply %s (version %d, %d statement(s)).",
+                "[dry-run] Would apply %s (version %d, %d statement(s)) to %s.",
                 migration.filename,
                 migration.version,
                 len(migration.statements),
+                target,
             )
             results.append(
                 AppliedMigration(
@@ -275,6 +453,8 @@ def run_migrations(
                     checksum=migration.checksum,
                     statements_run=0,
                     skipped=True,
+                    layer=migration.layer,
+                    target=target,
                 )
             )
             continue
@@ -290,12 +470,13 @@ def run_migrations(
                 session.run(statement)
                 statements_run += 1
 
-        record_applied(pg_conn, migration)
+        record_applied(pg_conn, migration, target=target)
         logger.info(
-            "Applied %s (version %d, %d statement(s)).",
+            "Applied %s (version %d, %d statement(s)) to %s.",
             migration.filename,
             migration.version,
             statements_run,
+            target,
         )
         results.append(
             AppliedMigration(
@@ -304,6 +485,8 @@ def run_migrations(
                 checksum=migration.checksum,
                 statements_run=statements_run,
                 skipped=False,
+                layer=migration.layer,
+                target=target,
             )
         )
 
