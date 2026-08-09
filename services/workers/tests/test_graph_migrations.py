@@ -1192,6 +1192,11 @@ def test_real_cli_status_and_dry_run_do_not_mutate(real_infra):
     with pg_conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM graph_migrations")
         (row_count,) = cur.fetchone()
+    # Commit to release the ACCESS SHARE lock this SELECT took -- otherwise it
+    # blocks the next subprocess's own ensure_tracking_table() if that needs an
+    # ACCESS EXCLUSIVE lock (its PK-reshape ALTER TABLE), exactly the deadlock
+    # applied_versions() had (see runner.py's matching fix).
+    pg_conn.commit()
     assert row_count == 0, "--status must not write tracking rows"
 
     dry_run_result = subprocess.run(
