@@ -1,0 +1,35 @@
+# Fake self-hosted OpenAI-compatible endpoint for the W3-07 network-isolation
+# check (security-gates.yml's provider-network-isolation-test job). Not part
+# of the normal dev stack (infra/docker-compose.yml) — this is CI/local-only
+# test infrastructure standing in for a customer's self-hosted model server.
+#
+# Explicit project name: Compose defaults the project name to the containing
+# directory ("infra"), which this file shares with docker-compose.yml. Without
+# this, `docker compose -f infra/docker-compose.test-selfhosted.yml down
+# --remove-orphans` treats the real dev stack's containers (sayre-postgres,
+# sayre-neo4j, sayre-redis, sayre-localstack) as orphans of the SAME project
+# and removes them too — confirmed the hard way while building this fixture.
+# Their named volumes (infra_postgres_data etc.) survive a container removal,
+# but there's no reason to risk it twice.
+#
+# Run from repo root:
+#   docker compose -f infra/docker-compose.test-selfhosted.yml up -d
+name: sayre-test-selfhosted
+
+services:
+  fake-self-hosted-model:
+    image: python:3.12-slim
+    working_dir: /fixture
+    volumes:
+      - ../services/workers/tests/fixtures/fake_openai_endpoint.py:/fixture/fake_openai_endpoint.py:ro
+    command: ["python", "fake_openai_endpoint.py", "9999"]
+    ports:
+      - '9999:9999'
+    healthcheck:
+      # The fixture only implements POST /chat/completions (see
+      # fake_openai_endpoint.py) — a plain TCP connect is what "up" means
+      # here, not a specific HTTP response.
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 9999), timeout=2).close()"]
+      interval: 2s
+      timeout: 2s
+      retries: 10

@@ -1,0 +1,133 @@
+name: Security & Architecture Gates
+
+# These jobs encode acceptance criteria that are explicitly called out as
+# CI-enforced in the backlog, not just "code review should catch this":
+#   - W3-07: self-hosted model provider makes zero outbound calls
+#            (release-blocking)
+#
+# W0-03 (route/handler thinness), W0-07 (secrets loader), and
+# W0-05/W2-06/W6-04 (RLS + tenant isolation) are deliberately NOT jobs in
+# this file — all three are already proven elsewhere:
+#   - W0-03: services/core/.eslintrc.json's `overrides` block already
+#     enforces `max-statements: 10` + a `no-restricted-imports` boundary on
+#     `src/routes/**/*.ts` (excluding tests), verified by its own dedicated
+#     test (src/routes/lintGate.test.ts) and run on every push via
+#     ci.yml's "core — lint" step. scripts/ci/check-route-thinness.sh
+#     duplicated this badly (whole-file line count instead of per-handler
+#     statement count) and has been deleted rather than fixed.
+#     NOTE: that override's `files` glob covers src/routes/** only, not
+#     src/mcp/** — CLAUDE.md says the same rule should apply to MCP
+#     handlers too, and today it doesn't. Naively adding
+#     "src/mcp/**/*.ts" to the glob was tried and reverted: it fails 3
+#     already-reviewed files (mcp/rateLimit.ts's `consume`,
+#     mcp/toolExecution.ts's `executeMcpTool`, mcp/gateway.ts's
+#     `createServer`) that aren't route/tool handlers at all — they're the
+#     shared rate-limiting/error-normalization/registration infrastructure
+#     the actual thin `.registerTool(...)` callbacks delegate into, which
+#     is exactly what W0-03 wants, not a violation of it. ESLint's
+#     `max-statements` is file/function-scoped, not call-site-scoped, so it
+#     can't distinguish "the last argument to .registerTool(...)" from
+#     "any other function in this file" the way a real fix would need to.
+#     Closing this gap needs either a custom ESLint rule (AST-aware,
+#     checking only the last-argument callback of `.registerTool()`/
+#     `.get()`/`.post()`-style calls) or a deliberate file-split — left
+#     as a follow-up, not force-fixed here.
+#   - W0-07 / W0-05/W2-06/W6-04: see ci.yml's "Secret-access boundary" and
+#     "core — RLS"/"core — test" steps — a second copy here would just
+#     double CI minutes for the exact same assertions on every push.
+# This workflow only carries checks that don't exist anywhere else yet.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------
+  # W0-07 — Secrets convention: getSecret()/get_secret() is the only
+  # allowed path to a secret value.
+  #
+  # REMOVED (not just disabled): this duplicated a check that already
+  # exists and already runs in ci.yml's "Secret-access boundary" step
+  # (npm run check:secret-access / check:org-secret-access, backed by
+  # scripts/check-secret-access.mjs + check-org-secret-access.mjs). That
+  # implementation correctly excludes build artifacts (.next/, dist/,
+  # node_modules/) and points at the real loader files
+  # (packages/config/src/{config,secrets}.ts,
+  # services/workers/sayre_workers/config/{config,secrets}.py).
+  # scripts/ci/check-secrets-loader.sh pointed at the wrong paths and,
+  # run as-is, flagged thousands of false positives inside compiled
+  # apps/web/.next output — it has been deleted rather than fixed, since
+  # a correct version already exists.
+  # ---------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------
+  # W3-07 — Model Provider Adapter: self-hosted org must make ZERO
+  # outbound calls to any third-party model endpoint. This is explicitly
+  # release-blocking in the PRD (§4.2 / §4.6 "Structural Data-Sovereignty
+  # Verification"), so it runs with network egress locked down and fails
+  # the build (not just the test) if anything reaches out.
+  #
+  # The adapter that actually makes outbound model calls lives in
+  # services/workers (Python) — sayre_workers/model_provider/
+  # openai_compatible_adapter.py, per CLAUDE.md's ModelProvider boundary —
+  # not services/core (Node). The original draft of this job targeted
+  # services/core with a `test:provider-network-isolation` script that
+  # never existed; that was the wrong service, not just a missing script.
+  # Retargeted, built, and verified end-to-end locally:
+  #   - infra/docker-compose.test-selfhosted.yml stands up a stdlib-only
+  #     fake OpenAI-compatible endpoint
+  #     (services/workers/tests/fixtures/fake_openai_endpoint.py).
+  #   - services/workers/scripts/run_provider_network_isolation_check.py
+  #     drives the real OpenAICompatibleModelProvider adapter (provider=
+  #     "openai_compatible", the actual self-hosted selector — not the
+  #     "self_hosted" string the original draft used, which isn't a real
+  #     provider value anywhere in the code) against that fixture and exits
+  #     non-zero on any failure.
+  #   - MODEL_ENDPOINT is the OpenAI-SDK-style API root
+  #     (http://localhost:9999/v1); the SDK itself appends
+  #     /chat/completions — the original draft's endpoint already included
+  #     that suffix, which would have double-appended the path and 404'd.
+  # scripts/ci/run-network-isolated.sh and assert-no-egress.sh were already
+  # correct and needed no changes.
+  # ---------------------------------------------------------------------
+  provider-network-isolation-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Install dependencies
+        working-directory: services/workers
+        run: poetry install
+
+      - name: Start a fake self-hosted OpenAI-compatible endpoint
+        run: docker compose -f infra/docker-compose.test-selfhosted.yml up -d --wait
+
+      - name: Run adapter with network egress denylisted except localhost
+        working-directory: services/workers
+        run: ../../scripts/ci/run-network-isolated.sh -- poetry run python scripts/run_provider_network_isolation_check.py
+        env:
+          MODEL_ENDPOINT: http://localhost:9999/v1
+
+      - name: Assert zero outbound calls to Anthropic/OpenAI hosts
+        run: ./scripts/ci/assert-no-egress.sh anthropic.com openai.com
+
+      - name: Stop the fake endpoint
+        if: always()
+        run: docker compose -f infra/docker-compose.test-selfhosted.yml down --volumes
+
+  gate:
+    if: always()
+    needs: [provider-network-isolation-test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "A security/architecture gate failed."
+            exit 1
+          fi
