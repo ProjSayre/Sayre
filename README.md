@@ -1,74 +1,53 @@
-# sayre_ — marketing site
+# Sayre
 
-Static marketing site for Sayre, an engineering memory graph for developers and AI agents.
-The previously staged interactive prototype remains in source for possible future use, but
-it is not linked or shipped as a production route.
+Sayre is an AI-powered codebase ontology and visualization platform. It parses a repository into
+a graph (Neo4j, moving to Amazon Neptune at scale) and renders Technical, Product, and Onboarding
+tree views for different stakeholders — engineers, architects, PMs, and new hires.
 
-Spec: `Documents/Spec/SAYRE_FRONTEND_SPEC.md` · Design system: `Design System/SAYRE_DESIGN_SYSTEM.md`
+This repository is a monorepo: the product platform (frontend, core API, realtime gateway, async
+worker fleet, shared packages) and the marketing site each live in their own workspace member
+under a shared root.
 
-## Stack
+## Repo layout
 
-Vite + React 18 + TypeScript · react-router-dom · d3-hierarchy (layout math only) ·
-hand-rolled SVG canvas · vanilla CSS custom properties. Runtime dependency budget is
-capped at `react`, `react-dom`, `react-router-dom`, `d3-hierarchy`.
+| Path | What it is |
+|---|---|
+| `apps/site` | Vite/React marketing site (sayre.pages.dev) |
+| `apps/web` | Next.js product visualization client (Technical/Product/Onboarding tree canvas) |
+| `services/core` | Node.js/TypeScript core API + service layer + Graph Query Service + BullMQ integration jobs |
+| `services/gateway` | WebSocket gateway for realtime fan-out (Redis pub/sub) |
+| `services/workers` | Python/FastAPI async worker fleet (ingestion, semantic enrichment, retrieval/RAG) |
+| `packages/` | Shared TypeScript packages (graph schema, config, shared types, workspace packs) |
+| `infra/` | docker-compose and pinned service images for local development |
+| `docs/` | Architecture reference, product spec, design system, and migration-trigger detail |
+| `scripts/` | The SDD pipeline control plane, secret-scanning gates, and one product QA script |
+| `.sdd/` | The runtime-neutral definition of the planner → red → dev → tester → review → security pipeline, plus its durable ledger |
+| `security-attacker-agents/` | The registered attacker briefs the security-checker stage runs against a change |
 
-## Develop
+See `docs/repo-structure.md` for the full directory map, why the marketing site keeps deploying
+from the repo root, and the follow-ups this restructure deliberately deferred.
+
+## Run it
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173  (routes: / and /privacy; /demo redirects home)
-npm run build      # tsc --noEmit + vite build → dist/
-npm run preview    # serve the production build
-npm run og         # regenerate public/og.png (dev-only script; commit the output)
-npm run hero:render # regenerate the prerecorded Anime hero media (requires Chromium + FFmpeg)
+npm run dev             # marketing site dev server (http://localhost:5173)
+npm run dev:workspaces  # the product platform (web + core + gateway) via turbo
+npm run build           # marketing site production build → repo-root dist/
+npm run test:workspaces # test every workspace package via turbo
 ```
 
-The Anime handoff is archived under `design/handoffs/anime-hero-animation/`.
-The renderer captures it deterministically into one-shot MP4/WebM files and
-responsive WebP stills; its prototype React/Babel runtime is never shipped.
-If no compatible browser is installed, install Puppeteer's headless shell with
-`npm exec puppeteer -- browsers install chrome-headless-shell@stable`.
+`npm run dev` / `npm run build` / `npm run preview` at the repo root are thin delegating aliases
+to the marketing site's own scripts (`apps/site/package.json`) — their names and behavior are
+unchanged from before this repository had a monorepo root, because they are load-bearing for the
+Cloudflare Pages deploy and for muscle memory. See `apps/site/README.md` for everything specific
+to the marketing site, and `CLAUDE.md` for the product platform's stack, structure, and
+verification order.
 
-## Configuration (`src/config.ts`)
+## Where to read next
 
-| const | notes |
-|---|---|
-| `WAITLIST_ENDPOINT` | Google Form URL **or** Formspree-style JSON endpoint. **Must be set before any email campaign.** While empty: dev builds log the payload and fake success; production builds show a mailto fallback and never fake success. |
-| `GOOGLE_FORM_ENTRIES` | only for Google Form mode: the form's `entry.NNN` ids for email / company / source. |
-| `CONTACT_EMAIL` | mailto target for `contact` / fallbacks. |
-| `SITE_URL` | absolute base for OG tags (also hardcoded in `index.html` — keep in sync). |
-| `PLAUSIBLE_DOMAIN` | optional; empty = no analytics script injected. |
-
-### Waitlist: Google Form mode (accepted tradeoff)
-
-The site's two-step waitlist form mirrors the team's Google Form and posts
-into it. Name and email are required on step one; company, website, team size,
-tools, interest, referral source, and notes are optional on step two. Both
-Google Form questions that support *Other* expose a matching free-text field.
-The site's internal `source` tag is also reported through the form's
-"How did you hear about us?" *Other* slot as `site: <source>`; a
-visitor-supplied Other answer is combined with that tag.
-
-Google Forms sends no CORS headers, so the **browser cannot read Google's
-response** — the site shows success whenever the request completes, even if
-Google silently rejected it (deleted form, closed responses, changed entry
-ids or option strings, a question flipped to required). This is a deliberate
-tradeoff (team decision 2026-07-11) for a free endpoint with responses in a
-Sheet.
-
-Mitigation: run **`npm run test:waitlist`** periodically — Node *can* read the
-response, so the script submits a complete test row exactly as the site does
-and fails loudly on any of the above. Run it after ANY edit to the Google Form
-and before/during email campaigns, then delete the test rows from Responses.
-If the form's questions change, update `GOOGLE_FORM` in `src/config.ts`
-(option strings must match verbatim).
-
-## Deploy
-
-Any static host. The SPA needs a fallback rewrite so `/privacy` resolves, plus a temporary redirect from `/demo` to `/`:
-
-- **Vercel** — `vercel.json` contains both the temporary demo redirect and SPA rewrite.
-- **Cloudflare Pages / Netlify** — `public/_redirects` contains the same redirect and fallback.
-
-`public/og.png` is a committed static file (1200×630), not produced by `npm run build`.
-Regenerate with `npm run og` after visual changes and commit the result.
+- `docs/repo-structure.md` — the directory map and the deploy-compatibility shims this restructure
+  relies on.
+- `CLAUDE.md` — product architecture, stack, structure, and the non-negotiable architecture rules.
+- `AGENTS.md` — the entry point for any coding agent working in this repository, including the
+  pipeline commands and the branch policy for autonomous ticket work.

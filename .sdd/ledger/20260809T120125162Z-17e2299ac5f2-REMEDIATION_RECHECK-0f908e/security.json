@@ -1,0 +1,10 @@
+{
+  "verdict": "PASS",
+  "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+  "stamp": {
+    "treeHash": "0f19b81e1b1d25d3a9fd01be48647a9fc151a70de59413a8b1eed23c05c58c57",
+    "headSha": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+    "dirty": true,
+    "writtenAt": "2026-08-09T12:06:50.181Z"
+  }
+}

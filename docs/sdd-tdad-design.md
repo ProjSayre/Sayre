@@ -136,7 +136,7 @@ documentation, which is most of the "easy to use" requirement.
 
 - Commit `AGENTS.md`; delete `.agents/` and `.codex/agents/`. **Not `.codex/` itself** — despite the
   name it is a 1.4 GB design workspace (the Blender hero pipeline feeding
-  `scripts/render-anime-hero.mjs`, design direction docs, UI reference assets), never in git and
+  `apps/site/scripts/render-anime-hero.mjs`, design direction docs, UI reference assets), never in git and
   unrecoverable if deleted. Its ignore rule moves from `.git/info/exclude` to `.gitignore` so it
   protects every cofounder rather than one machine — D-007 already flags repo weight as a watch item.
 - Rewrite `AGENTS.md`. It currently states *"the current checkout is a Vite/React site"* — half-true

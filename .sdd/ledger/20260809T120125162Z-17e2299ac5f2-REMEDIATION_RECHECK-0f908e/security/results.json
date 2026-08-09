@@ -1,0 +1,1125 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+  "baseline_run_id": "20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8",
+  "generated_at": "2026-08-09T12:24:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "UNVERIFIED": 5,
+      "PASS": 15,
+      "FAIL": 6,
+      "NOT_APPLICABLE": 13
+    },
+    "result_transitions": {
+      "UNCHANGED": 35,
+      "RESOLVED": 3,
+      "FIRST_OBSERVATION": 1
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 38,
+      "NOT_COMPARABLE": 1
+    },
+    "finding_statuses": {
+      "RESOLVED": 3,
+      "OPEN": 6
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-15's diff touches any tenant/org_id stamping, RLS policy, or persistence-boundary code.",
+      "evidence": [
+        "`git diff HEAD --stat -- 'services/**' 'packages/**' 'apps/web/**'` returns empty this session. The 139 changed paths are entirely file moves/renames, root manifests, CI/gitignore, and Markdown docs."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- 'services/**' 'packages/**' 'apps/web/**'. Read-only; nothing created.",
+      "code_references": [
+        "services/core/src/security/tenantIsolation.penetration.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether PL-15's diff introduces any route/resolver/graphology code duplicating server-side RBAC filtering.",
+      "evidence": [
+        "Diff contains no services/core/src/routes, services/core/src/graph-query, services/gateway, or graphology-adjacent change of any kind. apps/web/** touched only in package.json's description string and one comment line in .claude/skills/redteam-ux/driver.mjs."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only. Read-only; nothing created.",
+      "code_references": [
+        "services/core/src/services/technicalTreeService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK: re-derived this stage's own prior CRITICAL FAIL from disk, not from review's or the hand-fix's self-report. Read both flagged files in full; independently swept all 20 docs/audits/** files fresh for value-fragment and location-citation patterns, including the specific masked-prefix strings this stage's own first pass observed pre-redaction.",
+      "evidence": [
+        "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:142 now reads `NEO4J_AUTH=<redacted>` — zero characters of the real value remain, confirmed by direct read.",
+        "The exact `infra/New Text Document.txt:23` line citation this stage's prior pass never itself flagged as a separate issue, but review pass 2 correctly identified as a sibling reconnaissance vector, is gone from line 139 (now reads \"(5590 bytes) — identical size and content to `infra/.env` (5590 bytes); the credential's exact line location was removed before this snapshot entered git\").",
+        "Full repo-wide grep for the ORIGINAL masked-prefix fragments this stage's own first pass read pre-redaction (sk-ant-api03, sk-proj-S5Gn, 1911e9, 81edd2, ATOAvQ, gyBmvR, 61549a, 9f8e7d, CC@101, the Proj...w0rd pattern, any `neo4j/<nonplaceholder>` value, any PEM body characters): zero hits anywhere in docs/audits/**.",
+        "Independently re-ran `node --test scripts/repo-structure.test.mjs` (34/34) and `node scripts/check-red-integrity.mjs` (clean) against the live tree — both confirm the file's AC-9 digest pin matches its current, redacted content, not a stale pre-redaction hash."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "FAIL",
+      "result_transition": "RESOLVED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-212a3867c924",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8",
+        "first_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "FIXED this round (coordinator hand-fix under /re-gate, applying review pass 2's five-item list): docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:142 redacted to zero characters; the exact line citation dropped. Independently re-reproduced against the fixed content this session, not accepted on review's or the hand-fix's account. See SEC-02 v1 for the file-specific detail.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:110-153 directly. Repo-wide grep for the nine specific pre-redaction fragment strings this stage's own first pass recorded. node --test scripts/repo-structure.test.mjs; node scripts/check-red-integrity.mjs. Nothing created; nothing to clean up.",
+      "code_references": [
+        "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:138-145",
+        "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:26-48",
+        "docs/audits/architecture-assessment-2026-07.md:121-137",
+        "scripts/check-secret-access.mjs:20 (SOURCE_EXTENSION)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any webhook receiver code.",
+      "evidence": [
+        "No services/core/src/webhooks/** changes in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only. Read-only; nothing created.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any ingestion worker / scratch-clone lifecycle code.",
+      "evidence": [
+        "No services/workers/** changes in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only. Read-only; nothing created.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Read the two new scripts' spawnSync call sites and the two new CI steps for shell/command injection from untrusted input.",
+      "evidence": [
+        "scripts/repo-structure.test.mjs: git()/runNpm() (lines 89-109), the tsc spawn (line 685), and the check-secret-access.mjs spawn (line 1233) all pass fixed, array-form arguments — every argument is a bare static token (test/npm-script names, --workspace flags), none built from diff content, env vars, or CLI input. `shell: process.platform === 'win32'` is present only to satisfy Windows' npm.cmd-shim requirement (documented inline at line 95-97), not to enable string interpolation — confirmed no argument contains a space or shell metacharacter.",
+        "scripts/repo-structure-verify.mjs: run() (line 167-183) spawns items from a fixed, hardcoded RUNNABLE array (literal argv arrays defined in-file, e.g. [\"npm\",\"run\",\"build\",\"--workspace\",\"@sayre/site\"]) — not derived from user/CLI input beyond an --only filter that only INDEXES into that fixed array, never constructs a new command.",
+        "Both new ci.yml `run:` lines (`npm run build --workspace @sayre/site`, `npm run test:repo-structure`) are static literal strings — zero `${{ }}` GitHub Actions expression interpolation of any kind, confirmed via direct read.",
+        "apps/site/vite.config.ts's outDir shim (\"../../dist\") is a static string literal, not derived from any request/input; it resolves to the same repo-root dist/ the pre-move config implicitly used (root vite.config.ts's prior default outDir also resolved to repo-root dist/) — no new writable-path surface introduced by the relocation itself."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read scripts/repo-structure.test.mjs:60-109,680-690,1225-1240; scripts/repo-structure-verify.mjs:150-183; .github/workflows/ci.yml:60-66,199-204; apps/site/vite.config.ts in full, directly.",
+      "code_references": [
+        "scripts/repo-structure.test.mjs:89-109",
+        "scripts/repo-structure-verify.mjs:167-183",
+        ".github/workflows/ci.yml:65-66,203-204",
+        "apps/site/vite.config.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Searched this diff's new/moved runtime code, scripts, and tooling for direct secret reads or alternate credential paths outside the designated loader.",
+      "evidence": [
+        "`npm run check:secret-access` re-run this session against the full current tracked-file set (post-move): clean, zero violations. This gate's scan (`git ls-files`-derived) covers every moved apps/site/** file and both new scripts/repo-structure*.mjs files under their new/current paths.",
+        "check-secret-access.mjs's own ALLOWLIST (4 designated-loader entries + 1 test-fixture entry) is untouched by this diff and contains no moved path (EC-11's claim, independently confirmed via `git diff HEAD -- scripts/check-secret-access.mjs`: empty)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "npm run check:secret-access; git diff HEAD -- scripts/check-secret-access.mjs.",
+      "code_references": [
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|scripts/check-secret-access.mjs's new ALLOWLIST entry for scripts/guard-checker-readonly.test.mjs — mechanically whole-file and permanent, not scoped to the one sanctioned line (PL-13 new surface)|v2-allowlist-whole-file-residual",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-secret-access.mjs's new ALLOWLIST entry for scripts/guard-checker-readonly.test.mjs — mechanically whole-file and permanent, not scoped to the one sanctioned line (PL-13 new surface)",
+      "attack_path_version": "v2-allowlist-whole-file-residual",
+      "attempt": "Re-confirmed the persisting residual (FND-b1187a8efdf6) is unaffected by PL-15 — neither scripts/check-secret-access.mjs nor scripts/guard-checker-readonly.test.mjs is in this diff. Carried forward on its merits per the coordinator's instruction rather than re-derived from scratch.",
+      "evidence": [
+        "`git diff HEAD --name-only` confirms neither file appears in PL-15's 139-path diff. The whole-file ALLOWLIST.has(file) mechanism (check-secret-access.mjs:1846-1852) is unchanged, and the exempted file's sanctioned process.env access (line 233, TMP/TEMP/TMPDIR child-process env spread) is unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-b1187a8efdf6",
+        "status": "OPEN",
+        "first_seen_run_id": "20260809T065405029Z-010b2fe50c72-PR_DELTA-877e84",
+        "first_seen_commit": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged from baseline: add a narrow, pattern-scoped suppression (keyed to a specific line/pattern hash rather than a whole file) or a recurring content-hash assertion on the ALLOWLISTed file so drift is caught. Persisting, out of PL-15's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "git diff HEAD --name-only | grep -E \"check-secret-access|guard-checker-readonly.test\"; read scripts/check-secret-access.mjs:6-18,1846-1852.",
+      "code_references": [
+        "scripts/check-secret-access.mjs:6-18,1846-1852",
+        "scripts/guard-checker-readonly.test.mjs:227-261"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md (PL-15 newly-tracked audit report)|v1-live-credential-verbatim",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md (PL-15 newly-tracked audit report)",
+      "attack_path_version": "v1-live-credential-verbatim",
+      "attempt": "Re-read docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:138-153 in full against this stage's own prior finding, independently, not trusting review pass 3's or the hand-fix's account.",
+      "evidence": [
+        "Line 142 now renders `NEO4J_AUTH=<redacted>` — confirmed by direct read this session, zero real characters.",
+        "Line 139's file-reference line no longer cites an exact line number for the credential (previously `infra/New Text Document.txt:23`) — dropped, sizes retained.",
+        "Lines 144-151 carry a \"PL-15 redaction note (round 3)\" explaining the two prior insufficient rounds and stating the placeholder now carries zero characters of the actual value — an honest, in-file record of the redaction history rather than a silent edit.",
+        "Grep for `New Text Document\\.txt:[0-9]`, `\\.env:[0-9]`, and the nine specific pre-redaction fragment strings across all of docs/audits/**: zero hits."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "FAIL",
+      "result_transition": "RESOLVED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-77eaa803b917",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8",
+        "first_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "FIXED this round: the credential fence redacted to zero characters (attempt 3 of dev's own loop, per spec.md's AMENDMENT ROUND 2), and the sibling `:23` exact-line-citation vector review pass 2 separately caught was dropped by the coordinator's hand-fix (spec.md AMENDMENT ROUND 3). Independently re-verified against the current file content this session.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:110-153 directly.",
+      "code_references": [
+        "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md:138-145"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md (PL-15 newly-tracked audit report)|v2-masked-live-secret-inventory",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md (PL-15 newly-tracked audit report)",
+      "attack_path_version": "v2-masked-live-secret-inventory",
+      "attempt": "Re-read docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:26-64, the index's §P0-5 (deep-audit-2026-07-31.md:89-125), and the architecture-assessment-2026-07.md:118-142 corroborating passage in full, independently.",
+      "evidence": [
+        "audit-15-secrets-deps.md's C-1 table (lines 35-49) is now `| Secret | Category |` — two columns, names and generic categories only. No Line, no Real?/liveness tag, no Masked-value column of any kind. A \"PL-15 redaction note (round 3, final)\" (lines 51-60) explicitly records that the table used to carry per-row line numbers, REAL/live tags, and truncated value fragments, and that all three were removed because \"any characters of an actual live credential are a durable disclosure once committed to git history, regardless of how few.\"",
+        "The index's §P0-5 (deep-audit-2026-07-31.md:89-94), which this stage's prior pass did not itself examine as a separate location (review pass 2 caught it independently), previously rendered a `| Line | Secret |` table mapping exact infra/New Text Document.txt line numbers to all 13 secrets. It is now a single-column `| Secret |` table (lines 106-113), with an explicit note that \"exact source-file line locations were removed before this snapshot was first committed to git.\"",
+        "architecture-assessment-2026-07.md:139-142 carries its own \"PL-15 redaction note\" pointing at audit-15's generalized inventory rather than repeating any location/value detail itself — unchanged in substance from this stage's prior pass, re-confirmed.",
+        "Grep across all 20 docs/audits/** files for `Real\\?|Masked|Line \\|` and for the location-citation patterns: the only remaining hits are the verdict heading \"ARE THERE REAL SECRETS\" and the redaction notes' own prose describing what USED to be present (both benign, read in full to confirm).",
+        "The two documented non-secret exemptions (audit-15:92, the methodology pattern list of regex literals; audit-15:94, the literal fake fixture string `'sk-proj-secret-looking-value'` used as a negative test fixture in application code) independently read and confirmed genuinely benign — neither is real secret material."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "FAIL",
+      "result_transition": "RESOLVED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-ef8585eb74bf",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260809T104534944Z-17e2299ac5f2-PR_DELTA-b175a8",
+        "first_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "FIXED this round: audit-15's C-1 table generalized to Secret|Category (dev attempt 3); the index's §P0-5 line-to-secret table generalized to names-only, and audit-18's exact line citations dropped (coordinator hand-fix under /re-gate, review pass 2's items 1-2). Independently re-verified against the current file content this session across all three locations, not just the two this stage's prior pass named.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Read docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:1-125, deep-audit-2026-07-31.md:86-125, architecture-assessment-2026-07.md:118-142 directly. grep -n \"REAL|Real\\?|Masked|Line \\|\" across docs/audits/**.",
+      "code_references": [
+        "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:26-64",
+        "docs/audits/deep-audit-2026-07-31.md:89-125",
+        "docs/audits/architecture-assessment-2026-07.md:118-142"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Verified the SEC-02 exposure (and every other newly-tracked audit doc) cannot reach a browser bundle, and that no server-only secret is newly wired into apps/site's client code by this diff.",
+      "evidence": [
+        "docs/audits/** sits entirely outside apps/site/ (the only directory Vite builds from) — not an import, asset, or public/ path reachable by the site build. apps/site/vite.config.ts's root is implicitly apps/site itself; docs/ is two directories up.",
+        "Every apps/site/src/** file is byte-identical to its pre-move content (red/review's digest-pinned tests, independently re-confirmed passing this session via `node --test scripts/repo-structure.test.mjs`, 34/34) except vite.config.ts (build-output path only) and heroTreeData.ts (a comment) — no new client-side code path in this diff at all."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node --test scripts/repo-structure.test.mjs; read apps/site/vite.config.ts.",
+      "code_references": [
+        "apps/site/vite.config.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-04-relevant code in this diff.",
+      "evidence": [
+        "No logging/metrics/tracing code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-05-relevant code in this diff.",
+      "evidence": [
+        "No persistence/storage-access code in this diff (the SEC-02 finding is about a doc entering git, not about a service's own credential storage/access-control layer, which this check targets)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-06-relevant code in this diff.",
+      "evidence": [
+        "No rotation/cache-invalidation code in this diff. (Manual rotation of the 13 live secrets SEC-02 documents is a required real-world remediation, not something this check evaluates about the diff's own code.)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-07-relevant code in this diff.",
+      "evidence": [
+        "No worker/sandbox code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-11-relevant code in this diff.",
+      "evidence": [
+        "No tenant deletion/offboarding code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-12-relevant code in this diff.",
+      "evidence": [
+        "No backup/restore code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-13-relevant code in this diff.",
+      "evidence": [
+        "No export/support-tooling code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SEC-14-relevant code in this diff.",
+      "evidence": [
+        "No detection/alerting code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "139 staged paths of the PL-15 repo-restructure diff (apps/site/** relocation, docs/audits/** newly tracked, docs/design-system|product/** relocations, package.json/package-lock.json/tsconfig.json root restructure, .gitignore, .github/workflows/ci.yml, scripts/repo-structure*.mjs, scripts/dependency-baseline.test.mjs, scripts/tsconfig.json, README/AGENTS/CLAUDE/DEPENDENCIES.md doc-truth edits)",
+      "attack_path_version": "v1",
+      "attempt": "Verified the two new CI steps (site build, repo-structure tests) don't alter fork/PR workflow boundaries, artifact uploads, or secret exposure to untrusted code.",
+      "evidence": [
+        "ci.yml's `on:`/`permissions:` blocks unchanged (grepped directly: still bare `push:`/`pull_request:`, no `permissions:` key, no `workflow_run`/`pull_request_target` anywhere in the file). Both new steps run inside the existing `node` job's pre-existing trigger/permission scope, add no artifact upload, and reference no secret."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep -n \"workflow_run|pull_request_target|permissions:\" .github/workflows/ci.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether a ledger entry records actor identity, and re-confirmed unaffected by PL-15.",
+      "evidence": [
+        "scripts/ledger-append.mjs is absent from PL-15's 139-path diff (confirmed via `git diff HEAD --name-only`) — buildEntryJson/buildEntryMarkdown still carry no actor/user field on any lane."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-3043428c5bd1",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged from baseline: scripts/ledger-append.mjs buildEntryJson/buildEntryMarkdown should capture an actor signal (e.g. git config user.name/email) into entry.json for every ledger-write path. Persisting, out of PL-15's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "git diff HEAD --name-only | grep ledger-append; inspect entry.json/entry.md for an actor field.",
+      "code_references": [
+        "scripts/ledger-append.mjs (buildEntryJson, buildEntryMarkdown)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/repo-structure.test.mjs (this run's red suite, amended twice, RED-CORRECT) and scripts/dependency-baseline.test.mjs's [AC-8][EC-10] body (pre-existing red-listed test, content changed) — PL-15's two declared red-test changes|v1-pl15-redtest-and-audit-integrity",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/repo-structure.test.mjs (this run's red suite, amended twice, RED-CORRECT) and scripts/dependency-baseline.test.mjs's [AC-8][EC-10] body (pre-existing red-listed test, content changed) — PL-15's two declared red-test changes",
+      "attack_path_version": "v1-pl15-redtest-and-audit-integrity",
+      "attempt": "Independently re-ran the mechanical red-test integrity tool against the live tree for this diff's own two declared red-test changes (rather than trusting review's account), modeling whether either declared change is a log-omission-through-an-alternate-path (a way a future forbidden change slips past undetected).",
+      "evidence": [
+        "`node scripts/check-red-integrity.mjs` (re-run this session, no --dir, i.e. against the LIVE .pipeline/*.json — not review's already-reported figures): exit 0, status \"clean\", violations: []. Both red-authored test paths checked (scripts/repo-structure.test.mjs, scripts/repo-structure-verify.mjs); repo-structure.test.mjs's hash change (b5236c5f… → bf4e5762…) is correctly declared in changes.json's redTestChanges. candidateNewTests surfaced only scripts/dependency-baseline.test.mjs, which independently read `.pipeline/changes.json:239-248` and confirmed IS declared, with a reason matching spec.md's Interfaces section hunk-for-hunk (reads apps/site/package.json instead of root package.json; adds a strengthening assertion; the guarantee is preserved).",
+        "Read the actual diff hunks for both declared files directly rather than only the tool's hash comparison: scripts/repo-structure.test.mjs's two amendments (an EC-20 false-premise fix; a SWEEP_EXCLUDED addition for apps/site/package.json matching an existing exemption class) both narrow nothing AC-12/EC-20 actually guard. scripts/dependency-baseline.test.mjs's single-test-body replacement is the only pre-existing test file this diff touches, matching AC-14.",
+        "This is a distinct scenario from PL-14's own SEC-10 v13 (a diff-to-content pin CONVERSION) — PL-15 does not convert any assertion mechanism, it relocates a manifest and updates one existing test's target path. No new tooling-gap analogous to v13's cross-run --dir rehash ambiguity applies here (this run used the live changes.json directly, no --dir cross-ticket mixing)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "node scripts/check-red-integrity.mjs; read .pipeline/changes.json:239-248 directly; read the diff hunks for scripts/repo-structure.test.mjs and scripts/dependency-baseline.test.mjs.",
+      "code_references": [
+        "scripts/check-red-integrity.mjs",
+        ".pipeline/changes.json:239-248",
+        "scripts/repo-structure.test.mjs",
+        "scripts/dependency-baseline.test.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)|v3-residual-stale-agreement",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/*, .claude/skills/**, .sdd/**, .github/workflows/ci.yml, package.json (PL-04 diff)",
+      "attack_path_version": "v3-residual-stale-agreement",
+      "attempt": "Re-confirmed the persisting residual (FND-9ea3ec4bba13) still applies and is unaffected by PL-15.",
+      "evidence": [
+        "`git diff HEAD -- scripts/ledger-append.mjs` is empty — the plain path's scope decision is unchanged, and PL-15 does not touch --inline's own --ticket cross-check either."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-9ea3ec4bba13",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T203800838Z-f3c53b16460c-PR_DELTA-80e1cb",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged remediation from baseline (add a fail-safe default: when it cannot be established which ticket spec.json/spec.md actually describe, refuse rather than proceed). Persisting, out of PL-15's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/ledger-append.mjs",
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|scripts/check-lite-eligible.mjs evaluateLiteEligibility() — max_changed_lines and max_line_length compose multiplicatively rather than bounding total content (PL-11 security-fix round sibling-path sweep)|v6-lite-multiline-spread-residual",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-lite-eligible.mjs evaluateLiteEligibility() — max_changed_lines and max_line_length compose multiplicatively rather than bounding total content (PL-11 security-fix round sibling-path sweep)",
+      "attack_path_version": "v6-lite-multiline-spread-residual",
+      "attempt": "Re-confirmed the persisting, bounded residual (FND-9735a2fbe37a) is unaffected by PL-15.",
+      "evidence": [
+        "`git diff HEAD -- scripts/check-lite-eligible.mjs .sdd/bounds.yml`: empty. Confirmed `.sdd/bounds.yml` is byte-identical to HEAD by direct read this session — matches spec.md's Decision 6/D9 claim that bounds.yml is deliberately unchanged, and apps/site/** ends up in no fenced lane, exactly as root src/** was before (frontend lane's allow list is still only apps/web/** and docs/**)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-9735a2fbe37a",
+        "status": "OPEN",
+        "first_seen_run_id": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
+        "first_seen_commit": "fe1d2b3269858778aaefb41b10776fcf5fd50d77",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Unchanged from baseline: add a third, product-level bound (total changed bytes/characters), or tighten max_changed_lines/max_line_length so their product is closer to the lite lane's own stated use case. Persisting, out of PL-15's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "See baseline run 20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759 for the full fixture reproduction this observation reconfirms without repeating (code unchanged).",
+      "code_references": [
+        "scripts/check-lite-eligible.mjs",
+        ".sdd/bounds.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked lockfile completeness/enforcement against PL-15's workspace restructure.",
+      "evidence": [
+        "Diffed package-lock.json directly: the only substantive changes are the workspace-shape fields (name sayre-site→sayre, workspaces apps/web→apps/*, the new \"apps/site\" package entry mirroring apps/site/package.json, and the corresponding node_modules/@sayre/site link record) plus a name/devDependencies re-homing from root to apps/site that matches package.json's own split exactly. Zero new package, and zero changed \"resolved\"/\"integrity\"/\"version\" field for any THIRD-PARTY package — grepped for those three keys across the full diff: only workspace-internal \"resolved\"/\"version\" lines (packages/shared-types, apps/site, apps/web) appear.",
+        "`npm ls --workspaces --depth=0` (re-run this session against the current installed tree): no invalid/missing/extraneous/UNMET output. dev/review both independently confirmed `npm ci` exits 0 against this exact lockfile with a reproducible hash (bca61398…, hashed twice, identical) — not re-run a third time this session to avoid an unnecessary full reinstall, but independently spot-checked without one."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD -- package-lock.json | grep -E '\"resolved\"|\"integrity\"|\"version\"'; npm ls --workspaces --depth=0.",
+      "code_references": [
+        "package-lock.json",
+        "package.json",
+        "apps/site/package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any new install-lifecycle script (postinstall/preinstall/prepare) introduced by the new apps/site/package.json or the restructured root manifest.",
+      "evidence": [
+        "apps/site/package.json's scripts object (dev/build/preview/typecheck/og/hero:render/smoke/export-tree/test:waitlist) contains no postinstall/preinstall/prepare/prepublish entry — grepped directly. Root package.json's scripts object likewise contains none. No new install-time code-execution surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep -iE \"postinstall|preinstall|prepare|prepublish\" package.json apps/site/package.json.",
+      "code_references": [
+        "apps/site/package.json",
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for an automated dependency-vulnerability/SBOM scanning gate in CI. Carried forward on its merits — PL-15 adds a build step and a test step, not a scanning gate.",
+      "evidence": [
+        "Re-read the current .github/workflows/ci.yml in full: still no npm audit step, no dependabot.yml/renovate.json, no SBOM-generation step anywhere. PL-15's two new steps (site build, repo-structure tests) run existing/new test-and-build commands; neither is a vulnerability scan."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-d26b84ebd646",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Add a CI-integrated dependency-scanning gate (npm audit, Dependabot, or equivalent). Still no tracked ticket. Persisting, out of PL-15's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "npm audit --omit=dev from repo root; ls .github/ for a dependabot.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked CI trigger/permission posture — genuinely re-examined this round since ci.yml changed.",
+      "evidence": [
+        "`on:`/`permissions:` blocks unchanged (grepped directly: still bare `push:`/`pull_request:`, no `permissions:` key at all). No new trigger (workflow_dispatch, pull_request_target, etc.) added — grepped the full file, zero hits."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep -n \"workflow_run|pull_request_target|permissions:\" .github/workflows/ci.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for workflow injection via untrusted input (branch names, commit messages, PR titles) into the two new shell commands.",
+      "evidence": [
+        "Both new `run:` lines are static literal strings with zero `${{ }}` GitHub Actions expression interpolation — confirmed by direct read of the diff hunk. No attacker-influenceable value is referenced anywhere in the new steps."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD -- .github/workflows/ci.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml:60-66,199-204"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether third-party GitHub Actions are pinned to a commit SHA. Carried forward on its merits.",
+      "evidence": [
+        "actions/checkout@v4 (x2), actions/setup-node@v4 (x2), actions/setup-python@v5 remain pinned to major-version tags, not commit SHAs — grepped all 5 `uses:` lines in ci.yml directly; none touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-ef0066ad43ed",
+        "status": "OPEN",
+        "first_seen_run_id": "20260804T194132275Z-f3c53b16460c-PR_DELTA-ca3993",
+        "first_seen_commit": "f3c53b16460c717acf20b9d2f04b4ca3c74fd8f8",
+        "last_seen_run_id": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+        "last_seen_commit": "17e2299ac5f2025be0cd149c6e30e8a2a0c172f2",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Pin actions/checkout, actions/setup-node, actions/setup-python to commit SHAs rather than major-version tags. Persisting, out of PL-15's own scope.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "grep -n 'uses:' .github/workflows/ci.yml.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SC-07-relevant config in this diff.",
+      "evidence": [
+        "No Dockerfile/container config in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json infra.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SC-08-relevant config in this diff.",
+      "evidence": [
+        "No listening-service/network config in this diff (infra/** untouched, confirmed against AC-18)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json infra.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SC-09-relevant config in this diff.",
+      "evidence": [
+        "No IAM/cloud-role config in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json infra.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SC-11-relevant config in this diff.",
+      "evidence": [
+        "No TLS/config-posture code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json infra.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SC-13-relevant config in this diff.",
+      "evidence": [
+        "No migration-privilege code in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --stat -- .github/workflows/ci.yml package.json package-lock.json infra.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked environment-separation posture for the two new CI steps.",
+      "evidence": [
+        "Neither new step (site build, repo-structure tests) references a staging/prod credential, queue name, or database URL — both run local, deterministic build/test commands against the same checkout."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read .github/workflows/ci.yml:60-66,199-204.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1-parser-perf",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1-parser-perf",
+      "attempt": "Re-confirmed the parser-perf finding this attack-path-version tracks is unaffected.",
+      "evidence": [
+        "check-secret-access.mjs untouched by this diff — confirmed via `git diff HEAD --name-only`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD --name-only | grep check-secret-access.",
+      "code_references": [
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|.github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml, package.json, package-lock.json (PL-04 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked patch/exception lifecycle tracking against the regenerated lockfile.",
+      "evidence": [
+        "package-lock.json changed this round (workspace re-shaping only, per SC-01) — no dependency version/exception introduced or resolved by this diff; there is no patch-exception registry in this repo to update either way."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git diff HEAD -- package-lock.json.",
+      "code_references": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md (full MD5, twice) and docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:16 (partial MD5) — the credential file's content hash, not its content|v3-md5-file-identity-disposition",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md (full MD5, twice) and docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:16 (partial MD5) — the credential file's content hash, not its content",
+      "attack_path_version": "v3-md5-file-identity-disposition",
+      "attempt": "Explicit disposition of review's standing Warning 1 (audit-14-dead-code-hygiene.md:103-104's full MD5 of the credential file), per the coordinator's direct instruction to accept or require redaction in writing — independently re-derived, not accepted on review's account, and extended to the sibling partial-MD5 occurrence in audit-15-secrets-deps.md:16 review's warning did not itself name.",
+      "evidence": [
+        "docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md:103-104 renders the full 32-hex-character MD5 (`120176f8745e0b1706e2b0fd67aded8c`) of both `infra/.env` and `infra/New Text Document.txt`, twice, alongside their byte size and a byte-identity annotation. docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:16 independently renders the same hash truncated to its first 8 hex characters plus an ellipsis (\"`120176f8...`\"). Both independently confirmed present by direct read this session; neither was touched by any of the three redaction rounds (audit-14 is outside the AC-9 redaction set entirely — its own byte-pin is unchanged and the passing suite proves it).",
+        "MD5 is a one-way (non-invertible) hash: given only the 32-character digest, there is no known feasible method to reconstruct the ~5590 bytes of arbitrary file content that produced it — this is a categorically different disclosure class from SEC-02 v1/v2 (real characters of a real value, or an exact map from a real value's location to its name). No secret VALUE, partial or otherwise, can be derived from either occurrence.",
+        "The marginal reconnaissance value is narrow and second-order: it matters only if an attacker independently obtains a CANDIDATE copy of infra/New Text Document.txt or infra/.env (through the OneDrive-sync exposure vector the audits already disclose in prose) and wants to CONFIRM it is the exact version described, without reading the file's own content directly. In practice this adds little beyond what the rest of the document already discloses (exact env-var names plus \"REAL\"/confirmed-live framing) — an attacker holding a candidate file would see the variable names immediately upon opening it, with no need for a hash to establish relevance. The realistic residual use case (automated hash-based matching against breach/credential-scanning corpora, bypassing manual content inspection) is real but narrow.",
+        "The same hash also has legitimate, disclosed defensive value: it lets the repository owner or a future audit run confirm, without re-deriving this finding from scratch, whether the flagged file has since been rotated/replaced (a changed MD5 would mean rotation happened; an unchanged MD5 — independently reproduced by this stage in both the prior run and this one — currently means it has not). This is exactly the kind of forensic indicator security advisories routinely publish without that constituting a secret disclosure.",
+        "Disposition (explicit, per the coordinator's and review's standing request, independently re-derived rather than accepted on review's account): ACCEPT, non-blocking. Both occurrences remain as-is. This is not a silent pass — recorded here as its own observation specifically so it is not skipped by silence."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md:95-115 and audit-15-secrets-deps.md:14-20 directly. grep -n \"120176f8\" across docs/audits/**. Nothing created; nothing to clean up.",
+      "code_references": [
+        "docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md:103-104",
+        "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md:16"
+      ]
+    }
+  ]
+}

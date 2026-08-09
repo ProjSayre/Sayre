@@ -5,9 +5,9 @@
 **Changelog:** v1.1 = v1 + 26 verified review findings. v1.2 = Features view redesigned (feature-as-node with bundled path expansion), Relations view redesigned (scoped drill-down graph), permanent IDE-style left tree panel, persona→tab mapping made fully diagonal, initial load = tech lead on filetree; + 12 post-rewrite verification fixes (tour reachability, rollup direction semantics, feature-node label geometry, schema `workspaces` field, stale v1.1 references).
 **Date:** 2026-07-11
 **Inputs:**
-- `Design System/SAYRE_DESIGN_SYSTEM.md` — visual source of truth ("Warm Graphite")
-- `Design System/Sayre Directions-selection.png` — approved mock 4d (canvas density/proportions reference)
-- `Documents/PRD/PRD V1.pdf` — the full product this site sells (we are NOT building the product)
+- `docs/design-system/SAYRE_DESIGN_SYSTEM.md` — visual source of truth ("Warm Graphite")
+- `docs/design-system/Sayre Directions-selection.png` — approved mock 4d (canvas density/proportions reference)
+- `docs/product/PRD-V1.pdf` — the full product this site sells (we are NOT building the product)
 
 Where this spec quantifies something the design system leaves open, this spec wins. Where they conflict, the design system wins.
 
@@ -482,7 +482,7 @@ Small, physical, fast. Durations: hover 100ms; selection/ancestry lighting 150ms
 
 - `<title>`: `sayre_ — your codebase, mapped` (landing); `sayre_ — live demo` (demo).
 - Meta description: *Sayre parses your repository into a living graph every role can read. Explore the live demo.*
-- OG/Twitter card: `public/og.png`, 1200×630 — a **committed static file**, not produced by `npm run build`. Builder adds a dev-only script (`scripts/og.mjs`, run manually via `npm run og`; devDependencies such as `@resvg/resvg-js` or `puppeteer` are fine — the §2 cap is runtime-only) that renders the demo canvas at the curated state (`PaymentForm.tsx` selected, ancestry lit, wordmark bottom-left, on `--bg`) and writes the file; commit the output. Tags use absolute URLs: `og:image` = `${SITE_URL}/og.png`, `summary_large_image`.
+- OG/Twitter card: `public/og.png`, 1200×630 — a **committed static file**, not produced by `npm run build`. Builder adds a dev-only script (`apps/site/scripts/og.mjs`, run manually via `npm run og`; devDependencies such as `@resvg/resvg-js` or `puppeteer` are fine — the §2 cap is runtime-only) that renders the demo canvas at the curated state (`PaymentForm.tsx` selected, ancestry lit, wordmark bottom-left, on `--bg`) and writes the file; commit the output. Tags use absolute URLs: `og:image` = `${SITE_URL}/og.png`, `summary_large_image`.
 - Favicon: 32px SVG — hollow circle + filled dot motif: `--node-stroke` circle upper-left, `--accent` dot lower-right on `--bg`.
 - Fonts: `preconnect` to fonts.googleapis.com/gstatic; the exact CSS2 link from §2 (700 weight deliberately dropped).
 - Analytics: if `PLAUSIBLE_DOMAIN` set, inject Plausible script; else nothing. No cookies, no banner either way.

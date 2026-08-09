@@ -53,20 +53,22 @@ of secret names, and `.claude/rules/security-multitenancy.md` for the never-log/
 
 ## Repo shape
 
-**Both of these are true at once, not either/or:** the repository root is a Vite/React marketing
-site (`package.json`'s `dev`/`build`/`preview` scripts, `apps/web` as a separate workspace), *and*
-the larger platform monorepo CLAUDE.md describes (`services/core`, `services/gateway`,
-`services/workers`, `packages/*`) is present in the same checkout. Neither statement supersedes the
-other. Confirm which one applies to a given task by reading `package.json`/`turbo.json`, not by
-assuming from a first impression of the directory listing.
+The repository root is a monorepo workspace root: `package.json`'s `workspaces` array covers
+`apps/*` (the marketing site at `apps/site`, and the product client at `apps/web`),
+`services/core`, `services/gateway`, and `packages/*`. The marketing site's own source, static
+assets, and scripts live entirely under `apps/site/` (PL-15) — the root no longer carries any of
+them directly. Root `dev`/`build`/`preview` remain thin delegating aliases to the marketing site's
+own scripts (unchanged names, for the Cloudflare Pages deploy contract and muscle memory), not a
+turbo command across every workspace — see `CLAUDE.md`'s Commands section for the exact split. See
+`docs/repo-structure.md` for the full directory map.
 
 CLAUDE.md's own "Commands" section (`npm run dev` / `build` / `test` / `lint`) describes the
 platform-wide target shape; the root `package.json` does not yet define bare `test` or `lint`
 scripts — only `test:workspaces` / `lint:workspaces` (via turbo, scoped to the workspace packages)
-and a set of narrower root scripts (`test:waitlist`, `check:secret-access`,
-`check:security-audit-agents`, `check:agent-shims`, and others — see `package.json` for the current
-list). Run the narrowest relevant one for what you're actually changing rather than guessing at a
-`test`/`lint` script that doesn't exist at the root today.
+and a set of narrower root scripts (`check:secret-access`, `check:security-audit-agents`,
+`check:agent-shims`, and others — see `package.json` for the current list). Run the narrowest
+relevant one for what you're actually changing rather than guessing at a `test`/`lint` script that
+doesn't exist at the root today.
 
 ## The pipeline
 

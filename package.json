@@ -1,17 +1,14 @@
 {
-  "name": "sayre-site",
+  "name": "sayre",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "packageManager": "npm@11.14.1",
-  "workspaces": ["apps/web", "services/core", "services/gateway", "packages/*"],
+  "workspaces": ["apps/*", "services/core", "services/gateway", "packages/*"],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "og": "node scripts/og.mjs",
-    "hero:render": "node scripts/render-anime-hero.mjs",
-    "test:waitlist": "node scripts/test-waitlist.mjs",
+    "dev": "npm run dev --workspace @sayre/site",
+    "build": "npm run build --workspace @sayre/site",
+    "preview": "npm run preview --workspace @sayre/site",
     "check:secret-access": "node scripts/check-secret-access.mjs",
     "test:secret-access": "node --test scripts/check-secret-access.test.mjs",
     "check:org-secret-access": "node scripts/check-org-secret-access.mjs",
@@ -48,6 +45,7 @@
     "test:readonly-guard": "node --test scripts/guard-checker-readonly.test.mjs",
     "test:dependency-baseline": "node --test scripts/dependency-baseline.test.mjs",
     "test:dependency-install": "node --test scripts/dependency-install.test.mjs",
+    "test:repo-structure": "node --test scripts/repo-structure.test.mjs",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "dev:workspaces": "turbo run dev --parallel",
     "build:workspaces": "turbo run build",
@@ -55,23 +53,11 @@
     "typecheck:workspaces": "turbo run typecheck",
     "test:workspaces": "turbo run test"
   },
-  "dependencies": {
-    "d3-hierarchy": "^3.1.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.0"
-  },
   "devDependencies": {
-    "@resvg/resvg-js": "^2.6.2",
-    "@types/d3-hierarchy": "^3.1.7",
     "@types/node": "20.x",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
     "js-yaml": "^4.3.0",
     "puppeteer-core": "^25.3.0",
     "turbo": "2.1.x",
-    "typescript": "~5.6.3",
-    "vite": "^5.4.11"
+    "typescript": "~5.6.3"
   }
 }

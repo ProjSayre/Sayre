@@ -139,6 +139,15 @@
           "dev"
         ]
       }
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   ".gitignore": [
@@ -147,6 +156,15 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   ".pipeline-backup-pl04-20260808/README.md": [
@@ -641,6 +659,15 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "CLAUDE.md": [
@@ -661,6 +688,15 @@
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "DEPENDENCIES.md": [
@@ -669,6 +705,1049 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "README.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/README.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/README.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/Hero Animation (Anime) - PINNED v1.dc.html": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/Hero Animation (Anime) - PINNED v2.dc.html": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/Hero Animation (Anime).dc.html": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/animations-v2.jsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/filetree-data.js": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/hero-anime-scene-v1-pinned.jsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/hero-anime-scene-v2-pinned.jsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/hero-anime-scene.jsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/screenshots/deer-check.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/screenshots/deer2.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/screenshots/flora-3s.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/screenshots/flora2.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/screenshots/flora3.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/support.js": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/design/handoffs/anime-hero-animation/project/tweaks-panel.jsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/index.html": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/package.json": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/_redirects": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/favicon.svg": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime-final-mobile.webp": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime-final.webp": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime-mobile.mp4": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime-mobile.webm": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime-start-mobile.webp": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime-start.webp": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime.mp4": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/media/hero-anime.webm": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/public/og.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/anime-hero-render/entry.jsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/anime-hero-render/index.html": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/export-tree.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/og.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/render-anime-hero.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/smoke.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/scripts/test-waitlist.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/App.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/config.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/copy.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/edges.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/features.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/index.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/people.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/personas.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/repo.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/tickets.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/tour.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/types.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/data/validate.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/DemoPage.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/FeaturePanel.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/Markdown.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/Sidebar.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/StatusLine.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/TopBar.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/TreePanel.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/FeaturesView.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/FiletreeView.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/RelationsView.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/layout.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/measure.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/rollup.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/useAnimatedPositions.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/canvas/useCamera.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/search/CommandK.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/search/fuzzy.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/search/useFileSearch.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/state.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/demo/tour/Tour.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/CanvasSandbox.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/FeatureDeck.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/HeroAnimeVideo.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/HeroTreeScene.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/LandingPage.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/Reveal.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/heroTreeData.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/landing/lensGraphs.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/legal/PrivacyPage.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/main.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/shared/Button.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/shared/Chip.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/shared/Modal.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/shared/WaitlistForm.tsx": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/styles/base.css": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/styles/demo.css": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/styles/landing.css": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/styles/privacy.css": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/styles/tokens.css": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/src/vite-env.d.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/tsconfig.json": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/turbo.json": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "apps/site/vite.config.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "apps/web/.claude/skills/redteam-ux/driver.mjs": [
@@ -682,6 +1761,15 @@
           "red",
           "dev"
         ]
+      }
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
       }
     }
   ],
@@ -2421,6 +3509,15 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "apps/web/tsconfig.json": [
@@ -2585,6 +3682,226 @@
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
     }
   ],
+  "docs/audits/architecture-assessment-2026-07.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-01-tenant-rbac.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-02-auth-mcp-keys.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-03-routes-http.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-05-ticket-integrations.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-06-db-schema.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-07-queues-messaging.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-08-gateway-ws.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-09-python-ingestion-parsing.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-10-ai-enrichment.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-11-retrieval-telemetry.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-12-web-frontend.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-13-test-coverage.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-14-dead-code-hygiene.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-15-secrets-deps.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-16-core-correctness.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-17-build-verification.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/audits/deep-audit-2026-07-31/audit-18-infra-cicd.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "docs/deep-audit-2026-07-31.md": [
     {
       "runId": "20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516",
@@ -2737,12 +4054,122 @@
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
     }
   ],
+  "docs/design-system/SAYRE_DESIGN_SYSTEM.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/design-system/Sayre Directions-selection.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/design-system/filetree-graph-blank.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/design-system/filetree-graph-labeled.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/design-system/filetree-graph.png": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/design-system/filetree-graph.svg": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/product/PRD-V1.pdf": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/product/SAYRE_FRONTEND_SPEC.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "docs/repo-structure.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "docs/sdd-drift-corrections-pl-03a.md": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "docs/sdd-tdad-design.md": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "docs/workspace-pack-authoring.md": [
@@ -2835,6 +4262,15 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "package.json": [
@@ -2878,6 +4314,15 @@
           "red",
           "dev"
         ]
+      }
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
       }
     }
   ],
@@ -3535,6 +4980,15 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "scripts/dependency-install.test.mjs": [
@@ -3589,6 +5043,28 @@
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
     }
   ],
+  "scripts/repo-structure-verify.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "scripts/repo-structure.test.mjs": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "scripts/sdd-completeness.test.mjs": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -3641,6 +5117,15 @@
       "ticket": "PL-11",
       "date": "2026-08-08",
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
+    },
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "scripts/validate-security-audit-agents.mjs": [
@@ -3697,6 +5182,28 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "tsconfig.json": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "vite.config.ts": [
+    {
+      "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
+      "ticket": "PL-15",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ]
 }

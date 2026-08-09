@@ -1,5 +1,5 @@
 // Geometry for the hero tree scene — the demo's initial filetree laid out in
-// the 1794.1×735 export frame (same coordinates as Design System/filetree-graph*).
+// the 1794.1×735 export frame (same coordinates as docs/design-system/filetree-graph*).
 // Imported from the claude.ai/design project's filetree-data.js verbatim; the
 // scene's silhouette/camera constants in HeroTreeScene.tsx are tuned to these
 // exact numbers — regenerate both together or neither.

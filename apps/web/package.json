@@ -2,7 +2,7 @@
   "name": "@sayre/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Next.js product visualization client (Technical/Product/Onboarding tree canvas). Distinct from the root Vite marketing site.",
+  "description": "Next.js product visualization client (Technical/Product/Onboarding tree canvas). Distinct from apps/site, the Vite marketing site.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
