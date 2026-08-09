@@ -349,6 +349,81 @@ sees the attribution is qualified, and whether `tester` ran, without a second lo
 `entry.json` at all; before this fix, only that second lookup could reveal it, which in practice
 meant nobody did.
 
+## Lite-lane entries (PL-11, `/pipeline-lite`)
+
+`node scripts/ledger-append.mjs --lite` writes a normal, **non-bypass** entry — see
+`.sdd/pipeline.md`'s `/pipeline-lite` section for the full lane (eligibility gate → `planner` →
+`dev` → `tester` → `review` → this step, deliberately skipping `red` and `security`) and the
+preconditions this command re-checks before writing anything.
+
+**Indexed, not excluded — the same reasoning `.sdd/ledger/README.md` already makes for a `--re-gate`
+entry, above.** A lite run has a real, ratified `spec.md`/`spec.json` that `review` genuinely passed
+against the final tree — the same fact that keeps a `--re-gate` entry out of the exclusion mechanism.
+What it does *not* have is a `security` pass, and that is disclosed on the entry itself (below), not
+handled by hiding the entry from `index.json`'s file→spec map. Excluding it would answer "which spec
+governs this file" with silence when a real, reviewed spec exists — the opposite of what a
+`--hotfix`/override entry's exclusion is for (a run whose spec was never ratified, or whose final
+verdict was not `PASS`, genuinely has nothing to point at).
+
+`entry.json`'s exact shape for a lite run:
+
+```json
+{
+  "verdicts": { "review": "PASS", "security": "SKIPPED_LITE" },
+  "bypass": false,
+  "regate": null,
+  "lite": {
+    "skippedStages": ["red", "security"],
+    "note": "<the fixed lite disclosure sentence>",
+    "eligibility": { "fileCount": 2, "changedLines": 37, "maxFiles": 5, "maxChangedLines": 150 }
+  },
+  "redTestPaths": [],
+  "redAbsenceNote": "<states red was deliberately skipped by the lite lane>",
+  "securityRunId": null
+}
+```
+
+`verdicts.security` is the distinct literal `"SKIPPED_LITE"` — never `"PASS"` (a stage that did not
+run cannot have passed) and never `"BLOCKED"` (nothing ran to block). `scripts/build-ledger-index.mjs`'s
+verdicts gate widens by exactly this one shape: `{ "review": "PASS", "security": "SKIPPED_LITE" }` is
+accepted **only** from an entry that also declares a `lite` object whose `skippedStages` includes
+`"security"` — every other non-bypass entry still enforces the byte-for-byte `{ "review": "PASS",
+"security": "PASS" }` check, unchanged. An entry claiming `"SKIPPED_LITE"` with no `lite` object, or
+one whose `skippedStages` omits `"security"`, is a non-lite entry attempting to launder a skipped gate
+into an indexed one — `build-ledger-index.mjs` refuses to index it, and `--check` fails loudly rather
+than reporting the index as up to date.
+
+`entry.md`'s title reads `# Ledger entry — <runId> (LITE)` (markers compose `(RE-GATE)(LITE)
+(OVERRIDE)`, in that order, when more than one applies — though `--lite` refuses `--re-gate` outright
+in this ticket, so `(RE-GATE)(LITE)` together does not currently occur), and carries a `## Lite lane`
+section, placed immediately after `## Verdicts`, naming the skipped stages, the fixed disclosure note
+verbatim, and the eligibility numbers this run was measured against. `## Security run ID` reads
+`(none — the security stage did not run on this lane; see "## Lite lane" above)` rather than pointing
+at a security-history directory that does not exist for this run.
+
+**`index.json`** carries the same disclosure, condensed the same way `regate: { testerRan }` already
+is: every record `build-ledger-index.mjs`'s `buildIndex()` writes for a lite run's files gets an
+additional `"lite": { "skippedStages": [...] }` field alongside `runId`/`ticket`/`date`/`spec` —
+small on purpose (a query index, not a record), so it deliberately drops `note`/`eligibility`, the
+entry.json-only detail. Absent entirely (not `null`) from every non-lite run's records — so a reader
+following the fast path (buggy file → `index.json`) sees the attribution is qualified without a
+second hop into `entry.json`, the same reasoning `regate` already uses.
+
+**What a lite entry structurally lacks**, compared to a normal completed run: **no `security/`
+copy** (there is no security-history run to copy), **no `security.json`** (even a leftover one on
+disk is deliberately never copied into the run directory — a lite run's own directory must never
+manufacture evidence of a security pass that did not happen), and **no `red.json`** (same reasoning —
+a leftover `red.json` from a prior ticket is never copied and never contributes to this run's
+`redTestPaths`). `spec.md`/`spec.json`/`changes.json`/`review.json` are copied exactly as for a
+normal run.
+
+An ordinary lite run's `bypass` is `false` (derived the same way every other entry's is: `false`
+exactly when `reviewVerdict` is `'PASS'` — the lite lane's own missing security verdict does not by
+itself force `bypass: true`, since there is nothing to have failed on that gate). `--lite
+--override-review` still produces `bypass: true` and is excluded from `index.json` exactly like any
+other override — the lite disclosure survives on the entry regardless, orthogonal to the override the
+same way `regate` and an override already compose freely.
+
 ## The query path: buggy file → spec that mandated it
 
 ```

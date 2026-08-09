@@ -1,9 +1,11 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { matchesAny } from './check-bounds.mjs';
+import { matchesAny, readBounds } from './check-bounds.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(HERE, 'check-bounds.mjs');
@@ -236,4 +238,126 @@ test('pathological "**" chains and single-star chains do not cause catastrophic 
 
   const elapsedMs = performance.now() - start;
   assert.ok(elapsedMs < 2000, `expected sub-second matching, took ${elapsedMs.toFixed(1)}ms — likely a regression to backtracking-based matching`);
+});
+
+// --- [lite] PL-11: readBounds() also reports the lite-lane size bounds ----------------------------
+//
+// `lanes:` fence WHICH PATHS a ticket may touch; `lite_eligibility:` bounds HOW SMALL a change must
+// be before /pipeline-lite may skip `red` and `security` on it. Two different axes, one reader — the
+// same "exactly one implementation of the bounds vocabulary" convention scripts/ledger-append.mjs's
+// --hotfix path already relies on. The `null`-not-`die()` behavior below is load-bearing in a way a
+// merely-defensive default would not be: readBounds() is imported by ledger-append.mjs's --hotfix
+// path, and die() calls process.exit(2), so making this reader fatal for a fact --hotfix never uses
+// would take a working bypass down over an unrelated missing block. Failing closed is the
+// *consumer's* job (see the check-lite-eligible / --lite tests for where that actually happens).
+
+const liteRoots = [];
+afterEach(() => {
+  while (liteRoots.length) rmSync(liteRoots.pop(), { recursive: true, force: true });
+});
+
+/** A throwaway repo carrying a copy of check-bounds.mjs, a caller-supplied .sdd/bounds.yml, and a
+ * probe module that prints readBounds()'s return value — readBounds() resolves .sdd/bounds.yml from
+ * its own module location, so a synthetic bounds file can only be exercised out-of-process. */
+function boundsFixture(boundsYml) {
+  const root = mkdtempSync(resolve(tmpdir(), 'sayre-check-bounds-lite-'));
+  liteRoots.push(root);
+  mkdirSync(join(root, 'scripts'), { recursive: true });
+  writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), readFileSync(join(HERE, 'check-bounds.mjs'), 'utf8'), 'utf8');
+  writeFileSync(
+    join(root, 'scripts', 'probe.mjs'),
+    "import { readBounds } from './check-bounds.mjs';\nprocess.stdout.write(JSON.stringify(readBounds()));\n",
+    'utf8',
+  );
+  mkdirSync(join(root, '.sdd'), { recursive: true });
+  writeFileSync(join(root, '.sdd', 'bounds.yml'), boundsYml, 'utf8');
+  return root;
+}
+
+function probeBounds(root) {
+  const result = spawnSync(process.execPath, [join(root, 'scripts', 'probe.mjs')], { cwd: root, encoding: 'utf8' });
+  return { code: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+}
+
+/** Minimal bounds.yml in the shape readBounds() parses; `lite` is raw YAML spliced under
+ * `lite_eligibility:`, or null for "the block is absent entirely". */
+function syntheticBoundsYml(lite) {
+  const base = [
+    'version: 1',
+    '',
+    'lanes:',
+    '  frontend:',
+    '    allow:',
+    '      - apps/web/**',
+    '  full:',
+    '    allow:',
+    '      - "**"',
+    '',
+    'deny_for_fenced_lanes:',
+    '  - .sdd/**',
+    '  - CLAUDE.md',
+    '',
+    'hotfix_barred_paths:',
+    '  - services/core/src/security/**',
+    '',
+  ].join('\n');
+  return lite === null ? base : `${base}lite_eligibility:\n${lite}\n`;
+}
+
+// @spec AC-5
+test('[lite] readBounds() reports the real .sdd/bounds.yml\'s lite_eligibility block alongside every key it already returned', () => {
+  const bounds = readBounds();
+
+  assert.deepEqual(
+    bounds.liteEligibility,
+    { maxFiles: 5, maxChangedLines: 150, maxLineLength: 500 },
+    'the committed lite-lane bounds are the single place these numbers live — tuning them must be a reviewed diff to .sdd/bounds.yml, never a code change',
+  );
+
+  // Every pre-existing key, unchanged: this is an additive field, not a reshaping of the reader.
+  assert.ok(bounds.lanes.frontend?.includes('apps/web/**'), 'the lane vocabulary must be untouched');
+  assert.ok(bounds.lanes.full?.includes('**'));
+  assert.ok(bounds.denyForFenced.includes('.sdd/**'));
+  assert.ok(bounds.hotfixBarredPaths.includes('packages/graph-schema/**'));
+});
+
+// @spec EC-16
+test('[lite] a bounds.yml with no lite_eligibility block yields liteEligibility: null — never an exit, and never a missing key', () => {
+  const root = boundsFixture(syntheticBoundsYml(null));
+  const { code, stdout, stderr } = probeBounds(root);
+  assert.equal(code, 0, `readBounds() must not die over an absent lite block — --hotfix reads this same function and never uses the field: ${stderr}`);
+  const bounds = JSON.parse(stdout);
+  assert.equal(bounds.liteEligibility, null, 'null, explicitly — an absent key would read as "undefined" and could be mistaken for "not yet checked"');
+  assert.ok(bounds.lanes.frontend?.includes('apps/web/**'), 'the rest of the file must still parse normally');
+  assert.ok(bounds.hotfixBarredPaths.includes('services/core/src/security/**'), '--hotfix\'s own barred-path list must be unaffected');
+});
+
+// @spec EC-16
+test('[lite] a malformed lite_eligibility block yields null rather than a guessed bound', () => {
+  const malformed = [
+    { name: 'a non-numeric max_files', yml: '  max_files: banana\n  max_changed_lines: 150\n  max_line_length: 500' },
+    { name: 'max_changed_lines missing entirely', yml: '  max_files: 5\n  max_line_length: 500' },
+    { name: 'max_files missing entirely', yml: '  max_changed_lines: 150\n  max_line_length: 500' },
+    { name: 'a negative bound (not a non-negative integer)', yml: '  max_files: -1\n  max_changed_lines: 150\n  max_line_length: 500' },
+    { name: 'a fractional bound', yml: '  max_files: 2.5\n  max_changed_lines: 150\n  max_line_length: 500' },
+    // Security round FND-22ef4b5c746e: max_line_length missing entirely — valid max_files/
+    // max_changed_lines alone must be just as unusable as any other half-specified block.
+    { name: 'max_line_length missing entirely', yml: '  max_files: 5\n  max_changed_lines: 150' },
+  ];
+  for (const { name, yml } of malformed) {
+    const root = boundsFixture(syntheticBoundsYml(yml));
+    const { code, stdout, stderr } = probeBounds(root);
+    assert.equal(code, 0, `${name}: readBounds() must stay non-fatal (${stderr})`);
+    assert.equal(JSON.parse(stdout).liteEligibility, null, name);
+  }
+});
+
+// @spec EC-16 AC-5
+test('[lite] check-bounds.mjs\'s own CLI verdicts are unchanged by an absent lite_eligibility block', () => {
+  const root = boundsFixture(syntheticBoundsYml(null));
+  const cli = (args) => spawnSync(process.execPath, [join(root, 'scripts', 'check-bounds.mjs'), ...args], { cwd: root, encoding: 'utf8' });
+
+  assert.equal(cli(['--lane', 'frontend', '--files', 'apps/web/x.tsx']).status, IN_BOUNDS);
+  assert.equal(cli(['--lane', 'frontend', '--files', 'services/core/x.ts']).status, VIOLATION);
+  assert.equal(cli(['--lane', 'frontend', '--files', '.sdd/bounds.yml']).status, VIOLATION);
 });

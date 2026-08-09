@@ -63,8 +63,9 @@ has none now.
 .sdd/
   README.md          — this file
   pipeline.md         — stage sequence, routing, loop caps, and the entry-point commands (PL-04:
-                        the full sequence, six per-stage commands, a status check, /re-gate, and
-                        /hotfix — see pipeline.md's own Entry points section for the current count)
+                        the full sequence, six per-stage commands, a status check, /re-gate,
+                        /pipeline-lite, and /hotfix — see pipeline.md's own Entry points section
+                        for the current count)
   runtimes.yml         — per-stage tool grants / model tier / hook wiring for .claude/
   bounds.md            — named lane vocabulary, enforced by scripts/check-bounds.mjs (PL-03d)
   hotfix.md            — the sanctioned bypass (D-005 #3), the one entry point that runs no stage
@@ -135,10 +136,10 @@ executes project code (`poetry run pytest` running `conftest.py`) makes command-
 meaningless.
 
 `.claude/skills/*/SKILL.md` (the entry-point commands — `/pipeline`, `/spec-only`,
-`/pipeline-status`, `/security-recheck`, `/hotfix`, and `/pr-review`) are hand-authored but
-intentionally thin: each one points at its matching section of `.sdd/pipeline.md` (or, for
-`/hotfix`/`/pr-review`, their own neutral file — `.sdd/hotfix.md` / `.sdd/stages/pr-review.md`)
-rather than restating the procedure.
+`/pipeline-status`, `/security-recheck`, `/pipeline-lite`, `/hotfix`, and `/pr-review`) are
+hand-authored but intentionally thin: each one points at its matching section of
+`.sdd/pipeline.md` (or, for `/hotfix`/`/pr-review`, their own neutral file — `.sdd/hotfix.md` /
+`.sdd/stages/pr-review.md`) rather than restating the procedure.
 
 **The second generated surface, added in PL-03c:** `.sdd/ledger/index.json` is generated the same
 way, from a different source. `scripts/build-ledger-index.mjs` reads every `.sdd/ledger/<run-id>/entry.md`

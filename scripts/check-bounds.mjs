@@ -191,6 +191,7 @@ export function readBounds() {
   const lanes = {};
   const denyForFenced = [];
   const hotfixBarredPaths = [];
+  const liteEligibilityRaw = {};
   let currentLane = null;
   let section = null;
 
@@ -201,6 +202,7 @@ export function readBounds() {
     if (/^lanes:\s*$/.test(line)) { section = 'lanes'; currentLane = null; continue; }
     if (/^deny_for_fenced_lanes:\s*$/.test(line)) { section = 'deny'; currentLane = null; continue; }
     if (/^hotfix_barred_paths:\s*$/.test(line)) { section = 'hotfixBarred'; currentLane = null; continue; }
+    if (/^lite_eligibility:\s*$/.test(line)) { section = 'liteEligibility'; currentLane = null; continue; }
     if (/^[a-z_]+:/.test(line)) { section = null; currentLane = null; continue; }
 
     if (section === 'deny') {
@@ -213,6 +215,11 @@ export function readBounds() {
       if (item) hotfixBarredPaths.push(unquote(item[1]));
       continue;
     }
+    if (section === 'liteEligibility') {
+      const kv = line.match(/^\s*(max_files|max_changed_lines|max_line_length):\s*(.+)$/);
+      if (kv) liteEligibilityRaw[kv[1]] = unquote(kv[2]);
+      continue;
+    }
     if (section !== 'lanes') continue;
 
     const laneName = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
@@ -223,7 +230,30 @@ export function readBounds() {
   }
 
   if (Object.keys(lanes).length === 0) die('no lanes parsed from .sdd/bounds.yml');
-  return { lanes, denyForFenced, hotfixBarredPaths };
+  return { lanes, denyForFenced, hotfixBarredPaths, liteEligibility: parseLiteEligibility(liteEligibilityRaw) };
+}
+
+/** Parses the raw `{ max_files, max_changed_lines, max_line_length }` string triple `readBounds()`
+ * collected out of the `lite_eligibility:` block into `{ maxFiles, maxChangedLines, maxLineLength }`
+ * — or `null` when the block was absent entirely, any one of the three keys is missing, or any one
+ * value is not a non-negative integer (PL-11 / AC-5, EC-16; `max_line_length` added by security round
+ * FND-22ef4b5c746e — see that key's own comment in .sdd/bounds.yml). Deliberately `null`, never a
+ * `die()`: `readBounds()` is also imported by `ledger-append.mjs`'s `--hotfix` path, which never
+ * reads this field, so a malformed/absent lite bound must not take a working, unrelated bypass down
+ * — failing closed on a `null` bound is the *consumer*'s job (`scripts/check-lite-eligible.mjs`'s
+ * `evaluateLiteEligibility`, and `ledger-append.mjs`'s own `--lite` branch), not this reader's. */
+function parseLiteEligibility(raw) {
+  if (!('max_files' in raw) || !('max_changed_lines' in raw) || !('max_line_length' in raw)) return null;
+  const maxFiles = parseNonNegativeInteger(raw.max_files);
+  const maxChangedLines = parseNonNegativeInteger(raw.max_changed_lines);
+  const maxLineLength = parseNonNegativeInteger(raw.max_line_length);
+  if (maxFiles === null || maxChangedLines === null || maxLineLength === null) return null;
+  return { maxFiles, maxChangedLines, maxLineLength };
+}
+
+function parseNonNegativeInteger(value) {
+  if (!/^\d+$/.test(value.trim())) return null;
+  return Number(value.trim());
 }
 
 function unquote(value) {

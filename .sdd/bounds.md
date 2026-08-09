@@ -59,3 +59,42 @@ them is legitimate work; it just is not *fenced* work, and it wants a human deci
 glob permitting.
 
 An unfenced author on `full` is unaffected.
+
+## Lite-lane eligibility (PL-11)
+
+**A different axis from `lanes:` above, not a second version of the same idea.** `lanes:` (above) is
+a *path fence* — it bounds WHICH PATHS a ticket or contributor may touch, regardless of how large the
+change is. `lite_eligibility:` (`.sdd/bounds.yml`) bounds HOW SMALL a change must be before
+`/pipeline-lite` may skip `red` and `security` on it, regardless of which lane the ticket is on. A
+ticket can be in-lane and still too big for the lite lane; it can be small enough for the lite lane
+and still (rightly) barred from it if it touches a governing or security-sensitive path. Both
+questions are checked mechanically, by different scripts, against different sections of the same
+file:
+
+```yaml
+lite_eligibility:
+  max_files: 5
+  max_changed_lines: 150
+  max_line_length: 500
+```
+
+`scripts/check-lite-eligible.mjs` computes the verdict — the same "a computer counts, an agent
+doesn't judge" discipline `scripts/check-bounds.mjs` already applies to `lanes:`. Tuning any of the
+three numbers later is a reviewed diff to this one file, never a code change.
+
+`max_changed_lines` counts LINES, not their size, so a diff shaped as a very few, very long lines
+(security round FND-22ef4b5c746e reproduced a ~44KB single-line change measuring `changedLines: 2`)
+can slide under it while carrying tens of KB of real content. `max_line_length` is the orthogonal,
+second size bound that catches that shape — enforced fail-closed exactly like the other two: a
+`lite_eligibility` block missing any of the three keys reads as `null`, never as "no bound."
+
+**There is deliberately no third barred-path list here.** The lite lane's barred set is the
+*computed union* of `hotfix_barred_paths` and `deny_for_fenced_lanes` (both above) — org_id/RBAC/
+MCP-key/secrets/webhook/ingestion/gateway/Graph-Query-Service paths on one side, the pipeline's own
+governing files on the other. A third, lite-specific list would drift from the other two the moment
+either changed and this one didn't; the union computes itself instead. Security round
+FND-b731f500c5b8 widened `hotfix_barred_paths` itself (the list this union draws from, not a new
+list) to close a coverage gap where the service layer, request routes, MCP handlers, the worker
+fleet, and the gateway were not barred from either `/hotfix` or the lite lane. See
+`scripts/check-lite-eligible.mjs`'s `liteBarredPaths` for exactly how, and `.sdd/pipeline.md`'s
+`/pipeline-lite` section for the full eligibility gate this bound feeds.

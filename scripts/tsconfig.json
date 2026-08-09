@@ -71,6 +71,8 @@
     "build-ledger-index.test.mjs",
     "check-bounds.mjs",
     "check-bounds.test.mjs",
+    "check-lite-eligible.mjs",
+    "check-lite-eligible.test.mjs",
     "check-red-integrity.mjs",
     "check-red-integrity.test.mjs",
     "check-stamp-freshness.mjs",

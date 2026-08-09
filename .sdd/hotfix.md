@@ -11,7 +11,11 @@ Production is broken and the fix is small and obvious. That is the whole list.
 
 **Not** for: a ticket that feels urgent; a change whose author is confident; a fix that is "too
 small to need a spec"; a deadline. Every one of those is the normal path with impatience attached,
-and D-005 #6's fully-specified-ticket rule applies — completeness is not exemption.
+and D-005 #6's fully-specified-ticket rule applies — completeness is not exemption. A fix that really
+is "too small to need a spec" (routine maintenance — a typo, a one-file cleanup, a doc fix), with no
+production incident behind it, routes to `/pipeline-lite` instead (`.sdd/pipeline.md`'s
+`/pipeline-lite` section) — a proportionate, mechanically-gated lane through the real pipeline, not
+this bypass.
 
 If you are unsure whether something qualifies, it does not. The cost of a needless pipeline run is
 an hour; the cost of a needless bypass is that the bypass becomes the norm.
@@ -47,10 +51,19 @@ directly.
 
 ## Honest limits
 
-A hotfix skips the security stage. If the change touches `org_id` handling, RBAC filtering,
-secrets, webhook validation, or the Graph Query Service, **it is not eligible for hotfix** — those
-are precisely the paths where the adversarial pass is load-bearing, and the blast radius of getting
-one wrong is not recoverable by a fast follow-up. Fix forward through the normal path, or roll back.
+A hotfix skips the security stage. If the change touches `org_id` handling, RBAC filtering, MCP key
+issuance, the async worker fleet, the WebSocket gateway's per-push RBAC re-filtering, secrets,
+webhook validation, the core service layer or its routes, or the Graph Query Service, **it is not
+eligible for hotfix** — those are precisely the paths where the adversarial pass is load-bearing, and
+the blast radius of getting one wrong is not recoverable by a fast follow-up. Fix forward through the
+normal path, or roll back.
+
+The exact list is `hotfix_barred_paths` in `.sdd/bounds.yml` — widened by security round
+FND-b731f500c5b8 (PL-11) from its original six entries to also cover `services/core/src/services/**`,
+`services/core/src/routes/**`, `services/core/src/mcp/**`, `services/workers/**`, and
+`services/gateway/**`, after a ~44KB single-line hotfix-shaped change to the service layer was
+reproduced measuring as trivially "small." It remains a curated, best-effort list, not a complete
+classifier of every security-sensitive path in this codebase.
 
 Rolling back is almost always available and almost always better. Prefer it.
 

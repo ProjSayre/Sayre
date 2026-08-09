@@ -520,3 +520,198 @@ test('[integration] PL-03a\'s backfilled entry.json on disk matches the strict s
   assert.deepEqual({ review: entry.verdicts.review, security: entry.verdicts.security }, { review: 'PASS', security: 'PASS' });
   assert.ok(Array.isArray(entry.filesTouched) && entry.filesTouched.length > 0);
 });
+
+// --- [lite] PL-11: a lite entry is INDEXED, and its index record carries the qualification --------
+//
+// The decision (spec.md's Open questions #2, and the argument .sdd/ledger/README.md already makes for
+// a --re-gate entry): a lite run has a real, ratified spec that `review` genuinely passed against the
+// final tree, so excluding it would answer "which spec governs this file" with silence when a real
+// answer exists. What it does NOT have is a security pass — so the exclusion mechanism is not what
+// carries that fact; the `lite` marker on the record itself is, exactly as `regate: { testerRan }`
+// already does one row above. The verdicts gate has to widen by precisely one shape and no more:
+// `{ review: "PASS", security: "SKIPPED_LITE" }` is acceptable ONLY from an entry that declares
+// itself lite and lists `security` among its skipped stages. Anything else is a non-lite entry
+// laundering a skipped gate into an indexed one (EC-15).
+
+/** A lite entry.json in the exact shape scripts/ledger-append.mjs --lite writes. `note`/`eligibility`
+ * are present because a real entry carries them — build-ledger-index.mjs deliberately reads only
+ * `skippedStages`, the same narrowing readRegateField already applies. */
+function sampleLiteEntryJson(runId, files, { skippedStages = ['red', 'security'], ticket = 'PL-11', date = '2026-08-08' } = {}) {
+  return {
+    runId,
+    date,
+    ticket,
+    filesTouched: files,
+    verdicts: { review: 'PASS', security: 'SKIPPED_LITE' },
+    overrides: [],
+    bypass: false,
+    regate: null,
+    lite: {
+      skippedStages,
+      note: '(the fixed lite disclosure note — not read by this script)',
+      eligibility: { fileCount: files.length, changedLines: 12, maxFiles: 5, maxChangedLines: 150 },
+    },
+    redTestPaths: [],
+    securityRunId: null,
+  };
+}
+
+// @spec AC-11
+test('[lite] a lite entry is indexed, and every record it produces carries lite: { skippedStages }', () => {
+  const root = fixture({ 'run-lite': { entryJson: sampleLiteEntryJson('run-lite', ['scripts/typo-fix.mjs', 'docs/typo.md']) } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.deepEqual(index['scripts/typo-fix.mjs'], [
+    {
+      runId: 'run-lite',
+      ticket: 'PL-11',
+      date: '2026-08-08',
+      spec: '.sdd/ledger/run-lite/spec.md',
+      lite: { skippedStages: ['red', 'security'] },
+    },
+  ]);
+  assert.deepEqual(
+    index['docs/typo.md'][0].lite,
+    { skippedStages: ['red', 'security'] },
+    'EVERY record the run produces carries the marker — a reader who happens to look up the second file must not get an unqualified attribution',
+  );
+});
+
+// @spec AC-11
+test('[lite] the widened verdicts gate accepts SKIPPED_LITE only from a declared lite entry, and still enforces PASS/PASS byte-for-byte on every other non-bypass entry', () => {
+  // The one shape that widens...
+  const declaredLite = fixture({ 'run-lite': { entryJson: sampleLiteEntryJson('run-lite', ['app/lite.ts']) } });
+  assert.equal(run(declaredLite).status, 0, 'a declared lite entry, with security among its skipped stages, is the ONE shape this gate widens for');
+
+  // ...the ordinary shape is unchanged...
+  const ordinary = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['x.ts']) } });
+  assert.equal(run(ordinary).status, 0, 'a normal PASS/PASS entry must still index exactly as before');
+
+  // ...and a near-miss on the non-lite path is still refused, with no new escape hatch.
+  const nearMiss = (() => {
+    const entryJson = sampleEntryJson('run-a', ['x.ts']);
+    entryJson.verdicts = { review: 'PASS', security: 'SKIPPED' };
+    return fixture({ 'run-a': { entryJson } });
+  })();
+  const nearMissResult = run(nearMiss);
+  assert.notEqual(nearMissResult.status, 0, 'only the exact SKIPPED_LITE literal, from a declared lite entry, widens this gate');
+  assert.ok(!existsSync(join(nearMiss, '.sdd', 'ledger', 'index.json')));
+});
+
+// @spec EC-15
+test('[lite] an entry claiming security: SKIPPED_LITE with no lite object, or one omitting "security" from skippedStages, is refused — while the honestly-declared one beside it is indexed', () => {
+  // The positive control is what makes this an asymmetry test rather than a "SKIPPED_LITE is
+  // unknown, so everything containing it is refused" test — which is what it would degenerate into
+  // (and silently pass as) if only the two negative cases were asserted.
+  const declared = fixture({ 'run-lite': { entryJson: sampleLiteEntryJson('run-lite', ['app/honest.ts']) } });
+  assert.equal(run(declared).status, 0, 'the honestly-declared lite entry is indexed');
+
+  const laundered = (() => {
+    const entryJson = sampleEntryJson('run-a', ['app/laundered.ts']);
+    entryJson.verdicts = { review: 'PASS', security: 'SKIPPED_LITE' };
+    return entryJson; // no `lite` object at all
+  })();
+  const noLiteObject = fixture({ 'run-a': { entryJson: laundered } });
+  const noLiteResult = run(noLiteObject);
+  assert.notEqual(noLiteResult.status, 0, 'a non-lite entry must never be able to launder a skipped gate into an indexed one');
+  assert.ok(!existsSync(join(noLiteObject, '.sdd', 'ledger', 'index.json')), 'and it must write nothing while refusing');
+
+  const wrongStages = fixture({
+    'run-a': { entryJson: sampleLiteEntryJson('run-a', ['app/half-declared.ts'], { skippedStages: ['red'] }) },
+  });
+  const wrongStagesResult = run(wrongStages);
+  assert.notEqual(wrongStagesResult.status, 0, 'claiming SKIPPED_LITE while not listing security among the skipped stages is self-contradictory, and refused');
+  assert.ok(!existsSync(join(wrongStages, '.sdd', 'ledger', 'index.json')));
+});
+
+// @spec EC-15
+test('[lite] --check fails loudly on a laundered SKIPPED_LITE entry rather than reporting the index as up to date', () => {
+  // Seeded with a real lite entry, so this test cannot pass merely because SKIPPED_LITE is unknown
+  // to the gate: the first run below has to succeed before the laundered entry is even added.
+  const root = fixture({ 'run-lite': { entryJson: sampleLiteEntryJson('run-lite', ['app/ok.ts']) } });
+  assert.equal(run(root).status, 0, 'the baseline lite index must build before this test can say anything about --check');
+
+  const runBDir = join(root, '.sdd', 'ledger', 'run-b');
+  mkdirSync(runBDir, { recursive: true });
+  const laundered = sampleEntryJson('run-b', ['app/laundered.ts']);
+  laundered.verdicts = { review: 'PASS', security: 'SKIPPED_LITE' };
+  writeFileSync(join(runBDir, 'entry.json'), JSON.stringify(laundered), 'utf8');
+  writeFileSync(join(runBDir, 'entry.md'), sampleEntryMarkdown('run-b'), 'utf8');
+  writeFileSync(join(runBDir, 'spec.md'), '# Spec\n', 'utf8');
+
+  const check = run(root, ['--check']);
+  assert.notEqual(check.status, 0, '--check must fail loudly — an unindexable entry read as "no drift" is the silent half of this failure');
+});
+
+// @spec AC-11
+test('[lite] a non-lite entry\'s index record still carries no "lite" key at all — the marker\'s absence is what says the attribution is unqualified', () => {
+  const root = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['app/normal.ts']) } });
+  assert.equal(run(root).status, 0);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(!('lite' in index['app/normal.ts'][0]));
+
+  const explicitNull = fixture({
+    'run-a': { entryJson: { ...sampleEntryJson('run-a', ['app/explicit-null.ts']), lite: null } },
+  });
+  assert.equal(run(explicitNull).status, 0);
+  const explicitNullIndex = JSON.parse(readFileSync(join(explicitNull, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(
+    !('lite' in explicitNullIndex['app/explicit-null.ts'][0]),
+    'an explicit "lite": null (what ledger-append.mjs writes for every non-lite run) must be omitted from the record, not carried through as null',
+  );
+});
+
+// @spec AC-11
+test('[lite] a malformed lite object (skippedStages not an array of strings) fails loudly rather than silently indexing something', () => {
+  // Positive control first, for the same reason as the EC-15 test above: without it this passes
+  // today for a reason unrelated to the shape of `lite`.
+  const wellFormed = fixture({ 'run-a': { entryJson: sampleLiteEntryJson('run-a', ['x.ts']) } });
+  assert.equal(run(wellFormed).status, 0, 'the well-formed lite object indexes — so the refusals below are about the malformation, not about lite entries generally');
+
+  for (const badLite of [{ skippedStages: 'red,security' }, { skippedStages: [1, 2] }, {}]) {
+    const entryJson = { ...sampleLiteEntryJson('run-a', ['x.ts']), lite: badLite };
+    const root = fixture({ 'run-a': { entryJson } });
+    const result = run(root);
+    assert.notEqual(result.status, 0, JSON.stringify(badLite));
+    assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')), JSON.stringify(badLite));
+  }
+});
+
+// @spec EC-20
+test('[lite] when a lite run and a full run both touch one file, index.json holds both records and only the lite one is qualified', () => {
+  const root = fixture({
+    '20260801T000000000Z-full': { entryJson: sampleEntryJson('20260801T000000000Z-full', ['shared/thing.ts']) },
+    '20260808T000000000Z-lite': { entryJson: sampleLiteEntryJson('20260808T000000000Z-lite', ['shared/thing.ts']) },
+  });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  const records = index['shared/thing.ts'];
+  assert.equal(records.length, 2, 'both runs really did touch this file — neither is dropped');
+  assert.deepEqual(records.map((record) => record.runId), ['20260801T000000000Z-full', '20260808T000000000Z-lite']);
+  assert.ok(!('lite' in records[0]), 'the full run\'s attribution is unqualified');
+  assert.deepEqual(
+    records[1].lite,
+    { skippedStages: ['red', 'security'] },
+    'a reader following the fast path (buggy file -> index.json) must see the qualification without a second hop into entry.json',
+  );
+});
+
+// @spec AC-11
+test('[lite] a bypass: true lite entry (a lite run that also needed --override-review) is excluded via bypass, exactly like any other override', () => {
+  const entryJson = {
+    ...sampleLiteEntryJson('run-lite-override', ['app/still-broken.ts']),
+    verdicts: { review: 'NEEDS_FIXES', security: 'SKIPPED_LITE' },
+    overrides: [{ gate: 'review', verdict: 'NEEDS_FIXES', reason: 'A style nit accepted on purpose.' }],
+    bypass: true,
+  };
+  const root = fixture({ 'run-lite-override': { entryJson } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/still-broken.ts'], undefined, 'bypass excludes the run regardless of the lite disclosure alongside it');
+});

@@ -755,3 +755,299 @@ test('every "check:<suffix>" script in package.json has a matching "test:<suffix
     );
   }
 });
+
+// =================================================================================================
+// [lite] PL-11 — the /pipeline-lite lane's documented half
+// =================================================================================================
+//
+// Authored by the `red` stage from .pipeline/spec.md alone. These follow this file's existing
+// structural-assertion discipline (see its header): scope to a real heading or bold label — those
+// genuinely are the contract, and several are mechanically parsed elsewhere — then require the
+// load-bearing concepts to co-occur inside it, tolerant of wording. A verdict literal, a filename, a
+// JSON field name, and a command name are still pinned exactly.
+//
+// The lane's documentation is not decoration here. `/pipeline-lite` is the one entry point that
+// deliberately runs neither `red` nor `security`, and the only thing standing between "a
+// proportionate lane" and "a quiet way around the gates" is that its own definition says, in the
+// same place a person actually reads, precisely what it gave up. An undocumented lite lane and a
+// bypass are the same artifact.
+//
+// TWO CONVENTIONS EVERY ASSERTION BELOW FOLLOWS, both learned the hard way while authoring them:
+//
+//  1. Every alternation handed to `coOccurs` is wrapped in a non-capturing group. `coOccurs` splices
+//     `patternB.source` straight into a larger pattern, so a bare `/a|b/` becomes a top-level
+//     alternation of the WHOLE composed regex — `lite[\s\S]{0,400}red\.md` OR `absen` OR `missing` —
+//     and the assertion then passes on any document containing the word "missing" anywhere, with no
+//     co-occurrence involved at all. That is not a hypothetical: the first draft of the tester.md
+//     assertion below passed against an unmodified tester.md for exactly this reason.
+//  2. No `$` anchor against a repo document, and `\r?\n` wherever a newline is matched literally.
+//     Every file read here is CRLF in this working tree (`.sdd/**`, `CLAUDE.md`, `package.json`,
+//     `.github/workflows/ci.yml`), so `/^foo:$/m` silently never matches — the `\r` sits between
+//     `foo:` and the line end.
+
+/** The authoritative section for the lane, sliced by its own heading — placed between
+ * `### `/pipeline <ticket>`` and `### Per-stage entry points` per spec.md's Interfaces section. */
+function pipelineLiteSection() {
+  return sectionBetween(read('.sdd/pipeline.md'), '### `/pipeline-lite', '### Per-stage entry points');
+}
+
+// @spec AC-1
+test('[lite] .sdd/pipeline.md defines /pipeline-lite runtime-neutrally: the eligibility gate first, the stages run, the stages skipped, routing/loop-cap reuse, and the mandatory ledger step', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.match(pipeline, /### `\/pipeline-lite/, 'expected a dedicated /pipeline-lite entry-point section');
+
+  const section = pipelineLiteSection();
+
+  // The gate comes first, and it is mechanical — not a judgment call made in prose.
+  assert.ok(section.includes('scripts/check-lite-eligible.mjs'), 'the section must name the script that computes eligibility');
+  const gateIdx = section.indexOf('check-lite-eligible.mjs');
+  const plannerIdx = section.indexOf('planner');
+  assert.ok(gateIdx !== -1 && plannerIdx !== -1 && gateIdx < plannerIdx,
+    'the eligibility gate is step one — a lane entered first and checked later has already skipped the gates for anything that turns out not to be small');
+
+  // The stages that DO run, in order.
+  let cursor = -1;
+  for (const stage of ['planner', 'dev', 'tester', 'review']) {
+    const idx = section.indexOf(stage, cursor + 1);
+    assert.ok(idx > cursor, `the section must list ${stage} in sequence after the stage before it`);
+    cursor = idx;
+  }
+  assert.ok(section.includes('ledger-append.mjs --lite'), 'the mandatory ledger step names the exact command that records the run');
+
+  // The stages that deliberately do NOT run, named as skipped rather than merely absent.
+  assert.ok(coOccurs(section, /\bred\b/, /skip/i, 200), 'the section must say `red` is skipped, not simply omit it');
+  assert.ok(coOccurs(section, /\bsecurity\b/, /skip/i, 200), 'the section must say `security` is skipped, not simply omit it');
+
+  // Routing and the loop cap are reused, not redefined.
+  assert.match(section, /(?:\b3\b|three)/, 'the section must state that the existing 3-attempt loop cap applies');
+  assert.match(section, /(?:loop cap|routing)/i);
+
+  // Disambiguation from the two adjacent entry points.
+  assert.ok(section.includes('/hotfix'), 'the section must disambiguate itself from /hotfix');
+  assert.ok(section.includes('/re-gate'), 'the section must disambiguate itself from /re-gate');
+});
+
+// @spec AC-1
+test('[lite] /pipeline-lite is listed in .sdd/pipeline.md\'s intro paragraph and its Entry points preamble, not only in its own section', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  const intro = sectionBetween(pipeline, '# Pipeline — stage sequence, routing, and loop caps', '## Staleness stamps');
+  assert.ok(intro.includes('/pipeline-lite'), 'a lane nobody can find from the top of the file is a lane that gets reinvented as a hand-edit');
+
+  const entryPointsPreamble = sectionBetween(pipeline, '## Entry points', '### `/pipeline <ticket>`');
+  assert.ok(entryPointsPreamble.includes('/pipeline-lite'), 'the Entry points list must name every entry point, including this one');
+});
+
+// @spec AC-2 AC-3
+test('[lite] the lane adds no new subagent stage: `review` itself is the surviving gate, and the section names where its read-only property is structurally enforced', () => {
+  const section = pipelineLiteSection();
+  assert.ok(coOccurs(section, /\breview\b/, /(?:no new (?:subagent|stage)|unchanged)/i, 300),
+    'the section must say plainly that the surviving gate is the existing `review` stage, unchanged — not a new, lighter reviewer');
+  assert.ok(section.includes('guard-checker-readonly.mjs'), 'the section must name the guard script that enforces review\'s read-only property');
+  assert.ok(section.includes('READ_ONLY_AGENTS'), 'and the specific registry within it — "enforced somewhere" is the claim this project already had to correct once');
+
+  // AC-3: the surviving gate's decision still comes from the JSON sidecar, never from prose.
+  assert.ok(section.includes('review.json'), 'the section must name review.json as the source of the verdict');
+
+  // Nothing is registered as a new stage.
+  assert.ok(!read('.sdd/runtimes.yml').includes('pipeline-lite'),
+    '.sdd/runtimes.yml must be untouched by this ticket — the lane is an entry point, not a stage');
+  const agentShims = readdirSync(resolve(repoRoot, '.claude', 'agents'));
+  assert.ok(!agentShims.some((name) => name.includes('lite')), 'no .claude/agents/*.md shim may be added for a stage that does not exist');
+});
+
+// @spec AC-17
+test('[lite] the section carries an Honest limits paragraph naming exactly what the lane gives up', () => {
+  const honestLimits = sectionBetween(pipelineLiteSection(), 'Honest limits', '');
+
+  assert.ok(coOccurs(honestLimits, /\bred\b/, /(?:after|order|first)/i, 300),
+    'it must name red\'s spec-first ordering — that any test for a lite ticket is written after the diff exists');
+  assert.match(honestLimits, /(?:D-018|inver)/i,
+    'the D-018 inversion is reintroduced deliberately and only here; saying so is the whole point of this paragraph');
+  assert.match(honestLimits, /attacker[- ]brief/i, 'it must name the attacker-brief sweep that does not happen');
+  assert.match(honestLimits, /CORE-01/, 'it must name the CORE-01..06 mandatory checks that do not run');
+  assert.ok(honestLimits.includes('.pipeline/security-history/'), 'it must name the immutable audit record that is never written for this run');
+  assert.match(honestLimits, /(?:curated|best[- ]effort)/i, 'it must concede the barred-path list is curated and best-effort, not a complete classifier');
+  assert.ok(coOccurs(honestLimits, /(?:fail[- ]closed|ambigu)/i, /\/pipeline\b/, 300),
+    'it must state the fail-closed default: ambiguous eligibility routes to /pipeline');
+});
+
+// @spec EC-1
+test('[lite] the section routes the three adjacent cases explicitly: ambiguity to /pipeline, an incident to /hotfix, a barred path to /pipeline', () => {
+  const section = pipelineLiteSection();
+  assert.ok(coOccurs(section, /(?:exits? ?`?2`?|could not (?:be )?(?:run|performed))/i, /\/pipeline\b/, 300),
+    'an eligibility check that could not run (exit 2) routes to /pipeline — ambiguity is ineligibility, never a provisional entry');
+  assert.ok(coOccurs(section, /(?:incident|production|outage)/i, /\/hotfix/, 300),
+    'a small change during a production incident is /hotfix, and the routing table must say so');
+  assert.ok(coOccurs(section, /barred/i, /\/pipeline\b/, 300), 'a small change on a barred path is /pipeline');
+});
+
+// @spec AC-4
+test('[lite] .sdd/bounds.yml carries the lite_eligibility block and .sdd/bounds.md explains it, including the lane-vs-lane disambiguation and the no-third-list rule', () => {
+  const boundsYml = read('.sdd/bounds.yml');
+  assert.match(boundsYml, /^lite_eligibility:\s*$/m);
+  assert.match(boundsYml, /^[ \t]+max_files:[ \t]*5[ \t]*\r?$/m);
+  assert.match(boundsYml, /^[ \t]+max_changed_lines:[ \t]*150[ \t]*\r?$/m);
+
+  const boundsMd = read('.sdd/bounds.md');
+  assert.match(boundsMd, /##.*Lite[- ]lane eligibility/i, 'bounds.md must carry a human-facing section for the new block');
+  const section = sectionBetween(boundsMd, 'Lite-lane eligibility', '');
+
+  assert.ok(coOccurs(section, /lanes/i, /(?:which paths|path fence|fence)/i, 300),
+    'the section must say what `lanes:` bounds (which paths a ticket may touch)');
+  assert.ok(coOccurs(section, /lite/i, /(?:which stages|skip)/i, 300),
+    'and what the lite bounds bound (which stages run) — two different axes sharing one file is exactly what gets confused later');
+  assert.ok(section.includes('hotfix_barred_paths') && section.includes('deny_for_fenced_lanes'),
+    'the section must name both lists the lite barred set is computed from');
+  assert.ok(coOccurs(section, /(?:union|computed)/i, /(?:no third|not a third|never a third)/i, 400),
+    'and state that there is deliberately no third barred-path list to maintain');
+});
+
+// @spec AC-12
+test('[lite] .sdd/ledger/README.md documents the lite entry shape, why it is indexed, and what it structurally lacks', () => {
+  const readme = read('.sdd/ledger/README.md');
+  assert.match(readme, /##.*Lite[- ]lane entries/i, 'the ledger README must carry a Lite-lane entries section');
+  const section = sectionBetween(readme, 'Lite-lane entries', '\n## ');
+
+  assert.ok(section.includes('SKIPPED_LITE'), 'the exact verdict literal is the contract — pinned, not paraphrased');
+  assert.ok(section.includes('skippedStages'), 'as is the JSON field name');
+  assert.ok(coOccurs(section, /index/i, /(?:spec|govern|ratif)/i, 400),
+    'the section must give the REASON a lite entry is indexed (a real, ratified spec that review passed), not merely state that it is');
+  assert.ok(coOccurs(section, /(?:hotfix|override)/i, /exclud/i, 400),
+    'and contrast it against a hotfix/override entry\'s exclusion — the contrast is what makes the decision legible rather than arbitrary');
+
+  for (const absent of ['security.json', 'red.json', 'security/']) {
+    assert.ok(section.includes(absent), `the section must state that a lite entry has no ${absent}`);
+  }
+});
+
+// @spec AC-13
+test('[lite] .claude/skills/pipeline-lite/SKILL.md exists, is thin, and matches the other shims\' frontmatter conventions', () => {
+  const skillPath = '.claude/skills/pipeline-lite/SKILL.md';
+  assert.ok(existsSync(resolve(repoRoot, skillPath)), `${skillPath} does not exist`);
+  const skill = read(skillPath);
+
+  assert.match(skill, /^---\r?\n[\s\S]*?\r?\n---/, 'the shim must open with YAML frontmatter, like every other skill');
+  assert.match(skill, /^name: pipeline-lite[ \t]*\r?$/m);
+  assert.match(skill, /^description: \S.*\r?$/m);
+  assert.match(skill, /^disable-model-invocation: true[ \t]*\r?$/m, 'this command takes real actions — it is invoked explicitly, never auto-triggered');
+  assert.match(skill, /^argument-hint: \S.*\r?$/m);
+  assert.ok(skill.includes('.sdd/pipeline.md'), 'the body must point at the authoritative, runtime-neutral definition');
+
+  // Thin: a shim that restates the procedure is a second copy of it, and the two will drift.
+  assert.ok(skill.split('\n').length < 60, 'the shim must stay a pointer, not a second copy of the lane\'s procedure');
+});
+
+// @spec AC-13
+test('[lite] every `### `/<command>`` section in .sdd/pipeline.md has a matching .claude/skills/<command>/SKILL.md', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  const commands = [...pipeline.matchAll(/^### `\/([a-z][a-z0-9-]*)/gm)].map((match) => match[1]);
+  assert.ok(commands.length >= 10, `expected pipeline.md's entry-point sections to be discoverable; found ${commands.length}`);
+  assert.ok(commands.includes('pipeline-lite'), 'the generalized check is only meaningful once it actually covers the new command');
+
+  for (const command of new Set(commands)) {
+    assert.ok(
+      existsSync(resolve(repoRoot, '.claude', 'skills', command, 'SKILL.md')),
+      `.sdd/pipeline.md documents /${command} but .claude/skills/${command}/SKILL.md does not exist — a documented entry point with no runtime shim is a command a person cannot actually run`,
+    );
+  }
+});
+
+// @spec AC-14
+test('[lite] the new script is wired and gated: package.json scripts, a CI step, and scripts/tsconfig.json include', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(pkg.scripts['check:lite-eligible'] ?? '', /node scripts\/check-lite-eligible\.mjs/);
+  assert.match(pkg.scripts['test:lite-eligible'] ?? '', /node --test scripts\/check-lite-eligible\.test\.mjs/);
+
+  const ci = read('.github/workflows/ci.yml');
+  assert.ok(ci.includes('test:lite-eligible'), 'CI must actually run the new suite — a suite nothing runs is indistinguishable from no tests');
+
+  const tsconfig = read('scripts/tsconfig.json');
+  assert.ok(tsconfig.includes('"check-lite-eligible.mjs"'), 'the new script must be type-checked');
+  assert.ok(tsconfig.includes('"check-lite-eligible.test.mjs"'), 'and so must its suite');
+});
+
+// @spec AC-15
+test('[lite] every script this ticket touches has coverage: a new suite for the new script, and [lite]-tagged cases in each existing suite', () => {
+  assert.ok(
+    existsSync(resolve(repoRoot, 'scripts', 'check-lite-eligible.mjs')),
+    'coverage "for scripts/check-lite-eligible.mjs" is not coverage of anything until that script exists — this is the half of AC-15 the red stage cannot satisfy on its own',
+  );
+  assert.ok(read('scripts/check-lite-eligible.test.mjs').includes('check-lite-eligible.mjs'),
+    'the new suite must actually exercise the new script');
+
+  for (const suite of ['scripts/ledger-append.test.mjs', 'scripts/build-ledger-index.test.mjs', 'scripts/check-bounds.test.mjs']) {
+    const taggedTests = [...read(suite).matchAll(/^test\('\[lite\]/gm)];
+    assert.ok(taggedTests.length > 0, `${suite} must carry [lite]-tagged cases for the behavior this ticket adds to the script it covers`);
+  }
+});
+
+// @spec AC-16
+test('[lite] .sdd/stages/tester.md treats a missing red.md as legitimate on the lite lane while keeping the D-018 guarantee in force', () => {
+  const tester = read('.sdd/stages/tester.md');
+  const requiredInputs = sectionBetween(tester, '## Required inputs', '## Procedure');
+
+  assert.ok(requiredInputs.includes('red.md'), 'item 1 still names red.md as an input');
+  assert.ok(coOccurs(requiredInputs, /lite/i, /(?:red\.md|absent|missing)/i, 400),
+    'item 1 must name the lite lane as the case where red.md\'s absence is legitimate — "stop and say which stage needs to run first" is the wrong answer on a lane that deliberately skipped it');
+  assert.ok(coOccurs(requiredInputs, /lite/i, /(?:state|say)/i, 400),
+    'and require tester to STATE that, rather than either stopping or passing over it silently');
+
+  // The D-018 guarantee is preserved in force, not merely mentioned: tester still authors nothing.
+  const procedure = sectionBetween(tester, '## Procedure', '## Output contract');
+  assert.ok(coOccurs(procedure, /(?:you do not write it|never)/i, /behavioral/i, 400),
+    'tester still never authors a behavioral test — the lite lane makes that MORE consequential, not less, since no red stage covered anything');
+  assert.ok(coOccurs(procedure, /report/i, /gap/i, 300), 'and still reports gaps rather than filling them');
+
+  const outputContract = sectionBetween(tester, '## Output contract', '## Staleness of required inputs');
+  const redSuiteBullet = sectionBetween(outputContract, 'Red suite result', '- **');
+  assert.ok(coOccurs(redSuiteBullet, /(?:no red suite|no red\.md|no such suite)/i, /(?:explicit|state|say)/i, 400),
+    'the Red suite result bullet must require an explicit statement when no red suite exists for the run — a blank section reads as "not checked"');
+});
+
+// @spec AC-16
+test('[lite] .sdd/stages/CHANGELOG.md records the PL-11 round, and no other stage file\'s procedure is changed', () => {
+  const changelog = read('.sdd/stages/CHANGELOG.md');
+  assert.match(changelog, /^## PL-11/m, 'the changelog is where a stage-file amendment is explained, so the stage file itself stays a procedure');
+  const section = sectionBetween(changelog, '## PL-11', '\n## ');
+  assert.ok(section.includes('tester'), 'the PL-11 entry must name which stage file it amended');
+
+  // Mechanical half of "no other stage file's procedure is changed". This only sees UNCOMMITTED
+  // edits, which is exactly the state this suite runs in during a pipeline run; the durable half is
+  // the per-stage marker assertions earlier in this file, which would fail if a guarantee were
+  // silently dropped from planner.md/red.md/dev.md/review.md/security.md at any point.
+  const changedStageFiles = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', '.sdd/stages'], { cwd: repoRoot, encoding: 'utf8' })
+    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const allowed = new Set(['.sdd/stages/tester.md', '.sdd/stages/CHANGELOG.md']);
+  for (const file of changedStageFiles) {
+    assert.ok(allowed.has(file), `${file} was modified, but this ticket amends only tester.md (plus the changelog)`);
+  }
+});
+
+// @spec AC-18
+test('[lite] the lane is discoverable from .sdd/hotfix.md, CLAUDE.md, and .sdd/README.md', () => {
+  const hotfix = read('.sdd/hotfix.md');
+  const whenRight = sectionBetween(hotfix, '## When this is the right call', '## Who may use it');
+  assert.ok(whenRight.includes('/pipeline-lite'),
+    'hotfix.md\'s "not for a fix that is too small to need a spec" list must now point somewhere — a prohibition with no alternative is what produced the unrecorded hand-edit this whole lane exists to replace');
+  assert.ok(coOccurs(whenRight, /too small/i, /\/pipeline-lite/, 400),
+    'and it must be pointed at from that specific item, not merely mentioned elsewhere in the section');
+
+  // '' (read to EOF), not '\n## ': CLAUDE.md's "## Agent pipeline" is its own last section in this
+  // checkout, so a next-heading endAnchor (the convention used for the other three sectionBetween
+  // calls in this test) has nothing to find — sectionBetween already supports this exact case
+  // (falls back to text.slice(from) when endAnchor is falsy); this is that documented path, not a
+  // new one.
+  const relatedCommands = sectionBetween(read('CLAUDE.md'), 'Related commands:', '');
+  assert.ok(relatedCommands.includes('/pipeline-lite'), 'CLAUDE.md\'s Agent pipeline related-commands list must name the lane');
+
+  const sddReadme = read('.sdd/README.md');
+  const directoryMap = sectionBetween(sddReadme, '## Directory map', '## The generated surfaces');
+  assert.ok(directoryMap.includes('/pipeline-lite'), '.sdd/README.md\'s directory map names the entry points pipeline.md defines');
+  // The more specific, backtick-quoted anchor (not the bare '.claude/skills/' substring): that bare
+  // substring's FIRST occurrence in this file is in the much earlier "Why this exists" section (the
+  // pre-.sdd/ Claude Code copy this document contrasts itself with), not the "entry-point commands"
+  // paragraph this assertion actually means to scope to — sectionBetween always finds the first
+  // occurrence, so the ambiguous anchor silently scoped this check to the wrong section entirely.
+  const skillsParagraph = sectionBetween(sddReadme, '`.claude/skills/*/SKILL.md`', '\n## ');
+  assert.ok(skillsParagraph.includes('pipeline-lite'), '.sdd/README.md\'s .claude/skills/*/SKILL.md paragraph must name the new shim');
+});

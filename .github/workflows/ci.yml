@@ -145,6 +145,14 @@ jobs:
       - name: Lane bounds check — tests
         run: npm run test:bounds
 
+      # PL-11: the /pipeline-lite lane's own mechanical eligibility gate (max_files/max_changed_lines
+      # + the hotfix_barred_paths/deny_for_fenced_lanes union), same "a computer counts, an agent
+      # doesn't judge" reasoning as the lane-bounds check above. Its own suite runs here the same way;
+      # `check:lite-eligible` itself needs a live working tree or --files/--base, which are per-run
+      # inputs ledger-append.mjs --lite (or a human) supplies.
+      - name: Lite-lane eligibility check — tests
+        run: npm run test:lite-eligible
+
       # PL-03g: this guard is what actually makes review/security-checker read-only, wired as a
       # PreToolUse hook in .claude/settings.json. It matters that CI runs this suite: a hook that
       # fails to load exits 1, and a PreToolUse hook only BLOCKS on exit 2 — so a broken guard

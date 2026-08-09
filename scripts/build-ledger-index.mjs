@@ -134,6 +134,24 @@ function readRegateField(raw, label) {
   return { testerRan };
 }
 
+/** PL-11: the opposite kind of field from `bypass`, the same way `regate` is — a lite run's
+ * `entry.json` genuinely has a real, ratified spec `review` passed against the final tree, so it is
+ * indexed rather than excluded; `lite` only decorates the record(s) that run produces (see
+ * `buildIndex()` below) and widens the verdicts gate by exactly one shape (see `readEntryJson`
+ * below). Optional, `null` for every entry.json written before this field existed and for every
+ * non-lite run, matching `regate`'s own back-compat default. When present, only `skippedStages` is
+ * read and validated (an array of strings) — `note`/`eligibility` are entry.json-only detail this
+ * query index deliberately does not duplicate, the same narrowing `readRegateField` already applies
+ * to `regate`'s own `gatesOnly`/`note`. */
+function readLiteField(raw, label) {
+  if (raw === undefined || raw === null) return null;
+  const liteLabel = `${label}: lite`;
+  requireObject(raw, liteLabel);
+  const skippedStages = requireArray(raw.skippedStages, liteLabel, 'skippedStages')
+    .map((item, i) => requireString(item, liteLabel, `skippedStages[${i}]`));
+  return { skippedStages };
+}
+
 function readEntryJson(runId) {
   const label = `.sdd/ledger/${runId}/entry.json`;
   const path = join(ledgerDir, runId, 'entry.json');
@@ -151,21 +169,30 @@ function readEntryJson(runId) {
     .map((item, i) => requireString(item, label, `filesTouched[${i}]`));
   const bypass = raw.bypass === true;
   const regate = readRegateField(raw.regate, label);
+  const lite = readLiteField(raw.lite, label);
 
   if (!bypass) {
     requireObject(raw.verdicts, `${label}: verdicts`);
-    const expected = { review: 'PASS', security: 'PASS' };
     const actual = { review: raw.verdicts.review, security: raw.verdicts.security };
+    // PL-11 / AC-11, EC-15: the verdicts gate widens by exactly one shape — { review: "PASS",
+    // security: "SKIPPED_LITE" } is acceptable ONLY from an entry that declares itself lite AND
+    // lists "security" among its own skippedStages. Anything else (no `lite` object at all, or one
+    // that omits "security") is a non-lite entry attempting to launder a skipped gate into an
+    // indexed one, and is refused exactly like any other malformed `verdicts` value below. Every
+    // other non-bypass entry still enforces the original PASS/PASS check byte-for-byte, unchanged.
+    const isDeclaredLite = lite !== null && lite.skippedStages.includes('security');
+    const expected = isDeclaredLite ? { review: 'PASS', security: 'SKIPPED_LITE' } : { review: 'PASS', security: 'PASS' };
     if (actual.review !== expected.review || actual.security !== expected.security) {
       fail(
         `${label}: field "verdicts" must be exactly ${JSON.stringify(expected)} — got ${JSON.stringify(actual)}. ` +
-        'A ledger entry only exists because both gates passed — this one claims something the tooling ' +
-        'cannot verify, or is malformed, and must not be indexed.',
+        'A ledger entry only exists because both gates passed (or the lite lane honestly declares ' +
+        'security as skipped) — this one claims something the tooling cannot verify, or is malformed, ' +
+        'and must not be indexed.',
       );
     }
   }
 
-  return { runId: runIdField, ticket, date, filesTouched, bypass, regate };
+  return { runId: runIdField, ticket, date, filesTouched, bypass, regate, lite };
 }
 
 /** Builds the in-memory index (file path -> sorted array of run references) from every ledger run
@@ -202,6 +229,12 @@ export function buildIndex() {
       // when this run's entry.json actually had one (readEntryJson's own back-compat default is
       // `null`). Omitted entirely, not written as `regate: null`, for every ordinary run's records.
       if (entry.regate) record.regate = { testerRan: entry.regate.testerRan };
+      // PL-11 / AC-11, EC-20: the same reasoning `regate: { testerRan }` above already uses — carry
+      // only `skippedStages` forward (never `note`/`eligibility`), and only when this run's
+      // entry.json actually declared itself lite, so a reader following the fast path (buggy file ->
+      // index.json) sees the attribution is qualified without a second hop into entry.json. Omitted
+      // entirely, not written as `lite: null`, for every non-lite run's records.
+      if (entry.lite) record.lite = { skippedStages: entry.lite.skippedStages };
       index[file].push(record);
     }
   }

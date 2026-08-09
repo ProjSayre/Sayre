@@ -38,6 +38,8 @@
     "test:stamp-freshness": "node --test scripts/check-stamp-freshness.test.mjs",
     "check:bounds": "node scripts/check-bounds.mjs",
     "test:bounds": "node --test scripts/check-bounds.test.mjs",
+    "check:lite-eligible": "node scripts/check-lite-eligible.mjs",
+    "test:lite-eligible": "node --test scripts/check-lite-eligible.test.mjs",
     "test:readonly-guard": "node --test scripts/guard-checker-readonly.test.mjs",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "dev:workspaces": "turbo run dev --parallel",

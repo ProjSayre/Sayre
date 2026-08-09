@@ -59,6 +59,7 @@ Run `/pipeline <ticket description or path to ticket file>` to chain the full pi
 - `/spec-only <ticket>` — runs just `planner`, stops for human review/editing of `spec.md` before any code is touched
 - `/pipeline-status` — reports which stage a run is currently at, without running anything
 - `/security-recheck` — re-runs just `security-checker` against current disk state, for a fast check after a hand-edit (doesn't redo tester/review)
+- `/pipeline-lite <ticket>` — the proportionate lane for a genuinely small, mechanically-eligible change (a typo, a one-file cleanup, a doc fix): runs `planner` → `dev` → `tester` → `review` → ledger, deliberately skipping `red` and `security` — see `.sdd/pipeline.md`'s `/pipeline-lite` section
 - `/hotfix <what's broken>` — the sanctioned bypass for a production incident; runs none of the stages above — see `.sdd/hotfix.md`
 
 Feature/ticket work runs through six subagents in sequence, coordinating via shared files in `.pipeline/` (not `.claude/`, gitignored), plus a ledger-append step once a run reaches terminal `PASS`:

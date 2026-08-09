@@ -21,8 +21,14 @@ catch, because the diff it's being shaped by already exists in front of you.
 
 1. Read `.pipeline/spec.md` (for the `AC-*`/`EC-*` items and their intent) and `.pipeline/red.md` (for
    the test paths `red` authored, their `@spec` mapping, and their classification —
-   `RED-CORRECT`/`RED-DEFERRED`). If either is missing, stop and say which of planner/red needs to
-   run first — don't improvise a test list of your own.
+   `RED-CORRECT`/`RED-DEFERRED`). If `spec.md` is missing, stop and say planner needs to run first —
+   don't improvise a test list of your own. `red.md`'s absence is normally the same kind of stop, with
+   **one legitimate exception (PL-11):** on the `/pipeline-lite` lane, `red` is deliberately skipped by
+   design — state that plainly in `test-results.md`'s Impact map section (this ticket predates `red`'s
+   own existence is a different, and on this lane false, claim — don't reach for that wording) and
+   continue rather than stopping. The D-018 guarantee stays in force regardless: you still do not author
+   a behavioral test yourself on this lane, and you still report a gap rather than filling it — if
+   anything, a gap matters *more* here, since no `red` stage covered anything on this run at all.
 2. Check whether the impact resolver (PL-03b's `services/workers/scripts/affected_tests.py`) is
    **usable in this checkout right now** — the same Poetry-environment caveat `red.md`'s required
    inputs describes (it needs Python 3.12 + Tree-sitter's native grammars): when the workers'
@@ -86,6 +92,10 @@ Write `.pipeline/test-results.md` with:
   usable, its raw `confidence`/`truncated`/`unanalyzable` fields.
 - **Red suite result** — pass/fail for every non-deferred test `red.md` lists, individually, plus an
   explicit note of anything still `RED-DEFERRED` (not silently treated as passing or as untested).
+  When `red.md` does not exist for this run — on the `/pipeline-lite` lane specifically (Required
+  inputs item 1's one legitimate exception) — say so explicitly here (e.g. "no red suite exists for
+  this run: the lite lane skips `red`") rather than leaving the section blank; a blank section reads
+  as "not checked," not as "nothing to check."
 - **Affected-test regression results** — when the resolver was usable: pass/fail for every test it
   ranked, individually, with its `depth`/`coupling`; when unavailable, say so rather than leaving the
   section blank (the same discipline as every other section here).

@@ -189,9 +189,11 @@ import {
   readSecurityJson,
   readSpecJson,
   stampFreshness,
+  STAMP_FRESH,
   STAMP_STALE,
 } from './pipeline-contracts.mjs';
 import { matchesAny, readBounds } from './check-bounds.mjs';
+import { countChangedLines, evaluateLiteEligibility, maxChangedLineLength } from './check-lite-eligible.mjs';
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptsDir, '..');
@@ -385,16 +387,27 @@ export function copySecurityHistoryIntoLedger(runId) {
   return destDir;
 }
 
-/** Copies whichever of the five `.pipeline/*.json` sidecars exist for this run into
- * `.sdd/ledger/<runId>/`, verbatim (byte-for-byte, like spec.md's own copy) — not re-serialized from
- * the already-validated in-memory object, so the ledger's copy is provably identical to what the
- * owning stage actually wrote, not a reconstruction of it. `red.json`/`changes.json` are optional
- * (a ticket that predates `red`, or one implemented directly without a separate `dev` sidecar this
- * run); `spec.json`/`review.json`/`security.json` are always present by the time this function runs,
- * since main() already required all three to compute the entry itself. */
-function copySidecarsIntoLedger(runId) {
+/** Default sidecar set for an ordinary (non-lite) run — see doc comment below. */
+const DEFAULT_SIDECAR_NAMES = ['spec.json', 'red.json', 'changes.json', 'review.json', 'security.json'];
+
+/** PL-11: the `--lite` branch's own sidecar set — deliberately excludes `red.json`/`security.json`
+ * even when a leftover copy of either exists on disk (EC-9/EC-10/EC-11): the lite lane ran neither
+ * stage, so copying either sidecar into the ledger would manufacture evidence of a stage that never
+ * ran this round. */
+const LITE_SIDECAR_NAMES = ['spec.json', 'changes.json', 'review.json'];
+
+/** Copies whichever of `names` exist for this run into `.sdd/ledger/<runId>/`, verbatim
+ * (byte-for-byte, like spec.md's own copy) — not re-serialized from the already-validated in-memory
+ * object, so the ledger's copy is provably identical to what the owning stage actually wrote, not a
+ * reconstruction of it. `red.json`/`changes.json` are optional on the default (non-lite) set (a
+ * ticket that predates `red`, or one implemented directly without a separate `dev` sidecar this run);
+ * `spec.json`/`review.json`/`security.json` are always present by the time this function runs on that
+ * path, since main() already required all three to compute the entry itself. `names` defaults to the
+ * full five-sidecar set (PL-11 / Interfaces — `copySidecarsIntoLedger(runId, names?)`); the `--lite`
+ * branch passes `LITE_SIDECAR_NAMES` explicitly instead. */
+function copySidecarsIntoLedger(runId, names = DEFAULT_SIDECAR_NAMES) {
   const destDir = join(ledgerDir, runId);
-  for (const name of ['spec.json', 'red.json', 'changes.json', 'review.json', 'security.json']) {
+  for (const name of names) {
     const sourcePath = join(pipelineDir, name);
     if (!existsSync(sourcePath)) continue; // red.json/changes.json only — see doc comment above
     copyFileSync(sourcePath, join(destDir, name));
@@ -507,10 +520,18 @@ const REGATE_NOTE = 'code was changed in the working tree outside the pipeline\'
  * run, so a ledger entry from before this flag existed, and every entry this round doesn't touch,
  * renders byte-identically to before. `regate` and a non-empty `overrides` compose freely on the title
  * line too (`(RE-GATE)` before `(OVERRIDE)`, matching the same ordering `## Re-gate`/`## Overrides`
- * already use in the body — see "Entry format" in `.sdd/ledger/README.md`). */
-export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict, overrides = [], regate = null }) {
+ * already use in the body — see "Entry format" in `.sdd/ledger/README.md`).
+ *
+ * `lite` (PL-11 — default `null`) is `main()`'s own record of a `--lite` run: `{ skippedStages, note,
+ * eligibility: { fileCount, changedLines, maxFiles, maxChangedLines } }`, or `null` for every other
+ * run. When present: the title gains a `(LITE)` marker (markers compose `(RE-GATE)(LITE)(OVERRIDE)`,
+ * matching the order `.sdd/ledger/README.md`'s "Lite-lane entries" section documents), a `## Lite
+ * lane` section is inserted immediately after `## Verdicts` naming the skipped stages, the fixed
+ * disclosure note verbatim, and the eligibility numbers this run was measured against, and `## Security
+ * run ID` states plainly that the stage did not run rather than pointing at a nonexistent directory. */
+export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null }) {
   const lines = [];
-  const titleMarkers = `${regate ? ' (RE-GATE)' : ''}${overrides.length > 0 ? ' (OVERRIDE)' : ''}`;
+  const titleMarkers = `${regate ? ' (RE-GATE)' : ''}${lite ? ' (LITE)' : ''}${overrides.length > 0 ? ' (OVERRIDE)' : ''}`;
   lines.push(`# Ledger entry — ${runId}${titleMarkers}`);
   lines.push('');
   lines.push('## Date');
@@ -535,6 +556,18 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
   lines.push(`- review: ${reviewVerdict}`);
   lines.push(`- security: ${securityVerdict}`);
   lines.push('');
+  if (lite) {
+    lines.push('## Lite lane');
+    lines.push(lite.note);
+    lines.push('');
+    lines.push(`Skipped stages: ${lite.skippedStages.join(', ')}.`);
+    lines.push(
+      `Eligibility measured against this lane's bounds: max_files ${lite.eligibility.maxFiles}, ` +
+      `max_changed_lines ${lite.eligibility.maxChangedLines} — this run measured ` +
+      `${lite.eligibility.fileCount} file(s) and ${lite.eligibility.changedLines} changed line(s).`,
+    );
+    lines.push('');
+  }
   if (regate) {
     lines.push('## Re-gate');
     lines.push(
@@ -560,7 +593,11 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
   lines.push(redTestPaths.length > 0 ? formatBulletList(redTestPaths) : redAbsenceNote);
   lines.push('');
   lines.push('## Security run ID');
-  lines.push(`.pipeline/security-history/${securityRunId}/`);
+  lines.push(
+    lite
+      ? '(none — the security stage did not run on this lane; see "## Lite lane" above)'
+      : `.pipeline/security-history/${securityRunId}/`,
+  );
   lines.push('');
   lines.push('## Commit');
   lines.push(commitLine);
@@ -596,9 +633,19 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
  * `{ testerRan }` forward into every index.json record the run produces, so the qualification is
  * visible from the fast index path too, not only from this file — see build-ledger-index.mjs's own
  * header comment.) See .sdd/ledger/README.md's "Re-gate entries" section for why exclusion is the
- * wrong call here, unlike for `bypass`. */
-export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict, overrides = [], regate = null }) {
-  const bypass = reviewVerdict !== 'PASS' || securityVerdict !== 'PASS';
+ * wrong call here, unlike for `bypass`.
+ *
+ * `lite` (PL-11 — default `null`) is the machine-facing twin of buildEntryMarkdown's own `## Lite
+ * lane` section: `{ skippedStages, note, eligibility }` for a `--lite` run, `null` otherwise. `bypass`
+ * is amended to `reviewVerdict !== 'PASS' || (!lite && securityVerdict !== 'PASS')` — an ordinary lite
+ * run's `securityVerdict` is the distinct literal `'SKIPPED_LITE'`, never `'PASS'`, so without this
+ * amendment every lite run would read `bypass: true` and be silently excluded from `index.json`'s
+ * file->spec map even though it has a real, ratified spec `review` genuinely passed against the final
+ * tree (spec.md's Open questions #2) — `!lite` is what keeps a genuine `--lite --override-review` run
+ * (where `reviewVerdict !== 'PASS'` on its own already forces `bypass: true`) excluded exactly like
+ * any other override, without also excluding an ordinary lite pass. */
+export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null }) {
+  const bypass = reviewVerdict !== 'PASS' || (!lite && securityVerdict !== 'PASS');
   return {
     runId,
     date,
@@ -610,6 +657,7 @@ export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files
     overrides,
     bypass,
     regate: regate ? { testerRan: regate.testerRan, gatesOnly: regate.gatesOnly, note: REGATE_NOTE } : null,
+    lite,
     redTestPaths,
     redAbsenceNote: redTestPaths.length > 0 ? null : redAbsenceNote,
     securityRunId,
@@ -703,24 +751,33 @@ function resolveHotfixFilesTouched(explicitFiles) {
   );
 }
 
-/** A fresh, sortable, collision-safe run id for a hotfix entry — there is no security run to reuse
- * one from (buildEntryMarkdown's normal path reuses security-checker's run id; a hotfix never runs
- * security at all). Same shape family as a normal run id (`<timestamp>-<shortsha>-<mode>-<random>`,
- * see security-checker's own id convention) so it still sorts chronologically alongside normal
- * entries in `.sdd/ledger/`'s directory listing — `HOTFIX` in the mode position is what makes a
- * bypass entry visually distinct from a `PR_DELTA`/`REMEDIATION_RECHECK` one at a glance, on top of
- * the structural `bypass: true` stamp buildIndex() actually reads. */
-export function generateHotfixRunId({ cwd = repoRoot } = {}) {
+/** A fresh, sortable, collision-safe run id in the `<timestamp>-<shortsha>-<MODE>-<random>` shape
+ * every ledger run id already uses (see security-checker's own id convention) — one implementation,
+ * not one per caller. `generateHotfixRunId` (below) delegates to this with `'HOTFIX'`; the `--lite`
+ * branch (PL-11) calls it directly with `'LITE'` — there is no security run for either to reuse an id
+ * from (a hotfix never runs security at all; a lite run deliberately skips it), so each mints its own,
+ * still sorting chronologically alongside normal entries in `.sdd/ledger/`'s directory listing. The
+ * mode segment (`HOTFIX`/`LITE`/...) is what makes a non-ordinary entry visually distinct from a
+ * `PR_DELTA`/`REMEDIATION_RECHECK` one at a glance, on top of whichever structural field
+ * (`bypass: true`, `lite: {...}`) `build-ledger-index.mjs` actually reads. */
+export function generateRunId(mode, { cwd = repoRoot } = {}) {
   const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace('.', '');
   let shortSha = 'nogit0000000';
   try {
     shortSha = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd, encoding: 'utf8' }).trim() || shortSha;
   } catch {
-    // No git, no HEAD yet, or git unavailable — a hotfix must still be writable in a degraded
-    // environment (see .sdd/hotfix.md's whole reason for existing), so fall back rather than fail.
+    // No git, no HEAD yet, or git unavailable — a hotfix (or a lite run) must still be writable in a
+    // degraded environment, so fall back rather than fail.
   }
   const random = randomBytes(3).toString('hex');
-  return `${timestamp}-${shortSha}-HOTFIX-${random}`;
+  return `${timestamp}-${shortSha}-${mode}-${random}`;
+}
+
+/** Delegates to `generateRunId('HOTFIX', ...)` — kept as its own named export since every existing
+ * caller (this file's own `runHotfix`, and `scripts/ledger-append.test.mjs`) already imports it by
+ * this name. */
+export function generateHotfixRunId(options = {}) {
+  return generateRunId('HOTFIX', options);
 }
 
 function currentCommitInfo() {
@@ -995,7 +1052,38 @@ function readOverrideReason(argv, flagName) {
 // precondition specific to this path alone — see the header paragraph it points back to, and
 // `readRegateArgs`/`main()` below, for why.
 
-const MAIN_KNOWN_FLAGS = new Set(['--override-review', '--override-security', '--re-gate', '--tester-ran', '--ticket']);
+// --- `--lite` (PL-11) ---------------------------------------------------------------------------
+//
+// The ledger step of the `/pipeline-lite` lane (`.sdd/pipeline.md`'s `### /pipeline-lite <ticket>`
+// section): `planner` -> `dev` -> `tester` -> `review` -> ledger, deliberately skipping `red` and
+// `security`. `--lite` is a branch inside `main()`, not a parallel `runLite()` (unlike `--hotfix`,
+// which shares almost none of `main()`'s preconditions): it shares review.json's verdict gate, the
+// unconditional spec.json/spec.md agreement check, `filesTouched`, and the run-directory overwrite
+// guard, and only diverges for what genuinely differs — no security.json requirement, an eligibility
+// check against the live diff, and the fixed `lite` disclosure threaded into the entry.
+
+/** Fixed, derived — never caller-supplied (AC-8: "skippedStages and note are derived by the script,
+ * never caller-supplied" — there is no `--skipped-stages`/`--lite-note` flag). */
+export const LITE_SKIPPED_STAGES = ['red', 'security'];
+
+/** The distinct verdict literal a lite run's `entry.json`/`entry.md` record for the security gate —
+ * never `'PASS'` (a stage that did not run cannot have passed) and never `'BLOCKED'` (nothing ran to
+ * block). `build-ledger-index.mjs`'s widened verdicts gate accepts this literal only from an entry
+ * that also declares a `lite` object listing `'security'` among its `skippedStages` (EC-15). */
+export const LITE_SECURITY_VERDICT = 'SKIPPED_LITE';
+
+/** The fixed lite-lane disclosure sentence — a constant, not reconstructed per call, so `entry.json`'s
+ * `lite.note` (and `entry.md`'s `## Lite lane` section, which renders it verbatim) can never quietly
+ * drift from what `.sdd/ledger/README.md`'s "Lite-lane entries" section documents it as (the same
+ * reasoning `REGATE_NOTE` above already applies). */
+export const LITE_NOTE = 'this run took the lite lane (`.sdd/pipeline.md`\'s `/pipeline-lite`): ' +
+  '`red` did not author tests before `dev` ran, so any test covering this change was written after ' +
+  'the diff existed; and the `security` stage did not run at all — no attacker-brief sweep, no ' +
+  'CORE-01..06 pass, and no immutable audit record exists for this run. Eligibility was checked ' +
+  'mechanically against `.sdd/bounds.yml`\'s `lite_eligibility` bounds and the barred-path union, ' +
+  'which is a curated, best-effort list, not a complete classifier of security-sensitive code.';
+
+const MAIN_KNOWN_FLAGS = new Set(['--override-review', '--override-security', '--re-gate', '--tester-ran', '--ticket', '--lite']);
 const MAIN_VALUE_FLAGS = new Set(['--override-review', '--override-security', '--tester-ran', '--ticket']);
 
 /** Reads `--re-gate`/`--tester-ran`/`--ticket` off argv. Returns `null` when this is not a re-gate run
@@ -1074,9 +1162,30 @@ function readRegateArgs(argv) {
 function main() {
   const argv = process.argv.slice(2);
   assertKnownFlags(argv, { knownFlags: MAIN_KNOWN_FLAGS, valueFlags: MAIN_VALUE_FLAGS });
+  const lite = argv.includes('--lite');
   const overrideReviewReason = readOverrideReason(argv, '--override-review');
   const overrideSecurityReason = readOverrideReason(argv, '--override-security');
   const regate = readRegateArgs(argv);
+
+  // PL-11 / AC-7 item 1: --lite is not combined with --override-security or --re-gate — checked
+  // before any .pipeline/ file is even read, so this refusal can never be confused with one of the
+  // checks below firing for an unrelated reason.
+  if (lite) {
+    if (overrideSecurityReason !== null) {
+      fail(
+        '--lite --override-security is not accepted — there is no security verdict on this lane to ' +
+        'override (the lite lane skips `security` outright); accepting the flag silently would imply ' +
+        'one existed. Omit --override-security on a --lite run.',
+      );
+    }
+    if (regate) {
+      fail(
+        '--lite --re-gate is not accepted in this ticket — finish through the full lane instead (run ' +
+        '`/security`, then `--re-gate`), or re-run `/review` against the current tree and use plain ' +
+        '--lite (the non-stale review.json requirement below already forces this).',
+      );
+    }
+  }
 
   const reviewJson = readReviewJson(pipelineDir);
   refuseIfStale('review.json', reviewJson.stamp);
@@ -1090,20 +1199,52 @@ function main() {
       'map — the same way a --hotfix bypass entry already is — because no spec was ratified).',
     );
   }
-  const securityJson = readSecurityJson(pipelineDir);
-  refuseIfStale('security.json', securityJson.stamp);
-  const securityOverridden = securityJson.verdict !== 'PASS' && overrideSecurityReason !== null;
-  if (securityJson.verdict !== 'PASS' && !securityOverridden) {
-    fail(
-      `.pipeline/security.json's verdict is ${securityJson.verdict}, not PASS — this is not a terminal ` +
-      'PASS. Route back to dev instead of appending a ledger entry, or, if you are deliberately disclosing ' +
-      'this run\'s real terminal state for a stated reason, re-run with --override-security "<reason>".',
-    );
+
+  // PL-11 / AC-7 item 3: on the lite path, security.json is never required — it is only checked, IF
+  // it happens to exist, for a FRESH stamp (a security run that genuinely happened against this tree
+  // must never be recorded as SKIPPED_LITE — EC-9). A STALE or unknown-stamped leftover (a leftover
+  // from a prior ticket) is ignored, with an explicit printed note, and never copied into the lite
+  // entry (EC-10). The plain path is unchanged: security.json is still required and must show PASS
+  // (or be accepted via --override-security).
+  let securityJson = null;
+  let securityOverridden = false;
+  if (lite) {
+    const leftoverSecurityJson = readSecurityJson(pipelineDir, { required: false });
+    if (leftoverSecurityJson) {
+      const freshness = stampFreshness(leftoverSecurityJson.stamp);
+      if (freshness === STAMP_FRESH) {
+        fail(
+          '.pipeline/security.json exists with a FRESH stamp — a security run that genuinely happened ' +
+          'against this tree must never be recorded as SKIPPED_LITE. Use the plain ' +
+          '`node scripts/ledger-append.mjs` instead, to record the real PASS/BLOCKED verdict.',
+        );
+      }
+      console.log(
+        `ledger-append --lite: ignoring .pipeline/security.json (its stamp is ` +
+        `${freshness === STAMP_STALE ? 'STALE' : 'unknown'}, a leftover from a prior run) — it is never ` +
+        'copied into this lite entry.',
+      );
+    }
+  } else {
+    securityJson = readSecurityJson(pipelineDir);
+    refuseIfStale('security.json', securityJson.stamp);
+    securityOverridden = securityJson.verdict !== 'PASS' && overrideSecurityReason !== null;
+    if (securityJson.verdict !== 'PASS' && !securityOverridden) {
+      fail(
+        `.pipeline/security.json's verdict is ${securityJson.verdict}, not PASS — this is not a terminal ` +
+        'PASS. Route back to dev instead of appending a ledger entry, or, if you are deliberately disclosing ' +
+        'this run\'s real terminal state for a stated reason, re-run with --override-security "<reason>".',
+      );
+    }
   }
 
   const specJson = readSpecJson(pipelineDir);
   const specMarkdown = readPipelineFile('spec.md'); // still copied verbatim into the ledger — never parsed
-  const redJson = readRedJson(pipelineDir, { required: false });
+  // PL-11: the lite lane never reads red.json at all, leftover or not — see EC-11 (a lite entry
+  // never copies it and never lists its tests as this run's red-test paths); reading it just to
+  // discard it would also risk a malformed leftover blocking an otherwise-eligible lite run for a
+  // reason that has nothing to do with this run.
+  const redJson = lite ? null : readRedJson(pipelineDir, { required: false });
   const changesJson = readChangesJson(pipelineDir, { required: false });
 
   // CORRECTED (SEC-10 v2 fix round — FND-bd78355b6ae7, HIGH): the three checks that used to live here
@@ -1173,25 +1314,119 @@ function main() {
         'correct --ticket if it was mistyped. Refusing to write a ledger entry.',
       );
     }
+  }
+  // PL-11 / AC-7 item 4 (stamp half), EC-13: --lite requires the same spec.json stamp-presence
+  // hygiene check --re-gate already applies — for a stated, lite-specific reason: --lite has no
+  // security-history cross-check to compensate for an unstamped spec.json (a --re-gate run's
+  // review.json/security.json PASS pair is itself cross-checked against the current tree via
+  // refuseIfStale; --lite has that too, but no analogous immutable-record cross-check the way a
+  // normal run's findCompletedSecurityRun provides), so this presence-and-shape signal is the one
+  // available here. As with --re-gate, this is presence-and-shape, never proof of provenance.
+  if (regate || lite) {
     if (!specJson.stamp) {
       fail(
-        '--re-gate requires .pipeline/spec.json to carry a "stamp" field (node scripts/write-stamp.mjs ' +
-        '.pipeline/spec.json) before this run can be attributed to it — planner attaches one ' +
-        'automatically as its own last step; a hand-authored or retroactive spec.json must run ' +
-        'write-stamp.mjs itself. An unstamped spec.json is missing the one hygiene signal this pipeline ' +
-        'has that the file went through its documented authoring path at all (not proof that it did — a ' +
-        'stamp is four unauthenticated JSON fields; see pipeline-contracts.mjs\'s readStamp doc comment), ' +
-        'which is the same "cannot even show the minimal signal, so refuse" posture .sdd/stages/security.md ' +
-        'already applies to a stale review.json, applied here at the other place a JSON sidecar\'s ' +
-        'trustworthiness gates a durable, immutable write. (This checks presence and shape, not exact ' +
-        'currency against the tree right now — see this file\'s header for why literal freshness is ' +
-        'deliberately not required here; --ticket and the agreement check above are what verify content.)',
+        `--${regate ? 're-gate' : 'lite'} requires .pipeline/spec.json to carry a "stamp" field (node ` +
+        'scripts/write-stamp.mjs .pipeline/spec.json) before this run can be attributed to it — planner ' +
+        'attaches one automatically as its own last step; a hand-authored or retroactive spec.json must ' +
+        'run write-stamp.mjs itself. An unstamped spec.json is missing the one hygiene signal this ' +
+        'pipeline has that the file went through its documented authoring path at all (not proof that it ' +
+        'did — a stamp is four unauthenticated JSON fields; see pipeline-contracts.mjs\'s readStamp doc ' +
+        'comment), which is the same "cannot even show the minimal signal, so refuse" posture ' +
+        '.sdd/stages/security.md already applies to a stale review.json, applied here at the other place ' +
+        'a JSON sidecar\'s trustworthiness gates a durable, immutable write.' +
+        (lite
+          ? ' --lite has no security-history cross-check to fall back on (unlike a plain run, which ' +
+            'independently re-verifies the cited security run against its own immutable manifest), so ' +
+            'this presence check is the one signal available here.'
+          : ' (This checks presence and shape, not exact currency against the tree right now — see this ' +
+            'file\'s header for why literal freshness is deliberately not required here; --ticket and ' +
+            'the agreement check above are what verify content.)'),
       );
     }
   }
 
-  const { runId, manifest } = findCompletedSecurityRun(securityJson.runId, securityJson.verdict, { allowNonPassVerdict: securityOverridden });
+  // PL-11 / AC-7 item 5, EC-12: tester still runs on the lite lane, so test-results.md is a required
+  // input — the same "never improvise a missing input" rule every other required-file check in this
+  // pipeline already follows.
+  if (lite && !existsSync(join(pipelineDir, 'test-results.md'))) {
+    fail(
+      '.pipeline/test-results.md does not exist — `tester` still runs on the lite lane ' +
+      '(`.sdd/pipeline.md`\'s `/pipeline-lite`); run it before appending a ledger entry.',
+    );
+  }
 
+  let runId;
+  let manifest = null;
+  let liteInfo = null;
+  // PL-11 / AC-7 item 6, EC-2/EC-3/EC-4/EC-16/EC-17/EC-19: the live touched-file set must be
+  // eligible under evaluateLiteEligibility — reusing filesTouched() (below) is what makes this the
+  // exact same "what changed" fact the entry's own "Files touched" section reports, not a second,
+  // independently-derived file list that could disagree with it.
+  const candidateFiles = filesTouched(changesJson);
+  if (lite) {
+    if (candidateFiles.length === 0) {
+      fail(
+        '--lite could not determine any files touched — the working tree is clean and there is nothing ' +
+        'to measure. An unmeasured change is never certified small; commit/uncommit as needed, or name ' +
+        'the files via .pipeline/changes.json, before running this again.',
+      );
+    }
+    const bounds = readBounds();
+    let sized;
+    try {
+      sized = countChangedLines(candidateFiles, { cwd: repoRoot });
+    } catch (error) {
+      fail(`--lite could not measure changed lines: ${error.message}`);
+    }
+    let lineLength;
+    try {
+      lineLength = maxChangedLineLength(candidateFiles, { cwd: repoRoot });
+    } catch (error) {
+      fail(`--lite could not measure line lengths: ${error.message}`);
+    }
+    let eligibility;
+    try {
+      eligibility = evaluateLiteEligibility({
+        files: candidateFiles,
+        changedLines: sized.changedLines,
+        unsizable: sized.unsizable,
+        lineLength,
+        bounds,
+      });
+    } catch (error) {
+      fail(`--lite could not evaluate eligibility: ${error.message}`);
+    }
+    if (!eligibility.eligible) {
+      const detail = eligibility.violations
+        .map((v) => `  - [${v.kind}]${v.path ? ` ${v.path}` : ''}: ${v.detail}`)
+        .join('\n');
+      fail(
+        `--lite refuses: this change is not eligible for the lite lane (measured ${eligibility.fileCount} ` +
+        `file(s), ${eligibility.changedLinesChecked ? `${eligibility.changedLines} changed line(s)` : 'lines not measured'} ` +
+        `against max_files ${eligibility.maxFiles} / max_changed_lines ${eligibility.maxChangedLines}):\n${detail}\n` +
+        'Escalation: run `/security`, then the plain `node scripts/ledger-append.mjs` — or, if a barred ' +
+        'path above is a leftover `.sdd/ledger/**` entry from a previous run, commit it first and try ' +
+        'again.',
+      );
+    }
+    liteInfo = {
+      skippedStages: LITE_SKIPPED_STAGES,
+      note: LITE_NOTE,
+      eligibility: {
+        fileCount: eligibility.fileCount,
+        changedLines: eligibility.changedLines,
+        maxFiles: eligibility.maxFiles,
+        maxChangedLines: eligibility.maxChangedLines,
+      },
+    };
+    runId = generateRunId('LITE');
+  } else {
+    const found = findCompletedSecurityRun(securityJson.runId, securityJson.verdict, { allowNonPassVerdict: securityOverridden });
+    runId = found.runId;
+    manifest = found.manifest;
+  }
+
+  // PL-11 / AC-7 item 7, EC-18: reached on the lite path too — the same guard main() already applies.
   const runDir = join(ledgerDir, runId);
   if (existsSync(runDir)) {
     fail(`.sdd/ledger/${runId}/ already exists — refusing to overwrite an existing ledger entry. (A run id is only ever reused if security-checker's own run-id collision guard is violated, which it refuses to do.)`);
@@ -1200,30 +1435,38 @@ function main() {
   const ticketId = extractTicketId(specJson.ticket);
   const ticketTitle = specJson.ticket;
   const goal = specJson.goal;
-  const touchedFiles = filesTouched(changesJson);
-  const redTestPaths = redJson ? redJson.tests.map((test) => test.path) : [];
+  const touchedFiles = candidateFiles;
+  const redTestPaths = lite ? [] : (redJson ? redJson.tests.map((test) => test.path) : []);
 
-  const date = typeof manifest.completed_at === 'string' && manifest.completed_at.length >= 10
-    ? manifest.completed_at.slice(0, 10)
-    : new Date().toISOString().slice(0, 10);
+  const date = lite
+    ? new Date().toISOString().slice(0, 10)
+    : (typeof manifest.completed_at === 'string' && manifest.completed_at.length >= 10
+      ? manifest.completed_at.slice(0, 10)
+      : new Date().toISOString().slice(0, 10));
 
-  const commitSha = manifest.target?.commit_sha ?? '(unknown)';
-  const dirty = Boolean(manifest.target?.dirty);
+  const commitSha = lite ? currentCommitInfo().sha : (manifest.target?.commit_sha ?? '(unknown)');
+  const dirty = lite ? currentCommitInfo().dirty : Boolean(manifest.target?.dirty);
   const commitLine = dirty
-    ? `${commitSha} (worktree was dirty when the security run audited it — the commit that actually lands this work may differ once it's committed)`
+    ? `${commitSha} (worktree was dirty when ${lite ? 'this lite entry was written' : 'the security run audited it'} — the commit that actually lands this work may differ once it's committed)`
     : commitSha;
 
-  const redAbsenceNote = redJson
-    ? '(`red.json` exists for this run but its "tests" list is empty)'
-    : 'No `red.json` present for this run — either it predates the `red` stage (introduced in PL-03c) or this run genuinely produced no ledger-relevant tests. Stated explicitly rather than left blank.';
+  const redAbsenceNote = lite
+    ? 'The `red` stage was deliberately skipped by the lite lane (`.sdd/pipeline.md`\'s `/pipeline-lite`) — this is not a legacy ticket old enough to come from before `red` existed, and `red` did not run and simply produce nothing; it was never invoked for this run at all.'
+    : (redJson
+      ? '(`red.json` exists for this run but its "tests" list is empty)'
+      : 'No `red.json` present for this run — either it predates the `red` stage (introduced in PL-03c) or this run genuinely produced no ledger-relevant tests. Stated explicitly rather than left blank.');
 
   // PL-04 / B2, B3: the reasoned record of exactly which gate(s), if any, were accepted despite a
   // non-PASS verdict. Empty when both gates genuinely passed on their own — see buildEntryMarkdown's/
   // buildEntryJson's own comments for how this is rendered and why `bypass` is derived from the
-  // verdicts themselves rather than duplicated here.
+  // verdicts themselves rather than duplicated here. There is no security gate to override on the
+  // lite path (checked above), so `securityOverridden` is always false there.
   const overrides = [];
   if (reviewOverridden) overrides.push({ gate: 'review', verdict: reviewJson.verdict, reason: overrideReviewReason });
   if (securityOverridden) overrides.push({ gate: 'security', verdict: securityJson.verdict, reason: overrideSecurityReason });
+
+  const securityVerdict = lite ? LITE_SECURITY_VERDICT : securityJson.verdict;
+  const securityRunIdForEntry = lite ? null : runId;
 
   mkdirSync(runDir, { recursive: true });
   writeFileSync(join(runDir, 'spec.md'), specMarkdown, 'utf8');
@@ -1237,12 +1480,13 @@ function main() {
     files: touchedFiles,
     redTestPaths,
     redAbsenceNote,
-    securityRunId: runId,
+    securityRunId: securityRunIdForEntry,
     commitLine,
     reviewVerdict: reviewJson.verdict,
-    securityVerdict: securityJson.verdict,
+    securityVerdict,
     overrides,
     regate,
+    lite: liteInfo,
   });
   writeFileSync(join(runDir, 'entry.md'), entryMarkdown, 'utf8');
 
@@ -1255,17 +1499,18 @@ function main() {
     files: touchedFiles,
     redTestPaths,
     redAbsenceNote,
-    securityRunId: runId,
+    securityRunId: securityRunIdForEntry,
     commit: { sha: commitSha, dirty },
     reviewVerdict: reviewJson.verdict,
-    securityVerdict: securityJson.verdict,
+    securityVerdict,
     overrides,
     regate,
+    lite: liteInfo,
   });
   writeFileSync(join(runDir, 'entry.json'), JSON.stringify(entryJson, null, 2) + '\n', 'utf8');
 
-  copySidecarsIntoLedger(runId);
-  copySecurityHistoryIntoLedger(runId);
+  copySidecarsIntoLedger(runId, lite ? LITE_SIDECAR_NAMES : undefined);
+  if (!lite) copySecurityHistoryIntoLedger(runId);
 
   const index = writeIndex();
 
@@ -1284,7 +1529,16 @@ function main() {
       'index.json\'s file->spec map: the spec really was ratified and reviewed against this tree.',
     );
   }
-  console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,entry.md,entry.json,security/}`);
+  if (lite) {
+    console.log(
+      `ledger-append --lite: recorded a LITE-lane run (skipped: ${LITE_SKIPPED_STAGES.join(', ')}) — see ` +
+      `.sdd/ledger/${runId}/entry.md's "## Lite lane" section. NOT excluded from index.json's file->spec ` +
+      'map (unless also overridden above): review genuinely passed against this tree.',
+    );
+    console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,changes.json,review.json,entry.md,entry.json}`);
+  } else {
+    console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,entry.md,entry.json,security/}`);
+  }
   console.log(`ledger-append: regenerated .sdd/ledger/index.json (${Object.keys(index).length} file(s) indexed)`);
 }
 

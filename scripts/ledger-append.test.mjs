@@ -92,6 +92,12 @@ const contractsSource = readFileSync(resolve(scriptsDir, 'pipeline-contracts.mjs
 // its lane and barred-path gates, so the fixture repo below must carry a copy of it, and of the real
 // .sdd/bounds.yml it reads, the same way it already carries build-ledger-index.mjs/pipeline-contracts.mjs.
 const checkBoundsSource = readFileSync(resolve(scriptsDir, 'check-bounds.mjs'), 'utf8');
+// PL-11: ledger-append.mjs's --lite branch imports evaluateLiteEligibility/countChangedLines from
+// scripts/check-lite-eligible.mjs in-process (see that file's own test suite, which documents this
+// exact reuse: "ledger-append.mjs --lite reuses it in-process rather than shelling out") — so a
+// fixture repo running ledger-append.mjs's real source must carry a copy of it too, the same way it
+// already carries build-ledger-index.mjs/pipeline-contracts.mjs/check-bounds.mjs.
+const checkLiteEligibleSource = readFileSync(resolve(scriptsDir, 'check-lite-eligible.mjs'), 'utf8');
 const boundsYmlSource = readFileSync(resolve(repoRoot, '.sdd', 'bounds.yml'), 'utf8');
 
 const roots = [];
@@ -201,6 +207,7 @@ function fixtureRepo({ pipeline = {}, git = true } = {}) {
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), checkBoundsSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'check-lite-eligible.mjs'), checkLiteEligibleSource, 'utf8');
 
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
@@ -243,6 +250,7 @@ function realGitignoreFixtureRepo({ pipeline = {} } = {}) {
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), checkBoundsSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'check-lite-eligible.mjs'), checkLiteEligibleSource, 'utf8');
 
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
@@ -949,6 +957,7 @@ test('AC10: the real .gitignore keeps freshly-written ledger content trackable (
   writeFileSync(join(root, 'scripts', 'build-ledger-index.mjs'), buildIndexSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'pipeline-contracts.mjs'), contractsSource, 'utf8');
   writeFileSync(join(root, 'scripts', 'check-bounds.mjs'), checkBoundsSource, 'utf8');
+  writeFileSync(join(root, 'scripts', 'check-lite-eligible.mjs'), checkLiteEligibleSource, 'utf8');
   mkdirSync(join(root, '.sdd', 'ledger'), { recursive: true });
   writeFileSync(join(root, '.sdd', 'ledger', 'README.md'), '# Ledger\n\nFixture placeholder.\n', 'utf8');
   writeFileSync(join(root, '.sdd', 'bounds.yml'), boundsYmlSource, 'utf8');
@@ -1732,4 +1741,535 @@ test('buildHotfixEntryMarkdown and buildHotfixEntryJson thread their arguments t
   assert.equal(entry.ticket, 'SAMPLE_FOLLOWUP');
   assert.deepEqual(entry.filesTouched, ['app/a.ts']);
   assert.equal(entry.verdicts, undefined);
+});
+
+// =================================================================================================
+// [lite] PL-11 — `node scripts/ledger-append.mjs --lite`, the ledger step of the /pipeline-lite lane
+// =================================================================================================
+//
+// Authored by the `red` stage from .pipeline/spec.md alone, before the `--lite` branch exists. The
+// lane runs planner -> dev -> tester -> review -> ledger and deliberately skips `red` and `security`;
+// this is the step that has to make that skip permanently legible rather than merely absent. Two
+// properties carry most of the weight here, and both are asserted below rather than assumed:
+//
+//  1. A lite entry is INDEXED (bypass: false) — it has a real, ratified spec that `review` really did
+//     pass against the final tree — while still carrying, in the entry itself and in index.json's own
+//     record, the qualification that no `red` suite preceded the diff and no security pass happened
+//     at all. That is the same trade .sdd/ledger/README.md already documents for a `--re-gate` entry.
+//  2. Every precondition is checked BEFORE anything is written. A refusal that leaves a partial run
+//     directory behind is a corrupt ledger, not a refusal.
+//
+// `--lite` is a branch inside main(), not a parallel runLite(): it shares review.json's verdict gate,
+// the unconditional spec.json/spec.md agreement check, filesTouched, and the run-directory overwrite
+// guard. The tests below deliberately re-assert several of those shared checks ON the lite path
+// (EC-14, EC-18) precisely because "shared" is a claim about the implementation that only a test
+// exercising the new branch can actually hold to.
+
+/** tester still runs on this lane, so test-results.md is a required input — this is a stand-in for
+ * whatever that stage really writes; --lite only checks that it exists. */
+const LITE_TEST_RESULTS_MD = '# Test results — lite lane fixture\n\n' +
+  '## Red suite result\n\nNo red suite exists for this run: the lite lane skips `red`.\n';
+
+/** The lite lane's .pipeline/ inputs: spec.md + a STAMPED spec.json that agrees with it, a PASS
+ * review.json, test-results.md — and, deliberately, NO security.json and NO red.json (neither stage
+ * ran). Individual tests add one of those back to exercise EC-9/EC-10/EC-11.
+ *
+ * @param {{ ticket?: string, specStamp?: object | null, includeTestResults?: boolean,
+ *   includeChanges?: boolean, changesFiles?: string[], extra?: Record<string, string | object> }} [options]
+ * @returns {Record<string, string | object>} keyed by path relative to `.pipeline/` */
+function litePipeline({ ticket = 'PL-99z', specStamp = DUMMY_SPEC_STAMP, includeTestResults = true, includeChanges = true, changesFiles, extra = {} } = {}) {
+  /** @type {Record<string, string | object>} */
+  const pipeline = {
+    'spec.md': specMarkdown(ticket),
+    'spec.json': specStamp ? { ...specJson(ticket), stamp: specStamp } : specJson(ticket),
+    'review.md': reviewMarkdownPlaceholder('PASS'),
+    'review.json': reviewJson('PASS'),
+  };
+  if (includeTestResults) pipeline['test-results.md'] = LITE_TEST_RESULTS_MD;
+  if (includeChanges) pipeline['changes.json'] = changesJson(changesFiles);
+  return { ...pipeline, ...extra };
+}
+
+/** Strips a `lite_eligibility:` block out of the real .sdd/bounds.yml — the EC-16 fixture. Written
+ * as a removal from the real file rather than as a synthetic bounds.yml so this stays a test of "the
+ * block is missing," not of "some other bounds file parses differently." */
+function boundsYmlWithoutLiteBlock() {
+  // \r?\n, not a literal \n: the real .sdd/bounds.yml is CRLF in this working tree (same fact
+  // scripts/sdd-completeness.test.mjs's own header documents for every .sdd/** doc) — a literal `\n`
+  // never matches immediately after "lite_eligibility:" when a `\r` sits between it and the newline,
+  // which silently left this fixture a no-op (the block was never actually removed) before this fix.
+  const stripped = boundsYmlSource.replace(/^lite_eligibility:\r?\n(?:[ \t]*(?:#.*)?\r?\n|[ \t]+\S.*\r?\n)*/m, '');
+  assert.ok(
+    !/^lite_eligibility:/m.test(stripped),
+    'this fixture failed to remove the lite_eligibility block from the real .sdd/bounds.yml — fix the fixture rather than the assertion it feeds, or the EC-16 test below silently stops testing anything',
+  );
+  return stripped;
+}
+
+/** Like fixtureRepo(), but lets a test replace .sdd/bounds.yml BEFORE the initial commit. Doing it
+ * afterwards would leave bounds.yml modified in the working tree — a `.sdd/**` path in the barred
+ * union — so the run would refuse for EC-19's reason instead of the one under test.
+ *
+ * @param {{ pipeline?: Record<string, string | object>, bounds?: string | null }} [options] */
+function liteFixtureRepo({ pipeline = litePipeline(), bounds = null } = {}) {
+  const root = fixtureRepo({ pipeline, git: false });
+  if (bounds !== null) writeFileSync(join(root, '.sdd', 'bounds.yml'), bounds, 'utf8');
+  initGit(root);
+  commitAll(root, 'initial lite fixture state');
+  return root;
+}
+
+function runLite(root, args = []) {
+  return runLedgerAppendWithArgs(root, ['--lite', ...args]);
+}
+
+/** An uncommitted, unbarred, comfortably-small change for the lite run to measure. */
+function smallUncommittedChange(root, relPath = 'app/lite-change.ts', lines = 3) {
+  const dest = join(root, relPath);
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, `export const lite = ${lines};\n`.repeat(lines), 'utf8');
+  return relPath;
+}
+
+function ledgerRunIds(root) {
+  const ledgerDir = join(root, '.sdd', 'ledger');
+  return existsSync(ledgerDir)
+    ? readdirSync(ledgerDir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+    : [];
+}
+
+function theOneLiteRunDir(root) {
+  const runIds = ledgerRunIds(root);
+  assert.equal(runIds.length, 1, `expected exactly one ledger run directory, got: ${runIds.join(', ') || '(none)'}`);
+  assert.match(runIds[0], /-LITE-/, 'a lite run id must be visibly tagged LITE in the id itself, the way HOTFIX already is');
+  return join(root, '.sdd', 'ledger', runIds[0]);
+}
+
+function assertNothingWritten(root, why) {
+  assert.deepEqual(ledgerRunIds(root), [], `${why}: a refusal must leave no run directory at all, not even a partial one`);
+}
+
+/** Asserts a refusal that could ONLY have come from the case under test.
+ *
+ * Load-bearing, and found the hard way while authoring this suite: before `--lite` exists at all,
+ * main()'s existing `assertKnownFlags` already refuses `--lite` as an unrecognized flag — non-zero
+ * exit, nothing written — so a bare "exited non-zero and wrote no run directory" pair PASSES today,
+ * for a reason with nothing to do with the precondition it claims to check. That is a false green in
+ * exactly the direction this ticket is about: a gate that reads as working while checking nothing.
+ * Requiring `--lite` to be a RECOGNIZED flag is what keeps each refusal test tied to its own case. */
+function assertLiteRefusal(result, root, why) {
+  assert.notEqual(result.status, 0, why);
+  assert.doesNotMatch(
+    result.stderr,
+    /unrecognized argument "--lite"/,
+    `${why}: --lite must itself be a recognized flag — a refusal that happened only because the flag does not exist is not the refusal this case is about`,
+  );
+  assertNothingWritten(root, why);
+}
+
+/** A complete, valid, unrelated prior ledger entry — used to distinguish "an existing directory is
+ * never overwritten" (EC-18) from "a partial directory breaks index regeneration", which is a
+ * different, already-covered guarantee. */
+function seedPriorEntry(root, runId, files = ['app/prior.ts']) {
+  const runDir = join(root, '.sdd', 'ledger', runId);
+  mkdirSync(runDir, { recursive: true });
+  writeFileSync(join(runDir, 'spec.md'), '# PRIOR-1 — a previous run\n\n## Goal\n\nPrior.\n', 'utf8');
+  writeFileSync(join(runDir, 'entry.md'), `# Ledger entry — ${runId}\n\nPRE-EXISTING\n`, 'utf8');
+  writeFileSync(
+    join(runDir, 'entry.json'),
+    `${JSON.stringify({ runId, date: '2026-08-01', ticket: 'PRIOR-1', filesTouched: files, verdicts: { review: 'PASS', security: 'PASS' } }, null, 2)}\n`,
+    'utf8',
+  );
+  return runDir;
+}
+
+// --- AC-7 / AC-8 / AC-9 / AC-10: the happy path, end to end --------------------------------------
+
+// @spec AC-7 AC-8 AC-10
+test('[lite] --lite writes a LITE-tagged entry.json declaring the skipped stages, the SKIPPED_LITE security verdict, and bypass: false', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+
+  const result = runLite(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = theOneLiteRunDir(root);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+
+  assert.deepEqual(entryJson.verdicts, { review: 'PASS', security: 'SKIPPED_LITE' },
+    'the security verdict must be a distinct literal, never "PASS" — a stage that did not run cannot have passed');
+  assert.deepEqual(entryJson.lite.skippedStages, ['red', 'security']);
+  assert.equal(typeof entryJson.lite.note, 'string');
+  assert.ok(entryJson.lite.note.length > 0);
+  assert.deepEqual(Object.keys(entryJson.lite.eligibility).sort(), ['changedLines', 'fileCount', 'maxChangedLines', 'maxFiles']);
+  assert.equal(entryJson.lite.eligibility.fileCount, 1);
+  assert.equal(entryJson.lite.eligibility.maxFiles, 5, 'the bounds this run was measured against are recorded, not just the verdict');
+  assert.equal(entryJson.lite.eligibility.maxChangedLines, 150);
+  assert.ok(entryJson.lite.eligibility.changedLines > 0, 'an unmeasured change must never be recorded as a measured-small one');
+
+  assert.equal(entryJson.securityRunId, null, 'there is no security-history run to point at');
+  assert.deepEqual(entryJson.redTestPaths, []);
+  assert.equal(entryJson.regate, null);
+  assert.deepEqual(entryJson.overrides, []);
+  assert.equal(entryJson.bypass, false, 'an ordinary lite run really did pass its surviving gate — it is a disclosure, not a bypass');
+  assert.ok(entryJson.filesTouched.includes('app/lite-change.ts'));
+
+  assert.ok(!existsSync(join(runDir, 'security')), 'a lite entry must have no security/ audit copy — no security run happened');
+  assert.ok(!existsSync(join(runDir, 'security.json')), 'a lite entry must have no security.json');
+  assert.ok(!existsSync(join(runDir, 'red.json')), 'a lite entry must have no red.json');
+  assert.ok(existsSync(join(runDir, 'spec.md')) && existsSync(join(runDir, 'spec.json')) && existsSync(join(runDir, 'review.json')),
+    'the stages that DID run still have their artifacts filed');
+});
+
+// @spec AC-8 EC-11
+test('[lite] the lite disclosure note says what was therefore not verified, and redAbsenceNote says red was deliberately skipped — not that this ticket predates the stage', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+  assert.equal(runLite(root).status, 0);
+
+  const entryJson = JSON.parse(readFileSync(join(theOneLiteRunDir(root), 'entry.json'), 'utf8'));
+  const note = entryJson.lite.note;
+  assert.match(note, /\bred\b/, 'the note must name the red stage');
+  assert.match(note, /\bsecurity\b/, 'the note must name the security stage');
+  assert.ok(
+    /attacker/i.test(note) || /audit/i.test(note),
+    'the note must say what the skipped security stage would have produced (an attacker-brief sweep / an immutable audit record), not merely that it was skipped',
+  );
+  assert.match(note, /best[- ]effort|curated/i,
+    'the note must concede that the barred-path list is a curated, best-effort list rather than a complete classifier');
+
+  assert.match(entryJson.redAbsenceNote, /lite/i);
+  assert.ok(
+    !/predates/i.test(entryJson.redAbsenceNote),
+    'the pre-existing "this ticket predates the red stage" wording would be a different, and false, claim about a lite run',
+  );
+});
+
+// @spec AC-9
+test('[lite] entry.md is titled "(LITE)" and carries a "## Lite lane" section immediately after "## Verdicts"', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+  assert.equal(runLite(root).status, 0);
+
+  const runDir = theOneLiteRunDir(root);
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+
+  assert.match(entry, /^# Ledger entry — .+\(LITE\)/m);
+
+  const verdictsIdx = entry.indexOf('## Verdicts');
+  const liteIdx = entry.indexOf('## Lite lane');
+  assert.ok(verdictsIdx !== -1, 'entry.md must still carry ## Verdicts');
+  assert.ok(liteIdx > verdictsIdx, 'entry.md must carry a ## Lite lane section after ## Verdicts');
+  const between = entry.slice(verdictsIdx + '## Verdicts'.length, liteIdx);
+  assert.ok(!/^## /m.test(between), '## Lite lane must sit IMMEDIATELY after ## Verdicts — a reader must not have to scroll past other sections to learn two stages never ran');
+
+  const liteSection = entry.slice(liteIdx);
+  assert.match(liteSection, /\bred\b/);
+  assert.match(liteSection, /\bsecurity\b/);
+  assert.ok(liteSection.includes(entryJson.lite.note),
+    'entry.md must carry the same fixed disclosure note entry.json records, verbatim — two renderings of one fact cannot be allowed to drift');
+  assert.ok(liteSection.includes('5') && liteSection.includes('150'),
+    'the eligibility numbers this run was measured against belong in the human-facing entry too');
+
+  assert.match(entry, /## Security run ID[\s\S]{0,200}(did not run|none)/i,
+    'the security-run-id section must state plainly that the stage did not run, rather than sitting blank');
+});
+
+// @spec AC-8
+test('[lite] skippedStages and the disclosure note are derived by the script — there is no flag to supply either', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+  for (const args of [['--skipped-stages', 'red'], ['--lite-note', 'nothing to see here']]) {
+    const result = runLite(root, args);
+    assertLiteRefusal(result, root, `${args[0]} must not be accepted`);
+    assert.match(result.stderr, new RegExp(`unrecognized argument "${args[0]}"`));
+  }
+});
+
+// @spec AC-3
+test('[lite] the surviving gate reads .pipeline/review.json, never review.md — a PASS-looking markdown file cannot rescue a NEEDS_FIXES verdict', () => {
+  const pipeline = { ...litePipeline(), 'review.json': reviewJson('NEEDS_FIXES'), 'review.md': reviewMarkdownPlaceholder('PASS') };
+  const root = liteFixtureRepo({ pipeline });
+  smallUncommittedChange(root);
+
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'a NEEDS_FIXES review.json');
+  assert.match(result.stderr, /NEEDS_FIXES/);
+});
+
+// --- AC-7's precondition list: each one refuses with exit 1 and writes nothing --------------------
+
+// @spec AC-7 EC-7
+test('[lite] --lite --override-security is refused, naming why — there is no security verdict on this lane to override', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+  const result = runLite(root, ['--override-security', 'There is nothing here to override.']);
+  assertLiteRefusal(result, root, '--lite --override-security');
+  assert.match(result.stderr, /--override-security/);
+  assert.match(result.stderr, /--lite/);
+});
+
+// @spec AC-7 EC-8
+test('[lite] --lite --re-gate is refused in this ticket, naming the route out', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+  const result = runLite(root, ['--re-gate', '--tester-ran', 'true', '--ticket', 'PL-99z']);
+  assertLiteRefusal(result, root, '--lite --re-gate');
+  assert.match(result.stderr, /--re-gate/);
+  assert.match(result.stderr, /--lite/);
+});
+
+// @spec AC-7 EC-12
+test('[lite] a missing .pipeline/test-results.md is refused — tester still runs on this lane', () => {
+  const root = liteFixtureRepo({ pipeline: litePipeline({ includeTestResults: false }) });
+  smallUncommittedChange(root);
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'a missing test-results.md');
+  assert.match(result.stderr, /test-results\.md/);
+  assert.match(result.stderr, /tester/i, 'the refusal must name which stage has to run first, not merely which file is absent');
+});
+
+// @spec AC-7 EC-13
+test('[lite] an unstamped .pipeline/spec.json is refused — the same hygiene check --re-gate applies, and for a stated reason', () => {
+  const root = liteFixtureRepo({ pipeline: litePipeline({ specStamp: null }) });
+  smallUncommittedChange(root);
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'an unstamped spec.json');
+  assert.match(result.stderr, /stamp/);
+  assert.match(result.stderr, /spec\.json/);
+});
+
+// @spec AC-7 EC-14
+test('[lite] a spec.json/spec.md ticket disagreement is refused on the --lite path exactly as on every other — the check stays unconditional', () => {
+  const pipeline = { ...litePipeline({ ticket: 'PL-11' }), 'spec.md': specMarkdown('PL-03h') };
+  const root = liteFixtureRepo({ pipeline });
+  smallUncommittedChange(root);
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'a spec.json/spec.md ticket mismatch');
+  assert.match(result.stderr, /does not agree with .*spec\.md/);
+});
+
+// @spec AC-7 EC-2
+test('[lite] a realized diff over max_files or max_changed_lines is refused, naming the counts, the bounds, and the sanctioned escalation', () => {
+  const tooManyFiles = liteFixtureRepo();
+  for (let i = 0; i < 6; i++) smallUncommittedChange(tooManyFiles, `app/change-${i}.ts`);
+  const filesResult = runLite(tooManyFiles);
+  assertLiteRefusal(filesResult, tooManyFiles, 'a change over max_files');
+  assert.match(filesResult.stderr, /6/, 'the refusal must name the actual file count');
+  assert.match(filesResult.stderr, /5/, 'the refusal must name the bound it exceeded');
+  assert.match(filesResult.stderr, /ledger-append\.mjs/, 'the refusal must name the sanctioned escalation: run /security, then the plain ledger-append');
+  assert.match(filesResult.stderr, /security/i);
+
+  const tooManyLines = liteFixtureRepo();
+  const dest = join(tooManyLines, 'app', 'big.ts');
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, 'export const x = 1;\n'.repeat(200), 'utf8');
+  const linesResult = runLite(tooManyLines);
+  assertLiteRefusal(linesResult, tooManyLines, 'a change over max_changed_lines');
+  assert.match(linesResult.stderr, /150/, 'the refusal must name the changed-line bound it exceeded');
+});
+
+// @spec AC-7 EC-2 (secondary bound — security round FND-22ef4b5c746e, MEDIUM)
+test('[lite] a realized diff shaped as very few, very long lines is refused via max_line_length, even though max_changed_lines alone would not catch it', () => {
+  const root = liteFixtureRepo();
+  const dest = join(root, 'app', 'shaped.ts');
+  mkdirSync(dirname(dest), { recursive: true });
+  // One untracked line, ~20,000 characters — 1 file, 1 "changed line" (the file's own line count),
+  // trivially under max_files (5) and max_changed_lines (150). This is the exact exploit shape
+  // security reproduced live: a diff that measures as deceptively few changed lines while carrying
+  // tens of KB of real content, which `max_changed_lines` alone cannot catch.
+  writeFileSync(dest, `export const shaped = "${'x'.repeat(20000)}";\n`, 'utf8');
+
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'a diff shaped as very few, very long lines');
+  assert.match(result.stderr, /line-length|max_line_length/i, 'the refusal must name the secondary size bound that caught this');
+  assert.match(result.stderr, /500/, 'the refusal must name the bound it exceeded');
+});
+
+// @spec AC-7 EC-3
+test('[lite] a realized diff touching the barred union is refused, naming every matching path and which list barred it', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root, 'services/core/src/security/token-check.ts');
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'a barred path in the realized diff');
+  assert.match(result.stderr, /services\/core\/src\/security\/token-check\.ts/);
+  assert.match(result.stderr, /hotfix_barred_paths|deny_for_fenced_lanes/,
+    'the refusal must say which of the two lists barred the path — the union is computed, so "barred" alone does not say where to look');
+});
+
+// @spec AC-7 EC-3 (widened — security round FND-b731f500c5b8, HIGH)
+test('[lite] a realized diff touching one of the five widened hotfix_barred_paths directories (service layer, routes, MCP, workers, gateway) is refused', () => {
+  for (const path of [
+    'services/core/src/services/technicalTreeService.ts',
+    'services/core/src/routes/graph.ts',
+    'services/core/src/mcp/tools.ts',
+    'services/workers/ingest.py',
+    'services/gateway/socket.ts',
+  ]) {
+    const root = liteFixtureRepo();
+    smallUncommittedChange(root, path);
+    const result = runLite(root);
+    assertLiteRefusal(result, root, `a barred path in the realized diff: ${path}`);
+    assert.match(result.stderr, new RegExp(path.replace(/[/]/g, '\\/')), path);
+    assert.match(result.stderr, /hotfix_barred_paths/, `${path}: must be barred via the widened hotfix_barred_paths list`);
+  }
+});
+
+// @spec AC-7 EC-16
+test('[lite] a .sdd/bounds.yml with no lite_eligibility block refuses the run — a missing bound is never read as "no bound"', () => {
+  const root = liteFixtureRepo({ bounds: boundsYmlWithoutLiteBlock() });
+  smallUncommittedChange(root);
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'an absent lite_eligibility block');
+  assert.match(result.stderr, /lite_eligibility|bounds/);
+});
+
+// @spec AC-7 EC-18
+test('[lite] an existing .sdd/ledger/<runId>/ is never overwritten — the guard main() already applies is reached on the lite path too', () => {
+  const root = liteFixtureRepo();
+  // Committed, so the prior entry is NOT part of this run's working-tree diff — that separate,
+  // deliberate interaction is EC-19's test below, not this one.
+  const priorRunId = '20260801T000000000Z-aaaaaaaaaaaa-LITE-aaaaaa';
+  seedPriorEntry(root, priorRunId);
+  commitAll(root, 'a previous ledger entry, committed');
+  smallUncommittedChange(root);
+
+  const result = runLite(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(root, '.sdd', 'ledger', priorRunId, 'entry.md'), 'utf8'),
+    `# Ledger entry — ${priorRunId}\n\nPRE-EXISTING\n`,
+    'a prior run directory must never be reused or rewritten',
+  );
+  assert.equal(ledgerRunIds(root).length, 2, 'the new run gets its own directory alongside the old one');
+});
+
+// @spec EC-19
+test('[lite] an uncommitted previous ledger entry is itself a barred .sdd/** path — the run refuses and says to commit it first', () => {
+  const root = liteFixtureRepo();
+  smallUncommittedChange(root);
+  const priorRunId = '20260801T000000000Z-bbbbbbbbbbbb-LITE-bbbbbb';
+  seedPriorEntry(root, priorRunId); // deliberately NOT committed
+
+  const result = runLite(root);
+  assert.notEqual(result.status, 0, 'a lite run cannot be measured as small while a previous run\'s ledger output is still loose in the tree');
+  assert.doesNotMatch(result.stderr, /unrecognized argument "--lite"/,
+    '--lite must itself be a recognized flag — otherwise this refusal says nothing about the barred path');
+  assert.match(result.stderr, /\.sdd\//);
+  assert.match(result.stderr, /commit/i, 'the refusal has to tell the caller what to do about it — this is an accepted cost, not a carve-out');
+  assert.deepEqual(ledgerRunIds(root), [priorRunId], 'the pre-seeded directory is the only one — no new entry is written');
+});
+
+// @spec EC-17
+test('[lite] a clean tree with no changes.json fails loudly rather than recording an unmeasured change as small', () => {
+  const root = liteFixtureRepo({ pipeline: litePipeline({ includeChanges: false }) });
+  // No uncommitted change at all: fixtureRepo committed everything.
+  assertLiteRefusal(runLite(root), root, 'a clean tree with no changes.json');
+});
+
+// @spec EC-17
+test('[lite] a clean tree whose changes.json names files that cannot be sized refuses rather than certifying them small', () => {
+  const root = liteFixtureRepo({ pipeline: litePipeline({ changesFiles: ['app/deleted-since.ts', 'app/also-gone.ts'] }) });
+  // The tree is clean and neither named path exists on disk, so there is nothing to measure at all.
+  assertLiteRefusal(runLite(root), root, 'an unsizable changes.json file list — a change that cannot be measured is never measured as small');
+});
+
+// --- EC-6: a real non-PASS verdict, accepted with a reason, is still an override ------------------
+
+// @spec EC-6 AC-10
+test('[lite] --lite --override-review records the entry with bypass: true and excludes it from index.json, exactly like any other override', () => {
+  const pipeline = { ...litePipeline(), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = liteFixtureRepo({ pipeline });
+  smallUncommittedChange(root, 'app/still-nitty.ts');
+
+  const result = runLite(root, ['--override-review', 'A style nit accepted on purpose; the fix itself is one line.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = theOneLiteRunDir(root);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.bypass, true, 'the override, not the lite lane, is what drives bypass here');
+  assert.equal(entryJson.overrides.length, 1);
+  assert.deepEqual(entryJson.lite.skippedStages, ['red', 'security'], 'the lite disclosure survives alongside the override');
+  assert.deepEqual(entryJson.verdicts, { review: 'NEEDS_FIXES', security: 'SKIPPED_LITE' });
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/still-nitty.ts'], undefined, 'an overridden run must never answer "which spec governs this file"');
+
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.match(entry, /^# Ledger entry — .+\(LITE\) \(OVERRIDE\)/m, 'the markers compose in the documented order');
+});
+
+// --- EC-5 / EC-9 / EC-10: stamped sidecars ------------------------------------------------------
+//
+// These use realGitignoreFixtureRepo (not the ordinary fixtureRepo) for the reason that helper's own
+// doc comment gives: only under the real .gitignore is `.pipeline/**` invisible to computeTreeHash,
+// which is what makes a deliberately-FRESH or deliberately-STALE stamp constructible at all.
+
+// @spec EC-5
+test('[lite] a STALE review.json is refused — and is still refused when --override-review is supplied', () => {
+  for (const extraArgs of [[], ['--override-review', 'Accepting the finding, but not the staleness.']]) {
+    const root = realGitignoreFixtureRepo({ pipeline: litePipeline() });
+    const staleStamp = buildStamp(root); // accurate for the clean tree, one moment before it moves on
+    writeFileSync(join(root, '.pipeline', 'review.json'), JSON.stringify({ verdict: 'PASS', stamp: staleStamp }, null, 2), 'utf8');
+    mkdirSync(join(root, 'app'), { recursive: true });
+    writeFileSync(join(root, 'app', 'never-reviewed.ts'), 'export const x = 1;\n', 'utf8');
+
+    const result = runLite(root, extraArgs);
+    assertLiteRefusal(result, root, `a STALE review.json (--lite ${extraArgs.join(' ')})`);
+    assert.match(result.stderr, /review\.json's stamp is STALE/);
+  }
+});
+
+// @spec EC-9
+test('[lite] a FRESH-stamped security.json refuses the lite lane and points at the plain ledger-append', () => {
+  const root = realGitignoreFixtureRepo({ pipeline: litePipeline() });
+  const freshStamp = buildStamp(root); // .pipeline/** is gitignored here, so writing into it keeps this accurate
+  writeFileSync(
+    join(root, '.pipeline', 'security.json'),
+    JSON.stringify({ verdict: 'PASS', runId: RUN_ID, stamp: freshStamp }, null, 2),
+    'utf8',
+  );
+
+  const result = runLite(root);
+  assertLiteRefusal(result, root, 'a FRESH security.json — a security run that genuinely happened against this tree must never be recorded as SKIPPED_LITE');
+  assert.match(result.stderr, /security\.json/);
+  assert.match(result.stderr, /ledger-append\.mjs/, 'the refusal must point at the plain command that records the run honestly');
+});
+
+// @spec EC-10
+test('[lite] an unstamped (leftover) security.json is ignored with an explicit printed note, and is never copied into the lite entry', () => {
+  const pipeline = { ...litePipeline(), 'security.json': securityJson(RUN_ID, 'PASS') }; // no stamp -> "unknown"
+  const root = liteFixtureRepo({ pipeline });
+  smallUncommittedChange(root);
+
+  const result = runLite(root);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(`${result.stdout}${result.stderr}`, /security\.json/,
+    'silently ignoring a leftover verdict file is exactly the kind of quiet decision this pipeline records instead');
+  assert.match(`${result.stdout}${result.stderr}`, /ignor/i);
+
+  const runDir = theOneLiteRunDir(root);
+  assert.ok(!existsSync(join(runDir, 'security.json')), 'a leftover security.json must never be filed as this run\'s own');
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.verdicts.security, 'SKIPPED_LITE');
+  assert.equal(entryJson.securityRunId, null);
+});
+
+// @spec EC-11
+test('[lite] a leftover red.json is never copied and never listed as this run\'s red-test paths', () => {
+  const pipeline = { ...litePipeline(), 'red.json': redJson(['scripts/left-over-from-another-ticket.test.mjs']) };
+  const root = liteFixtureRepo({ pipeline });
+  smallUncommittedChange(root);
+
+  const result = runLite(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = theOneLiteRunDir(root);
+  assert.ok(!existsSync(join(runDir, 'red.json')), 'the lite lane ran no red stage — copying a leftover sidecar would manufacture evidence of one');
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.redTestPaths, []);
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.ok(!entry.includes('scripts/left-over-from-another-ticket.test.mjs'));
 });
