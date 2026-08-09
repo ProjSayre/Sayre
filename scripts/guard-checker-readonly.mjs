@@ -121,7 +121,14 @@ import { parseJsonOrThrow } from './pipeline-contracts.mjs';
  * `pr-review` (PL-03d/PL-03i) is added here at the same time it is registered in
  * `.sdd/runtimes.yml` — its own stage file (`.sdd/stages/pr-review.md`) explicitly warns that the
  * enforcement below silently does not apply to a stage until it is added to this set. */
-const READ_ONLY_AGENTS = new Set(['review', 'security-checker', 'security_checker', 'security', 'pr-review']);
+const READ_ONLY_AGENTS = new Set([
+  'review',
+  'security-checker',
+  'security_checker',
+  'security',
+  'pr-review',
+  'gap-scout',
+]);
 
 /** The one directory *inside the repository* a checker stage may write to. */
 const WRITABLE_SUBTREE = '.pipeline';

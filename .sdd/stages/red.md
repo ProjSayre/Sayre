@@ -196,3 +196,15 @@ review (see `.sdd/stages/review.md`).
 Model tier `opus` — this stage runs at low volume and high judgment, the same reasoning as `planner`:
 a wrongly-classified test or a missed acceptance criterion here propagates through every downstream
 stage rather than being caught locally.
+
+## Gap-mode (`/pipeline-gapfill`)
+
+When `.pipeline/gaps.json` exists with `verdict: "GAPFILL"`:
+
+1. Author leading-red tests **only** for `AC-*`/`EC-*` items in the gap-mode `spec.json` (which
+   already exclude `OK` gaps). Do not re-author tests for scout-marked `OK` items.
+2. Prefer citing existing tests under gaps evidence when an item was `UNTESTED` only because the
+   acceptance measurement was missing — still write the new `@spec` test that makes the measurement
+   literal.
+3. All other red rules (no `RED-BROKEN` finish, stamps, classifications) apply unchanged.
+

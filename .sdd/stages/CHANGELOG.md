@@ -20,6 +20,13 @@ automatically"; that was false — see the SEC-10 entry below — and the file's
 directly, rather than being cleaned up into a shorter, confidently wrong sentence.) Moving history
 out of a stage file is about removing *dated narration*, never about removing a *correction*.
 
+## `/pipeline-gapfill` + `gap-scout` stage
+
+- New lane for MVP Wave 0–4 audit-and-gap-fill (cheat sheet + `.sdd/mvp-overlays.yml`).
+- New stage `.sdd/stages/gap-scout.md` (read-only agent; writes `gaps.md`/`gaps.json`).
+- Planner/red gain gap-mode sections; review gains undeclared-scope check when `gaps.json` is present.
+- Ledger: `node scripts/ledger-append.mjs --gapfill` (disclosure marker; security still required).
+
 ## Shared: read-only enforcement for `review` / `security-checker` / `pr-review`
 
 - **PL-03a (initial extraction).** The pre-`.sdd/` Claude Code definitions for these three stages
@@ -39,7 +46,7 @@ out of a stage file is about removing *dated narration*, never about removing a 
   everyone or block no one"). `review`, `security-checker`, and `pr-review` are all in that script's
   `READ_ONLY_AGENTS` set. The one gap that did **not** close: the guard covers `Write`/`Edit`/
   `NotebookEdit`, never `Bash` — a command-allowlist over `Bash` was tried and rejected on the
-  merits (`docs/PRD_Tickets.md`'s PL-03g section has the rejected-approach catalogue; the short
+  merits (`docs/product/Ticket-Backlog-by-Feature-2.md`'s PL-03g section has the rejected-approach catalogue; the short
   version is that a single allowed command which executes project code, e.g. `poetry run pytest`
   running `conftest.py`, makes command-layer default-deny meaningless).
 

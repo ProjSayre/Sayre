@@ -7,7 +7,7 @@
 **Inputs:**
 - `docs/design-system/SAYRE_DESIGN_SYSTEM.md` — visual source of truth ("Warm Graphite")
 - `docs/design-system/Sayre Directions-selection.png` — approved mock 4d (canvas density/proportions reference)
-- `docs/product/PRD-V1.pdf` — the full product this site sells (we are NOT building the product)
+- `docs/product/PRD-V1.md` — the full product this site sells (we are NOT building the product)
 
 Where this spec quantifies something the design system leaves open, this spec wins. Where they conflict, the design system wins.
 

@@ -7,7 +7,7 @@ changes.md passes review" path had no implementation on dev's side even though r
 enforces it (see .sdd/stages/review.md's Red-test integrity check and scripts/check-red-integrity.mjs).
 See .sdd/runtimes.yml for the model tier, tool grants, and any hook wiring for a given runtime.
 
-PL-03f (parity fix surfaced by PL-03a — see docs/PRD_Tickets.md): the deleted Codex copy
+PL-03f (parity fix surfaced by PL-03a — see docs/product/Ticket-Backlog-by-Feature-2.md): the deleted Codex copy
 (`.codex/agents/dev.toml`) re-read `.pipeline/security-report.md` "for required fixes" on
 re-invocation; this file only re-read `review.md`. Step 2 below now covers both re-invocation paths
 `.sdd/pipeline.md`'s routing section already describes (NEEDS_FIXES from review, BLOCKED from

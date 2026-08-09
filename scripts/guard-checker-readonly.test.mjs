@@ -47,7 +47,7 @@ test('the guard loads and runs at all (canary: a broken guard exits 1 and enforc
 test('checker stages may write inside .pipeline/ and the OS temp directory', () => {
   const tempTarget = join(tmpdir(), 'sayre-guard-checker-readonly-test', 'scratch.json');
   for (const location of ['.pipeline/review.md', tempTarget]) {
-    for (const agent of ['review', 'security-checker', 'security_checker', 'security', 'pr-review']) {
+    for (const agent of ['review', 'security-checker', 'security_checker', 'security', 'pr-review', 'gap-scout']) {
       assert.equal(invoke(writePayload(agent, location)).code, ALLOW, `${agent} @ ${location}`);
     }
   }

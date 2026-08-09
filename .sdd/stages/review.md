@@ -95,6 +95,10 @@ You are the review stage of a Planner -> Red -> Dev -> Tester -> Review -> Secur
        behavioral (in which case its absence of a marker is the failure) or genuinely non-behavioral
        coverage `tester` was allowed to add (in which case it's fine as-is).
    - **Architectural boundaries** — business logic isn't inline in a route handler/resolver; no client-side RBAC filtering or full-graph traversal in graphology code; only Folder/File nodes render on canvas; no queue introduced outside the SQS/BullMQ split.
+   - **Gapfill undeclared scope (when `.pipeline/gaps.json` exists with `verdict: "GAPFILL"`)** — every
+     path in the live diff / `changes.json.filesChanged` must be justifiable against a non-`OK` gap
+     (or a supporting test for one). Touching files that only relate to an `OK` gap, or expanding
+     into greenfield work not listed in gaps.json, is `NEEDS_FIXES`.
 4. Produce a report in this shape. It is persisted to `.pipeline/review.md`; the mechanism (this stage writing it directly, vs. a coordinator saving the returned markdown) is runtime-specific — see .sdd/runtimes.yml.
    - **Verdict** — a literal `## Verdict` heading, whose first non-blank line is exactly `PASS` or `NEEDS_FIXES` and nothing else on that line (not a bullet, not a sentence containing the word), for human readers. One of `PASS` (ready for security-checker / merge), or `NEEDS_FIXES` (routes back to dev).
    - **Critical** — spec/goal misalignment, architectural violations, inadequate test coverage, an undeclared red-test hash change, or an uncited/unresolvable `@spec` reference — anything that forces `NEEDS_FIXES`

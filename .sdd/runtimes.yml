@@ -24,6 +24,18 @@
 version: 1
 
 stages:
+  gap-scout:
+    neutral: stages/gap-scout.md
+    claude:
+      name: gap-scout
+      description: >-
+        Read-only audit of an already-shipped MVP ticket against its acceptance criteria. Writes
+        .pipeline/gaps.md and gaps.json listing OK/MISSING/STUBBED/… items so /pipeline-gapfill only
+        specs and implements the delta. Use before planner on the gapfill lane.
+      tools: [Read, Grep, Glob, Bash, Write]
+      disallowedTools: [Edit]
+      model: opus
+
   planner:
     neutral: stages/planner.md
     claude:
@@ -89,7 +101,7 @@ stages:
       # top-level `hooks:` key does, and (at that point) that key didn't exist here either. So this
       # stage had never actually been read-only with respect to either Write or Bash — both scripts
       # were dead code. The Bash guard's allowlist design is also independently rejected on the
-      # merits (see docs/PRD_Tickets.md's PL-03g — `ruff check --config fix=true` proves flag-name
+      # merits (see docs/product/Ticket-Backlog-by-Feature-2.md's PL-03g — `ruff check --config fix=true` proves flag-name
       # denylisting can't close an open-ended capability surface); that design is not revived.
       #
       # PL-03g has since landed: scripts/guard-checker-readonly.mjs is wired as a PreToolUse hook

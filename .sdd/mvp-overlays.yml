@@ -1,0 +1,77 @@
+# MVP Wave 0–4 polish overlays for `/pipeline-gapfill`.
+# Source of truth for which cheat-sheet overlay(s) stack on a ticket:
+# docs/product/Audit-Rebuild-Cheat-Sheet.md §3.
+#
+# gap-scout reads this file. Do not invent overlays at runtime for ids listed here.
+# Tickets not listed are ineligible for `/pipeline-gapfill` (route to `/pipeline`).
+
+version: 1
+
+# Overlay kinds:
+#   base          — Audit-Rebuild cheat sheet base template only
+#   security      — adversarial audit overlay
+#   interface     — INTERFACE-CONTRACT overlay (downstream promise check)
+#   spot-check    — append the ticket-specific verification clause (see spot_checks)
+#
+# security_required: when true, `/pipeline-gapfill` must run the full security stage
+# (no SKIPPED_* literal). Always true for security/interface/spot-check; true for
+# base as well on this lane — MVP polish usually touches product code. Doc-only
+# tickets that are mechanically lite-eligible may use `/pipeline-lite` instead.
+
+tickets:
+  W0-00: { overlays: [base], security_required: true }
+  W0-01: { overlays: [base], security_required: true }
+  W0-02: { overlays: [base], security_required: true, note: "Re-run migrations twice; idempotency is easy to fake-pass" }
+  W0-03: { overlays: [base], security_required: true }
+  W0-04: { overlays: [base], security_required: true }
+  W0-05: { overlays: [base], security_required: true }
+  W0-07: { overlays: [base], security_required: true }
+  W1-01: { overlays: [base], security_required: true }
+  W1-02: { overlays: [base, spot-check], security_required: true }
+  W1-03: { overlays: [security], security_required: true, audit_first: true }
+  W1-04: { overlays: [base], security_required: true }
+  W1-05: { overlays: [base], security_required: true }
+  W1-06: { overlays: [base, spot-check], security_required: true }
+  W2-01: { overlays: [base], security_required: true }
+  W2-02: { overlays: [security, interface], security_required: true, audit_first: true }
+  W2-03: { overlays: [security], security_required: true }
+  W2-04: { overlays: [base], security_required: true }
+  W2-05: { overlays: [interface], security_required: true }
+  W2-06: { overlays: [security], security_required: true, audit_first: true }
+  W3-01: { overlays: [interface], security_required: true, audit_first: true }
+  W3-02: { overlays: [base], security_required: true }
+  W3-03: { overlays: [base], security_required: true, note: "Verify 70x token-savings KPI was measured, not asserted" }
+  W3-04: { overlays: [base], security_required: true }
+  W3-05: { overlays: [base], security_required: true }
+  W3-06: { overlays: [interface], security_required: true }
+  W3-07: { overlays: [base], security_required: true, note: "Re-run network-isolated self-hosted test" }
+  W3-08: { overlays: [base], security_required: true }
+  W3-09: { overlays: [base], security_required: true }
+  W4-01: { overlays: [base, spot-check], security_required: true }
+  W4-02: { overlays: [security], security_required: true }
+  W4-05: { overlays: [base], security_required: true, note: "Doc-only — verify not stale; /pipeline-lite ok if size-eligible" }
+  W4-06: { overlays: [security], security_required: true, audit_first: true }
+  W4-07: { overlays: [base], security_required: true, note: "Re-verify against current W4-06, not the original" }
+
+# Spot-check clauses appended to the base template (cheat sheet §2).
+spot_checks:
+  W1-02: |
+    Also specifically verify: webhook signature validation (X-Hub-Signature-256)
+    actually rejects tampered payloads, and no secret/credential is read
+    outside the W0-07 getSecret() loader.
+  W1-06: |
+    Also specifically verify: webhook signature validation (X-Hub-Signature-256)
+    actually rejects tampered payloads, and no secret/credential is read
+    outside the W0-07 getSecret() loader.
+  W4-01: |
+    Also specifically verify: setup commands execute only inside the
+    sandboxed/containerized runner — confirm this by attempting to trigger
+    host execution, not by reading the runner config and assuming it's
+    wired correctly.
+
+# Tickets that must be audited before dependents build on them (cheat sheet §4).
+audit_first:
+  - W1-03
+  - W2-02
+  - W2-06
+  - W3-01
