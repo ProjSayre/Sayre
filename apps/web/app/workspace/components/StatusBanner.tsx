@@ -1,6 +1,6 @@
 'use client';
 
-import { useMock } from '../state';
+import { useWorkspaceNavigation, useWorkspaceQueries } from '../state';
 import type {
   ProductCoverage,
   SemanticStatus,
@@ -99,15 +99,16 @@ function copyFor(
 }
 
 export function StatusBanner() {
-  const { dispatch, graph, state, semanticState } = useMock();
+  const { graph, semanticState } = useWorkspaceQueries();
+  const navigation = useWorkspaceNavigation();
   const { headline, detail } = copyFor(
     semanticState.status,
-    state.view,
+    navigation.viewId as ViewId,
     graph.productCoverage,
     graph.onboarding?.steps.length ?? 0,
   );
   const showTechnicalAction =
-    state.view === 'product' &&
+    navigation.viewId === 'product' &&
     semanticState.status === 'ready' &&
     (graph.productCoverage?.unmappedFileCount ?? 0) > 0;
 
@@ -125,23 +126,12 @@ export function StatusBanner() {
         <button
           type="button"
           className="mock-btn mock-btn-ghost mock-btn-sm"
-          onClick={() =>
-            dispatch({
-              type: 'patch',
-              patch: {
-                view: 'technical',
-                selectedFeatureId: null,
-                drawerOpen: false,
-                search: '',
-                fileTreeOpen: true,
-              },
-            })
-          }
+          onClick={() => { navigation.selectView('technical'); navigation.setFileTreeOpen(true); }}
         >
           Open all files
         </button>
       )}
-      {semanticState.updatedAt !== null && state.view !== 'technical' && (
+      {semanticState.updatedAt !== null && navigation.viewId !== 'technical' && (
         <span className="mock-banner-time">
           updated {formatTimestamp(semanticState.updatedAt)}
         </span>

@@ -1,0 +1,446 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-06T21:20:25.975Z",
+  "completed_at": "2026-08-06T21:20:26.975Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre-worktrees\\fe-arch-01"
+  },
+  "target": {
+    "commit_sha": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+    "branch": "ticket/fe-arch-01-workspace-packs",
+    "dirty": true,
+    "environment": "Local isolated ticket worktree; bounded static, unit, build, CLI, and localhost browser checks only; no shared or production services.",
+    "base_urls": [
+      "http://127.0.0.1:3101/mock"
+    ],
+    "changed_paths": [
+      ".claude/skills/workspace-pack-author/SKILL.md",
+      "apps/web/app/layout.tsx",
+      "apps/web/app/mock/components/ControlPanel.tsx",
+      "apps/web/app/mock/README.md",
+      "apps/web/app/page.tsx",
+      "apps/web/app/testSetup.ts",
+      "apps/web/app/workspace/canvas/OnboardingTreeCanvas.tsx",
+      "apps/web/app/workspace/components/CanvasStates.tsx",
+      "apps/web/app/workspace/components/GlobalStates.tsx",
+      "apps/web/app/workspace/components/StatusBanner.tsx",
+      "apps/web/app/workspace/components/SystemRecoveryMenu.tsx",
+      "apps/web/app/workspace/components/TopBar.tsx",
+      "apps/web/app/workspace/components/ViewRail.tsx",
+      "apps/web/app/workspace/components/WorkspaceShell.tsx",
+      "apps/web/app/workspace/drawer/AgentSkillModule.tsx",
+      "apps/web/app/workspace/drawer/FeatureDrawer.tsx",
+      "apps/web/app/workspace/drawer/NodeDrawer.tsx",
+      "apps/web/app/workspace/drawer/nodeModuleRenderers.tsx",
+      "apps/web/app/workspace/editor/ComponentPalette.tsx",
+      "apps/web/app/workspace/editor/dragController.ts",
+      "apps/web/app/workspace/editor/editor.css",
+      "apps/web/app/workspace/editor/LayoutEditMode.test.tsx",
+      "apps/web/app/workspace/editor/LayoutEditMode.tsx",
+      "apps/web/app/workspace/editor/ThemeTokenEditor.tsx",
+      "apps/web/app/workspace/editor/WorkspaceEditorProvider.tsx",
+      "apps/web/app/workspace/layout/ResizeHandle.tsx",
+      "apps/web/app/workspace/layout/workspace-layout.css",
+      "apps/web/app/workspace/layout/WorkspaceLayout.tsx",
+      "apps/web/app/workspace/packs/builtins.ts",
+      "apps/web/app/workspace/packs/capabilityCatalog.ts",
+      "apps/web/app/workspace/packs/componentCatalog.tsx",
+      "apps/web/app/workspace/packs/packRegistry.ts",
+      "apps/web/app/workspace/packs/packStorage.test.ts",
+      "apps/web/app/workspace/packs/packStorage.ts",
+      "apps/web/app/workspace/packs/runtimeCatalog.ts",
+      "apps/web/app/workspace/packs/WorkspacePackProvider.test.tsx",
+      "apps/web/app/workspace/packs/WorkspacePackProvider.tsx",
+      "apps/web/app/workspace/settings/McpSettings.tsx",
+      "apps/web/app/workspace/settings/SettingsPanel.tsx",
+      "apps/web/app/workspace/settings/workspacePackDownload.test.ts",
+      "apps/web/app/workspace/settings/workspacePackDownload.ts",
+      "apps/web/app/workspace/settings/WorkspacePackSettings.tsx",
+      "apps/web/app/workspace/settingsRegistry.ts",
+      "apps/web/app/workspace/state.tsx",
+      "apps/web/app/workspace/state/contracts.ts",
+      "apps/web/app/workspace/state/fixture.tsx",
+      "apps/web/app/workspace/state/focusedProviders.test.tsx",
+      "apps/web/app/workspace/state/index.ts",
+      "apps/web/app/workspace/state/navigation.tsx",
+      "apps/web/app/workspace/state/operations.tsx",
+      "apps/web/app/workspace/state/queries.tsx",
+      "apps/web/app/workspace/state/realtime.tsx",
+      "apps/web/app/workspace/state/selection.tsx",
+      "apps/web/app/workspace/state/session.tsx",
+      "apps/web/app/workspace/state/store.tsx",
+      "apps/web/app/workspace/state/WorkspaceProvider.tsx",
+      "apps/web/app/workspace/technicalExpansionState.tsx",
+      "apps/web/app/workspace/theme.ts",
+      "apps/web/app/workspace/theme/workspace-theme.css",
+      "apps/web/app/workspace/theme/workspaceTheme.ts",
+      "apps/web/app/workspace/types.ts",
+      "apps/web/app/workspace/views/LegacyWorkspaceView.tsx",
+      "apps/web/app/workspace/views/OnboardingWorkspaceView.tsx",
+      "apps/web/app/workspace/views/PitchSummaryPanel.tsx",
+      "apps/web/app/workspace/views/ProductWorkspaceView.tsx",
+      "apps/web/app/workspace/views/TechnicalWorkspaceView.tsx",
+      "apps/web/app/workspace/views/WorkspaceViewRuntime.tsx",
+      "apps/web/app/workspace/workspace.css",
+      "apps/web/app/workspace/workspaceEditor.red.test.tsx",
+      "apps/web/app/workspace/workspaceLayoutRecovery.red.test.tsx",
+      "apps/web/app/workspace/workspacePacks.red.test.ts",
+      "apps/web/app/workspace/workspacePackStorageCli.red.test.ts",
+      "apps/web/app/workspace/workspaceProductArchitecture.red.test.ts",
+      "apps/web/package.json",
+      "apps/web/vitest.config.ts",
+      "apps/web/workspace-packs/default/README.md",
+      "apps/web/workspace-packs/default/sayre.workspace.json",
+      "apps/web/workspace-packs/pitch/from-default.operations.json",
+      "apps/web/workspace-packs/pitch/README.md",
+      "apps/web/workspace-packs/pitch/sayre.workspace.json",
+      "docs/workspace-pack-authoring.md",
+      "docs/workspace-pack-llm-rd.md",
+      "docs/workspace-packs.md",
+      "package-lock.json",
+      "package.json",
+      "packages/workspace-packs/package.json",
+      "packages/workspace-packs/src/bin.mjs",
+      "packages/workspace-packs/src/canonicalize.test.ts",
+      "packages/workspace-packs/src/canonicalize.ts",
+      "packages/workspace-packs/src/cli-entry.ts",
+      "packages/workspace-packs/src/cli.test.ts",
+      "packages/workspace-packs/src/cli.ts",
+      "packages/workspace-packs/src/contracts.ts",
+      "packages/workspace-packs/src/edit.test.ts",
+      "packages/workspace-packs/src/edit.ts",
+      "packages/workspace-packs/src/index.ts",
+      "packages/workspace-packs/src/limits.ts",
+      "packages/workspace-packs/src/parse.test.ts",
+      "packages/workspace-packs/src/parse.ts",
+      "packages/workspace-packs/src/patch.test.ts",
+      "packages/workspace-packs/src/patch.ts",
+      "packages/workspace-packs/src/resolve.test.ts",
+      "packages/workspace-packs/src/resolve.ts",
+      "packages/workspace-packs/src/runtime.ts",
+      "packages/workspace-packs/src/testFixture.ts",
+      "packages/workspace-packs/tsconfig.json",
+      "packages/workspace-packs/vitest.config.ts",
+      "scripts/check-org-secret-access.mjs",
+      "scripts/check-org-secret-access.test.mjs",
+      "scripts/check-secret-access.mjs",
+      "scripts/check-secret-access.test.mjs"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+    "commit_sha": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+    "comparable": true,
+    "selection_reason": "Newest complete immutable run for the same dirty ticket target, commit base, branch, local environment, authorization, and selected WEB/WS/SC/core attack paths; used as the remediation baseline. Newly selected SEC rows have no matching baseline observations and remain FIRST_OBSERVATION.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "FE-ARCH-01 contract-based Workspace Packs and visual editor",
+    "phase": "MVP local portability and editor; hosted marketplace and deployable customer-facing LLM authoring remain out of scope.",
+    "source_references": [
+      ".pipeline/spec.md",
+      "docs/prd.md",
+      "docs/PRD_Tickets.md"
+    ],
+    "documentation_code_drift": [
+      "PRD v5 and docs/PRD_Tickets.md remain authoritative over older companion architecture/backlog documents where they conflict.",
+      "FE-ARCH-01 intentionally proves the local visual editor and portable declarative pack contract; hosted marketplace, organization sync, and deployable LLM authoring remain future work."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Repository owner via explicit instruction to continue the sanctioned pipeline autonomously until solved.",
+    "resource_ceiling": "Read-only/static inspection plus bounded local unit, build, CLI, and localhost browser checks; no external scanning, destructive payloads, or shared-service mutations.",
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-01.",
+      "rationale": "Server-side graph organization guards and tenant-aware persistence/query controls exist; no tenant-bearing backend path changed.",
+      "code_references": [
+        "services/core/src/security/graphOrgGuard.ts",
+        "services/core/src/graph-query/permissions.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-02 and client composition changed.",
+      "rationale": "Graph authorization remains in the core Graph Query Service; the changed client consumes authorized DTOs.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts",
+        "apps/web/app/workspace/dataSource.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-03.",
+      "rationale": "Phase-aware secret loaders exist; no credential-bearing path changed.",
+      "code_references": [
+        "packages/config/src/secrets.ts",
+        "services/workers/sayre_workers/config/secrets.py"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-04.",
+      "rationale": "GitHub webhook signature verification exists and no receiver or queue handoff changed.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts",
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-05.",
+      "rationale": "Worker repository lifecycle and bounded projection paths exist; no ingestion path changed.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/sayre_workers/ingestion/service.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-06 and new pack parser/CLI boundaries changed.",
+      "rationale": "Workspace Pack input is parsed through closed schemas and semantic operations; CLI paths require focused review.",
+      "code_references": [
+        "packages/workspace-packs/src/parse.ts",
+        "packages/workspace-packs/src/patch.ts",
+        "packages/workspace-packs/src/cli.ts"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No registry trigger, model/RAG runtime, prompt, embedding, or retrieval path changed.",
+      "rationale": "The ticket's LLM authoring documentation invokes a local deterministic CLI and does not add a production retrieval or model boundary.",
+      "code_references": [
+        "services/workers/sayre_workers/retrieval/service.py",
+        "services/workers/sayre_workers/ingestion/embeddings.py"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No provider, egress, worker, core, or infrastructure path changed.",
+      "rationale": "Existing model-provider adapters are outside this frontend/package delta.",
+      "code_references": [
+        "services/workers/sayre_workers/model_provider/factory.py",
+        "services/workers/sayre_workers/model_provider/resilience.py"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No MCP path or API-key lifecycle changed.",
+      "rationale": "The edited MCP settings component only migrated frontend state-hook imports; transport and keys are unchanged.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "The monolithic client realtime effect moved into apps/web/app/workspace/state/realtime.tsx; path routing is a floor, so the transport boundary and sibling server controls are selected.",
+      "rationale": "The client still performs first-frame token authentication, waits for server readiness before subscribing, filters repository IDs on received messages, and retains the existing gateway protocol; those claims require verification against sibling server controls.",
+      "code_references": [
+        "services/gateway/src/index.ts",
+        "services/core/src/services/realtimeDeltaService.ts",
+        "apps/web/app/workspace/state/realtime.tsx"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No worker, queue, webhook, or server integration path changed.",
+      "rationale": "Existing ingestion/queue/webhook boundaries are not modified by this frontend ticket.",
+      "code_references": [
+        "services/core/src/queue/sqs.ts",
+        "services/core/src/queue/bullmq.ts",
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "apps/web/** changed and the ticket adds local import/export, URL selection, rendering, and editor trust boundaries.",
+      "rationale": "The product client and browser-local pack-management surface are executable and directly affected.",
+      "code_references": [
+        "apps/web/app/workspace/packs/packStorage.ts",
+        "apps/web/app/workspace/settings/WorkspacePackSettings.tsx",
+        "apps/web/app/workspace/components/WorkspaceShell.tsx"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "scripts/** changed to remediate the blocked CORE-03 scanner path, selecting the SEC checklist and sibling secret/audit/data-lifecycle boundaries.",
+      "rationale": "The central scanners are implemented and directly changed; the product's broader audit, lifecycle, backup, and alerting boundaries remain outside this local frontend ticket and are explicitly limited per checklist.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-org-secret-access.mjs",
+        "packages/config/src/secrets.ts"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": "PARTIAL",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Root/package manifests and package-lock.json changed.",
+      "rationale": "The repository has locked npm workspaces and CI/local infrastructure, while production infrastructure remains incomplete; the new private workspace package and scripts require delta review.",
+      "code_references": [
+        "package.json",
+        "package-lock.json",
+        "packages/workspace-packs/package.json",
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".sdd/stages/security.md",
+      "sha256": "d8f2d947bb0c8483bd570c72445fedb768c491d7c2a0acd8d4247f207d4878fa"
+    },
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    }
+  ],
+  "limitations": [
+    "No database, queue, model-provider, webhook, cloud, telemetry, backup, or production credentials were supplied; no shared or production service attack was attempted.",
+    "No synthetic Org A/Org B live database fixtures were supplied. CORE-01 and CORE-02 remain static plus bounded local-test observations because the delta does not change backend tenant or authorization code.",
+    "The target commit identifies the dirty worktree base; changed_paths pin every audited source path even though the ticket implementation is not committed yet.",
+    "The production secret scanners still report three pre-existing out-of-diff paths documented by the durable 20260731 audit; this run proves the ticket-caused abort is resolved and does not reclassify those unrelated paths as FE-ARCH-01 regressions.",
+    "Hosted CI/fork behavior, full reachable Git history, generated source-map leakage, secret rotation, security telemetry, backups, and multi-instance runtime behavior were unavailable and are UNVERIFIED where applicable."
+  ]
+}
+

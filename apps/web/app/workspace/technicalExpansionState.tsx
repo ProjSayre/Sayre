@@ -119,6 +119,7 @@ export function TechnicalExpansionProvider({
   latestScopeKey.current = scopeKey;
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const deepLinkNodeId = new URLSearchParams(window.location.search)
       .get('nodeId')
       ?.trim();
@@ -138,6 +139,7 @@ export function TechnicalExpansionProvider({
   }, [scopeKey]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     if (scoped.scopeKey !== scopeKey) return;
     try {
       window.sessionStorage.setItem(
@@ -150,6 +152,7 @@ export function TechnicalExpansionProvider({
   }, [scopeKey, scoped]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     if (nodes === null || scoped.scopeKey !== scopeKey) return;
     const expectedNodes = nodes;
     const timer = window.setTimeout(() => {

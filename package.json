@@ -30,6 +30,8 @@
     "test:ledger-append": "node --test scripts/ledger-append.test.mjs",
     "check:red-integrity": "node scripts/check-red-integrity.mjs",
     "test:red-integrity": "node --test scripts/check-red-integrity.test.mjs",
+    "test:product-workspace-ux": "node scripts/test-product-workspace-ux.mjs",
+    "workspace-pack": "vite-node packages/workspace-packs/src/cli-entry.ts",
     "dev:workspaces": "turbo run dev --parallel",
     "build:workspaces": "turbo run build",
     "lint:workspaces": "turbo run lint",

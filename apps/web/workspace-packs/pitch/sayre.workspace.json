@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "id": "sayre.pitch",
+    "name": "Sayre Pitch",
+    "version": "1.0.0",
+    "description": "A presentation-first workspace for nontechnical product conversations.",
+    "author": "Sayre",
+    "license": "Proprietary",
+    "tags": ["builtin", "pitch"],
+    "derivedFrom": { "id": "sayre.default", "version": "1.0.0" }
+  },
+  "compatibility": {
+    "schemaVersion": 1,
+    "minimumRuntimeContractVersion": 1,
+    "maximumRuntimeContractVersion": null,
+    "requiredComponents": [
+      { "id": "sayre.primary-surface", "version": 1 },
+      { "id": "sayre.explorer", "version": 1 },
+      { "id": "sayre.inspector", "version": 1 }
+    ],
+    "requiredCapabilities": ["sayre.technical", "sayre.product"]
+  },
+  "theme": {
+    "colors": {
+      "canvas": "#131412", "raised": "#1B1C19", "hover": "#22231F", "border": "#262723",
+      "borderStrong": "#353630", "edge": "#2B2B27", "node": "#55554E", "textFaint": "#64645C",
+      "textMuted": "#8B8B82", "text": "#A9A9A0", "textStrong": "#E8E6E1", "accent": "#B86BFF",
+      "accentText": "#74A583", "accentContent": "#EDECE7", "warning": "#9E8A5F", "danger": "#9E6B62"
+    },
+    "typography": { "ui": "sayre-grotesk", "mono": "system-mono" },
+    "density": "presentation",
+    "radius": "subtle"
+  },
+  "defaultLayoutId": "layout.default",
+  "defaultViewId": "product",
+  "layouts": [{
+    "id": "layout.default",
+    "regions": [
+      {
+        "id": "region.explorer", "slot": "explorer", "component": { "id": "sayre.explorer", "version": 1 },
+        "order": 0, "hidden": true, "defaultSize": 280, "minimumSize": 180, "maximumSize": 480,
+        "resize": "horizontal", "collapsible": true, "defaultCollapsed": false, "visibleInViews": ["technical"], "compactBehavior": "overlay"
+      },
+      {
+        "id": "region.primary", "slot": "primary", "component": { "id": "sayre.primary-surface", "version": 1 },
+        "order": 0, "hidden": false, "defaultSize": 800, "minimumSize": 320, "maximumSize": 2400,
+        "resize": "none", "collapsible": false, "defaultCollapsed": false, "visibleInViews": null, "compactBehavior": "keep"
+      },
+      {
+        "id": "region.inspector", "slot": "inspector", "component": { "id": "sayre.pitch-summary", "version": 1 },
+        "order": 0, "hidden": false, "defaultSize": 440, "minimumSize": 240, "maximumSize": 640,
+        "resize": "horizontal", "collapsible": true, "defaultCollapsed": false, "visibleInViews": null, "compactBehavior": "overlay"
+      }
+    ]
+  }],
+  "views": [
+    { "id": "technical", "label": "Technical", "glyph": "T", "hint": "Technical repository view", "capability": "sayre.technical", "surface": { "id": "sayre.primary-surface", "version": 1 }, "toolbar": [], "inspectorModules": [], "enabled": true },
+    { "id": "product", "label": "Product", "glyph": "P", "hint": "Product feature view", "capability": "sayre.product", "surface": { "id": "sayre.primary-surface", "version": 1 }, "toolbar": [], "inspectorModules": [], "enabled": true },
+    { "id": "onboarding", "label": "Onboarding", "glyph": "O", "hint": "Onboarding workflow view", "capability": "sayre.onboarding", "surface": { "id": "sayre.primary-surface", "version": 1 }, "toolbar": [], "inspectorModules": [], "enabled": true }
+  ],
+  "settingsOrder": ["workspace-packs", "github", "providers", "mcp"]
+}

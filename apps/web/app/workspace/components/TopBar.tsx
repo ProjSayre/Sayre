@@ -5,7 +5,7 @@ import {
   clearSessionCookie,
   clearStoredSessionToken,
 } from '../../lib/coreFetch';
-import { useMock } from '../state';
+import { useWorkspaceNavigation, useWorkspaceRealtime, useWorkspaceSession } from '../state';
 import type { RealtimeStatus, RepositoryReadiness } from '../types';
 import { Badge } from './ui';
 
@@ -23,7 +23,8 @@ const REALTIME_LABEL: Record<RealtimeStatus, string> = {
 };
 
 function RepositoryPicker() {
-  const { state, dispatch, repositories, repository, isAdmin } = useMock();
+  const { access, repositories, repository, isAdmin } = useWorkspaceSession();
+  const navigation = useWorkspaceNavigation();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
 
@@ -45,7 +46,7 @@ function RepositoryPicker() {
         className="mock-picker-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        disabled={state.access === 'forbidden'}
+        disabled={access === 'forbidden'}
         onClick={() => setOpen((value) => !value)}
       >
         <span>{label}</span>
@@ -58,19 +59,16 @@ function RepositoryPicker() {
             <div className="mock-picker-empty">
               <strong>No repositories available</strong>
               <span>
-                {state.access === 'no-repositories'
+                {access === 'no-repositories'
                   ? 'No repository has been connected to this organization yet.'
                   : 'Your account is not authorized for any repository in this organization.'}
               </span>
-              {state.access === 'no-repositories' && isAdmin && (
+              {access === 'no-repositories' && isAdmin && (
                 <button
                   type="button"
                   className="mock-btn mock-btn-primary mock-btn-sm"
                   onClick={() => {
-                    dispatch({
-                      type: 'patch',
-                      patch: { settingsSection: 'github' },
-                    });
+                    navigation.openSettings('github');
                     setOpen(false);
                   }}
                 >
@@ -88,20 +86,7 @@ function RepositoryPicker() {
                 aria-current={repo.id === repository?.id}
                 aria-selected={repo.id === repository?.id}
                 onClick={() => {
-                  dispatch({
-                    type: 'patch',
-                    patch: {
-                      repositoryId: repo.id,
-                      refName:
-                        repo.currentRef ??
-                        (repo.defaultBranch
-                          ? `refs/heads/${repo.defaultBranch}`
-                          : null),
-                      selectedNodeId: null,
-                      selectedFeatureId: null,
-                      drawerOpen: false,
-                    },
-                  });
+                  navigation.selectRepository(repo.id);
                   setOpen(false);
                 }}
               >
@@ -116,7 +101,7 @@ function RepositoryPicker() {
             ))
           )}
 
-          {state.access === 'repository-restricted' && repositories.length > 0 && (
+          {access === 'repository-restricted' && repositories.length > 0 && (
             <div className="mock-picker-empty">
               Only repositories your role grants access to appear here.
             </div>
@@ -128,21 +113,16 @@ function RepositoryPicker() {
 }
 
 export function TopBar() {
-  const {
-    mode,
-    state,
-    dispatch,
-    repository,
-    authorizedForRepository,
-    isAdmin,
-  } = useMock();
+  const session = useWorkspaceSession();
+  const navigation = useWorkspaceNavigation();
+  const realtime = useWorkspaceRealtime();
 
   const realtimeTone =
-    state.realtime === 'connected'
+    realtime.status === 'connected'
       ? 'ready'
-      : state.realtime === 'updated'
+      : realtime.status === 'updated'
         ? 'neutral'
-        : state.realtime === 'reconnecting'
+        : realtime.status === 'reconnecting'
           ? 'working'
           : 'warn';
 
@@ -160,23 +140,21 @@ export function TopBar() {
           the exception — nothing else reports a dropped connection — so it
           appears only when it has something to report. Still withheld for a
           repository the viewer is not authorized to read. */}
-      {repository !== null &&
-        authorizedForRepository &&
-        state.realtime !== 'connected' && (
+      {session.repository !== null &&
+        session.authorizedForRepository &&
+        realtime.status !== 'connected' && (
           // The gateway re-authorizes every pushed delta before this client
           // refreshes its currently selected graph projection.
-          <Badge tone={realtimeTone}>{REALTIME_LABEL[state.realtime]}</Badge>
+          <Badge tone={realtimeTone}>{REALTIME_LABEL[realtime.status]}</Badge>
         )}
 
       <span className="mock-topbar-spacer" />
 
-      {mode === 'fixture' && (
+      {session.mode === 'fixture' && (
         <button
           type="button"
           className="mock-btn mock-btn-ghost"
-          onClick={() =>
-            dispatch({ type: 'patch', patch: { controlsOpen: true } })
-          }
+          onClick={() => navigation.setControlsOpen(true)}
         >
           Mock controls
         </button>
@@ -184,16 +162,11 @@ export function TopBar() {
 
       {/* Every settings section is admin-only, so members never see the entry
           point at all — the actions are absent, not disabled. */}
-      {isAdmin && (
+      {session.isAdmin && (
         <button
           type="button"
           className="mock-btn mock-btn-secondary mock-btn-sm"
-          onClick={() =>
-            dispatch({
-              type: 'patch',
-              patch: { settingsSection: 'github' },
-            })
-          }
+          onClick={() => navigation.openSettings('github')}
         >
           Settings
         </button>
@@ -205,7 +178,7 @@ export function TopBar() {
 }
 
 function AccountMenu() {
-  const { mode, state, dispatch, viewer } = useMock();
+  const session = useWorkspaceSession();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
 
@@ -218,7 +191,7 @@ function AccountMenu() {
     return () => document.removeEventListener('mousedown', onDocumentClick);
   }, [open]);
 
-  const currentUser = viewer;
+  const currentUser = session.viewer;
 
   return (
     <div className="mock-picker" ref={container}>
@@ -239,7 +212,7 @@ function AccountMenu() {
             <strong>{currentUser.name}</strong>
             {currentUser.email}
             <span className="mock-picker-meta">
-              {currentUser.org} · {state.role}
+              {currentUser.org} · {session.role}
             </span>
           </div>
           <button
@@ -248,8 +221,8 @@ function AccountMenu() {
             className="mock-picker-option"
             onClick={() => {
               setOpen(false);
-              dispatch({ type: 'patch', patch: { session: 'signed-out' } });
-              if (mode === 'live') {
+              session.signOut();
+              if (session.mode === 'live') {
                 clearStoredSessionToken();
                 void clearSessionCookie()
                   .catch(() => undefined)

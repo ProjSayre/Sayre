@@ -8,7 +8,7 @@ import type {
   McpKeySettingsResponse,
   McpReadGrant,
 } from '@sayre/shared-types';
-import { useMock } from '../state';
+import { useWorkspaceOperations, useWorkspaceSession } from '../state';
 import { Badge } from '../components/ui';
 
 interface Draft {
@@ -64,15 +64,13 @@ function grantSummary(
 }
 
 export function McpSettings() {
+  const { repositories, repository, scope } = useWorkspaceSession();
   const {
-    repositories,
-    repository,
-    scope,
     loadMcpSettings,
     issueMcpKey,
     revokeMcpKey,
     saveMcpRateLimit,
-  } = useMock();
+  } = useWorkspaceOperations();
   const [data, setData] = useState<McpKeySettingsResponse | null>(null);
   const [draft, setDraft] = useState<Draft>(() =>
     initialDraft(repository?.id ?? null, scope?.refName ?? null),

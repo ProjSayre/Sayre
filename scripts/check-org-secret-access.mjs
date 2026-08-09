@@ -11,7 +11,7 @@
 // columns directly (.claude/rules/security-multitenancy.md).
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 // Only these three files may reference the raw columns: the store that reads/
 // writes them (encrypting/decrypting at the boundary), the org-scoped loader
@@ -138,6 +138,7 @@ for (const file of trackedFiles()) {
   if (!SOURCE_EXTENSION.test(file) || EXCLUDED_SEGMENT.test(file) || ALLOWLIST.has(file)) {
     continue;
   }
+  if (!existsSync(file)) continue;
   const source = readFileSync(file, 'utf8');
   const lines = violationLines(source, file.toLowerCase().endsWith('.py'));
   for (const line of [...lines].sort((a, b) => a - b)) violations.push(`${file}:${line}`);

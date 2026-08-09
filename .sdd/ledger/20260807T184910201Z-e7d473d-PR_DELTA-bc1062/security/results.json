@@ -1,0 +1,563 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+  "baseline_run_id": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+  "generated_at": "2026-08-07T19:07:35.232Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 14,
+      "NOT_APPLICABLE": 2,
+      "FAIL": 2
+    },
+    "result_transitions": {
+      "UNCHANGED": 17,
+      "REGRESSED": 1
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 18
+    },
+    "finding_statuses": {
+      "RESOLVED": 1,
+      "OPEN": 2
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 13,
+      "PARTIAL": 1
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|server security boundary|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no server persistence or graph-query route changed by the FE-ARCH-02 delta (mtime sweep and git status over services/core/src, services/gateway/src, services/workers), then reran services/core's organization-guard test suite directly as dynamic corroboration rather than relying on static absence-of-change alone.",
+      "evidence": [
+        "git status/mtime sweep: zero files under services/core/src, services/gateway/src, or services/workers changed since the FE-ARCH-01R baseline (20260807T023831742Z-e7d473d-PR_DELTA-247f84).",
+        "services/core: npx vitest run src/security/graphOrgGuard — 1 file, 37 tests, all pass.",
+        "The FE-ARCH-02 delta itself (packages/workspace-packs/src/{shapes.ts,registry.ts,runtime.ts}; apps/web/app/workspace/packs/{shapeAdapters.ts,rendererCatalog.tsx,capabilityCatalog.ts,componentCatalog.tsx,runtimeCatalog.ts}) is presentation-only: it introduces no new persistence or query call, and reaches no network/storage (independently re-verified, see CORE-06/WEB-01)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection, git status/mtime sweep, and a bounded services/core vitest run; no external state created or retained.",
+      "code_references": [
+        "services/core/src/security/graphOrgGuard.ts",
+        "services/core/src/graph-query/permissions.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|server security boundary|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Read registry.ts's validateBinding end to end and grepped the whole repository for every call site of validateBinding/WorkspaceBindingContext to determine whether the new manifest registry can grant access the server did not authorize; compared the two registry-sourced values that DO reach a live definition (sayre.explorer@1/sayre.pitch-summary@1's requiredCapabilities) against their pre-FE-ARCH-02 hardcoded literals; reran services/core's graph-query permissions suite as dynamic corroboration that the actual RBAC boundary is untouched.",
+      "evidence": [
+        "registry.ts:110-126 (validateBinding) only ever pushes to a violations array on unknown-capability, unknown-renderer, shape-mismatch, slot-not-allowed, missing-gate, or role-below-minimum; there is no assignment into context.grantedGates and no code path that widens, bypasses, or caches an elevated grant. roleAllows (imported unchanged from parse.ts) enforces the same member<admin<owner ordering the pre-existing pack-compatibility check already used.",
+        "Repository-wide grep for validateBinding/WorkspaceBindingContext outside test files returns zero matches: the gate/role-narrowing logic is registered groundwork with no live caller yet, so it cannot currently grant or widen anything in a running app.",
+        "The one registry output that DOES reach a live definition is registry.snapshot().dataCapabilities[*].requiredGates, consumed by componentCatalog.tsx/runtimeCatalog.ts to populate sayre.explorer@1's and sayre.pitch-summary@1's requiredCapabilities. AC-10/AC-11 pin these to ['sayre.technical'] and ['sayre.product'] respectively — byte-identical to the pre-FE-ARCH-02 hardcoded literals and referencing the same pre-existing gate ids workspaceCapabilities already defines (capabilityCatalog.ts is unmodified for the gate list itself). No new gate, no widened namespace, no new client-side authorization decision.",
+        "services/core: npx vitest run src/graph-query/permissions — 1 file, 11 tests, all pass. No file under services/core/src (the Graph Query Service, where node-level RBAC/traversal is required to live) changed."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection, repository-wide grep, and a bounded services/core vitest run; no external state created or retained.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts",
+        "packages/workspace-packs/src/registry.ts",
+        "apps/web/app/workspace/packs/runtimeCatalog.ts",
+        "apps/web/app/workspace/packs/componentCatalog.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|repository secret-access static gates|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "repository secret-access static gates",
+      "attack_path_version": "v1",
+      "attempt": "Reran the sanctioned secret-access scanner regression suite; grepped the eight FE-ARCH-02 source files directly for org_id/orgId/websocket/webhook/secret/apikey/api_key/process.env/credential/token patterns.",
+      "evidence": [
+        "node --test scripts/check-secret-access.test.mjs: 39/39 pass.",
+        "grep -inE \"org_id|orgId|websocket|webhook|secret|apikey|api_key|process\\.env|credential|token\" across all eight FE-ARCH-02 source files: zero matches.",
+        "The contract package (shapes.ts/registry.ts) reaches no network/storage/environment (AC-13, independently reverified under CORE-06); no credential, token, or environment-variable access was introduced anywhere in the delta."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-9dafe994fd96",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": "frontend-platform",
+        "due_at": "2026-08-07T23:59:59.000Z",
+        "remediation_reference": "FE-ARCH-01 Dev attempts 5-6: absent tracked paths are skipped, present paths remain scanned, and both deletion regressions carry @spec AC-1. Unaffected and still resolved as of FE-ARCH-02.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Ran the sanctioned secret-access scanner regression suite plus a direct grep of the eight changed files; no external state created.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-secret-access.test.mjs",
+        "scripts/check-org-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|server security boundary|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no webhook receiver, signature-verification, or queue-handoff file changed, then reran the webhook-signature test suite as dynamic corroboration.",
+      "evidence": [
+        "git status/mtime sweep: zero changes under services/core/src/webhooks or services/core/src/routes/githubWebhook.ts since the FE-ARCH-01R baseline.",
+        "services/core: npx vitest run src/webhooks/githubSignature — 1 file, 11 tests, all pass.",
+        "The FE-ARCH-02 delta contains no webhook, queue, or provider-integration code of any kind."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection plus a bounded services/core vitest run; no external state created.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts",
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|server security boundary|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no ingestion worker or scratch-clone path changed; inspected the FE-ARCH-02 delta for any persistence beyond in-memory registry state.",
+      "evidence": [
+        "git status/mtime sweep: zero changes under services/workers since the FE-ARCH-01R baseline.",
+        "shapes.ts/registry.ts/shapeAdapters.ts hold no persistence of any kind: registry state lives only in a closured Map for the module's in-memory lifetime, never written to disk, browser storage, or a network call (independently re-verified purity, see CORE-06/WEB-01)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection and git status/mtime sweep only; the Poetry worker environment remains unavailable in this checkout (unchanged limitation carried from red.md/test-results.md).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "packages/workspace-packs/src/registry.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|server security boundary|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Read the manifest registry's key construction and violation-message interpolation, and the shape-payload guard's structural checks, for injection-shaped risk (string concatenation into an executable context, dynamic property access from untrusted keys, eval/Function construction); grepped the full delta for eval/Function/dangerouslySetInnerHTML/child_process/exec; independently reran the full contract-package and app test suites rather than trusting changes.md/test-results.md's counts.",
+      "evidence": [
+        "componentKey()'s `${id}@${version}` template (registry.ts:56) is used only as a Map key and inside developer-facing throw messages surfaced at module-import time for a wiring bug (runtimeCatalog.ts/componentCatalog.tsx's requireManifest) — never reflected into HTML, a Cypher/SQL statement, a shell command, or a queue payload.",
+        "grep of the eight-file delta for eval\\(|Function\\(|dangerouslySetInnerHTML|child_process|exec\\(: zero matches.",
+        "isWorkspaceShapePayload and its four per-shape helpers perform only typeof/Array.isArray/property-existence structural checks — no string-to-code construction of any kind. registerDataCapability/registerRenderer reject unknown shapes (AC-01), duplicate id@version (EC-01), empty allowedSlots (EC-03), and reserved legacy id@version collisions (EC-06) by structural comparison, not by interpreting the input as code.",
+        "Independently reran: packages/workspace-packs npx vitest run — 11 files / 46 tests pass; apps/web npx vitest run — 60 files / 343 tests pass; both npx tsc --noEmit clean.",
+        "A related but distinct robustness defect — isWorkspaceShapePayload throwing on a hostile property accessor/Proxy rather than an injection of executable content — is recorded separately under WEB-07 (FND-6f66474ddfb9); it does not implicate this check since no code execution or data-boundary crossing occurs."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection, targeted grep, and independent vitest/tsc reruns in both affected workspaces; no external state created.",
+      "code_references": [
+        "packages/workspace-packs/src/registry.ts",
+        "packages/workspace-packs/src/shapes.ts",
+        "packages/workspace-packs/src/parse.ts",
+        "packages/workspace-packs/src/cli.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Enumerated every file in the FE-ARCH-02 delta for a new route, server action, API handler, or privileged/debug endpoint.",
+      "evidence": [
+        "No new HTTP handler, server action, middleware, admin/debug endpoint, or WebSocket upgrade exists anywhere in the eight-file delta; every new/changed file is a pure TypeScript module (packages/workspace-packs/src/{shapes.ts,registry.ts,runtime.ts}) or a client React/catalog module (apps/web/app/workspace/packs/{shapeAdapters.ts,rendererCatalog.tsx,capabilityCatalog.ts,componentCatalog.tsx,runtimeCatalog.ts}) consumed by the existing, already-inventoried Next.js app."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/runtimeCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested for SQL/Cypher/shell/template/expression injection surfaces implicated by the new manifest registry and shape guard; traced every string-valued manifest field (id/title/shape) to its only consumers.",
+      "evidence": [
+        "No SQL, Cypher, shell, or template-construction call exists in the delta (grep-verified: no child_process/exec/eval/Function/template-literal-into-query pattern).",
+        "Manifest id/title strings are used only as Map keys, JSX text children, and developer-facing throw-message interpolation — never as a query fragment, shell argument, or HTML string."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection and targeted grep; no external state created.",
+      "code_references": [
+        "packages/workspace-packs/src/registry.ts",
+        "apps/web/app/workspace/packs/runtimeCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Seeded hostile HTML/script-bearing strings mentally against manifest title/id fields and collection item title/subtitle fields, then traced them through TreeListRenderer's and PitchSummaryPanelRenderer's actual render output in rendererCatalog.tsx; reran the full apps/web suite (which still exercises the live ExplorerContribution/PitchSummaryContribution render paths) as dynamic corroboration for the unchanged portion of this boundary.",
+      "evidence": [
+        "TreeListRenderer renders `{node.label}` as a plain JSX text child; PitchSummaryPanelRenderer maps item.title/item.subtitle into PitchSummaryPanel's features prop as plain string props — both are ordinary JSX bindings, auto-escaped by React. grep confirms zero dangerouslySetInnerHTML, innerHTML, document.write, or eval anywhere in the eight-file delta.",
+        "apps/web: npx vitest run — 60 files / 343 tests pass, including the still-live WorkspacePackProvider/component-catalog suites that exercise the unchanged ExplorerContribution/PitchSummaryContribution render paths.",
+        "Caveat (STATIC-only for the two new renderers specifically): TreeListRenderer and PitchSummaryPanelRenderer are never mounted by any test in this ticket (review.md Warning 1, independently confirmed by repository-wide search for their names) — so this PASS for the two new Components rests on source-level JSX-escaping reasoning, not a dynamic hostile-payload render assertion. Neither Component is on any live render path today (the activated sayre.explorer/sayre.pitch-summary aliases still render via the untouched, already-tested legacy Components), which bounds the exposure to zero until a later wave mounts them — matching review.md's attached condition."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection, targeted grep, and a full apps/web vitest rerun; no external state created.",
+      "code_references": [
+        "apps/web/app/workspace/packs/rendererCatalog.tsx",
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any new HTTP mutation endpoint, cookie-authenticated state-changing request, or CORS-relevant surface in the FE-ARCH-02 delta.",
+      "evidence": [
+        "No new HTTP mutation endpoint, cookie-authenticated state-changing request, or CORS-relevant surface exists in the FE-ARCH-02 delta; the registry/contract package and its app wiring are synchronous, in-memory, and non-networked."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/runtimeCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|application security headers|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "application security headers",
+      "attack_path_version": "v1",
+      "attempt": "Re-tested browser security headers against the current pinned target; confirmed the FE-ARCH-02 delta does not touch the header-configuration surface.",
+      "evidence": [
+        "No CSP or frame-protection headers are configured in the inspected Next app; this predates FE-ARCH-01 and is not changed by FE-ARCH-02.",
+        "apps/web/next.config.mjs and apps/web/app/layout.tsx are unmodified by the FE-ARCH-02 delta (mtime sweep confirms no Aug-7 FE-ARCH-02-session change to either file)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-b47dbf6378b9",
+        "status": "OPEN",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Track CSP and frame-protection response headers separately. Unaffected by, and not attributable to, FE-ARCH-02.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Static inspection only; no external state created.",
+      "code_references": [
+        "apps/web/next.config.mjs",
+        "apps/web/app/layout.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Inspected WorkspaceDataCapabilityManifest's and WorkspaceRendererManifest's full field sets and every registration/consumption site for a hidden org/role/owner-widening field, and for any code path that would trust an attacker-suppliable field over the existing catalog's own values.",
+      "evidence": [
+        "Manifest interfaces are closed TypeScript object shapes (id/version/title/shape/requiredGates/minimumRole for capabilities; id/version/title/shape/allowedSlots/isDefaultForShape for renderers) — no org/owner/permission-widening field exists on either, and the registry's runtime validation (registerDataCapability/registerRenderer) does not read or trust any field beyond these.",
+        "Registration accepts input only from statically-authored TypeScript literals in capabilityCatalog.ts/rendererCatalog.tsx today; no external or user-controlled registration path exists yet — the future import/LLM-authoring path spec.md names as the reason snapshot() exists is explicitly out of scope for this ticket and not yet built.",
+        "The two values that reach the live-enforced sayre.explorer@1/sayre.pitch-summary@1 definitions (requiredCapabilities/allowedSlots) are read verbatim from registry.snapshot(), itself built only from the same hardcoded literals — not from any attacker-influenced input."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "packages/workspace-packs/src/registry.ts",
+        "apps/web/app/workspace/packs/capabilityCatalog.ts",
+        "apps/web/app/workspace/packs/rendererCatalog.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified catalog capability-substitution rejection (unchanged from baseline), then ran a new adversarial battery directly against isWorkspaceShapePayload and the registry's registration/validateBinding functions via a dynamic Node import of the real shapes.ts module (not a reimplementation): prototype-pollution-shaped payloads (a JSON.parse-produced own \"__proto__\" property and an object-literal \"__proto__\"/\"constructor\" property on a nested collection item), a null-prototype object, and objects/Proxies carrying throwing property accessors on every field the guard reads (top-level shape, items/nodes array, a nested collection-item id, a nested tree-node parentId, and a bare Proxy with a throwing get trap).",
+      "evidence": [
+        "Unknown components/capabilities are still rejected and only trusted static catalog components render (unchanged from baseline; re-verified by rereading WorkspacePackProvider.tsx/componentCatalog.tsx).",
+        "No prototype pollution occurs: a payload carrying an own \"__proto__\" property (as JSON.parse produces) and a collection item carrying a \"constructor\" property are both read but never assigned/merged onto Object.prototype or any shared object — dynamically confirmed against the real module: ({}).polluted and ({}).polluted3 both stayed undefined after both probes; a null-prototype object (Object.create(null)) is also handled without throwing.",
+        "isWorkspaceShapePayload throws when handed an object whose relevant field is a throwing property accessor (e.g. Object.defineProperty(obj, \"shape\", { get() { throw ... } })) or a Proxy whose get trap throws. Dynamically reproduced against the real module for: the top-level \"shape\" field, the \"items\" array field, a nested collection-item's \"id\" field, a nested tree-node's \"parentId\" field, and a bare hostile Proxy wrapping an otherwise-valid payload. This directly contradicts the function's own documented contract (\"Never throws: malformed input is reported through the boolean return, not an exception\", shapes.ts:86) and spec.md EC-04's \"no throws anywhere\" requirement, which changes.md separately restates as already satisfied.",
+        "Neither shapes.red.test.ts (33 red cases) nor shapes.tester.test.ts's adversarial battery (which explicitly includes \"a transparent Proxy\", i.e. one constructed with an empty handler `{}` that reflects every trap to the target rather than intercepting it) exercises a throwing accessor or a throwing-trap Proxy, so this gap was not caught by either suite. A control probe using new Proxy(target, { has() { throw ... } }) confirmed the guard tolerates a throwing \"has\" trap fine (isPlainObject never uses the \"in\" operator) — the defect is specific to property-read (get) access, not object-shape testing in general.",
+        "Reachability today: repository-wide grep confirms isWorkspaceShapePayload has zero call sites outside test files, so this defect is not currently exploitable by any live user action. The architecture's stated future ingress for external/LLM-authored payloads is always JSON.parse-based (per packages/workspace-packs/src/parse.ts's existing pack-ingestion pipeline), and JSON.parse can never produce a throwing accessor or a Proxy — so the specific reproduction here would not arise through that documented future path either, unless a future caller hands this guard a live, non-JSON-normalized JS object."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "PASS",
+      "result_transition": "REGRESSED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-6f66474ddfb9",
+        "status": "OPEN",
+        "first_seen_run_id": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Make isWorkspaceShapePayload and its four per-shape helpers exception-safe against hostile property accessors and Proxies before any future caller passes non-JSON-derived objects into this guard — e.g. wrap the top-level dispatch in try/catch returning false, or read every field defensively. Add a red/tester case exercising a throwing-getter object and a throwing-trap Proxy (distinct from the existing transparent-Proxy case) so this class of input is pinned going forward.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Dynamic Node ESM import of the on-disk packages/workspace-packs/src/shapes.ts (file:// URL, no server started) exercising the constructed hostile objects/Proxies above; no repository file was created, modified, or left behind — the probe scripts were run inline via `node -e` and touched only in-process objects/globals (confirmed no residual global pollution after each probe). No cleanup required.",
+      "code_references": [
+        "packages/workspace-packs/src/shapes.ts",
+        "packages/workspace-packs/src/shapes.red.test.ts",
+        "packages/workspace-packs/src/shapes.tester.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Re-examined tester's volume-stress cases (2000-item collections, a 15x15 same-shape capability x renderer matrix = 900 bindings, 20,000-character string fields) for correctness and timing; checked shapes.ts/registry.ts for any explicit size/depth/cardinality ceiling.",
+      "evidence": [
+        "Tester's volume tests complete inside the same sub-second vitest run as the rest of the suite (packages/workspace-packs: 11 files / 46 tests, 981ms total) with no timeout or memory failure; independently rerun this stage with the same result.",
+        "Neither shapes.ts nor registry.ts enforces an explicit maximum array length, string length, or requiredGates/allowedSlots cardinality — unlike packages/workspace-packs/src/limits.ts, which does bound the existing Workspace Pack document format. This is unenforced, not exploited: no live caller today feeds either module attacker-controlled data of unbounded size (registration is app-authored; isWorkspaceShapePayload has zero call sites, per WEB-07). Recorded as a forward-looking suggestion, not a current finding."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reran the existing tester volume-stress suite; no external state created.",
+      "code_references": [
+        "packages/workspace-packs/src/registry.ts",
+        "packages/workspace-packs/src/limits.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any invitation/role-change/key-creation/destructive business flow implicated by the FE-ARCH-02 delta.",
+      "evidence": [
+        "No invitation/role-change/key-creation/destructive business flow exists in the FE-ARCH-02 delta; registry registration and binding validation are synchronous, local, non-networked function calls with no race-prone external side effect."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "packages/workspace-packs/src/registry.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any HTTP response, cache header, or CDN-facing surface implicated by the FE-ARCH-02 delta.",
+      "evidence": [
+        "No HTTP response, cache header, or CDN-facing surface exists in this delta."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/runtimeCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Inspected every new throw/error message in the delta (requireManifest's two copies, buildWorkspaceRegistrySnapshot's registration-failure throws) for leaked internal detail, and considered the newly discovered WEB-07 throw's message content.",
+      "evidence": [
+        "requireManifest/buildWorkspaceRegistrySnapshot's throw messages contain only manifest id@version strings already present in source and are fail-fast import-time errors for a developer wiring mistake, not something reachable by end-user input — they would abort the module load entirely rather than render to any user-facing surface.",
+        "The WEB-07 throw-on-hostile-accessor finding surfaces only the accessor's own (hypothetically attacker-authored) Error object; it does not leak stack traces of secrets, internal paths, or other users' data. Its impact is scoped to availability (an unhandled crash), not information disclosure, and is tracked separately as FND-6f66474ddfb9."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/runtimeCatalog.ts",
+        "apps/web/app/workspace/packs/componentCatalog.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no redirect, URL-generation, or pack-import path-validation code changed in the FE-ARCH-02 delta.",
+      "evidence": [
+        "No redirect, URL-generation, or pack-import path-validation code changed in the FE-ARCH-02 delta; the pre-existing protections (rejected pack URLs, root-confined CLI paths in packStorage.ts/cli.ts) are untouched and unaffected."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/packStorage.ts"
+      ]
+    }
+  ]
+}

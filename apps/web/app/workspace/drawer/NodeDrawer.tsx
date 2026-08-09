@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMock } from '../state';
+import { useWorkspaceNavigation, useWorkspaceQueries, useWorkspaceSelection, useWorkspaceSession } from '../state';
 import { nodeModules, type NodeModuleId } from '../moduleRegistry';
 import type { GraphNode, NodeOverlay } from '../types';
 import { copyText, Module } from '../components/ui';
@@ -61,24 +61,17 @@ const MODULE_PRIORITY: readonly NodeModuleId[] = [
 ];
 
 export function NodeDrawer() {
-  const {
-    dispatch,
-    graph,
-    graphStatus,
-    nodeOverlay,
-    overlayStatus,
-    reloadOverlay,
-    repository,
-    semanticState,
-    state,
-  } = useMock();
+  const { graph, graphStatus, nodeOverlay, overlayStatus, reloadOverlay, semanticState } = useWorkspaceQueries();
+  const { repository } = useWorkspaceSession();
+  const navigation = useWorkspaceNavigation();
+  const selection = useWorkspaceSelection();
   const [copyPathState, setCopyPathState] = useState<
     'idle' | 'copied' | 'failed'
   >('idle');
   const node =
-    state.selectedNodeId === null
+    selection.selectedNodeId === null
       ? null
-      : graph.nodes.find((candidate) => candidate.id === state.selectedNodeId);
+      : graph.nodes.find((candidate) => candidate.id === selection.selectedNodeId);
 
   const folderSummary = useMemo(() => {
     if (node?.kind !== 'Folder') return null;
@@ -142,7 +135,7 @@ export function NodeDrawer() {
       : githubSourceUrl(
           repository.provider,
           repository.name,
-          repository.currentRef ?? state.refName,
+          repository.currentRef ?? navigation.refName,
           node,
         );
   const orderedModules = MODULE_PRIORITY.map((moduleId) =>
@@ -166,25 +159,14 @@ export function NodeDrawer() {
           <p className="mock-drawer-path">{node.path || '(repository root)'}</p>
         </div>
         <div className="mock-drawer-header-actions">
-          {state.returnFeatureId !== null && (
+          {selection.returnFeatureId !== null && (
             <button
               type="button"
               className="mock-btn mock-btn-ghost mock-btn-sm"
-              onClick={() =>
-                dispatch({
-                  type: 'patch',
-                  patch: {
-                    view: 'product',
-                    selectedNodeId: null,
-                    selectedFeatureId: state.returnFeatureId,
-                    returnFeatureId: null,
-                    drawerOpen: true,
-                    search: '',
-                  },
-                })
-              }
+              data-workspace-action="back-to-feature"
+              onClick={selection.returnToFeature}
             >
-              ← Feature
+              ← Back to feature
             </button>
           )}
           <button
@@ -221,7 +203,7 @@ export function NodeDrawer() {
             type="button"
             className="mock-btn mock-btn-ghost"
             aria-label="Close details"
-            onClick={() => dispatch({ type: 'closeDrawer' })}
+            onClick={selection.closeInspector}
           >
             ✕
           </button>
@@ -292,8 +274,17 @@ export function NodeDrawer() {
                   node={node}
                   overlay={overlay}
                   semanticsUsable={semanticsUsable}
-                  currentView={state.view}
-                  dispatch={dispatch}
+                  currentView={navigation.viewId as 'technical' | 'product' | 'onboarding'}
+                  selectNode={selection.selectNode}
+                  openNodeInTechnical={(nodeId) => {
+                    selection.selectNode(nodeId);
+                    navigation.selectView('technical');
+                    navigation.setFileTreeOpen(true);
+                  }}
+                  openFeature={(featureId) => {
+                    navigation.selectView('product');
+                    selection.selectFeature(featureId);
+                  }}
                 />
               );
             })}

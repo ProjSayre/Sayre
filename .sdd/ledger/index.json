@@ -71,6 +71,26 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  ".claude/skills/workspace-pack-author/SKILL.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
   ".gitattributes": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -119,12 +139,136 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/entry.md": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/security/manifest.json": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/security/report.md": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/security/results.json": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/entry.md": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/security/manifest.json": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/security/report.md": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/security/results.json": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
   ".sdd/ledger/README.md": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  ".sdd/ledger/index.json": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
   ".sdd/pipeline.md": [
@@ -199,6 +343,1878 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  "apps/web/.gitignore": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/layout.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/mock/README.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/mock/components/ControlPanel.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/mock/components/WorkspaceLayoutReviewFixture.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/mock/page.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/page.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/testSetup.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/canvas/OnboardingTreeCanvas.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/CanvasStates.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/GlobalStates.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/StatusBanner.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/SystemRecoveryMenu.review.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/SystemRecoveryMenu.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/SystemRecoveryMenu.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/TopBar.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/ViewRail.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/WorkspaceShell.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/WorkspaceSystemInterruption.review.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/drawer/AgentSkillModule.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/drawer/FeatureDrawer.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/drawer/NodeDrawer.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/drawer/nodeModuleRenderers.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/ComponentPalette.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/LayoutEditMode.review-remediation.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/LayoutEditMode.test.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/LayoutEditMode.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/ThemeTokenEditor.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/WorkspaceEditorProvider.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/dragController.test.ts": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/dragController.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/editor/editor.css": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/layout/ResizeHandle.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/layout/ResizeHandle.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/layout/WorkspaceLayout.geometry.review-remediation.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/layout/WorkspaceLayout.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/layout/WorkspaceLayout.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/layout/workspace-layout.css": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/WorkspacePackProvider.review.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/WorkspacePackProvider.test.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/WorkspacePackProvider.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/builtins.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/capabilityCatalog.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/componentCatalog.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/packRegistry.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/packStorage.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/packStorage.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/registryIntegration.red.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/rendererCatalog.tsx": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/runtimeCatalog.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/shapeAdapters.red.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/shapeAdapters.tester.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/packs/shapeAdapters.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/McpSettings.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/SettingsPanel.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/WorkspacePackSettings.review.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/WorkspacePackSettings.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/WorkspacePackSettings.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/workspacePackDownload.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settings/workspacePackDownload.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/settingsRegistry.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/WorkspaceProvider.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/contracts.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/fixture.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/focusedProviders.test.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/index.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/navigation.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/operations.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/queries.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/realtime.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/selection.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/session.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/store.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/technicalExpansionState.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/theme.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/theme/workspace-theme.css": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/theme/workspaceTheme.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/types.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/LegacyWorkspaceView.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/OnboardingWorkspaceView.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/PitchSummaryPanel.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/ProductReturn.review.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/ProductWorkspaceView.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/TechnicalWorkspaceView.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/WorkspaceViewRuntime.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/views/WorkspaceViews.test.tsx": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/workspace.css": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/workspaceEditor.red.test.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/workspaceLayoutRecovery.red.test.tsx": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/workspacePackStorageCli.red.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/workspacePacks.red.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/workspaceProductArchitecture.red.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/next.config.mjs": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/package.json": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/tsconfig.json": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/vitest.config.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/workspace-packs/default/README.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/workspace-packs/default/sayre.workspace.json": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/workspace-packs/pitch/README.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/workspace-packs/pitch/from-default.operations.json": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/workspace-packs/pitch/sayre.workspace.json": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
   "docs/PRD_Tickets.md": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -215,12 +2231,90 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  "docs/workspace-pack-authoring.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "docs/workspace-pack-llm-rd.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "docs/workspace-packs.md": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
   "package-lock.json": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
   "package.json": [
@@ -229,6 +2323,600 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/package.json": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/bin.mjs": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/canonicalize.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/canonicalize.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/cli-entry.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/cli.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/cli.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/contracts.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/edit.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/edit.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/index.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/limits.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/packageBoundary.red.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/parse.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/parse.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/patch.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/patch.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/registry.red.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/registry.tester.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/registry.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/resolve.test.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/resolve.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/runtime.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/shapes.red.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/shapes.tester.test.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/shapes.ts": [
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/src/testFixture.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/tsconfig.json": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "packages/workspace-packs/vitest.config.ts": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "scripts/check-org-secret-access.mjs": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "scripts/check-org-secret-access.test.mjs": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "scripts/check-secret-access.mjs": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "scripts/check-secret-access.test.mjs": [
+    {
+      "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+      "ticket": "ARCH-01",
+      "date": "2026-08-06",
+      "spec": ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md"
+    },
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
   "scripts/generate-agent-shims.mjs": [
@@ -253,6 +2941,20 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/test-product-workspace-ux.mjs": [
+    {
+      "runId": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+      "ticket": "FE-ARCH-01R — Product workspace compositor, interaction parity, and editor UX remediation",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T023831742Z-e7d473d-PR_DELTA-247f84/spec.md"
+    },
+    {
+      "runId": "20260807T184910201Z-e7d473d-PR_DELTA-bc1062",
+      "ticket": "ARCH-02",
+      "date": "2026-08-07",
+      "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
   "scripts/validate-security-audit-agents.mjs": [

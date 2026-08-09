@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const ALLOWLIST = new Set([
   'packages/config/src/config.ts',
@@ -1839,6 +1839,7 @@ function violationLines(source, isPython) {
 const violations = [];
 for (const file of trackedFiles()) {
   if (!SOURCE_EXTENSION.test(file) || EXCLUDED_SEGMENT.test(file) || ALLOWLIST.has(file)) continue;
+  if (!existsSync(file)) continue;
   const source = readFileSync(file, 'utf8');
   const lines = violationLines(source, file.toLowerCase().endsWith('.py'));
   for (const line of [...lines].sort((a, b) => a - b)) violations.push(`${file}:${line}`);

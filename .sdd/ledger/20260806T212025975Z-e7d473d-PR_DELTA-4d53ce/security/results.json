@@ -1,0 +1,1579 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+  "baseline_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+  "generated_at": "2026-08-06T21:20:25.975Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 30,
+      "NOT_APPLICABLE": 11,
+      "FAIL": 4,
+      "UNVERIFIED": 13
+    },
+    "result_transitions": {
+      "UNCHANGED": 43,
+      "RESOLVED": 1,
+      "FIRST_OBSERVATION": 14
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 44,
+      "NOT_COMPARABLE": 14
+    },
+    "finding_statuses": {
+      "RESOLVED": 1,
+      "OPEN": 4
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 13,
+      "PARTIAL": 1
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|server security boundary|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested tenant organization scoping against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No server persistence or graph-query route changed; bounded Core organization-guard and graph-query tests passed."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/core/src/security/graphOrgGuard.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|server security boundary|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested server-side RBAC placement against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Changed client modules consume authorized DTOs; bounded Core RBAC and realtime authorization tests passed."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|repository secret-access static gates|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "repository secret-access static gates",
+      "attack_path_version": "v1",
+      "attempt": "Reran both sanctioned repository scanners after the tracked-deletion remediation, exercised a deleted forbidden-content fixture in each scanner suite, checked bypass sibling behavior, and scanned added lines for credential material.",
+      "evidence": [
+        "The secret-access suite passes 39/39 and the org-secret-access suite passes 8/8, including tracked source files deleted after Git indexing.",
+        "Both production scanners now progress past deleted apps/web/app/workspace/state.tsx without ENOENT; they complete and report only jiraConnectionStore.rls.test.ts, orgSecrets.ts, and pollWorker.ts, the same pre-existing out-of-diff paths documented by the durable 20260731 audit.",
+        "The added-line credential-pattern scan found only the deliberately synthetic forbidden token expression inside the new scanner regression fixture; no credential value or deployable secret was introduced."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "FAIL",
+      "result_transition": "RESOLVED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-9dafe994fd96",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": "frontend-platform",
+        "due_at": "2026-08-07T23:59:59.000Z",
+        "remediation_reference": "FE-ARCH-01 Dev attempts 5-6: absent tracked paths are skipped, present paths remain scanned, and both deletion regressions carry @spec AC-1.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Ran the two read-only production scanners plus their isolated temporary-repository regression suites; fixtures self-cleaned and no external state was created.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-secret-access.test.mjs",
+        "scripts/check-org-secret-access.mjs",
+        "scripts/check-org-secret-access.test.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|server security boundary|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested webhook signature trust against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No webhook path changed; bounded Core signature and webhook tests passed."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|server security boundary|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested ingestion data ephemerality against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No ingestion worker or scratch-clone path changed; pack storage is bounded JSON rather than source content."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|server security boundary|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "server security boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested parser, path, shell, SQL, and graph injection boundaries against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Closed schemas, semantic operations, root-confined paths, shell-free process invocation, atomic writes, and 16 passing package tests block attempted injection variants."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "packages/workspace-packs/src/parse.ts",
+        "packages/workspace-packs/src/cli.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested client entry-point inventory against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No new HTTP handler, server action, middleware, or privileged route exists; the surface is browser-local plus a local CLI."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested closed request and import schemas against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Malformed, oversized, deeply nested, and unknown-field packs are rejected by closed parser tests."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested stored markup and script execution against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "HTML, CSS, URL, control-character, credential-like, and unsafe-key values are rejected; rendering resolves static catalog IDs with empty props."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested CSRF and mutation replay against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No HTTP mutation endpoint exists in this delta."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|application security headers|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "application security headers",
+      "attack_path_version": "v1",
+      "attempt": "Tested browser security headers against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No CSP or frame-protection headers are configured in the inspected Next app; this predates and is not changed by FE-ARCH-01."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-b47dbf6378b9",
+        "status": "OPEN",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Track CSP and frame-protection response headers separately.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/next.config.mjs",
+        "apps/web/app/layout.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested ownership and privilege metadata against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Schemas define no org, role, owner, or permission fields and reject unknown privilege metadata."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested catalog capability substitution against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Unknown components and capabilities are rejected; only trusted static catalog components can render."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested resource limits against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Explicit file-size, depth, operation, region, and component limits passed boundary tests."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested local state transitions and recovery against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Version pins, atomic local transactions, revalidation, conflict handling, recovery precedence, and editor focus restoration passed tests."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested network cache and CORS behavior against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No HTTP response, cache, or CORS policy is added by the local surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested error disclosure against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Invalid import and recovery paths emit bounded user-facing errors; the localhost browser run had no console errors."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|workspace pack client boundary|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "Workspace Pack client boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested URL and path traversal against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Pack URLs are rejected and CLI paths must remain under the explicit root."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-01|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-01",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested cross-origin handshake policy against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "First-frame authentication is enforced, but a production-equivalent cross-origin deployment was unavailable."
+      ],
+      "evidence_type": "BOTH",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-02|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-02",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested pre-authentication message handling against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Gateway auth, connection, and protocol suites reject unauthenticated and malformed first frames."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-03|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-03",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested token transport and logs against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "The token is not placed in the URL or logged; it is sent in the first protocol frame."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-04|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-04",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested org and repository fanout against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Fanout matches org and repo and invokes Core authorization per connection/event; bounded tests passed."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-05|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-05",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested subscription ordering and repo filtering against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "The client waits for ready, subscribes to one repo, and discards other-repo messages."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-06|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-06",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested reauthorization on reconnect and push against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Connections authenticate independently and pushes are reauthorized through Core."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-07|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-07",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested broker envelope isolation against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Realtime envelopes carry org/repo identity and bounded gateway/Core suites passed."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-08|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-08",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested protocol shape validation against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Protocol tests reject unknown and malformed message shapes."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-09|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-09",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested ordering and replay against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "The client refetches authorized data instead of applying deltas, but no production broker/cursor fixture was available."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-10|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-10",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested multi-instance recovery against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No shared multi-instance runtime was available to exercise disconnect recovery."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-11|websocket-realtime|gateway websocket resource controls|v1",
+      "check_id": "WS-11",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gateway websocket resource controls",
+      "attack_path_version": "v1",
+      "attempt": "Tested payload, heartbeat, connection, and rate limits against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No explicit max payload, heartbeat/idle timeout, or per-identity connection/rate limit is configured; npm audit also reports an existing ws advisory."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-6c98c2efc4a8",
+        "status": "OPEN",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Track gateway max payload, heartbeat, idle timeout, and per-identity connection/rate limits separately.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts",
+        "services/gateway/package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-12|websocket-realtime|workspace realtime transport|v1",
+      "check_id": "WS-12",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "workspace realtime transport",
+      "attack_path_version": "v1",
+      "attempt": "Tested browser payload minimization against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Core emits bounded notification metadata and the client discards payload data before authorized refetch."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "services/gateway/src/index.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested lockfile integrity and dependency provenance against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "The new runtime dependency is the private local @sayre/workspace-packs link; external lock entries retain integrity metadata."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested lifecycle scripts and shell execution against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "The package has no install lifecycle hook; CLI process execution uses argument arrays with shell disabled."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|repository dependency governance|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency governance",
+      "attack_path_version": "v1",
+      "attempt": "Tested dependency advisory detection against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "npm audit --omit=dev reports 17 existing advisories (9 moderate, 8 high); CI has no dependency-audit or SBOM gate; no flagged external runtime dependency was added here."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-1631fb4c5593",
+        "status": "OPEN",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Track CI dependency scanning and advisory remediation separately.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "package-lock.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested CI permission boundaries against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No CI path changed; hosted token-permission behavior was not dynamically probed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested untrusted CI interpolation against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "CI commands are static and do not interpolate PR titles, bodies, branches, or artifact content into shells."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|ci action and image pinning|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci action and image pinning",
+      "attack_path_version": "v1",
+      "attempt": "Tested immutable action and image pins against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Actions and service images use mutable tags; the references predate and are untouched by FE-ARCH-01."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-d27730519dd3",
+        "status": "OPEN",
+        "first_seen_run_id": "20260806T205708479Z-e7d473d-PR_DELTA-a3df57",
+        "first_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "last_seen_run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+        "last_seen_commit": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Track immutable GitHub Action commit pins and service image digests separately.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested artifact publication and signing against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No artifact publication or release workflow is added."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested infrastructure-as-code scope against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No infrastructure-as-code path changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested cloud identity and secret injection against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No cloud identity, deployment secret, or workload-identity path changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested environment-independent builds against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Workspace tests/builds pass through standard workspace commands without embedded machine paths or secrets."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested promotion and provenance system against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No provenance, signing, or deployment-promotion system exists in this delta."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested bounded artifact processing against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "Malformed and oversized local artifacts are rejected under bounded tests; temporary directories are cleaned."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested production image assembly against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No Dockerfile, container build, or deployment artifact path changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|repository dependency and ci boundary|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "repository dependency and CI boundary",
+      "attack_path_version": "v1",
+      "attempt": "Tested finding ownership and deadlines against the pinned PR delta and every applicable local sibling boundary.",
+      "evidence": [
+        "No compatible immutable baseline or dedicated owner/deadline exists for the pre-existing supply-chain findings."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No external state retained; local tests and static inspection only.",
+      "code_references": [
+        "package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Exercised loader-bypass detection against tracked-deletion, present-file, allowlist, alternate syntax, and sibling org-token paths.",
+      "evidence": [
+        "Both scanner regression suites pass, and the production scanners complete instead of aborting on a tracked deletion.",
+        "The remediation checks existsSync only after extension/exclusion/allowlist routing; every present tracked source still reaches readFileSync and the existing violation parser.",
+        "No changed production file adds a direct secret read. The production findings are confined to three unchanged paths already documented by the durable 20260731 PR-delta audit."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-secret-access.test.mjs",
+        "scripts/check-org-secret-access.mjs",
+        "scripts/check-org-secret-access.test.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Scanned the changed diff and tracked files with approved patterns for hardcoded credential material; did not perform a full reachable-history or container-layer secret scan.",
+      "evidence": [
+        "No live secret material was found in the delta; the only added credential-pattern match is a constructed synthetic expression in a temporary-repository regression fixture.",
+        "Reachable Git history, generated source maps, and container layers were not exhaustively scanned in this local PR-delta run."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "scripts/check-secret-access.test.mjs",
+        "package-lock.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Inspected browser imports, runtime exports, rendered pack data, build output boundaries, and the optimized product build for server-only secret reachability.",
+      "evidence": [
+        "Browser code imports the browser-safe workspace-pack runtime surface; Node filesystem, path, crypto, and CLI implementations remain outside the client entrypoint.",
+        "The product build and typecheck pass, and no changed client source reads process.env or embeds credential values."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "packages/workspace-packs/src/runtime.ts",
+        "packages/workspace-packs/src/index.ts",
+        "apps/web/app/workspace/packs/WorkspacePackProvider.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Inspected changed error, recovery, import/export, and scanner output paths for payload leakage; no authorized telemetry backend or synthetic canary pipeline was available.",
+      "evidence": [
+        "Changed UI errors report bounded validation/recovery messages rather than imported file contents or secrets.",
+        "End-to-end logs, metrics, traces, sampling, and support pipelines were unavailable for canary verification."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "apps/web/app/workspace/settings/WorkspacePackSettings.tsx",
+        "apps/web/app/workspace/packs/packStorage.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Inspected the delta for new secret persistence, tenant-bound secret references, or support/admin plaintext access.",
+      "evidence": [
+        "The ticket adds browser-local declarative workspace-pack persistence and no credential store or plaintext secret retrieval path.",
+        "Database roles, KMS encryption, and support/admin access require an environment and credentials not supplied to this run."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "apps/web/app/workspace/packs/packStorage.ts",
+        "packages/config/src/secrets.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the delta changes secret rotation, revocation, caches, queues, or long-lived credential consumers.",
+      "evidence": [
+        "No secret rotation or cache-invalidation implementation changed.",
+        "No synthetic credential or live service was authorized, so revocation timing could not be exercised."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "packages/config/src/secrets.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Checked changed CLI and browser code for unrelated environment inheritance, process arguments, temporary files, child processes, and outbound credential exposure.",
+      "evidence": [
+        "Workspace-pack CLI child execution in tests uses argument arrays and isolated temporary directories; production pack code does not launch processes or make outbound requests.",
+        "Worker and sandbox runtime environments were outside the local frontend delta and were not dynamically inspected."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "packages/workspace-packs/src/cli.ts",
+        "packages/workspace-packs/src/cli.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Inspected repository workflows, scripts, package hooks, test fixtures, and failure output for credential exposure in the affected controls.",
+      "evidence": [
+        "The new scanner fixtures construct forbidden identifiers without embedding credential values; no install lifecycle hook or artifact-upload path was added.",
+        "Hosted fork/PR secret isolation and CI annotation behavior were not dynamically exercised."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "scripts/check-secret-access.test.mjs",
+        "scripts/check-org-secret-access.test.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Mapped the delta for permission, membership, integration, provider, MCP-key, publication, marketplace, export-to-service, or destructive server-side mutations requiring audit records.",
+      "evidence": [
+        "FE-ARCH-01 adds only personal browser-local pack edits/import/export and explicitly excludes organization sync, publication, marketplace actions, credentials, and autonomous LLM actions; no server audit-worthy mutation exists in the delta."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        ".pipeline/spec.md",
+        "docs/workspace-packs.md",
+        "docs/workspace-pack-llm-rd.md"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Looked for a new or changed authoritative audit-log write path that could be bypassed, forged, updated, or deleted.",
+      "evidence": [
+        "No authoritative audit-log producer or storage path is introduced or modified by this local frontend/package ticket."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        ".pipeline/spec.md"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Looked for tenant deletion, repository disconnect, org offboarding, account removal, or shared retained-data behavior in the delta.",
+      "evidence": [
+        "The ticket has no tenant deletion/offboarding boundary and persists only the current browser profile's validated local workspace packs and preferences."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "apps/web/app/workspace/packs/packStorage.ts",
+        "docs/workspace-packs.md"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Checked the delta for backup, restore, retention, legal-hold, encryption, or tenant restore behavior.",
+      "evidence": [
+        "No backup/restore implementation changed; production backup controls cannot be inferred from this frontend delta and no backup environment was authorized."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        ".pipeline/spec.md"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Attacked the changed export path for cross-tenant lookup, guessed identifiers, stale server authorization, signed URLs, and retained remote artifacts.",
+      "evidence": [
+        "Export serializes only the already validated active local workspace pack into a user-initiated object URL; it performs no server lookup, tenant query, signed URL, support operation, or asynchronous export.",
+        "Focused download tests pass and verify object-URL cleanup on success and failure."
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "apps/web/app/workspace/settings/workspacePackDownload.ts",
+        "apps/web/app/workspace/settings/workspacePackDownload.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|FE-ARCH-01 scanner and local workspace-pack delta|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "FE-ARCH-01 scanner and local workspace-pack delta",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether affected high-risk failures and abuse patterns reach an actionable, tenant-safe alerting system.",
+      "evidence": [
+        "The ticket surfaces local validation and recovery failures to the active user but does not change security alerting infrastructure.",
+        "No metrics/alert backend or authorized service environment was supplied for response verification."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Read-only static checks, bounded local tests, and local builds only; temporary test repositories and object URLs were cleaned and no external state was retained.",
+      "code_references": [
+        "apps/web/app/workspace/components/SystemRecoveryMenu.tsx",
+        "apps/web/app/workspace/settings/WorkspacePackSettings.tsx"
+      ]
+    }
+  ]
+}
+
