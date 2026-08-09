@@ -5,11 +5,35 @@ excluded, see `queries/javascript.scm`), `class_declaration` (+ `extends`
 only — `implements` is TS-only and excluded there too), ESM imports plus
 `require(...)`/dynamic `import(...)` reclassified as imports, and calls.
 
+GAP-5/6/7 gapfill delta additions:
+  - Generator functions (`function* g(){}`, `export function* g(){}`,
+    `async function* g(){}`, `const g = function* () {}`) are now
+    `ParsedFunction` records and act as scopes, exactly like their
+    non-generator counterparts. Generator *methods* (`*m(){}`) already
+    worked via `method_definition` and are unaffected.
+  - `export … from "…"` re-exports (`export * from`, `export { a, b as c }
+    from`, `export * as ns from`, `export type { T } from`) are now
+    `ParsedImport` records — a local `export { a };` (no `from`) and a
+    declaration export (`export function f(){}`) remain excluded/unaffected.
+  - A class expression bound to a plain identifier (`const C = class {…}`,
+    `const D = class extends Legacy {}`) is now a `ParsedClass`, and its
+    methods qualify under it (`C.m`) instead of leaking out as top-level
+    functions. An unbound/anonymous class expression (`foo(class {})`,
+    `this.C = class {}`, `export default class {}`, a destructuring
+    declarator) remains excluded, consistent with the anonymous-callback
+    precedent.
+
 `extract_js_like()` is the shared extraction body both `JavaScriptAdapter`
 and `TypeScriptAdapter` use (see `adapters/typescript.py`, which "composes/
 extends" this module per the spec rather than duplicating the logic) — it is
-parameterized only by which `.scm` query source to run, since the TS/TSX
-grammars use the same node types for every construct captured here.
+parameterized only by which `.scm` query source to run. The TS/TSX grammars
+use the same node types as JS for every construct handled here EXCEPT one:
+`typescript.scm` additionally captures `import_require_clause` (TS `import x
+= require("y")`), which does not exist as a node type in the plain
+`javascript` grammar — see `adapters/typescript.py`'s docstring. The
+`import.equals` capture is therefore always empty when this function runs
+against `javascript.scm`'s query source, so no language switch is needed
+here.
 """
 
 from __future__ import annotations
@@ -58,13 +82,71 @@ def _named_value_binding(node: tree_sitter.Node) -> str | None:
     return node_text(name_node)
 
 
+def _class_expression_binding(class_node: tree_sitter.Node) -> str | None:
+    """Name for a `class` EXPRESSION node: the enclosing `const C = class …`
+    declarator's plain identifier if there is one; else the class
+    expression's own optional `name` field (`const C = class Inner {}`
+    prefers `C`); else `None` — an anonymous, unbound class expression
+    (`foo(class {})`, `this.C = class {}`), structurally excluded exactly
+    like an anonymous callback."""
+    parent = class_node.parent
+    if (
+        parent is not None
+        and parent.type == "variable_declarator"
+        # `==` (Node defines value equality by tree+node id), NOT `is` —
+        # tree-sitter's Python bindings hand back a fresh wrapper object on
+        # every `.parent`/`.child_by_field_name` access, so two references to
+        # the structurally-same underlying node are never the same Python
+        # object; `is` here would silently and incorrectly treat every bound
+        # class expression as unbound.
+        and parent.child_by_field_name("value") == class_node
+    ):
+        name_node = parent.child_by_field_name("name")
+        if name_node is not None and name_node.type == "identifier":
+            return node_text(name_node)
+    own_name = class_node.child_by_field_name("name")
+    if own_name is not None:
+        return node_text(own_name)
+    return None
+
+
+def _reexport_symbols(export_statement: tree_sitter.Node) -> list[str]:
+    """Names carried by a re-export's `export_clause` / `namespace_export`:
+    `export * from "m"` -> [];
+    `export { a, b as c } from "m"` -> ["a", "b"]  (ORIGINAL pre-alias names,
+        matching `_import_symbols`'s documented rule — that is what resolves
+        against the target module's declarations, which is W1-05's job);
+    `export * as ns from "m"` -> ["ns"]  (mirrors `import * as ns`, OQ-2);
+    `export type { T } from "m"` -> ["T"]."""
+    export_clause = next(
+        (child for child in export_statement.children if child.type == "export_clause"), None
+    )
+    if export_clause is not None:
+        symbols: list[str] = []
+        for specifier in export_clause.children:
+            if specifier.type != "export_specifier":
+                continue
+            name_node = specifier.child_by_field_name("name")
+            if name_node is not None:
+                symbols.append(node_text(name_node))
+        return symbols
+    namespace_export = next(
+        (child for child in export_statement.children if child.type == "namespace_export"), None
+    )
+    if namespace_export is not None:
+        ident = next((child for child in namespace_export.children if child.type == "identifier"), None)
+        if ident is not None:
+            return [node_text(ident)]
+    return []
+
+
 def _classify_scope(node: tree_sitter.Node) -> ScopeFrame | None:
-    if node.type in ("function_declaration", "method_definition"):
+    if node.type in ("function_declaration", "method_definition", "generator_function_declaration"):
         name_node = node.child_by_field_name("name")
         if name_node is None:
             return None
         return ScopeFrame("function", node_text(name_node))
-    if node.type in ("arrow_function", "function_expression"):
+    if node.type in ("arrow_function", "function_expression", "generator_function"):
         name = _named_value_binding(node)
         if name is None:
             return None
@@ -74,6 +156,11 @@ def _classify_scope(node: tree_sitter.Node) -> ScopeFrame | None:
         if name_node is None:
             return None
         return ScopeFrame("class", node_text(name_node))
+    if node.type == "class":
+        name = _class_expression_binding(node)
+        if name is None:
+            return None
+        return ScopeFrame("class", name)
     return None
 
 
@@ -192,8 +279,10 @@ def extract_js_like(
     *, file_path: str, source: bytes, tree: tree_sitter.Tree, query_source: str
 ) -> FileExtract:
     """Shared JS/TS extraction body — see module docstring. `query_source` is
-    the caller's `.scm` text (`javascript.scm` or `typescript.scm`); both use
-    identical capture-name patterns."""
+    the caller's `.scm` text (`javascript.scm` or `typescript.scm`). The two
+    files share every capture name used below EXCEPT `import.equals`, which
+    only `typescript.scm` produces (see module docstring); the loop for it
+    below is a no-op when `captures` came from `javascript.scm`."""
     query = tree.language.query(query_source)
     captures = query.captures(tree.root_node)
 
@@ -273,9 +362,48 @@ def extract_js_like(
                 )
             )
 
+    for declarator in captures.get("class.expression", []):
+        value_node = declarator.child_by_field_name("value")
+        if value_node is None:  # pragma: no cover — query pattern guarantees this field
+            continue
+        binding_name = _class_expression_binding(value_node)
+        if binding_name is None:  # anonymous/unbound class expression, e.g. `foo(class {})`
+            continue
+        chain = ancestor_scope_chain(value_node, _classify_scope)
+        qualified_name = build_qualified_name(chain, binding_name)
+        start_line, end_line = node_span(value_node)
+        bases = _class_heritage_bases(value_node)
+        classes.append(
+            ParsedClass(
+                file_path=file_path,
+                name=binding_name,
+                qualified_name=qualified_name,
+                base_names=bases,
+                start_line=start_line,
+                end_line=end_line,
+            )
+        )
+        for base in bases:
+            inherits.append(
+                ParsedInheritance(
+                    file_path=file_path,
+                    subclass_qualified_name=qualified_name,
+                    base_name=base,
+                )
+            )
+
     for node in captures.get("import.stmt", []):
         source_node = node.child_by_field_name("source")
-        if source_node is None:  # pragma: no cover — grammar guarantees this field
+        if source_node is None:
+            # A TS `import x = require("y")` / import-equals statement is
+            # also an `import_statement` node at this level, so it is ALSO
+            # captured here — but it has no `source` field (the module
+            # string lives on the nested `import_require_clause` node
+            # instead, handled separately by the `import.equals` branch
+            # below). This is NOT the "grammar guarantees this field" case
+            # it used to be documented as; it is exactly the path GAP-7's TS
+            # import-equals case hits, and skipping it here is what prevents
+            # double-emission against the `import.equals` branch.
             continue
         module = strip_string_quotes(node_text(source_node))
         start_line, _ = node_span(node)
@@ -284,6 +412,47 @@ def extract_js_like(
                 file_path=file_path,
                 module=module,
                 symbols=_import_symbols(node),
+                is_relative=_is_relative_module(module),
+                start_line=start_line,
+            )
+        )
+
+    for node in captures.get("reexport.stmt", []):
+        source_node = node.child_by_field_name("source")
+        if source_node is None:  # pragma: no cover — query pattern guarantees this field
+            continue
+        module = strip_string_quotes(node_text(source_node))
+        start_line, _ = node_span(node)
+        imports.append(
+            ParsedImport(
+                file_path=file_path,
+                module=module,
+                symbols=_reexport_symbols(node),
+                is_relative=_is_relative_module(module),
+                start_line=start_line,
+            )
+        )
+
+    # `import.equals` is only ever non-empty when `query_source` came from
+    # `typescript.scm` (see module docstring) — this loop is a no-op for JS.
+    for clause in captures.get("import.equals", []):
+        source_node = clause.child_by_field_name("source")
+        if source_node is None:  # pragma: no cover — grammar guarantees this field
+            continue
+        name_node = next(
+            (child for child in clause.named_children if child.type == "identifier"), None
+        )
+        if name_node is None:  # pragma: no cover — grammar guarantees an identifier binding
+            continue
+        module = strip_string_quotes(node_text(source_node))
+        parent = clause.parent
+        span_node = parent if parent is not None and parent.type == "import_statement" else clause
+        start_line, _ = node_span(span_node)
+        imports.append(
+            ParsedImport(
+                file_path=file_path,
+                module=module,
+                symbols=[node_text(name_node)],
                 is_relative=_is_relative_module(module),
                 start_line=start_line,
             )

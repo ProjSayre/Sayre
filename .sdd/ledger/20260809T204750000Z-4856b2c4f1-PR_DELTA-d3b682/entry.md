@@ -1,0 +1,58 @@
+# Ledger entry — 20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682 (GAPFILL)
+
+## Date
+2026-08-09
+
+## Ticket
+W1-01
+
+W1-01 — Multi-language Tree-sitter parsing module (GAPFILL: GAP-5/6/7/8)
+
+## Spec Goal
+Close the four non-OK findings from the W1-01 audit: make the JS/TS tree-sitter capture set see `export … from "…"` re-exports, generator functions, TypeScript `import x = require("y")`, and class expressions — and commit fixtures + regenerated goldens so the snapshot suite can actually catch a regression of any of them. This is an additive extraction delta inside the existing query/adapter design, not a redesign of the parsing module.
+
+## Files touched
+- Documents/PRD/Audit-Rebuild-Cheat-Sheet.md
+- Documents/PRD/PRD V1.md
+- Documents/PRD/Ticket-Backlog-Flat.md
+- Documents/PRD/Ticket-Backlog-by-Feature-2.md
+- services/workers/sayre_workers/parsing/__init__.py
+- services/workers/sayre_workers/parsing/adapters/javascript.py
+- services/workers/sayre_workers/parsing/adapters/typescript.py
+- services/workers/sayre_workers/parsing/queries/javascript.scm
+- services/workers/sayre_workers/parsing/queries/typescript.scm
+- services/workers/tests/fixtures/parsing/javascript/barrel.js
+- services/workers/tests/fixtures/parsing/javascript/expected_parse.json
+- services/workers/tests/fixtures/parsing/javascript/expressions.js
+- services/workers/tests/fixtures/parsing/javascript/generators.js
+- services/workers/tests/fixtures/parsing/mixed/expected_parse.json
+- services/workers/tests/fixtures/parsing/typescript/barrel.ts
+- services/workers/tests/fixtures/parsing/typescript/expected_parse.json
+- services/workers/tests/fixtures/parsing/typescript/expressions.ts
+- services/workers/tests/fixtures/parsing/typescript/generators.ts
+- services/workers/tests/fixtures/parsing/typescript/legacy.ts
+- services/workers/tests/fixtures/parsing/typescript/stream.tsx
+- services/workers/tests/test_parsing.py
+- services/workers/tests/test_parsing_gapfill.py
+
+## Verdicts
+- review: PASS
+- security: PASS
+
+## Gapfill lane
+this run took the gapfill lane (`.sdd/pipeline.md`'s `/pipeline-gapfill`): `gap-scout` audited an already-shipped MVP ticket against its acceptance criteria, and `planner`/`red`/`dev` only addressed non-OK gaps. `tester`, `review`, and `security` all ran in full. Overlays came from `.sdd/mvp-overlays.yml` and the Audit-Rebuild cheat sheet. This is disclosure that the work was gap-scoped, not a skipped-gate bypass.
+
+Overlays: base.
+Gap counts: 4 non-OK of 9 (OK 5; open statuses: {"OK":5,"NARROWED":3,"UNTESTED":1}).
+
+## Overrides
+(none — both gates passed on their own; nothing here was overridden)
+
+## Red-test paths
+- services/workers/tests/test_parsing_gapfill.py
+
+## Security run ID
+.pipeline/security-history/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/
+
+## Commit
+4856b2c4f1b7455fb5d82be7c16458d7bbaf065e (worktree was dirty when the security run audited it — the commit that actually lands this work may differ once it's committed)

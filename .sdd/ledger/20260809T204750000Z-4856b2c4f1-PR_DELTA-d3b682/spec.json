@@ -1,0 +1,135 @@
+{
+  "ticket": "W1-01 — Multi-language Tree-sitter parsing module (GAPFILL: GAP-5/6/7/8)",
+  "goal": "Close the four non-OK findings from the W1-01 audit: make the JS/TS tree-sitter capture set see `export … from \"…\"` re-exports, generator functions, TypeScript `import x = require(\"y\")`, and class expressions — and commit fixtures + regenerated goldens so the snapshot suite can actually catch a regression of any of them. This is an additive extraction delta inside the existing query/adapter design, not a redesign of the parsing module.",
+  "lane": null,
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-5) In a .js, .jsx, .ts and .tsx file, each of `export * from \"./a\";`, `export { b } from \"./b\";` and `export * as ns from \"./c\";` produces exactly one ParsedImport with `module` equal to the raw, unresolved source string (\"./a\" / \"./b\" / \"./c\") and `start_line` at the statement. parse_full on a barrel file containing all three returns three imports, where it previously returned []."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-5) Re-export `symbols` follow exactly these rules: `export * from \"m\"` -> []; `export { a, b as c } from \"m\"` -> [\"a\", \"b\"] (original pre-alias names, matching _import_symbols); `export * as ns from \"m\"` -> [\"ns\"]; `export type { T } from \"m\"` -> [\"T\"]. `is_relative` is True for ./ or ../ module strings and False otherwise."
+    },
+    {
+      "id": "AC-3",
+      "text": "(GAP-6) `function* g(){}`, `export function* g(){}` and `async function* g(){}` each produce one ParsedFunction with name/qualified_name `g`, in both the javascript and typescript/tsx grammars. A file containing only `function* genFn(){ yield 1; }` returns one function, where it previously returned [] while still listing the file in parsed_files."
+    },
+    {
+      "id": "AC-4",
+      "text": "(GAP-6) `const g = function* () {};` produces one ParsedFunction named `g`, spanning the generator-expression node, consistent with how `const g = function(){}` is handled today."
+    },
+    {
+      "id": "AC-5",
+      "text": "(GAP-6) A generator function is a scope: a function declared inside `function* outer()` has qualified_name == \"outer.inner\", and a call site inside outer has caller_qualified_name == \"outer\". A generator method inside a class still yields enclosing_class == \"<Class>\" and qualified_name == \"<Class>.<method>\"."
+    },
+    {
+      "id": "AC-6",
+      "text": "(GAP-7) In a .ts/.tsx file, `import fs = require(\"fs\");` produces one ParsedImport with module == \"fs\", symbols == [\"fs\"], is_relative == False; and `import util = require(\"./util\");` produces module == \"./util\", symbols == [\"util\"], is_relative == True. A file mixing an import-equals with an ordinary `import { A } from \"./a\";` returns both, in start_line order."
+    },
+    {
+      "id": "AC-7",
+      "text": "(GAP-7) `const C = class { m() {} };` produces one ParsedClass named `C` and its method as ParsedFunction(name=\"m\", qualified_name=\"C.m\", enclosing_class=\"C\") — not, as today, a top-level qualified_name == \"m\" with the binding lost and no class at all."
+    },
+    {
+      "id": "AC-8",
+      "text": "(GAP-7) `const D = class extends Legacy {};` produces one ParsedClass named `D` with base_names == [\"Legacy\"] and exactly one ParsedInheritance(subclass_qualified_name=\"D\", base_name=\"Legacy\"), in both the JS and TS heritage shapes."
+    },
+    {
+      "id": "AC-9",
+      "text": "(GAP-8) The committed fixture dirs tests/fixtures/parsing/javascript/ and tests/fixtures/parsing/typescript/ each contain source exercising every construct in AC-1..AC-8 that applies to them, including at least one .tsx file exercising a re-export, a generator and a class expression under the tsx grammar. test_parse_full_matches_golden_snapshot passes for all four languages against regenerated goldens."
+    },
+    {
+      "id": "AC-10",
+      "text": "(GAP-8) The regenerated goldens demonstrably contain the new records: the JS and TS expected_parse.json diffs add ParsedImport rows for each new re-export/import-equals, a ParsedFunction row for each new generator, and a ParsedClass (plus ParsedInheritance where applicable) row for each new class expression. Reverting any one of the five new query patterns makes test_parse_full_matches_golden_snapshot fail — i.e. the snapshot suite can now catch GAP-5/6/7 regressions, which is exactly what it could not do before."
+    },
+    {
+      "id": "AC-11",
+      "text": "(GAP-8) tests/fixtures/parsing/mixed/expected_parse.json exists and is asserted by a snapshot test, and the expected_parse.json exclusion lives in _load_fixture_repo() in both test_parsing.py and test_parsing_tester.py. test_parse_full_over_mixed_language_repo's `assert skipped_paths == {\"README.md\"}` and test_parse_full_and_parse_diff_agree_on_mixed_language_fileset are unchanged and still pass."
+    },
+    {
+      "id": "AC-12",
+      "text": "(GAP-5, GAP-6, GAP-7) Documentation matches behaviour: both .scm header comments, adapters/javascript.py's module docstring, adapters/typescript.py's docstring (which currently claims the two query files have identical patterns) and parsing/__init__.py's exclusions list all describe the newly captured constructs, and still name the deliberately excluded forms (anonymous default-export generator, unbound/anonymous class expression, TS namespace alias `import A = B.C;`, local `export { a };`)."
+    },
+    {
+      "id": "AC-13",
+      "text": "(GAP-8) A test compiles queries/javascript.scm against the javascript grammar and queries/typescript.scm against both the typescript and tsx grammars, and fails loudly if any pattern references a node type the grammar does not define. Without this, a bad pattern degrades into SkippedFile(reason=\"parse_error\") for every JS/TS file rather than an error."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "(GAP-5) A local export with no `from` clause (`const a = 1; export { a };`) produces no ParsedImport. It is not a module dependency."
+    },
+    {
+      "id": "EC-2",
+      "text": "(GAP-5) A declaration export (`export function f(){}`, `export const x = 1;`, `export default class K {}`, `export class L {}`) produces no ParsedImport, and the declaration itself is still extracted exactly as it is today (no regression from the new export_statement pattern)."
+    },
+    {
+      "id": "EC-3",
+      "text": "(GAP-5) A bare-package re-export (`export { x } from \"lodash\";`) sets is_relative == False; `export * from \"../shared\";` sets is_relative == True."
+    },
+    {
+      "id": "EC-4",
+      "text": "(GAP-5) A file that both imports from and re-exports the same module (`import { a } from \"./m\"; export { b } from \"./m\";`) produces two ParsedImport rows for \"./m\" — no deduplication — ordered by start_line per _parse()'s existing sort key."
+    },
+    {
+      "id": "EC-5",
+      "text": "(GAP-6) `export default function* () {}` (anonymous generator) produces no ParsedFunction, consistent with the existing anonymous default-export function rule."
+    },
+    {
+      "id": "EC-6",
+      "text": "(GAP-6) An anonymous generator passed inline (`run(function* () { yield 1; });`) produces no ParsedFunction, consistent with anonymous callbacks/IIFEs (GAP-9's documented exclusion), and the surrounding run(...) is still recorded as a ParsedCall."
+    },
+    {
+      "id": "EC-7",
+      "text": "(GAP-6) Generator methods (`class S { *rows(){} async *arows(){} }`) are captured exactly once each after the change — adding generator patterns must not double-emit anything method_definition already covered."
+    },
+    {
+      "id": "EC-8",
+      "text": "(GAP-7) A TS namespace alias with no require (`import A = B.C;`) produces no ParsedImport — it has no module string. This is why the pattern is (import_require_clause) rather than (import_statement)."
+    },
+    {
+      "id": "EC-9",
+      "text": "(GAP-7) `import fs = require(\"fs\");` in a .js file (not valid JS) parses error-tolerantly: no exception escapes extract(), the file still appears in parsed_files, and it does not become a SkippedFile. Whatever partial records tree-sitter yields are acceptable; the requirement is no crash and no blanket skip."
+    },
+    {
+      "id": "EC-10",
+      "text": "(GAP-7) Unbound/anonymous class expressions produce no ParsedClass: `foo(class { m(){} });`, `this.C = class {};`, `export default class {};`, `const [x] = [class {}];` (destructuring pattern, not a plain identifier declarator)."
+    },
+    {
+      "id": "EC-11",
+      "text": "(GAP-7) `const C = class Inner { m(){} };` produces exactly one ParsedClass (named C per _class_expression_binding's precedence), never two, and m qualifies as C.m."
+    },
+    {
+      "id": "EC-12",
+      "text": "(GAP-7) A class expression nested inside a function (`function f(){ const C = class { m(){} }; }`) chains correctly: C.qualified_name == \"f.C\", m.qualified_name == \"f.C.m\", m.enclosing_class == \"C\"."
+    },
+    {
+      "id": "EC-13",
+      "text": "(GAP-8) Golden regeneration cannot mask a regression: the committed goldens are the hand-verified diff, and UPDATE_PARSE_SNAPSHOTS is not set anywhere in .github/workflows/ci.yml or in services/workers/ config, so CI asserts rather than rewrites."
+    },
+    {
+      "id": "EC-14",
+      "text": "(all) Malformed source containing a targeted construct is best-effort and never fatal: `export * from` with no module string, `export { a, } from \"./m\";` (trailing comma), `function* (` truncated mid-declaration, `const C = class extends` truncated. extract() raises nothing, parser.py records no parse_error skip, and the file stays in parsed_files."
+    },
+    {
+      "id": "EC-15",
+      "text": "(all) Determinism is preserved for the new records: parse_full over the extended javascript/ and typescript/ fixture dirs is byte-identical under reversed input order, and to_canonical_json(parse_full(files)) == to_canonical_json(parse_diff(files, deleted_paths=[])) for those same dirs."
+    },
+    {
+      "id": "EC-16",
+      "text": "(all) No spurious extraction: a JS/TS file containing none of the new constructs produces the same records as before the change. Concretely, the existing fixture sources (javascript/index.js, javascript/shapes.js, javascript/widget.jsx, typescript/models.ts, typescript/widget.tsx) contribute no added or altered rows to the regenerated goldens — the golden diff consists only of records from the newly added fixture files plus the new parsed_files entries."
+    },
+    {
+      "id": "EC-17",
+      "text": "(GAP-8) Empty input still holds: parse_full([]) returns an all-empty ParseResult, and a fixture dir containing only non-source files yields only skipped_files. The _load_fixture_repo() change must not alter this."
+    }
+  ],
+  "stamp": {
+    "treeHash": "dbd46ddbdfe7c8e7d1c158587e50b89ebeb08405f5416c173a3097020fa91b84",
+    "headSha": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+    "dirty": true,
+    "writtenAt": "2026-08-09T19:34:44.594Z"
+  }
+}

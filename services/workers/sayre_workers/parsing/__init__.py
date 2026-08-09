@@ -8,6 +8,19 @@ interface (see `adapters/base.py`). This is the raw material W1-05 later
 resolves and writes to Neo4j — W1-01 itself does no cloning, no diffing, no
 graph I/O.
 
+JS/TS extraction (GAP-5/6/7 gapfill delta, see `adapters/javascript.py` and
+`adapters/typescript.py`): generator functions/expressions (`function*
+g(){}`, `const g = function* () {}`) are `ParsedFunction` records and act as
+scopes; `export … from "…"` re-exports (`export * from`, `export { a } from`,
+`export * as ns from`, `export type { T } from`) are `ParsedImport` records;
+TS import-equals (`import x = require("y")`) is a `ParsedImport` record; a
+class expression bound to a plain identifier (`const C = class {…}`) is a
+`ParsedClass`. Deliberately still excluded, unchanged by this delta: an
+anonymous/unbound class or function expression (`foo(class {})`, `this.C =
+class {}`, an inline anonymous callback/IIFE), a TS namespace alias with no
+`require()` (`import A = B.C;`), and a local export with no `from` clause
+(`export { a };`).
+
 Boundary (Explicitly OUT of scope — see `.pipeline/spec.md` "Scope"; also a
 security-stage check, since the absence of `org_id` here is correct, not an
 omission):
