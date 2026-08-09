@@ -351,6 +351,20 @@
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
     }
   ],
+  ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/entry.json": [
+    {
+      "runId": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+      "ticket": "PL-13",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1/spec.md",
+      "inline": {
+        "skippedStages": [
+          "red",
+          "dev"
+        ]
+      }
+    }
+  ],
   ".sdd/ledger/README.md": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -499,6 +513,20 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "apps/web/.claude/skills/redteam-ux/driver.mjs": [
+    {
+      "runId": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+      "ticket": "PL-13",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1/spec.md",
+      "inline": {
+        "skippedStages": [
+          "red",
+          "dev"
+        ]
+      }
     }
   ],
   "docs/PRD_Tickets.md": [
@@ -775,6 +803,20 @@
       "ticket": "PL-11",
       "date": "2026-08-08",
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
+    }
+  ],
+  "scripts/check-secret-access.mjs": [
+    {
+      "runId": "20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1",
+      "ticket": "PL-13",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T073006612Z-010b2fe50c72-PR_DELTA-7ff0f1/spec.md",
+      "inline": {
+        "skippedStages": [
+          "red",
+          "dev"
+        ]
+      }
     }
   ],
   "scripts/dependency-baseline.test.mjs": [

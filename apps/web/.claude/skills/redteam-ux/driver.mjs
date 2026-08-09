@@ -26,24 +26,38 @@
 //   {"text": ".banner"}                   log innerText of first match
 //
 // Options: --base http://localhost:3100 (default), --headed, --keep-open <ms>
-// Env: CHROME_PATH overrides browser binary discovery.
+// Config: PUPPETEER_EXECUTABLE_PATH (via @sayre/config) overrides browser binary discovery.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { ConfigError, getOptionalConfig } from '@sayre/config';
 
 const SKILL_DIR = dirname(fileURLToPath(import.meta.url));
 const SHOTS_DIR = join(SKILL_DIR, 'shots');
 
+// Same shape as scripts/render-anime-hero.mjs's optionalConfig(): an unset or
+// empty override is "no override", never a crash in a diagnostics driver.
+function optionalConfig(name) {
+  try {
+    return getOptionalConfig(name);
+  } catch (error) {
+    if (error instanceof ConfigError) return undefined;
+    throw error;
+  }
+}
+
 function findChrome() {
-  if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) {
-    return process.env.CHROME_PATH;
+  const override = optionalConfig('PUPPETEER_EXECUTABLE_PATH');
+  if (override && existsSync(override)) {
+    return override;
   }
   const candidates = [
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    join(process.env.LOCALAPPDATA ?? '', 'Google\\Chrome\\Application\\chrome.exe'),
+    join(homedir(), 'AppData', 'Local', 'Google\\Chrome\\Application\\chrome.exe'),
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
     '/usr/bin/google-chrome',
@@ -53,7 +67,7 @@ function findChrome() {
   ];
   const found = candidates.find((p) => p && existsSync(p));
   if (!found) {
-    console.error('No Chrome/Edge binary found. Set CHROME_PATH.');
+    console.error('No Chrome/Edge binary found. Set PUPPETEER_EXECUTABLE_PATH (see @sayre/config).');
     process.exit(1);
   }
   return found;

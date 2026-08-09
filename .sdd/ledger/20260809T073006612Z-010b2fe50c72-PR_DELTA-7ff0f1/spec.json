@@ -1,0 +1,75 @@
+{
+  "ticket": "PL-13 — Secret-access gate: clear the four boundary violations on fix/pl-04-pipeline-defects",
+  "goal": "Make `npm run check:secret-access` exit 0 on fix/pl-04-pipeline-defects, resolving each of the four violations at its own source rather than by widening the gate: the red-team driver's three lines go through the central config loader (and os.homedir()), and the read-only guard's test — the one file where reading the raw environment IS the behavior under test — gets a single, commented ALLOWLIST entry.",
+  "lane": null,
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "`npm run check:secret-access` exits 0 against the working tree on this branch and prints \"Secret-access gate passed.\""
+    },
+    {
+      "id": "AC-2",
+      "text": "Each of the four reported violations is resolved by its stated mechanism: apps/web/.claude/skills/redteam-ux/driver.mjs contains no process.env access at all (the former lines 40, 41, 46), and scripts/guard-checker-readonly.test.mjs line 233 is unchanged — exempted only by the ALLOWLIST entry."
+    },
+    {
+      "id": "AC-3",
+      "text": "scripts/check-secret-access.mjs's ALLOWLIST grows by exactly one entry; no other file becomes exempt. EXCLUDED_SEGMENT, SOURCE_EXTENSION, DIRECT_FORBIDDEN, and every other detection pattern in that file are unchanged, and the file still imports only Node built-ins (the CI step runs before npm ci)."
+    },
+    {
+      "id": "AC-4",
+      "text": "The new ALLOWLIST entry carries a comment naming what that file legitimately reads (the parent environment, spread into a spawned child so the guard's module-load os.tmpdir() resolves TMP/TEMP/TMPDIR under test control), stating that no secret-class value is read, and citing the precedent it follows (the org-secret gate's jiraConnectionStore.rls.test.ts entry)."
+    },
+    {
+      "id": "AC-5",
+      "text": "`npm run test:secret-access` and `npm run test:readonly-guard` both pass."
+    },
+    {
+      "id": "AC-6",
+      "text": "The driver still works: node --check passes on it; with nothing set, findChrome() returns an existing Chrome/Edge executable on this machine; with PUPPETEER_EXECUTABLE_PATH pointing at an existing file, that path wins. Its header `Env:` line and its not-found message both name PUPPETEER_EXECUTABLE_PATH."
+    },
+    {
+      "id": "AC-7",
+      "text": "Nothing outside the two Affected files is modified — in particular packages/config/src/config.ts, scripts/check-secret-access.test.mjs, scripts/guard-checker-readonly.test.mjs, .github/workflows/ci.yml, and docs/PRD_Tickets.md."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "PUPPETEER_EXECUTABLE_PATH set to an empty or whitespace-only value: getOptionalConfig throws ConfigError (validateValue's empty check), where the old `process.env.CHROME_PATH && …` was merely falsy. The wrapper must swallow ConfigError and fall through to the candidate list — never crash the driver."
+    },
+    {
+      "id": "EC-2",
+      "text": "PUPPETEER_EXECUTABLE_PATH set to a path that does not exist: unchanged behavior — fall through to the candidate list, and if nothing matches, exit 1 with the not-found message naming the variable that actually works now."
+    },
+    {
+      "id": "EC-3",
+      "text": "Non-Windows host: the homedir()-derived candidate simply fails existsSync and is skipped, exactly as today's join('', 'Google\\\\Chrome\\\\…') relative path does. No crash, no behavior change on Linux/macOS."
+    },
+    {
+      "id": "EC-4",
+      "text": "@sayre/config does not resolve from apps/web/.claude/skills/redteam-ux/, or packages/config/dist/index.js is absent and an ordinary npm install does not produce it: the loader route is genuinely unavailable to this file. Fallback: revert the driver edit, add apps/web/.claude/skills/redteam-ux/driver.mjs to the ALLOWLIST with a comment recording the true reason (loader not resolvable from this location; reads a browser path and a Windows profile path, no secret-class value), and record the deviation in changes.md. Do not leave a half-applied edit, and do not write the \"cannot import from .mjs\" rationale unless it has actually been verified."
+    },
+    {
+      "id": "EC-5",
+      "text": "Accepted residual: an ALLOWLIST entry is whole-file and permanent, so a later edit to scripts/guard-checker-readonly.test.mjs could read a genuinely secret-class value from process.env and this gate would stay silent. Mitigants, stated rather than claimed away: (a) the justifying comment names the one sanctioned access, so a diff adding a second one is visibly outside it at review; (b) the file is a test for the read-only guard, has no production import path, and runs in CI where no real credential is provisioned; (c) the sibling check-org-secret-access.mjs gate still covers that file for the Jira raw-column class. Nothing mechanically narrows an ALLOWLIST entry to a line or a variable name today."
+    },
+    {
+      "id": "EC-6",
+      "text": "The new comment must not itself trip the gate. javascriptLexicalView blanks // comments before matching, so a comment spelling out the forbidden form is safe — but the gate scans its own file, so AC-1's actual run is the proof, not this reasoning."
+    },
+    {
+      "id": "EC-7",
+      "text": "scripts/check-secret-access.test.mjs's 'allows only the four exact loader paths' test builds fixture repos and never asserts the ALLOWLIST's size, so a fifth entry cannot break it. Its name stays accurate about what it tests — the gate does still allow exactly those four loader paths; the new entry is not a loader. Renaming it is out of scope."
+    },
+    {
+      "id": "EC-8",
+      "text": "The gate runs before npm ci in CI. check-secret-access.mjs must stay built-ins-only (this change adds no import to it), and the driver's new @sayre/config import is irrelevant to that step, which never executes the driver."
+    }
+  ],
+  "stamp": {
+    "treeHash": "08468d1c48bebffb73b09dc0aec45b0c57cddb26be2978744743c5ab145e69fc",
+    "headSha": "010b2fe50c72f0dbbc76fcf71480546e9a5c52a9",
+    "dirty": true,
+    "writtenAt": "2026-08-09T06:15:43.414Z"
+  }
+}
