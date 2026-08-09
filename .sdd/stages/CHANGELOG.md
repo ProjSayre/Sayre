@@ -121,6 +121,26 @@ out of a stage file is about removing *dated narration*, never about removing a 
   must resolve to the unfenced (`full`) lane, and no touched file may match `.sdd/bounds.yml`'s
   `hotfix_barred_paths` list.
 
+## PL-12
+
+New `/inline-edit` lane (`.sdd/pipeline.md`'s own `### `/inline-edit <ticket>`` section is the
+authoritative definition; not restated here) — a spec-first gate (`planner`) → a direct, in-session
+edit with no `dev` subagent → editor-authored `changes.md`/`changes.json` → `tester` → `review` →
+`security` → the ledger step (`scripts/ledger-append.mjs --inline`), deliberately skipping `red` and
+`dev` while running `tester`/`review`/`security` in full — modeled on `--re-gate` (a disclosure-only
+marker that relaxes no gate), not on `--lite` (which skips `security` and imports a mechanical size
+bound this lane deliberately does not).
+
+**`.sdd/stages/tester.md` is the one stage file this round amends** (the rule this changelog exists to
+keep every other stage file honest about — see this file's own header): Required inputs item 1 now
+names the `/inline-edit` lane as a second legitimate case (alongside PL-11's `/pipeline-lite`) where
+`red.md`'s absence is a stop-and-state rather than a stop-and-refuse, and the Output contract's "Red
+suite result" bullet requires the same explicit statement for either lane. The D-018 guarantee
+(tester never authors a behavioral test, and reports gaps rather than filling them) is unchanged and,
+on this lane too, more consequential rather than less. No other stage file's procedure changed —
+`red`/`dev`/`review`/`security` run exactly as documented for every ticket that reaches them; this
+lane simply never invokes two of them.
+
 ## PL-11
 
 New `/pipeline-lite` lane (`.sdd/pipeline.md`'s own `### `/pipeline-lite <ticket>`` section is the

@@ -1051,3 +1051,366 @@ test('[lite] the lane is discoverable from .sdd/hotfix.md, CLAUDE.md, and .sdd/R
   const skillsParagraph = sectionBetween(sddReadme, '`.claude/skills/*/SKILL.md`', '\n## ');
   assert.ok(skillsParagraph.includes('pipeline-lite'), '.sdd/README.md\'s .claude/skills/*/SKILL.md paragraph must name the new shim');
 });
+
+// =================================================================================================
+// [inline] PL-12 — the /inline-edit lane's documented half
+// =================================================================================================
+//
+// Authored by the `red` stage from .pipeline/spec.md alone, before the lane exists. Same discipline
+// as the [lite] block above (scope to a real heading or bold label, then require the load-bearing
+// concepts to co-occur inside it), and the same two hard-won conventions it records: every
+// alternation handed to `coOccurs` is wrapped in a non-capturing group (a bare `/a|b/` becomes a
+// top-level alternation of the WHOLE composed pattern and the assertion silently stops testing
+// co-occurrence at all), and no `$` anchors — every file read here is CRLF in this working tree.
+//
+// Why the documentation is the deliverable and not decoration: /inline-edit is the one lane that
+// invites a human to edit code directly, mid-session, with no `dev`-stage isolation and no `red`
+// suite in front of the diff. What separates that from the unrecorded hand-edit it exists to
+// replace is entirely whether its own definition says, in the place a person actually reads,
+// what it forces (a ratified spec before any edit), what it gave up (`red`, `dev`), and what is
+// still owed at every stop. An undocumented inline lane and a hand-edit are the same artifact.
+
+/** The authoritative section for the lane, sliced by its own heading. A NEW helper alongside
+ * `pipelineLiteSection()` — deliberately never a widening of it (EC-20b): `pipelineLiteSection()`
+ * slices '### `/pipeline-lite' ... '### Per-stage entry points', so a new section placed inside that
+ * range would silently widen every existing `[lite]` assertion's search window. The `/re-gate` ->
+ * `/hotfix` placement this file asserts below is what keeps the two windows disjoint. */
+function inlineEditSection() {
+  return sectionBetween(read('.sdd/pipeline.md'), '### `/inline-edit', '### `/hotfix');
+}
+
+// @spec AC-1
+test('[inline] .sdd/pipeline.md defines /inline-edit runtime-neutrally end to end, placed between /re-gate and /hotfix, naming red and dev as deliberately skipped', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.match(pipeline, /### `\/inline-edit/, 'expected a dedicated /inline-edit entry-point section');
+
+  // Placement is load-bearing, not cosmetic — semantically it is the middle member of the
+  // outside-the-ordinary-sequence family (/re-gate re-verifies after a hand-edit, /inline-edit gates
+  // one being made deliberately, /hotfix runs no gate at all), and mechanically it is what keeps the
+  // new section out of pipelineLiteSection()'s slice (see the EC-20 test below).
+  const regateIdx = pipeline.indexOf('### `/re-gate');
+  const inlineIdx = pipeline.indexOf('### `/inline-edit');
+  const hotfixIdx = pipeline.indexOf('### `/hotfix');
+  assert.ok(regateIdx !== -1, 'expected the existing /re-gate section to still be present');
+  assert.ok(hotfixIdx !== -1, 'expected the existing /hotfix section to still be present');
+  assert.ok(regateIdx < inlineIdx && inlineIdx < hotfixIdx,
+    'the /inline-edit section must sit between /re-gate and /hotfix — anywhere earlier puts it inside pipelineLiteSection()\'s window');
+
+  const section = inlineEditSection();
+
+  // The spec-first gate is what this lane IS: nothing may be edited until spec.md AND spec.json
+  // exist for the ticket being worked.
+  assert.ok(section.includes('planner'), 'the section must name planner as the first stage the lane runs');
+  assert.ok(section.includes('spec.json'), 'the spec-first gate is checked against spec.json, not only spec.md');
+  assert.ok(coOccurs(section, /spec\.md/, /(?:nothing may be edited|before any edit|until)/i, 400),
+    'the section must state that no edit happens until a real spec exists — a lane that gates after the edit has not gated anything');
+
+  // The stages that DO run, in order, ending at the mandatory ledger step.
+  let cursor = -1;
+  for (const marker of ['planner', 'changes.json', 'tester', 'review', 'security', 'ledger-append.mjs --inline']) {
+    const idx = section.indexOf(marker, cursor + 1);
+    assert.ok(idx > cursor, `the section must name ${marker} in sequence after the step before it`);
+    cursor = idx;
+  }
+  assert.ok(section.includes('changes.md'), 'the editor authors changes.md as well as changes.json — there is no dev stage to write either');
+  assert.ok(section.includes('write-stamp.mjs'), 'the section must name the stamp step for the editor-authored changes.json');
+  assert.ok(section.includes('--why-inline'), 'the mandatory ledger step names the exact command that records the run');
+  assert.ok(section.includes('--ticket'), 'including --ticket, the mechanically-checkable half of "spec-first, forced"');
+
+  // The two stages that deliberately do NOT run, named as skipped rather than merely absent.
+  assert.ok(coOccurs(section, /\bred\b/, /skip/i, 300), 'the section must say `red` is skipped, not simply omit it');
+  assert.ok(coOccurs(section, /\bdev\b/, /skip/i, 300), 'the section must say `dev` is skipped, not simply omit it');
+  assert.ok(coOccurs(section, /\bdev\b/, /(?:no `?dev`? subagent|directly|inline|in this session)/i, 400),
+    'and must say the implementation is made directly in-session rather than by a dev subagent');
+});
+
+// @spec AC-2
+test('[inline] the section states the obligations checklist at five named stops, each naming what is produced, what is owed, the exact ledger command, and what is recorded where', () => {
+  const section = inlineEditSection();
+  assert.match(section, /obligation/i, 'the checklist is the lane\'s central affordance: a person learns what they will owe before they incur it');
+
+  // The five stop markers spec.md's own Interfaces block names (STOP A..STOP E), in order.
+  let cursor = -1;
+  for (const stop of ['STOP A', 'STOP B', 'STOP C', 'STOP D', 'STOP E']) {
+    const idx = section.indexOf(stop, cursor + 1);
+    assert.ok(idx > cursor, `the section must carry ${stop} in order — five named stops, not a single closing summary`);
+    cursor = idx;
+  }
+
+  // Stop A states the whole list BEFORE the edit exists — that ordering is the point.
+  const stopA = sectionBetween(section, 'STOP A', 'STOP B');
+  assert.ok(coOccurs(stopA, /(?:owe|owed|still owed|remain)/i, /(?:gate|review|security|tester)/i, 600),
+    'the first stop must state which gates are still owed, before any edit has been made');
+
+  // Each stop names the ledger command that will apply, including its non-PASS composition.
+  assert.ok(section.includes('--override-review') || section.includes('--override-security'),
+    'the checklist must name the override composition for a non-PASS outcome, not only the clean-PASS command');
+
+  // ...and what gets recorded where.
+  assert.ok(section.includes('.sdd/ledger/'), 'the checklist must name where the durable record lands');
+  assert.ok(section.includes('(INLINE)'), 'including the title marker a reader will actually see on the entry');
+  assert.ok(section.includes('entry.json'), 'and the machine-facing half that carries the disclosure');
+  assert.ok(section.includes('index.json'), 'and the index decoration every record for this run\'s files carries');
+  assert.ok(section.includes('skippedStages'), 'the exact field name is the contract — pinned, not paraphrased');
+});
+
+// @spec AC-3 EC-18
+test('[inline] the section states the abnormal-stop obligation: an abandoned lane leaves an unrecorded hand-edit, discharged only by finishing or reverting', () => {
+  const section = inlineEditSection();
+
+  assert.ok(coOccurs(section, /(?:abandon|walk(?:ed|ing)? away|stop(?:ping)? here|abnormal)/i, /(?:revert|reverting)/i, 700),
+    'the section must name reverting the edit as one of the two discharges of the obligation entering this lane creates');
+  assert.ok(coOccurs(section, /(?:unrecorded|no ledger entry|nothing is recorded)/i, /(?:hand[- ]edit|on disk)/i, 500),
+    'and must say plainly what an abandoned lane leaves behind — the exact failure this lane exists to replace');
+  assert.match(section, /D-005/, 'the failure has a name in this project\'s own decision log; citing it is what makes the warning legible rather than generic');
+  assert.ok(coOccurs(section, /(?:--override-review|--override-security)/, /(?:discharge|finish|record)/i, 600),
+    'the other discharge is finishing the lane — plain, or composed with --override-* for a non-PASS outcome');
+  assert.ok(coOccurs(section, /(?:gates said no|refus|did not pass)/i, /(?:not a discharge|unless|still)/i, 500),
+    '"the gates said no, so I stopped" must be named explicitly as NOT a discharge unless the edit is also reverted or the outcome recorded');
+});
+
+// @spec AC-4
+test('[inline] the section carries an Honest limits paragraph naming exactly what the lane gives up', () => {
+  const honestLimits = sectionBetween(inlineEditSection(), 'Honest limits', '');
+
+  // (a) no red — the D-018 inversion, at any size, with no mechanical size bound.
+  assert.ok(coOccurs(honestLimits, /\bred\b/, /(?:after|order|first)/i, 300),
+    'it must name red\'s spec-first ordering — any test covering this change was written after the diff already existed');
+  assert.match(honestLimits, /(?:D-018|inver)/i, 'the D-018 inversion is reintroduced deliberately here; saying so is the whole point of this paragraph');
+  assert.ok(coOccurs(honestLimits, /(?:any size|no mechanical|size bound)/i, /(?:lite|not imported|deliberately)/i, 500),
+    'it must state there is no mechanical size bound on this lane, and why lite\'s is deliberately not imported (D-2)');
+
+  // (b) no dev-stage isolation; changes.md is self-reported.
+  assert.ok(coOccurs(honestLimits, /\bdev\b/, /(?:isolation|self[- ]report|same context|one context)/i, 400),
+    'it must name the loss of dev-stage isolation — the implementer and the session are one context');
+  assert.ok(honestLimits.includes('changes.md'), 'and that changes.md/changes.json are the editor\'s own self-report');
+
+  // (c) the "do not run /red here" rule is unenforced, and why it cannot be detected at ledger time.
+  assert.ok(coOccurs(honestLimits, /(?:unenforced|cannot be (?:detected|enforced)|indistinguishable)/i, /red\.json/, 600),
+    'it must concede the "do not run /red on this lane" rule is unenforced, and say why a same-round red.json is indistinguishable from a leftover');
+
+  // (d) --ticket and the stamp check verify which ticket and what shape, never that planner ran.
+  assert.ok(honestLimits.includes('--ticket'), 'it must name --ticket as verifying WHICH ticket, not that planner ran');
+  assert.ok(coOccurs(honestLimits, /stamp/i, /(?:presence|shape)/i, 400),
+    'and the stamp check as presence-and-shape only');
+  assert.ok(coOccurs(honestLimits, /planner/i, /(?:never|not proof|does not prove|neither)/i, 500),
+    'neither proves planner actually ran this round — the same honest limit /re-gate already states');
+
+  // (e) --why-inline is disclosure, not authorization.
+  assert.ok(coOccurs(honestLimits, /--why-inline/, /(?:disclosure|not authorization|nothing verifies)/i, 400),
+    'it must state that --why-inline is a disclosure requirement, and that nothing verifies who supplied it');
+});
+
+// @spec AC-5
+test('[inline] the section carries a "not this lane" routing table, including the recorded lite-vs-inline rule in prose', () => {
+  const section = inlineEditSection();
+
+  assert.ok(coOccurs(section, /(?:incident|production|outage|broken)/i, /\/hotfix/, 400),
+    'a production incident routes to /hotfix, and the routing table must say so');
+  assert.ok(coOccurs(section, /review\.json/, /\/re-gate/, 500),
+    'a ticket that already has a review.json from a prior run, hand-edited since, routes to /re-gate');
+  assert.ok(coOccurs(section, /(?:agent|implement)/i, /\/pipeline\b/, 400),
+    'wanting an agent to implement it from the spec routes to /pipeline (or /pipeline-lite if small)');
+  assert.ok(coOccurs(section, /spec-first test/i, /\/pipeline\b/, 500),
+    'a change where a spec-first test would genuinely have earned its keep routes to /pipeline — the one prohibition worth enforcing socially');
+
+  // D-3, in prose: the choice is stated by a human, not computed, and neither lane is a fallback.
+  assert.ok(coOccurs(section, /\/pipeline-lite/, /(?:yourself|by hand|human|live session)/i, 600),
+    'the lite-vs-inline rule must be stated: if you are not actually making the edit yourself, use /pipeline-lite (when eligible) or /pipeline');
+});
+
+// @spec AC-6
+test('[inline] /inline-edit is named in .sdd/pipeline.md\'s opening paragraph and its Entry points preamble, not only inside its own section', () => {
+  const pipeline = read('.sdd/pipeline.md');
+
+  const intro = sectionBetween(pipeline, '# Pipeline — stage sequence, routing, and loop caps', '## Staleness stamps');
+  assert.ok(intro.includes('/inline-edit'), 'a lane nobody can find from the top of the file is a lane that gets reinvented as an unrecorded hand-edit');
+
+  const entryPointsPreamble = sectionBetween(pipeline, '## Entry points', '### `/pipeline <ticket>`');
+  assert.ok(entryPointsPreamble.includes('/inline-edit'), 'the Entry points preamble must name every entry point, including this one');
+});
+
+// @spec AC-7
+test('[inline] .claude/skills/inline-edit/SKILL.md exists, is thin, and matches the other shims\' frontmatter conventions', () => {
+  const skillPath = '.claude/skills/inline-edit/SKILL.md';
+  assert.ok(existsSync(resolve(repoRoot, skillPath)), `${skillPath} does not exist`);
+  const skill = read(skillPath);
+
+  assert.match(skill, /^---\r?\n[\s\S]*?\r?\n---/, 'the shim must open with YAML frontmatter, like every other skill');
+  assert.match(skill, /^name: inline-edit[ \t]*\r?$/m);
+  assert.match(skill, /^description: \S.*\r?$/m);
+  assert.match(skill, /^disable-model-invocation: true[ \t]*\r?$/m, 'this command takes real actions — it is invoked explicitly, never auto-triggered');
+  assert.match(skill, /^argument-hint: \S.*\r?$/m);
+  assert.ok(skill.includes('.sdd/pipeline.md'), 'the body must point at the authoritative, runtime-neutral definition');
+
+  // The refusals most easily lost, restated here and nowhere else duplicated.
+  assert.ok(coOccurs(skill, /(?:never|do not|don't)/i, /(?:edit|change)[\s\S]{0,80}(?:before|until)/i, 300),
+    'the shim must restate the one refusal the whole lane rests on: never edit before the spec exists');
+  assert.ok(coOccurs(skill, /--ticket/, /spec\.json/, 400),
+    'and the circularity warning /re-gate already carries: --ticket is the caller\'s own assertion, never derived from spec.json');
+
+  assert.ok(skill.split('\n').length < 60, 'the shim must stay a pointer, not a second copy of the lane\'s procedure');
+});
+
+// @spec AC-8
+test('[inline] .sdd/ledger/README.md documents the inline-edit entry shape, why it is indexed, and what it structurally lacks', () => {
+  const readme = read('.sdd/ledger/README.md');
+  assert.match(readme, /##.*Inline[- ]edit entries/i, 'the ledger README must carry an Inline-edit entries section');
+  const section = sectionBetween(readme, 'Inline-edit entries', '\n## ');
+
+  for (const field of ['skippedStages', 'reason', 'note', 'size']) {
+    assert.ok(section.includes(field), `the exact entry.json field name "${field}" is the contract — pinned, not paraphrased`);
+  }
+  assert.ok(section.includes('(INLINE)'), 'the section must document the title marker');
+  assert.ok(section.includes('## Inline edit'), 'and the entry.md section name it introduces');
+  assert.ok(coOccurs(section, /index\.json/, /skippedStages/, 400),
+    'and the condensed index.json decoration every record for the run\'s files carries');
+
+  assert.ok(coOccurs(section, /index/i, /(?:spec|govern|ratif)/i, 500),
+    'the section must give the REASON an inline entry is indexed (a real, ratified spec that review AND security passed against the final tree), not merely state that it is');
+  assert.ok(coOccurs(section, /(?:hotfix|override)/i, /exclud/i, 500),
+    'and contrast it against a hotfix/override entry\'s exclusion — the contrast is what makes the decision legible rather than arbitrary');
+
+  assert.ok(section.includes('red.json'), 'the section must state that an inline entry carries no red.json');
+  assert.ok(coOccurs(section, /red\.json/, /(?:leftover|never copied|no)/i, 400),
+    'and why a leftover is never copied into it — copying one would manufacture evidence of a stage that never ran');
+});
+
+// @spec AC-9 EC-20
+test('[inline] .sdd/stages/tester.md names the /inline-edit lane alongside /pipeline-lite, and CHANGELOG.md records PL-12 as amending only tester.md', () => {
+  const tester = read('.sdd/stages/tester.md');
+  const requiredInputs = sectionBetween(tester, '## Required inputs', '## Procedure');
+  assert.ok(coOccurs(requiredInputs, /inline[- ]edit/i, /(?:red\.md|absent|missing)/i, 400),
+    'Required inputs item 1 must name the inline-edit lane as a second legitimate red.md-absent case — "stop and say which stage needs to run first" is the wrong answer on a lane that never invokes red');
+
+  const outputContract = sectionBetween(tester, '## Output contract', '## Staleness of required inputs');
+  const redSuiteBullet = sectionBetween(outputContract, 'Red suite result', '- **');
+  assert.ok(coOccurs(redSuiteBullet, /inline[- ]edit/i, /(?:no red suite|no red\.md|no such suite|explicit)/i, 400),
+    'the Red suite result bullet must name this lane too — the two halves are pinned independently so a partial edit cannot soften one while leaving the other');
+
+  // The D-018 guarantee is preserved in force, unchanged by this widening.
+  const procedure = sectionBetween(tester, '## Procedure', '## Output contract');
+  assert.ok(coOccurs(procedure, /(?:you do not write it|never)/i, /behavioral/i, 400),
+    'tester still never authors a behavioral test — a lane with no red stage makes that MORE consequential, not less');
+
+  const changelog = read('.sdd/stages/CHANGELOG.md');
+  assert.match(changelog, /^## PL-12/m, 'the changelog is where a stage-file amendment is explained, so the stage file itself stays a procedure');
+  const pl12Idx = changelog.indexOf('## PL-12');
+  const pl11Idx = changelog.indexOf('## PL-11');
+  assert.ok(pl11Idx !== -1, 'the existing PL-11 entry must remain');
+  assert.ok(pl12Idx < pl11Idx, 'the PL-12 entry belongs above PL-11 — newest first, as this file already reads');
+  const pl12 = sectionBetween(changelog, '## PL-12', '\n## ');
+  assert.ok(pl12.includes('tester'), 'the PL-12 entry must name which stage file it amended');
+
+  // EC-20a, mechanical half: this ticket may not exceed the same two-file allowlist PL-11 used.
+  const changedStageFiles = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', '.sdd/stages'], { cwd: repoRoot, encoding: 'utf8' })
+    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const allowed = new Set(['.sdd/stages/tester.md', '.sdd/stages/CHANGELOG.md']);
+  for (const file of changedStageFiles) {
+    assert.ok(allowed.has(file), `${file} was modified, but this ticket amends only tester.md (plus the changelog)`);
+  }
+});
+
+// @spec AC-10
+test('[inline] the lane is discoverable from CLAUDE.md and both .sdd/README.md sites', () => {
+  // '' (read to EOF), not '\n## ': CLAUDE.md's "## Agent pipeline" is its own last section in this
+  // checkout — the same documented sectionBetween path the [lite] test above already relies on.
+  const relatedCommands = sectionBetween(read('CLAUDE.md'), 'Related commands:', '');
+  assert.ok(relatedCommands.includes('/inline-edit'), 'CLAUDE.md\'s Agent pipeline related-commands list must name the lane');
+
+  const sddReadme = read('.sdd/README.md');
+  const directoryMap = sectionBetween(sddReadme, '## Directory map', '## The generated surfaces');
+  assert.ok(directoryMap.includes('/inline-edit'), '.sdd/README.md\'s directory map names the entry points pipeline.md defines');
+
+  const skillsParagraph = sectionBetween(sddReadme, '`.claude/skills/*/SKILL.md`', '\n## ');
+  assert.ok(skillsParagraph.includes('inline-edit'), '.sdd/README.md\'s .claude/skills/*/SKILL.md paragraph must name the new shim');
+});
+
+// @spec EC-19
+test('[inline] the section reuses the existing routing and 3-attempt loop cap, routing a NEEDS_FIXES/BLOCKED back to another inline edit rather than to /dev', () => {
+  const section = inlineEditSection();
+
+  assert.ok(coOccurs(section, /(?:NEEDS_FIXES|BLOCKED)/, /(?:inline|another)/i, 500),
+    'a non-PASS gate routes back to another INLINE edit — not to /dev, which does not run on this lane');
+  assert.match(section, /(?:\b3\b|three)/, 'the section must state that the existing 3-attempt cap applies');
+  assert.ok(coOccurs(section, /(?:loop cap|attempt|cap)/i, /(?:existing|reuse|same|no second)/i, 400),
+    'and that it is REUSED — this lane defines no second cap and no second loop');
+  assert.ok(coOccurs(section, /\bred\b/, /(?:after the fix|still never|must not)/i, 500),
+    'red still never runs, and specifically must not be authored after the fix — that would be the D-018 inversion wearing a spec-first label');
+});
+
+// @spec EC-20
+test('[inline] the new section sits OUTSIDE pipelineLiteSection()\'s window, and every existing [lite] anchor still resolves', () => {
+  // (b) The one placement mistake that would silently weaken the whole [lite] block rather than fail
+  // it loudly: a section inside '### `/pipeline-lite' .. '### Per-stage entry points' widens every
+  // [lite] assertion's search window at once.
+  assert.ok(!pipelineLiteSection().includes('/inline-edit'),
+    'the /inline-edit section must not fall inside pipelineLiteSection()\'s slice — that would widen every existing [lite] assertion\'s window instead of failing');
+  assert.ok(inlineEditSection().trim().length > 0,
+    'the new section must be reachable through its OWN helper, anchored on its own heading — never by widening pipelineLiteSection()');
+
+  // (c) The 400-character [lite] windows in tester.md must survive the inline-lane wording added
+  // beside them: this is the assertion that fails if `lite` and `red.md`/`state` get pushed apart.
+  const requiredInputs = sectionBetween(read('.sdd/stages/tester.md'), '## Required inputs', '## Procedure');
+  assert.ok(coOccurs(requiredInputs, /lite/i, /(?:red\.md|absent|missing)/i, 400),
+    'the existing [lite] Required-inputs assertion must keep passing — the inline wording must not push its two halves more than 400 characters apart');
+  assert.ok(coOccurs(requiredInputs, /lite/i, /(?:state|say)/i, 400),
+    'and so must its "tester must STATE that" half');
+
+  // (d) The generalized `### `/<command>`` <-> shim test automatically demands the new shim, and its
+  // own floor still holds.
+  const commands = [...read('.sdd/pipeline.md').matchAll(/^### `\/([a-z][a-z0-9-]*)/gm)].map((match) => match[1]);
+  assert.ok(commands.length >= 10, `the generalized command/shim test's floor must still hold; found ${commands.length}`);
+  assert.ok(commands.includes('inline-edit'), 'and it must now cover /inline-edit, which is what makes the shim mandatory rather than optional');
+});
+
+// @spec AC-21
+test('[inline] coverage and wiring: [inline]-tagged cases in the three existing suites, no new script file, and every deliberately-untouched file left alone', () => {
+  for (const suite of ['scripts/ledger-append.test.mjs', 'scripts/build-ledger-index.test.mjs', 'scripts/sdd-completeness.test.mjs']) {
+    const taggedTests = [...read(suite).matchAll(/^test\('\[inline\]/gm)];
+    assert.ok(taggedTests.length > 0, `${suite} must carry [inline]-tagged cases for the behavior this ticket adds to what it covers`);
+  }
+  // The half of this AC the red stage cannot satisfy on its own (same shape as PL-11's AC-15 pin):
+  // [inline]-tagged cases "covering the touched scripts" are not coverage of anything until the
+  // behavior they name actually exists in those two scripts.
+  assert.ok(read('scripts/ledger-append.mjs').includes('--inline'),
+    'the [inline] cases in ledger-append.test.mjs cover a flag that does not exist yet — coverage of an absent feature is not coverage');
+  assert.ok(read('scripts/build-ledger-index.mjs').includes('readInlineField'),
+    'and build-ledger-index.mjs must actually read the inline field the [inline] cases assert it carries');
+
+  // No new script file — which is precisely why package.json, ci.yml and scripts/tsconfig.json need
+  // no edit. Asserting the absence of the wiring without also asserting the absence of the thing that
+  // would require it would be a rule with no reason behind it.
+  const untrackedScripts = execFileSync('git', ['ls-files', '--others', '--exclude-standard', 'scripts'], { cwd: repoRoot, encoding: 'utf8' })
+    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  assert.deepEqual(untrackedScripts, [],
+    'PL-12 adds flags to two existing scripts; a new scripts/ file would need package.json/ci.yml/tsconfig wiring this ticket states it does not need');
+
+  const changed = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' })
+    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  for (const path of [
+    'package.json',
+    '.github/workflows/ci.yml',
+    'scripts/tsconfig.json',
+    '.sdd/runtimes.yml',
+    '.sdd/bounds.yml',
+    '.sdd/bounds.md',
+    '.sdd/hotfix.md',
+    'scripts/check-lite-eligible.mjs',
+    'scripts/check-bounds.mjs',
+    'scripts/pipeline-contracts.mjs',
+  ]) {
+    assert.ok(!changed.includes(path), `${path} must be untouched by PL-12 — see spec.md's "Files deliberately not touched"`);
+  }
+  assert.ok(!changed.some((file) => file.startsWith('.claude/agents/')),
+    '.claude/agents/** must be untouched — /inline-edit is an entry point that composes existing stages, not a new stage');
+
+  // docs/PRD_Tickets.md is asserted BY CONTENT, not by the diff: this checkout already carries an
+  // unrelated, pre-existing modification to that file (it is dirty against HEAD before PL-12 starts),
+  // so a `changed.includes(...)` assertion here would fail for a reason that has nothing to do with
+  // this ticket and could only be "fixed" by reverting someone else's in-flight work. What the ticket
+  // actually forbids is registering PL-12 there, which is exactly what this checks.
+  const prd = read('docs/PRD_Tickets.md');
+  assert.ok(!prd.includes('inline-edit'), 'docs/PRD_Tickets.md must not be edited by this run — the ticket forbids it');
+  assert.ok(!prd.includes('PL-12'), 'PL-12 is deliberately not registered in docs/PRD_Tickets.md by this run');
+});

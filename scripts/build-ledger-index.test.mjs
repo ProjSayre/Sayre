@@ -715,3 +715,189 @@ test('[lite] a bypass: true lite entry (a lite run that also needed --override-r
   const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
   assert.equal(index['app/still-broken.ts'], undefined, 'bypass excludes the run regardless of the lite disclosure alongside it');
 });
+
+// --- [inline] PL-12: an inline entry is INDEXED, decorated, and NOT a widening case ---------------
+//
+// Authored by the `red` stage from .pipeline/spec.md alone. (The `@spec` IDs below are PL-12's; the
+// `[lite]` block above carries PL-11's own, and the two specs reuse several of the same numbers —
+// the `[inline]` prefix on each test name is what disambiguates them.)
+//
+// The decision, and the one place it differs from `lite`: an inline entry is indexed for the same
+// reason a re-gate or lite entry is — a real, ratified spec that `review` genuinely passed against
+// the final tree — but here `security` genuinely ran too, so its `verdicts` is the ordinary
+// byte-for-byte `{ review: "PASS", security: "PASS" }`. `inline` is therefore emphatically NOT a
+// widening case the way `lite`'s `SKIPPED_LITE` is: it decorates records, and nothing else. A test
+// that only asserted "the decoration appears" would pass just as happily against an implementation
+// that also loosened the gate, so the gate is re-asserted here from both directions.
+
+/** An inline entry.json in the exact shape scripts/ledger-append.mjs --inline writes. `reason`/`note`/
+ * `size` are present because a real entry carries them — build-ledger-index.mjs deliberately reads
+ * only `skippedStages`, the same narrowing readRegateField/readLiteField already apply. */
+function sampleInlineEntryJson(runId, files, { skippedStages = ['red', 'dev'], ticket = 'PL-12', date = '2026-08-09' } = {}) {
+  return {
+    runId,
+    date,
+    ticket,
+    filesTouched: files,
+    verdicts: { review: 'PASS', security: 'PASS' },
+    overrides: [],
+    bypass: false,
+    regate: null,
+    lite: null,
+    inline: {
+      skippedStages,
+      reason: 'A one-line fix made directly in-session; a spec was ratified first.',
+      note: '(the fixed inline disclosure note — not read by this script)',
+      size: { fileCount: files.length, changedLines: 84, maxLineLength: 118, unsizable: [] },
+    },
+    redTestPaths: [],
+    securityRunId: runId,
+  };
+}
+
+// @spec AC-20
+test('[inline] an inline entry is indexed, and every record it produces carries inline: { skippedStages }', () => {
+  const root = fixture({ 'run-inline': { entryJson: sampleInlineEntryJson('run-inline', ['scripts/typo-fix.mjs', 'docs/typo.md']) } });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.deepEqual(index['scripts/typo-fix.mjs'], [
+    {
+      runId: 'run-inline',
+      ticket: 'PL-12',
+      date: '2026-08-09',
+      spec: '.sdd/ledger/run-inline/spec.md',
+      inline: { skippedStages: ['red', 'dev'] },
+    },
+  ]);
+  assert.deepEqual(
+    index['docs/typo.md'][0].inline,
+    { skippedStages: ['red', 'dev'] },
+    'EVERY record the run produces carries the marker — a reader who happens to look up the second file must not get an unqualified attribution',
+  );
+  assert.ok(
+    !('reason' in index['scripts/typo-fix.mjs'][0].inline) && !('note' in index['scripts/typo-fix.mjs'][0].inline),
+    'only skippedStages is carried into this query index — reason/note/size stay entry.json-only detail, the same narrowing regate/lite already apply',
+  );
+});
+
+// @spec AC-20
+test('[inline] the verdicts gate is unchanged: an inline entry is held to PASS/PASS byte-for-byte, and inline is not a second widening case', () => {
+  // Positive control: the ordinary inline shape indexes.
+  const honest = fixture({ 'run-inline': { entryJson: sampleInlineEntryJson('run-inline', ['app/inline.ts']) } });
+  assert.equal(run(honest).status, 0, 'an inline entry\'s verdicts are the ordinary PASS/PASS — security genuinely ran on that lane');
+  assert.deepEqual(
+    JSON.parse(readFileSync(join(honest, '.sdd', 'ledger', 'index.json'), 'utf8'))['app/inline.ts'][0].inline,
+    { skippedStages: ['red', 'dev'] },
+    'and it is indexed AS an inline entry: clearing the unchanged gate is only half the claim — without the decoration, "indexed" here is indistinguishable from "the field was ignored entirely"',
+  );
+
+  // ...and declaring itself inline buys no widening at all: SKIPPED_LITE from an inline entry is
+  // still refused, because `lite` (not `inline`) is the one shape that gate widens for.
+  const laundered = (() => {
+    const entryJson = sampleInlineEntryJson('run-a', ['app/laundered.ts']);
+    entryJson.verdicts = { review: 'PASS', security: 'SKIPPED_LITE' };
+    return fixture({ 'run-a': { entryJson } });
+  })();
+  const launderedResult = run(laundered);
+  assert.notEqual(launderedResult.status, 0,
+    'an inline entry claiming a skipped security verdict is self-contradictory — the whole basis for indexing it is that security genuinely ran');
+  assert.ok(!existsSync(join(laundered, '.sdd', 'ledger', 'index.json')), 'and it must write nothing while refusing');
+
+  const nearMiss = (() => {
+    const entryJson = sampleInlineEntryJson('run-a', ['app/near-miss.ts']);
+    entryJson.verdicts = { review: 'PASS', security: 'SKIPPED_INLINE' };
+    return fixture({ 'run-a': { entryJson } });
+  })();
+  assert.notEqual(run(nearMiss).status, 0, 'and no new SKIPPED_* literal may be invented for this lane either');
+});
+
+// @spec AC-20
+test('[inline] a non-inline entry\'s index record carries no "inline" key at all, including when entry.json writes it as an explicit null', () => {
+  const root = fixture({ 'run-a': { entryJson: sampleEntryJson('run-a', ['app/normal.ts']) } });
+  assert.equal(run(root).status, 0);
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(!('inline' in index['app/normal.ts'][0]), 'the marker\'s absence is what says the attribution is unqualified');
+
+  const explicitNull = fixture({
+    'run-a': { entryJson: { ...sampleEntryJson('run-a', ['app/explicit-null.ts']), inline: null } },
+  });
+  assert.equal(run(explicitNull).status, 0);
+  const explicitNullIndex = JSON.parse(readFileSync(join(explicitNull, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(
+    !('inline' in explicitNullIndex['app/explicit-null.ts'][0]),
+    'an explicit "inline": null (what ledger-append.mjs writes for every non-inline run) must be omitted from the record, not carried through as null',
+  );
+
+  // A lite entry beside it keeps its own marker and gains no inline one — the two are independent.
+  const mixed = fixture({
+    '20260808T000000000Z-lite': { entryJson: sampleLiteEntryJson('20260808T000000000Z-lite', ['shared/thing.ts']) },
+    '20260809T000000000Z-inline': { entryJson: sampleInlineEntryJson('20260809T000000000Z-inline', ['shared/thing.ts']) },
+  });
+  assert.equal(run(mixed).status, 0);
+  const records = JSON.parse(readFileSync(join(mixed, '.sdd', 'ledger', 'index.json'), 'utf8'))['shared/thing.ts'];
+  assert.equal(records.length, 2, 'both runs really did touch this file — neither is dropped');
+  assert.deepEqual(records[0].lite, { skippedStages: ['red', 'security'] });
+  assert.ok(!('inline' in records[0]));
+  assert.deepEqual(records[1].inline, { skippedStages: ['red', 'dev'] });
+  assert.ok(!('lite' in records[1]));
+});
+
+// @spec EC-16
+test('[inline] a malformed inline object fails closed, and --check fails loudly rather than reporting the index as up to date', () => {
+  // Positive control first: without it, every refusal below would pass today for a reason unrelated
+  // to the shape of `inline` (the field is simply ignored by a script that never reads it).
+  const wellFormed = fixture({ 'run-a': { entryJson: sampleInlineEntryJson('run-a', ['x.ts']) } });
+  assert.equal(run(wellFormed).status, 0, 'the well-formed inline object indexes — so the refusals below are about the malformation, not about inline entries generally');
+
+  for (const badInline of ['red,dev', { skippedStages: 'red,dev' }, { skippedStages: [1, 2] }, {}, []]) {
+    const entryJson = { ...sampleInlineEntryJson('run-a', ['x.ts']), inline: badInline };
+    const root = fixture({ 'run-a': { entryJson } });
+    const result = run(root);
+    assert.notEqual(result.status, 0, JSON.stringify(badInline));
+    assert.ok(!existsSync(join(root, '.sdd', 'ledger', 'index.json')), JSON.stringify(badInline));
+  }
+
+  // --check must fail loudly on a malformed entry, not report "no drift" — an unindexable entry read
+  // as up-to-date is the silent half of this failure.
+  const root = fixture({ 'run-inline': { entryJson: sampleInlineEntryJson('run-inline', ['app/ok.ts']) } });
+  assert.equal(run(root).status, 0, 'the baseline index must build before this test can say anything about --check');
+
+  const runBDir = join(root, '.sdd', 'ledger', 'run-b');
+  mkdirSync(runBDir, { recursive: true });
+  writeFileSync(join(runBDir, 'entry.json'), JSON.stringify({ ...sampleInlineEntryJson('run-b', ['app/bad.ts']), inline: { skippedStages: 'red' } }), 'utf8');
+  writeFileSync(join(runBDir, 'entry.md'), sampleEntryMarkdown('run-b'), 'utf8');
+  writeFileSync(join(runBDir, 'spec.md'), '# Spec\n', 'utf8');
+
+  assert.notEqual(run(root, ['--check']).status, 0, '--check must fail loudly on a malformed inline field');
+});
+
+// @spec EC-17
+test('[inline] back-compat: an entry written before PL-12 (no "inline" key at all) still indexes cleanly beside an inline one, and the real repo\'s existing entries are untouched', () => {
+  // An absent key is never a validation failure — every ledger entry on disk today has none.
+  const root = fixture({
+    '20260731T000000000Z-legacy': { entryJson: sampleEntryJson('20260731T000000000Z-legacy', ['shared/thing.ts']) },
+    '20260809T000000000Z-inline': { entryJson: sampleInlineEntryJson('20260809T000000000Z-inline', ['shared/thing.ts']) },
+  });
+  const result = run(root);
+  assert.equal(result.status, 0, result.stderr);
+  const records = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'))['shared/thing.ts'];
+  assert.equal(records.length, 2);
+  assert.ok(!('inline' in records[0]), 'a pre-PL-12 entry must index exactly as it did before — an absent key reads as null, never as malformed');
+  assert.deepEqual(records[1].inline, { skippedStages: ['red', 'dev'] });
+
+  // ...and the real ledger on disk, which is the actual back-compat surface: every entry written
+  // before this ticket must still regenerate byte-identically.
+  const realCheck = spawnSync(process.execPath, [resolve(scriptsDir, 'build-ledger-index.mjs'), '--check'], { cwd: repoRoot, encoding: 'utf8' });
+  assert.equal(realCheck.status, 0, `the real repo's ledger index must still be up to date against the pre-existing entries: ${realCheck.stderr}`);
+
+  const changedLedgerFiles = spawnSync('git', ['diff', '--name-only', 'HEAD', '--', '.sdd/ledger'], { cwd: repoRoot, encoding: 'utf8' })
+    .stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  for (const file of changedLedgerFiles) {
+    assert.ok(
+      !/entry\.(?:md|json)$/.test(file),
+      `${file} was modified — PL-12 must not rewrite a single existing ledger entry; the ledger is append-only, and back-compat here means "untouched", not "migrated"`,
+    );
+  }
+});

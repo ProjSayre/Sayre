@@ -6,7 +6,7 @@
 //   node scripts/build-ledger-index.mjs --check    # exit 1 + diff if index.json is stale
 //
 // index.json maps a repo-relative file path to every ledger run that touched it:
-//   { "services/core/src/graph-query/index.ts": [ { runId, ticket, date, spec, regate? }, ... ] }
+//   { "services/core/src/graph-query/index.ts": [ { runId, ticket, date, spec, regate?, lite?, inline? }, ... ] }
 // This is the file-granularity query path spec.md describes: buggy file -> index.json -> the
 // spec(s) that mandated it (the same shape as generate-agent-shims.mjs's --check contract — never
 // hand-edit index.json, regenerate it and commit the result).
@@ -152,6 +152,22 @@ function readLiteField(raw, label) {
   return { skippedStages };
 }
 
+/** PL-12: the exact twin of `readLiteField` immediately above — strict, fail-closed, `null` for an
+ * entry with no `inline` key at all (back-compat: every ledger entry written before PL-12 has none).
+ * Only `skippedStages` is carried into `index.json`; `reason`/`note`/`size` stay entry.json-only detail,
+ * the same narrowing `readRegateField`/`readLiteField` already apply to their own richer siblings. The
+ * verdicts gate below is deliberately left untouched by this field: an inline entry's `verdicts` is the
+ * ordinary byte-for-byte `{ review: "PASS", security: "PASS" }`, because `security` genuinely ran on
+ * that lane — `inline` decorates records, it never widens what a "clean" entry is allowed to claim. */
+function readInlineField(raw, label) {
+  if (raw === undefined || raw === null) return null;
+  const inlineLabel = `${label}: inline`;
+  requireObject(raw, inlineLabel);
+  const skippedStages = requireArray(raw.skippedStages, inlineLabel, 'skippedStages')
+    .map((item, i) => requireString(item, inlineLabel, `skippedStages[${i}]`));
+  return { skippedStages };
+}
+
 function readEntryJson(runId) {
   const label = `.sdd/ledger/${runId}/entry.json`;
   const path = join(ledgerDir, runId, 'entry.json');
@@ -170,6 +186,7 @@ function readEntryJson(runId) {
   const bypass = raw.bypass === true;
   const regate = readRegateField(raw.regate, label);
   const lite = readLiteField(raw.lite, label);
+  const inline = readInlineField(raw.inline, label);
 
   if (!bypass) {
     requireObject(raw.verdicts, `${label}: verdicts`);
@@ -180,6 +197,11 @@ function readEntryJson(runId) {
     // that omits "security") is a non-lite entry attempting to launder a skipped gate into an
     // indexed one, and is refused exactly like any other malformed `verdicts` value below. Every
     // other non-bypass entry still enforces the original PASS/PASS check byte-for-byte, unchanged.
+    //
+    // PL-12: `inline` is deliberately NOT part of this widening — an inline entry's `verdicts` is held
+    // to the exact same byte-for-byte { review: "PASS", security: "PASS" } every ordinary entry is,
+    // because `security` genuinely ran on that lane. `isDeclaredLite` below reads only `lite`, never
+    // `inline`, so an entry that declares itself inline buys no widening at all here.
     const isDeclaredLite = lite !== null && lite.skippedStages.includes('security');
     const expected = isDeclaredLite ? { review: 'PASS', security: 'SKIPPED_LITE' } : { review: 'PASS', security: 'PASS' };
     if (actual.review !== expected.review || actual.security !== expected.security) {
@@ -192,7 +214,7 @@ function readEntryJson(runId) {
     }
   }
 
-  return { runId: runIdField, ticket, date, filesTouched, bypass, regate, lite };
+  return { runId: runIdField, ticket, date, filesTouched, bypass, regate, lite, inline };
 }
 
 /** Builds the in-memory index (file path -> sorted array of run references) from every ledger run
@@ -235,6 +257,10 @@ export function buildIndex() {
       // index.json) sees the attribution is qualified without a second hop into entry.json. Omitted
       // entirely, not written as `lite: null`, for every non-lite run's records.
       if (entry.lite) record.lite = { skippedStages: entry.lite.skippedStages };
+      // PL-12 / AC-20: the exact same reasoning, for the inline lane — only `skippedStages` forward
+      // (never `reason`/`note`/`size`), only when this run's entry.json actually declared itself
+      // inline, omitted entirely (not `inline: null`) otherwise.
+      if (entry.inline) record.inline = { skippedStages: entry.inline.skippedStages };
       index[file].push(record);
     }
   }

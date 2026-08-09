@@ -5,6 +5,9 @@
 //   node scripts/ledger-append.mjs
 //   node scripts/ledger-append.mjs --override-review "<reason>" [--override-security "<reason>"]
 //   node scripts/ledger-append.mjs --re-gate --tester-ran <true|false> --ticket <id>
+//   node scripts/ledger-append.mjs --lite
+//   node scripts/ledger-append.mjs --inline --ticket <id> --why-inline "<reason>"
+//     [--override-review "<reason>"] [--override-security "<reason>"]
 //   node scripts/ledger-append.mjs --hotfix --what-broke <text> --what-changed <text> \
 //     --why-skipped <text> --not-verified <text> --follow-up-ticket <text> \
 //     [--files <path...>]
@@ -524,14 +527,25 @@ const REGATE_NOTE = 'code was changed in the working tree outside the pipeline\'
  *
  * `lite` (PL-11 — default `null`) is `main()`'s own record of a `--lite` run: `{ skippedStages, note,
  * eligibility: { fileCount, changedLines, maxFiles, maxChangedLines } }`, or `null` for every other
- * run. When present: the title gains a `(LITE)` marker (markers compose `(RE-GATE)(LITE)(OVERRIDE)`,
- * matching the order `.sdd/ledger/README.md`'s "Lite-lane entries" section documents), a `## Lite
- * lane` section is inserted immediately after `## Verdicts` naming the skipped stages, the fixed
- * disclosure note verbatim, and the eligibility numbers this run was measured against, and `## Security
- * run ID` states plainly that the stage did not run rather than pointing at a nonexistent directory. */
-export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null }) {
+ * run. When present: the title gains a `(LITE)` marker (markers compose `(RE-GATE)(INLINE)(LITE)
+ * (OVERRIDE)`, matching the order `.sdd/ledger/README.md`'s "Lite-lane entries"/"Inline-edit entries"
+ * sections document), a `## Lite lane` section is inserted immediately after `## Verdicts` naming the
+ * skipped stages, the fixed disclosure note verbatim, and the eligibility numbers this run was
+ * measured against, and `## Security run ID` states plainly that the stage did not run rather than
+ * pointing at a nonexistent directory.
+ *
+ * `inline` (PL-12 — default `null`) is `main()`'s own record of an `--inline` run: `{ skippedStages,
+ * reason, note, size }`, or `null` for every other run (`size` is `measureInlineSize`'s own return
+ * shape, or `null` on a failed measurement — EC-13). When present: the title gains an `(INLINE)`
+ * marker, and a `## Inline edit` section is inserted immediately after `## Verdicts` (the same slot
+ * `## Lite lane`/`## Re-gate` claim — all three are mutually exclusive, since `--inline` refuses
+ * composition with `--lite`/`--re-gate` before any `.pipeline/` file is even read), rendering `note`
+ * verbatim, the skipped stages, the reason, and the measured size (or an explicit "could not be
+ * measured" line when `size` is `null`) — unlike `lite`, `## Security run ID` renders normally here:
+ * `security` genuinely ran on this lane. */
+export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null, inline = null }) {
   const lines = [];
-  const titleMarkers = `${regate ? ' (RE-GATE)' : ''}${lite ? ' (LITE)' : ''}${overrides.length > 0 ? ' (OVERRIDE)' : ''}`;
+  const titleMarkers = `${regate ? ' (RE-GATE)' : ''}${inline ? ' (INLINE)' : ''}${lite ? ' (LITE)' : ''}${overrides.length > 0 ? ' (OVERRIDE)' : ''}`;
   lines.push(`# Ledger entry — ${runId}${titleMarkers}`);
   lines.push('');
   lines.push('## Date');
@@ -556,6 +570,23 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
   lines.push(`- review: ${reviewVerdict}`);
   lines.push(`- security: ${securityVerdict}`);
   lines.push('');
+  if (inline) {
+    lines.push('## Inline edit');
+    lines.push(inline.note);
+    lines.push('');
+    lines.push(`Skipped stages: ${inline.skippedStages.join(', ')}.`);
+    lines.push(`Reason: ${inline.reason}`);
+    lines.push('');
+    lines.push(
+      inline.size
+        ? `Measured size: ${inline.size.fileCount} file(s), ${inline.size.changedLines} changed line(s), ` +
+          `longest changed line ${inline.size.maxLineLength} character(s)` +
+          (inline.size.unsizable.length > 0 ? `; unsizable: ${inline.size.unsizable.join(', ')}.` : '.')
+        : 'Measured size: could not be measured for this run (see this run\'s own printed output) — this ' +
+          'is a recorded fact, not a gate.',
+    );
+    lines.push('');
+  }
   if (lite) {
     lines.push('## Lite lane');
     lines.push(lite.note);
@@ -643,8 +674,16 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
  * file->spec map even though it has a real, ratified spec `review` genuinely passed against the final
  * tree (spec.md's Open questions #2) — `!lite` is what keeps a genuine `--lite --override-review` run
  * (where `reviewVerdict !== 'PASS'` on its own already forces `bypass: true`) excluded exactly like
- * any other override, without also excluding an ordinary lite pass. */
-export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null }) {
+ * any other override, without also excluding an ordinary lite pass.
+ *
+ * `inline` (PL-12 — default `null`) is the machine-facing twin of buildEntryMarkdown's own `## Inline
+ * edit` section: `{ skippedStages, reason, note, size }` for an `--inline` run, `null` otherwise —
+ * always present as a key (never omitted), the same "an absent key and an explicit null are different
+ * claims" convention `regate`/`lite` already use. Unlike `lite`, `bypass`'s own derivation needs no
+ * `inline`-specific amendment: an inline run's `securityVerdict` is the ordinary `'PASS'` literal
+ * (security genuinely ran, unlike on the lite lane), so the existing `(!lite && securityVerdict !==
+ * 'PASS')` clause already produces the right answer without change. */
+export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null, inline = null }) {
   const bypass = reviewVerdict !== 'PASS' || (!lite && securityVerdict !== 'PASS');
   return {
     runId,
@@ -658,6 +697,7 @@ export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files
     bypass,
     regate: regate ? { testerRan: regate.testerRan, gatesOnly: regate.gatesOnly, note: REGATE_NOTE } : null,
     lite,
+    inline,
     redTestPaths,
     redAbsenceNote: redTestPaths.length > 0 ? null : redAbsenceNote,
     securityRunId,
@@ -1083,8 +1123,145 @@ export const LITE_NOTE = 'this run took the lite lane (`.sdd/pipeline.md`\'s `/p
   'mechanically against `.sdd/bounds.yml`\'s `lite_eligibility` bounds and the barred-path union, ' +
   'which is a curated, best-effort list, not a complete classifier of security-sensitive code.';
 
-const MAIN_KNOWN_FLAGS = new Set(['--override-review', '--override-security', '--re-gate', '--tester-ran', '--ticket', '--lite']);
-const MAIN_VALUE_FLAGS = new Set(['--override-review', '--override-security', '--tester-ran', '--ticket']);
+// --- `--inline` (PL-12) --------------------------------------------------------------------------
+//
+// The ledger step of the `/inline-edit` lane (`.sdd/pipeline.md`'s `### /inline-edit <ticket>`
+// section): planner (the spec-first gate) -> a direct, in-session edit (no `dev` subagent) ->
+// editor-authored changes.md/changes.json -> tester -> review -> security -> this ledger step.
+// Modeled as closely as possible on `--re-gate`, deliberately NOT on `--lite`: `--inline` is a
+// DISCLOSURE-ONLY marker on the plain (non-`--hotfix`) path that relaxes no gate at all —
+// review.json/security.json must both still show PASS (or be accepted via --override-*),
+// refuseIfStale still runs unconditionally on both, the unconditional spec.json/spec.md agreement
+// check still runs, and findCompletedSecurityRun still independently re-verifies the cited run and
+// supplies the run id (never minted, unlike --lite). What `--inline` borrows from `--lite` is
+// narrower: excluding red.json from the sidecar set copied into the ledger (this lane never ran
+// `red` either), and reusing the already-imported countChangedLines/maxChangedLineLength for a
+// disclosure-only size measurement that gates nothing — the lite lane's size/barred-path bound is
+// deliberately NOT imported (D-2 in .sdd/pipeline.md's own /inline-edit section): that bound exists
+// because the lite lane also skips `security`; this lane does not, so the same bound here would be
+// reasoned from a premise that does not hold.
+
+/** Fixed, derived — never caller-supplied (AC-17: there is no `--skipped-stages`/`--inline-note`
+ * flag). `dev` is listed because the STAGE did not run, not because no implementation happened — the
+ * implementation was made directly, inline, in the same session. */
+export const INLINE_SKIPPED_STAGES = ['red', 'dev'];
+
+/** The fixed inline-lane disclosure sentence `entry.json`'s `inline.note` carries verbatim (and
+ * `entry.md`'s `## Inline edit` section renders verbatim) — a constant, not reconstructed per call,
+ * so it can never quietly drift from what `.sdd/ledger/README.md`'s "Inline-edit entries" section
+ * documents it as (the same reasoning `REGATE_NOTE`/`LITE_NOTE` above already apply). */
+export const INLINE_NOTE = 'this run took the inline-edit lane (`.sdd/pipeline.md`\'s `/inline-edit`): ' +
+  'the implementation was a direct edit made in a live session, not a `dev`-stage run, so ' +
+  '`changes.md`/`changes.json` are the editor\'s own self-report rather than a separate agent\'s; and ' +
+  '`red` did not run, so any test covering this change was written after the diff already existed. A ' +
+  'real `spec.md`/`spec.json` was ratified before the edit, and `tester`, `review`, and `security` all ' +
+  'ran in full against the edited tree. This lane has no mechanical size bound — the measured size of ' +
+  'the change is recorded below so a reader can judge for themselves how much skipped `red`.';
+
+/** The fixed red-absence note for this lane — never the plain path's "predates the red stage /
+ * genuinely produced nothing" disjunction, whose both branches are false here: `red` has long existed
+ * on any checkout running this lane, and it was never invoked this round, full stop, rather than
+ * invoked-and-empty. Writing the plain path's note into this lane's entry would be a known-false
+ * sentence in an append-only record. */
+export const INLINE_RED_ABSENCE_NOTE = 'The `red` stage was deliberately not invoked on the ' +
+  'inline-edit lane (`.sdd/pipeline.md`\'s `/inline-edit`) — this is neither a legacy ticket ' +
+  'predating `red`\'s own existence nor a run where `red` ran and produced nothing; it was never ' +
+  'invoked for this run at all.';
+
+/** Everything the default sidecar set (`DEFAULT_SIDECAR_NAMES` above) carries except `red.json` —
+ * the same "never manufacture evidence of a stage that did not run this round" reasoning
+ * `LITE_SIDECAR_NAMES` already uses. Unlike `LITE_SIDECAR_NAMES`, `security.json` stays in this set:
+ * unlike the lite lane, `security` genuinely ran here. */
+const INLINE_SIDECAR_NAMES = ['spec.json', 'changes.json', 'review.json', 'security.json'];
+
+/** Reads `--ticket`'s value off argv. Returns `null` when the flag is absent entirely — never `null`
+ * for "present but malformed"; that fails loudly, naming the flag. Extracted out of `readRegateArgs`
+ * (below) so `--re-gate` and `--inline` share one implementation of "read this caller assertion," not
+ * two independently-written ones that could quietly disagree about what counts as empty or
+ * flag-shaped. */
+function readTicketFlag(argv) {
+  const ticketIdx = argv.indexOf('--ticket');
+  if (ticketIdx === -1) return null;
+  const ticketValue = ticketIdx + 1 < argv.length ? argv[ticketIdx + 1] : undefined;
+  if (!ticketValue || ticketValue.startsWith('--') || !ticketValue.trim()) {
+    fail(
+      `--ticket requires a non-empty ticket id (got ${ticketValue === undefined ? '(nothing)' : JSON.stringify(ticketValue)}) ` +
+      '— an ambiguous or missing value must never be guessed at.',
+    );
+  }
+  return ticketValue.trim();
+}
+
+/** Reads `--why-inline`'s value off argv — the same fail-closed "no reason, no ..." shape
+ * `readOverrideReason` already uses, applied to this lane's own disclosure requirement (AC-14): a
+ * missing, empty, whitespace-only, or flag-shaped value all refuse, naming the flag. Only called once
+ * `--inline` itself is already known to be present (see `readInlineArgs`, below). */
+function readWhyInlineReason(argv) {
+  const idx = argv.indexOf('--why-inline');
+  if (idx === -1) {
+    fail(
+      '--inline requires --why-inline "<reason>" — no reason, no inline entry (the same posture ' +
+      '--override-review/--override-security already take toward their own reason). State briefly ' +
+      'why this edit was made directly rather than through a `dev`-stage run.',
+    );
+  }
+  const value = argv[idx + 1];
+  if (!value || value.startsWith('--') || !value.trim()) {
+    fail(
+      `--why-inline requires a non-empty reason string, e.g. --why-inline "why you are editing directly" ` +
+      `(got ${value === undefined ? '(nothing)' : JSON.stringify(value)}) — an ambiguous or missing ` +
+      'value must never be guessed at.',
+    );
+  }
+  return value.trim();
+}
+
+/** Returns `null` when `--inline` is absent from argv — not an inline run, nothing else to read.
+ * Otherwise `{ ticket, reason }`, both non-empty, refusing (naming the missing/malformed flag) when
+ * either `--ticket` or `--why-inline` is absent, empty, whitespace-only, or flag-shaped (AC-13/AC-14). */
+function readInlineArgs(argv) {
+  if (!argv.includes('--inline')) return null;
+  const ticket = readTicketFlag(argv);
+  if (ticket === null) {
+    fail(
+      '--inline requires --ticket <id> (e.g. --ticket "PL-12") — the ticket you believe you are ' +
+      'inline-editing, stated explicitly by the caller. This is the caller\'s own assertion, never ' +
+      'derived from .pipeline/spec.json — the same circularity /re-gate already warns about (see ' +
+      '.sdd/pipeline.md\'s /inline-edit section and .claude/skills/inline-edit/SKILL.md).',
+    );
+  }
+  const reason = readWhyInlineReason(argv);
+  return { ticket, reason };
+}
+
+/** Disclosure-only measurement of how large the change that skipped `red` actually was (AC-19) —
+ * never a gate; the /inline-edit lane deliberately imports no size bound (see this section's own
+ * header, and D-2 in .sdd/pipeline.md's own section). Reuses the already-imported
+ * `countChangedLines`/`maxChangedLineLength` (scripts/check-lite-eligible.mjs). Returns `null`
+ * (never throws, never refuses) when either measurement fails (EC-13 — e.g. no git repository, an
+ * unresolvable ref, an unreadable file): this is a recorded fact about the run, not a precondition of
+ * writing it, so a failed measurement must not fail closed into refusing an otherwise-legitimate
+ * ledger entry. */
+function measureInlineSize(files) {
+  let sized;
+  try {
+    sized = countChangedLines(files, { cwd: repoRoot });
+  } catch (error) {
+    console.log(`ledger-append --inline: could not measure changed lines (${error.message}) — recording "size": null.`);
+    return null;
+  }
+  let lineLength;
+  try {
+    lineLength = maxChangedLineLength(files, { cwd: repoRoot });
+  } catch (error) {
+    console.log(`ledger-append --inline: could not measure line lengths (${error.message}) — recording "size": null.`);
+    return null;
+  }
+  return { fileCount: files.length, changedLines: sized.changedLines, maxLineLength: lineLength, unsizable: sized.unsizable };
+}
+
+const MAIN_KNOWN_FLAGS = new Set(['--override-review', '--override-security', '--re-gate', '--tester-ran', '--ticket', '--lite', '--inline', '--why-inline']);
+const MAIN_VALUE_FLAGS = new Set(['--override-review', '--override-security', '--tester-ran', '--ticket', '--why-inline']);
 
 /** Reads `--re-gate`/`--tester-ran`/`--ticket` off argv. Returns `null` when this is not a re-gate run
  * (none of the three flags given) — never `null` for "given but malformed"; that fails loudly, naming
@@ -1099,8 +1276,14 @@ const MAIN_VALUE_FLAGS = new Set(['--override-review', '--override-security', '-
  * ("CORRECTED (PL-04 review pass 2 / Critical 1)" paragraph) for why. It is required whenever `--re-gate`
  * is given, exactly like `--tester-ran`, and this function only validates that it was SUPPLIED and is
  * non-empty — whether it actually MATCHES `.pipeline/spec.json`'s own ticket is main()'s job, once
- * `spec.json` has actually been read (see the dedicated check there), not this function's. */
-function readRegateArgs(argv) {
+ * `spec.json` has actually been read (see the dedicated check there), not this function's.
+ *
+ * CHANGED SIGNATURE (PL-12): `{ inline = false }` — `--ticket` is now legal on two lanes, `--re-gate`
+ * and `--inline` (see `readInlineArgs` above), so the existing "`--ticket` was given without
+ * `--re-gate`" refusal now fires only when NEITHER is present. `main()` passes `{ inline: true }` once
+ * it has determined `--inline` is present on argv; the inline caller's own required-`--ticket` refusal
+ * is a separate, dedicated one (`readInlineArgs`), so this function does not need to duplicate it. */
+function readRegateArgs(argv, { inline = false } = {}) {
   const reGate = argv.includes('--re-gate');
   const testerRanIdx = argv.indexOf('--tester-ran');
   const ticketIdx = argv.indexOf('--ticket');
@@ -1112,12 +1295,13 @@ function readRegateArgs(argv) {
         'together, or omit all three.',
       );
     }
-    if (ticketIdx !== -1) {
+    if (ticketIdx !== -1 && !inline) {
       fail(
-        '--ticket was given without --re-gate — it only means something as part of a re-gate run ' +
-        '(.sdd/pipeline.md\'s /re-gate step 1: the caller\'s own assertion of which ticket ' +
-        '.pipeline/spec.json must describe). Pass --re-gate --tester-ran <true|false> --ticket <id> ' +
-        'together, or omit all three.',
+        '--ticket was given without --re-gate or --inline — it only means something as part of one of ' +
+        'those two lanes (.sdd/pipeline.md\'s /re-gate step 1, or its /inline-edit section\'s mandatory ' +
+        'ledger step) — the caller\'s own assertion of which ticket .pipeline/spec.json must describe, ' +
+        'either way. Pass --re-gate --tester-ran <true|false> --ticket <id> together, or --inline ' +
+        '--ticket <id> --why-inline "<reason>" together, or omit --ticket entirely.',
       );
     }
     return null;
@@ -1139,7 +1323,8 @@ function readRegateArgs(argv) {
   }
   const testerRan = value === 'true';
 
-  if (ticketIdx === -1) {
+  const ticketValue = readTicketFlag(argv);
+  if (ticketValue === null) {
     fail(
       '--re-gate requires --ticket <id> (e.g. --ticket "PL-04") — the ticket you believe you are ' +
       're-gating, stated explicitly by the caller. /re-gate is the one entry point that reaches the ' +
@@ -1148,24 +1333,18 @@ function readRegateArgs(argv) {
       'against spec.json\'s own ticket field rather than trusting whatever spec happens to be on disk.',
     );
   }
-  const ticketValue = ticketIdx + 1 < argv.length ? argv[ticketIdx + 1] : undefined;
-  if (!ticketValue || ticketValue.startsWith('--') || !ticketValue.trim()) {
-    fail(
-      `--ticket requires a non-empty ticket id (got ${ticketValue === undefined ? '(nothing)' : JSON.stringify(ticketValue)}) ` +
-      '— an ambiguous or missing value must never be guessed at.',
-    );
-  }
 
-  return { testerRan, gatesOnly: !testerRan, ticket: ticketValue.trim() };
+  return { testerRan, gatesOnly: !testerRan, ticket: ticketValue };
 }
 
 function main() {
   const argv = process.argv.slice(2);
   assertKnownFlags(argv, { knownFlags: MAIN_KNOWN_FLAGS, valueFlags: MAIN_VALUE_FLAGS });
   const lite = argv.includes('--lite');
+  const inline = argv.includes('--inline');
   const overrideReviewReason = readOverrideReason(argv, '--override-review');
   const overrideSecurityReason = readOverrideReason(argv, '--override-security');
-  const regate = readRegateArgs(argv);
+  const regate = readRegateArgs(argv, { inline });
 
   // PL-11 / AC-7 item 1: --lite is not combined with --override-security or --re-gate — checked
   // before any .pipeline/ file is even read, so this refusal can never be confused with one of the
@@ -1186,6 +1365,36 @@ function main() {
       );
     }
   }
+
+  // PL-12 / AC-12, EC-8: --inline is not combined with --lite or --re-gate — checked immediately
+  // after the --lite mutual-exclusion block above and, like it, before any .pipeline/ file is read, so
+  // neither refusal can ever be confused with a later check firing for an unrelated reason. Two
+  // distinct messages, not one shared "flags conflict" string: the two lanes differ on two axes at
+  // once (who implements; which gates run — D-3 in .sdd/pipeline.md's /inline-edit section), and a
+  // caller deserves to know which lane they actually reached for.
+  if (inline) {
+    if (lite) {
+      fail(
+        '--inline --lite is not accepted — these are two different lanes, not one lane with two names ' +
+        '(D-3 in .sdd/pipeline.md\'s /inline-edit section): --lite keeps `dev`-stage isolation and skips ' +
+        '`security`; --inline runs `security` in full and gives up `dev`-stage isolation. Choose the one ' +
+        'lane that actually matches who is implementing this change.',
+      );
+    }
+    if (argv.includes('--re-gate')) {
+      fail(
+        '--inline --re-gate is not accepted — /re-gate re-verifies a run that already happened, after a ' +
+        'hand-edit made outside a prior pipeline pass; /inline-edit is a first, and only, pass that ' +
+        'forces a spec to exist before the edit is ever made. If review/security already ran once for ' +
+        'this ticket and the tree was hand-edited since, use /re-gate; if this is the first pass, use ' +
+        '/inline-edit.',
+      );
+    }
+  }
+
+  // PL-12: `--inline`'s own required-flag checks (AC-13, AC-14) — pure argv validation, so this runs
+  // before any .pipeline/ file is read too, consistent with the mutual-exclusion checks above.
+  const inlineArgs = readInlineArgs(argv);
 
   const reviewJson = readReviewJson(pipelineDir);
   refuseIfStale('review.json', reviewJson.stamp);
@@ -1243,8 +1452,9 @@ function main() {
   // PL-11: the lite lane never reads red.json at all, leftover or not — see EC-11 (a lite entry
   // never copies it and never lists its tests as this run's red-test paths); reading it just to
   // discard it would also risk a malformed leftover blocking an otherwise-eligible lite run for a
-  // reason that has nothing to do with this run.
-  const redJson = lite ? null : readRedJson(pipelineDir, { required: false });
+  // reason that has nothing to do with this run. PL-12: the inline lane never invoked `red` either —
+  // see EC-11 in ledger-append.test.mjs's own [inline] block for the identical reasoning, applied here.
+  const redJson = (lite || inline) ? null : readRedJson(pipelineDir, { required: false });
   const changesJson = readChangesJson(pipelineDir, { required: false });
 
   // CORRECTED (SEC-10 v2 fix round — FND-bd78355b6ae7, HIGH): the three checks that used to live here
@@ -1315,6 +1525,21 @@ function main() {
       );
     }
   }
+  // PL-12 / AC-13, EC-2: the inline lane's own ticket cross-check — identical body to --re-gate's
+  // immediately above (the unconditional spec.json/spec.md agreement check already run covers spec.md
+  // transitively, so a separate `specMdTicketId !== inlineArgs.ticket` check would be unreachable dead
+  // code once both hold, the same reasoning --re-gate's own comment above already gives).
+  if (inlineArgs) {
+    if (specTicketId !== inlineArgs.ticket) {
+      fail(
+        `--inline --ticket "${inlineArgs.ticket}" does not match .pipeline/spec.json's own ticket ` +
+        `("${specTicketId}", from "${specJson.ticket}"). Retrying with a fabricated --ticket is not the ` +
+        `fix — either author/ratify a spec.md/spec.json for "${inlineArgs.ticket}" first (a retroactive ` +
+        'spec is still a ratified one), or correct --ticket if it was mistyped. Refusing to write a ' +
+        'ledger entry.',
+      );
+    }
+  }
   // PL-11 / AC-7 item 4 (stamp half), EC-13: --lite requires the same spec.json stamp-presence
   // hygiene check --re-gate already applies — for a stated, lite-specific reason: --lite has no
   // security-history cross-check to compensate for an unstamped spec.json (a --re-gate run's
@@ -1322,10 +1547,15 @@ function main() {
   // refuseIfStale; --lite has that too, but no analogous immutable-record cross-check the way a
   // normal run's findCompletedSecurityRun provides), so this presence-and-shape signal is the one
   // available here. As with --re-gate, this is presence-and-shape, never proof of provenance.
-  if (regate || lite) {
+  //
+  // PL-12 / AC-15, EC-4: --inline requires the same check for its own stated reason — this lane has no
+  // `dev` stage whose own procedure would guarantee a freshly-written spec.json the way a normal run's
+  // sequence does, so presence-and-shape is, again, the one hygiene signal available.
+  if (regate || lite || inline) {
     if (!specJson.stamp) {
+      const laneLabel = regate ? 're-gate' : (lite ? 'lite' : 'inline');
       fail(
-        `--${regate ? 're-gate' : 'lite'} requires .pipeline/spec.json to carry a "stamp" field (node ` +
+        `--${laneLabel} requires .pipeline/spec.json to carry a "stamp" field (node ` +
         'scripts/write-stamp.mjs .pipeline/spec.json) before this run can be attributed to it — planner ' +
         'attaches one automatically as its own last step; a hand-authored or retroactive spec.json must ' +
         'run write-stamp.mjs itself. An unstamped spec.json is missing the one hygiene signal this ' +
@@ -1338,6 +1568,10 @@ function main() {
           ? ' --lite has no security-history cross-check to fall back on (unlike a plain run, which ' +
             'independently re-verifies the cited security run against its own immutable manifest), so ' +
             'this presence check is the one signal available here.'
+          : inline
+          ? ' The /inline-edit lane has no `dev` stage whose own procedure would guarantee a freshly-' +
+            'written spec.json the way a normal run\'s sequence does, so this presence-and-shape check ' +
+            'is the one hygiene signal available here.'
           : ' (This checks presence and shape, not exact currency against the tree right now — see this ' +
             'file\'s header for why literal freshness is deliberately not required here; --ticket and ' +
             'the agreement check above are what verify content.)'),
@@ -1353,6 +1587,36 @@ function main() {
       '.pipeline/test-results.md does not exist — `tester` still runs on the lite lane ' +
       '(`.sdd/pipeline.md`\'s `/pipeline-lite`); run it before appending a ledger entry.',
     );
+  }
+
+  // PL-12 / AC-15, EC-5, EC-6: the inline lane's own required-file checks — additive, none relaxes an
+  // existing check. There is no `dev` stage here whose own procedure would have written changes.md/
+  // changes.json, and no `--gates-only` knob on this lane (D-5 in .sdd/pipeline.md's own section):
+  // `tester` always runs, so test-results.md is mandatory too.
+  if (inline) {
+    if (!existsSync(join(pipelineDir, 'changes.md'))) {
+      fail(
+        '.pipeline/changes.md does not exist — the /inline-edit lane has no `dev` stage that would have ' +
+        'written it; the editor authors it directly (.sdd/pipeline.md\'s /inline-edit step 3) before ' +
+        'this ledger step can run.',
+      );
+    }
+    if (!changesJson) {
+      fail(
+        '.pipeline/changes.json does not exist — optional on the plain path (a run that predates the ' +
+        'sidecar), but required on the /inline-edit lane: there is no `dev` stage here to have written ' +
+        'it, and nothing else on disk records what the editor actually touched. Author it directly ' +
+        '(.sdd/pipeline.md\'s /inline-edit step 3).',
+      );
+    }
+    if (!existsSync(join(pipelineDir, 'test-results.md'))) {
+      fail(
+        '.pipeline/test-results.md does not exist — `tester` is mandatory on the /inline-edit lane ' +
+        '(this lane already gives up `red`; making `tester` optional too would leave the change with no ' +
+        'test gate at all — D-5 in .sdd/pipeline.md\'s /inline-edit section). Run it before appending a ' +
+        'ledger entry.',
+      );
+    }
   }
 
   let runId;
@@ -1436,7 +1700,15 @@ function main() {
   const ticketTitle = specJson.ticket;
   const goal = specJson.goal;
   const touchedFiles = candidateFiles;
-  const redTestPaths = lite ? [] : (redJson ? redJson.tests.map((test) => test.path) : []);
+  const redTestPaths = (lite || inline) ? [] : (redJson ? redJson.tests.map((test) => test.path) : []);
+
+  // PL-12 / AC-17, AC-19: the inline disclosure itself. `skippedStages`/`note` come from the exported
+  // constants above (never caller-supplied — there is no --skipped-stages/--inline-note flag), and
+  // `size` is measured against the exact same touched-file set the entry's own "Files touched" section
+  // reports (`candidateFiles`), not a second, independently-derived list that could disagree with it.
+  const inlineInfo = inline
+    ? { skippedStages: INLINE_SKIPPED_STAGES, reason: inlineArgs.reason, note: INLINE_NOTE, size: measureInlineSize(candidateFiles) }
+    : null;
 
   const date = lite
     ? new Date().toISOString().slice(0, 10)
@@ -1452,6 +1724,8 @@ function main() {
 
   const redAbsenceNote = lite
     ? 'The `red` stage was deliberately skipped by the lite lane (`.sdd/pipeline.md`\'s `/pipeline-lite`) — this is not a legacy ticket old enough to come from before `red` existed, and `red` did not run and simply produce nothing; it was never invoked for this run at all.'
+    : inline
+    ? INLINE_RED_ABSENCE_NOTE
     : (redJson
       ? '(`red.json` exists for this run but its "tests" list is empty)'
       : 'No `red.json` present for this run — either it predates the `red` stage (introduced in PL-03c) or this run genuinely produced no ledger-relevant tests. Stated explicitly rather than left blank.');
@@ -1487,6 +1761,7 @@ function main() {
     overrides,
     regate,
     lite: liteInfo,
+    inline: inlineInfo,
   });
   writeFileSync(join(runDir, 'entry.md'), entryMarkdown, 'utf8');
 
@@ -1506,10 +1781,11 @@ function main() {
     overrides,
     regate,
     lite: liteInfo,
+    inline: inlineInfo,
   });
   writeFileSync(join(runDir, 'entry.json'), JSON.stringify(entryJson, null, 2) + '\n', 'utf8');
 
-  copySidecarsIntoLedger(runId, lite ? LITE_SIDECAR_NAMES : undefined);
+  copySidecarsIntoLedger(runId, lite ? LITE_SIDECAR_NAMES : (inline ? INLINE_SIDECAR_NAMES : undefined));
   if (!lite) copySecurityHistoryIntoLedger(runId);
 
   const index = writeIndex();
@@ -1537,6 +1813,14 @@ function main() {
     );
     console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,changes.json,review.json,entry.md,entry.json}`);
   } else {
+    if (inline) {
+      console.log(
+        `ledger-append --inline: recorded an INLINE-lane run (skipped: ${INLINE_SKIPPED_STAGES.join(', ')}) ` +
+        `— see .sdd/ledger/${runId}/entry.md's "## Inline edit" section. NOT excluded from index.json's ` +
+        'file->spec map (unless also overridden above): a real spec was ratified before the edit, and ' +
+        'review and security both genuinely ran and passed against the final tree.',
+      );
+    }
     console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,entry.md,entry.json,security/}`);
   }
   console.log(`ledger-append: regenerated .sdd/ledger/index.json (${Object.keys(index).length} file(s) indexed)`);

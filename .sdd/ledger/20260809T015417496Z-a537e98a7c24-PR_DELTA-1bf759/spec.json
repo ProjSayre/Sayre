@@ -1,0 +1,179 @@
+{
+  "ticket": "PL-12 — /inline-edit: a sanctioned, spec-first front door for a direct in-session edit",
+  "goal": "Give a direct, in-session edit — no prior pipeline run, no production incident — a sanctioned front door: /inline-edit, a lane that mechanically refuses to let any code change happen before a real, ratified spec.md/spec.json exists for it, then runs tester -> review -> security in full against the edited tree, states at every stop exactly what is still owed for the record, and ends in a ledger entry that is visibly and structurally distinct from a full run — one that says plainly that the implementation was a direct inline edit and that red never ran. Today that path is either an unrecorded hand-edit (the D-005 #3 failure) or a disproportionate full /pipeline run.",
+  "lane": null,
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": ".sdd/pipeline.md gains a `### `/inline-edit <ticket>`` section, placed between the `### `/re-gate ...`` section and `### `/hotfix ...``, defining the lane runtime-neutrally end to end: refuse/route -> planner (spec-first gate) -> the direct inline edit (no dev subagent) -> editor-authored changes.md/changes.json plus write-stamp.mjs -> tester -> review -> security -> `node scripts/ledger-append.mjs --inline --ticket <id> --why-inline \"<reason>\"`, naming red and dev as deliberately skipped rather than merely omitting them."
+    },
+    {
+      "id": "AC-2",
+      "text": "That section states the obligations checklist at five named stops (after planner/before any edit; after the edit; after tester; after review+security; after the ledger step), and each stop names what has been produced, which gates remain owed, which exact ledger command applies, and what gets recorded where."
+    },
+    {
+      "id": "AC-3",
+      "text": "That section states the abnormal-stop obligation explicitly: an abandoned inline lane writes no ledger entry and leaves an unrecorded hand-edit on disk (the D-005 #3 failure), and is discharged only by finishing the lane (plain, or composed with --override-review/--override-security for a non-PASS outcome) or by reverting the edit."
+    },
+    {
+      "id": "AC-4",
+      "text": "That section carries an \"Honest limits\" paragraph naming, at minimum: no red (tests written after the diff — the D-018 inversion, at any size, with no mechanical size bound and why lite's is deliberately not imported); no dev-stage isolation and self-reported changes.md; the \"do not run /red here\" rule being unenforced and why it cannot be detected at ledger time; and that --ticket plus the stamp check verify which ticket and shape, never that planner ran this round."
+    },
+    {
+      "id": "AC-5",
+      "text": "That section carries a \"not this lane\" routing table covering a production incident (/hotfix), re-verifying a run that already has a review.json (/re-gate), wanting an agent to implement it (/pipeline or /pipeline-lite), and a change where a spec-first test would earn its keep (/pipeline) — plus the recorded lite-vs-inline rule (D-3) in prose."
+    },
+    {
+      "id": "AC-6",
+      "text": "/inline-edit is named in .sdd/pipeline.md's opening paragraph and in its `## Entry points` preamble, not only inside its own section."
+    },
+    {
+      "id": "AC-7",
+      "text": ".claude/skills/inline-edit/SKILL.md exists, opens with YAML frontmatter carrying `name: inline-edit`, a non-empty description, `disable-model-invocation: true`, and a non-empty argument-hint; its body points at .sdd/pipeline.md as authoritative, restates only the easily-lost refusals, and stays under 60 lines."
+    },
+    {
+      "id": "AC-8",
+      "text": ".sdd/ledger/README.md gains an \"Inline-edit entries\" section documenting the exact entry.json shape (pinning the literals skippedStages, reason, note, size), the (INLINE) title marker and `## Inline edit` section, the condensed index.json `inline: { skippedStages }` decoration, the reason the entry is indexed rather than excluded, and the fact that it carries no red.json."
+    },
+    {
+      "id": "AC-9",
+      "text": ".sdd/stages/tester.md's Required inputs item 1 and its Output contract \"Red suite result\" bullet name the /inline-edit lane alongside /pipeline-lite as legitimate red.md-absent cases, with the D-018 guarantee unchanged; .sdd/stages/CHANGELOG.md gains a `## PL-12` entry naming tester.md as the only stage file amended; no other .sdd/stages/*.md file is modified."
+    },
+    {
+      "id": "AC-10",
+      "text": "/inline-edit is discoverable from CLAUDE.md's `## Agent pipeline` related-commands list, .sdd/README.md's directory-map pipeline.md line, and .sdd/README.md's `.claude/skills/*/SKILL.md` paragraph."
+    },
+    {
+      "id": "AC-11",
+      "text": "scripts/ledger-append.mjs --inline is a disclosure-only marker on the plain (non---hotfix) path that relaxes no gate: review.json and security.json must both still show PASS (or be accepted via --override-*), refuseIfStale still runs unconditionally on both, the unconditional spec.json/spec.md agreement check still runs, findCompletedSecurityRun still independently re-verifies the cited run against its own immutable manifest.json/results.json, and the run id is reused from that security run rather than minted."
+    },
+    {
+      "id": "AC-12",
+      "text": "--inline --lite and --inline --re-gate are each refused, with a distinct message naming why the lanes differ, before any .pipeline/ file is read."
+    },
+    {
+      "id": "AC-13",
+      "text": "--inline requires --ticket <id> (non-empty, not flag-shaped) and refuses unless extractTicketId(specJson.ticket) equals it; --ticket supplied with neither --re-gate nor --inline still fails, with the message widened to name both."
+    },
+    {
+      "id": "AC-14",
+      "text": "--inline requires --why-inline \"<reason>\", non-empty and not flag-shaped, and refuses without it (\"no reason, no inline entry\", the same posture --override-* takes); the reason is recorded verbatim in entry.json's inline.reason and rendered in entry.md's `## Inline edit` section."
+    },
+    {
+      "id": "AC-15",
+      "text": "--inline additionally requires .pipeline/spec.json to carry a stamp (presence and shape via readStamp, never freshness), and .pipeline/changes.md, .pipeline/changes.json, and .pipeline/test-results.md to exist — each with its own named refusal explaining why this lane requires it."
+    },
+    {
+      "id": "AC-16",
+      "text": "--inline never reads and never copies .pipeline/red.json; the entry's redTestPaths is [] and its redAbsenceNote is the fixed INLINE_RED_ABSENCE_NOTE, never the plain path's \"predates / produced nothing\" disjunction."
+    },
+    {
+      "id": "AC-17",
+      "text": "entry.json for a --inline run carries inline: { skippedStages: [\"red\",\"dev\"], reason, note, size } with skippedStages and note derived from exported script constants and never caller-supplied (there is no --skipped-stages/--inline-note flag); the inline key is always present and is null on every other run."
+    },
+    {
+      "id": "AC-18",
+      "text": "entry.md for a --inline run is titled `# Ledger entry — <runId> (INLINE)` and carries a `## Inline edit` section immediately after `## Verdicts`, rendering note verbatim plus the skipped stages, the reason, and the measured size (or an explicit \"could not be measured\" statement); markers compose in the documented order (RE-GATE)(INLINE)(LITE)(OVERRIDE)."
+    },
+    {
+      "id": "AC-19",
+      "text": "The change's size is measured via the already-imported countChangedLines/maxChangedLineLength for disclosure only — it never gates anything, and a measurement failure records size: null plus a printed note rather than refusing or silently omitting the field."
+    },
+    {
+      "id": "AC-20",
+      "text": "scripts/build-ledger-index.mjs reads entry.json's inline field strictly (fail-closed on a malformed one) and carries inline: { skippedStages } into every index.json record for that run's files, omitted entirely (not null) for every other run; the byte-for-byte { \"review\": \"PASS\", \"security\": \"PASS\" } verdicts gate is unchanged, and inline is not a widening case."
+    },
+    {
+      "id": "AC-21",
+      "text": "Coverage and wiring: [inline]-tagged cases exist in scripts/ledger-append.test.mjs, scripts/build-ledger-index.test.mjs, and scripts/sdd-completeness.test.mjs; no new script file is added, so package.json, .github/workflows/ci.yml, and scripts/tsconfig.json are unchanged; and .sdd/runtimes.yml, .sdd/bounds.yml, .claude/agents/**, and docs/PRD_Tickets.md are all untouched."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "--inline with no --ticket: refuse, naming the flag and stating that it is the caller's own assertion, never derived from spec.json."
+    },
+    {
+      "id": "EC-2",
+      "text": "--inline --ticket X where extractTicketId(specJson.ticket) is Y: refuse, and say plainly that retrying with a fabricated --ticket is not the fix — ratify the correct spec first."
+    },
+    {
+      "id": "EC-3",
+      "text": "spec.json and spec.md disagree on the ticket: the existing unconditional agreement check fires first, on the inline path exactly as on every other; the --inline ticket check is not a replacement for it."
+    },
+    {
+      "id": "EC-4",
+      "text": "--inline with an unstamped spec.json: refuse, with the inline-specific clause in the message (no dev stage guarantees a freshly-written sidecar on this lane)."
+    },
+    {
+      "id": "EC-5",
+      "text": "--inline with .pipeline/changes.md and/or changes.json missing: refuse, naming which one and why this lane requires it (there is no dev stage that would have written them)."
+    },
+    {
+      "id": "EC-6",
+      "text": "--inline with .pipeline/test-results.md missing: refuse — tester is mandatory here."
+    },
+    {
+      "id": "EC-7",
+      "text": "--why-inline absent, empty, whitespace-only, or immediately followed by another --flag: refuse in every case, the same fail-closed shape readOverrideReason already uses."
+    },
+    {
+      "id": "EC-8",
+      "text": "--inline --lite and --inline --re-gate: each refused before any .pipeline/ read, with distinct messages."
+    },
+    {
+      "id": "EC-9",
+      "text": "A STALE review.json or security.json: refuseIfStale refuses, unchanged by this lane, and is not bypassable by --inline or by any override."
+    },
+    {
+      "id": "EC-10",
+      "text": "A non-PASS review.json or security.json: refuses without the matching --override-*; with it, the entry carries bypass: true, is excluded from index.json, and is titled (INLINE) (OVERRIDE) — the inline disclosure survives on the entry regardless, orthogonally, the same way regate and an override already compose."
+    },
+    {
+      "id": "EC-11",
+      "text": "A leftover .pipeline/red.json on disk: never read, never copied, never contributes to redTestPaths; no refusal, because a genuine same-round red.json is indistinguishable from a leftover at ledger time (its stamp is stale by construction on this lane) — stated as an honest limit rather than papered over with a check that cannot work."
+    },
+    {
+      "id": "EC-12",
+      "text": "The working tree is already clean at ledger time (the inline edit was committed first): filesTouched falls back to changes.json's filesChanged; a changes.json with an empty filesChanged against a clean tree still fails loudly, unchanged."
+    },
+    {
+      "id": "EC-13",
+      "text": "countChangedLines or maxChangedLineLength throws (git unavailable, an unresolvable ref, an unreadable file): measureInlineSize returns null, entry.json records \"size\": null, entry.md says so explicitly, a note is printed, and the write proceeds — measurement is disclosure, never a gate, so a failed measurement must not fail-closed into refusing a legitimate record."
+    },
+    {
+      "id": "EC-14",
+      "text": "The change includes a binary or otherwise unsizable file: its path is recorded in size.unsizable, so changedLines is never read as a complete count."
+    },
+    {
+      "id": "EC-15",
+      "text": ".sdd/ledger/<runId>/ already exists (a second append for the same security run): the existing overwrite guard refuses, reached on the inline path too; likewise copySecurityHistoryIntoLedger's own guard on an existing security/ directory."
+    },
+    {
+      "id": "EC-16",
+      "text": "build-ledger-index.mjs encounters an entry.json whose inline is malformed (not an object, skippedStages absent or not an array of strings): it fails closed, and --check fails loudly rather than reporting the index as up to date."
+    },
+    {
+      "id": "EC-17",
+      "text": "Back-compat: every ledger entry written before PL-12 carries no inline key at all; readInlineField must treat an absent key as null (never a validation failure), every existing entry.md/entry.json must be untouched, and `node scripts/build-ledger-index.mjs --check` must still pass against the pre-existing entries."
+    },
+    {
+      "id": "EC-18",
+      "text": "The lane is entered and abandoned after the edit but before the gates: nothing is recorded. The section must name this outcome and its two discharges (finish, or revert), because this is exactly the unrecorded hand-edit the lane exists to replace, and a lane that invites a human to edit is the one most likely to be walked away from."
+    },
+    {
+      "id": "EC-19",
+      "text": "review.json reads NEEDS_FIXES (or security.json BLOCKED) on this lane: route back to another inline edit (not /dev), re-run tester/review(/security), under the existing 3-attempt cap; red still never runs, and specifically must not be authored after the fix. At the cap: no ledger entry unless the outcome is recorded via --override-*."
+    },
+    {
+      "id": "EC-20",
+      "text": "The existing PL-11 assertions in scripts/sdd-completeness.test.mjs must keep passing: (a) the stage-file allowlist test permits only .sdd/stages/tester.md and .sdd/stages/CHANGELOG.md in `git diff --name-only HEAD -- .sdd/stages`, which PL-12 must not exceed; (b) pipelineLiteSection() slices between '### `/pipeline-lite' and '### Per-stage entry points', so the new section must be placed OUTSIDE that range (hence the /re-gate -> /hotfix placement) and a new inlineEditSection() helper anchored on '### `/inline-edit' ... '### `/hotfix' must be added rather than widening the existing one; (c) the [lite] tester.md assertions use 400-character coOccurs windows, so the inline-lane wording added to tester.md must not push 'lite' and 'red.md'/'state' further apart than that; (d) the generalized '### `/<command>`' to .claude/skills/<command>/SKILL.md test will automatically demand the new shim, and its commands.length >= 10 floor still holds."
+    }
+  ],
+  "stamp": {
+    "treeHash": "e6a827abeba97e718edd5009c6fb6ca9af8d1caee7ae1d756722be6cadfc3031",
+    "headSha": "a537e98a7c241b23ff826885973ac39df97e4b28",
+    "dirty": true,
+    "writtenAt": "2026-08-09T00:28:24.687Z"
+  }
+}

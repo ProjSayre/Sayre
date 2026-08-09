@@ -70,6 +70,15 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, test } from 'node:test';
 import { buildEntryJson, buildEntryMarkdown, buildHotfixEntryJson, buildHotfixEntryMarkdown, generateHotfixRunId } from './ledger-append.mjs';
+// PL-12 / AC-17: the inline lane's `skippedStages`/`note` must come from EXPORTED script constants
+// rather than being caller-supplied or re-typed here, so entry.json can never quietly drift from what
+// .sdd/ledger/README.md documents. Imported as a NAMESPACE, deliberately, rather than as three more
+// named bindings on the line above: a named import of an export that does not exist yet is a
+// module-level SyntaxError, which would take this whole suite (all ~60 pre-existing tests included)
+// down with it before a single [inline] assertion ran — a red suite that cannot load is
+// indistinguishable from a broken one. A namespace read of a missing export is simply `undefined`,
+// which fails exactly the assertion that names it and nothing else.
+import * as ledgerAppendModule from './ledger-append.mjs';
 // buildStamp (scripts/pipeline-contracts.mjs) is imported directly, unlike contractsSource below (a raw
 // string embedded into each fixture repo) — the [freshness] tests need to compute a REAL stamp against
 // a fixture root from this test process itself (see realGitignoreFixtureRepo's own doc comment for why
@@ -2272,4 +2281,615 @@ test('[lite] a leftover red.json is never copied and never listed as this run\'s
   assert.deepEqual(entryJson.redTestPaths, []);
   const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
   assert.ok(!entry.includes('scripts/left-over-from-another-ticket.test.mjs'));
+});
+
+// =================================================================================================
+// [inline] PL-12 — `node scripts/ledger-append.mjs --inline`, the ledger step of the /inline-edit lane
+// =================================================================================================
+//
+// Authored by the `red` stage from .pipeline/spec.md alone, before the `--inline` branch exists.
+//
+// NOTE ON `@spec` IDs IN THIS FILE: the `[lite]` block above carries PL-11's own AC-*/EC-* markers,
+// and PL-12's spec reuses several of the same numbers for entirely different items. The `[inline]`
+// prefix on every test name below is what disambiguates them — an `@spec AC-7` in the lite block is
+// PL-11's AC-7, an `@spec AC-17` here is PL-12's.
+//
+// The lane: planner -> (a direct, in-session edit — no `dev` subagent) -> editor-authored
+// changes.md/changes.json -> tester -> review -> security -> this ledger step. `red` and `dev` are
+// deliberately skipped; everything else runs in full. So unlike `--lite`, `--inline` is modelled on
+// `--re-gate`: a DISCLOSURE-ONLY marker on the plain path that relaxes no gate at all. Two properties
+// carry most of the weight below, and both are asserted rather than assumed:
+//
+//  1. Every gate the plain path applies still applies here — PASS/PASS (or an explicit --override-*),
+//     refuseIfStale on both sidecars, the unconditional spec.json/spec.md agreement check, and
+//     findCompletedSecurityRun's independent re-verification against the immutable manifest — and the
+//     run id is REUSED from that security run rather than minted. "Disclosure-only" is a claim about
+//     the implementation that only tests exercising the new branch can hold it to.
+//  2. What the entry says about itself is derived, never supplied: `skippedStages` and the disclosure
+//     note come from exported constants, the measured size is recorded but gates nothing, and the
+//     red-absence note is this lane's own fixed sentence rather than the plain path's "predates the
+//     stage / produced nothing" disjunction, both of whose branches are false here.
+
+/** Read through a namespace cast so a missing export reads as `undefined` at runtime instead of
+ * failing this file's type-check before `dev` has added it. See the import at the top of this file
+ * for why the constants are not named imports. */
+const ledgerAppendExports = /** @type {Record<string, any>} */ (/** @type {unknown} */ (ledgerAppendModule));
+
+/** `tester` runs in full on this lane (D-5: there is no --gates-only knob here), so test-results.md
+ * is a required input — a stand-in for whatever that stage really writes; --inline only checks that
+ * it exists. */
+const INLINE_TEST_RESULTS_MD = '# Test results — inline-edit lane fixture\n\n' +
+  '## Red suite result\n\nNo red suite exists for this run: the /inline-edit lane never invokes `red`.\n';
+
+/** changes.md as the INLINE EDITOR writes it (.sdd/pipeline.md's /inline-edit step 3), not the `dev`
+ * stage — --inline only checks that it exists, so the content is a placeholder. */
+const INLINE_CHANGES_MD = '# Changes — authored by the inline editor, not the `dev` stage\n\n' +
+  '## Files changed\n\n- app/inline-change.ts\n';
+
+const INLINE_REASON = 'A one-line log-message fix made directly in-session; spec.md/spec.json were ratified first.';
+
+/** The inline lane's `.pipeline/` inputs: everything a plain terminal-PASS run needs (a real
+ * `security` run genuinely happened here, unlike on the lite lane), plus a STAMPED spec.json,
+ * changes.md, and test-results.md — and, deliberately, NO red.json, since that stage never ran.
+ *
+ * @param {{ ticket?: string, specStamp?: object | null, changesFiles?: string[],
+ *   includeChangesMd?: boolean, includeChangesJson?: boolean, includeTestResults?: boolean,
+ *   extra?: Record<string, string | object> }} [options]
+ * @returns {Record<string, string | object>} keyed by path relative to `.pipeline/` */
+function inlinePipeline({ ticket = 'PL-99z', specStamp = DUMMY_SPEC_STAMP, changesFiles, includeChangesMd = true, includeChangesJson = true, includeTestResults = true, extra = {} } = {}) {
+  /** @type {Record<string, string | object>} */
+  const pipeline = terminalPassPipeline({
+    ticket,
+    changesFiles,
+    includeRed: false,
+    includeChanges: includeChangesJson,
+    specStamp: specStamp ?? undefined,
+  });
+  if (includeChangesMd) pipeline['changes.md'] = INLINE_CHANGES_MD;
+  if (includeTestResults) pipeline['test-results.md'] = INLINE_TEST_RESULTS_MD;
+  return { ...pipeline, ...extra };
+}
+
+const INLINE_ARGS = ['--inline', '--ticket', 'PL-99z', '--why-inline', INLINE_REASON];
+
+function runInline(root, args = INLINE_ARGS) {
+  return runLedgerAppendWithArgs(root, args);
+}
+
+/** The inline edit itself, as an uncommitted working-tree change for the run to MEASURE (never to be
+ * gated on — D-2: this lane has no mechanical size bound). */
+function inlineEditOnDisk(root, relPath = 'app/inline-change.ts', lines = 3) {
+  const dest = join(root, relPath);
+  mkdirSync(dirname(dest), { recursive: true });
+  writeFileSync(dest, `export const inlineEdit = ${lines};\n`.repeat(lines), 'utf8');
+  return relPath;
+}
+
+/** Asserts a refusal that could ONLY have come from the case under test — the same false-green guard
+ * `assertLiteRefusal` documents above, for the same reason: until `--inline` is a recognized flag,
+ * main()'s existing `assertKnownFlags` refuses it outright (non-zero exit, nothing written), so a
+ * bare "exited non-zero and wrote no run directory" pair passes today for a reason with nothing to do
+ * with the precondition the test claims to check. */
+function assertInlineRefusal(result, root, why) {
+  assert.notEqual(result.status, 0, why);
+  assert.doesNotMatch(
+    result.stderr,
+    /unrecognized argument "--inline"/,
+    `${why}: --inline must itself be a recognized flag — a refusal that happened only because the flag does not exist is not the refusal this case is about`,
+  );
+  assertNothingWritten(root, why);
+}
+
+// --- AC-11 / AC-16 / AC-17: the happy path, end to end -------------------------------------------
+
+// @spec AC-11 AC-16
+test('[inline] --inline writes an INLINE-tagged entry that reuses the security run\'s own id, files the stages that ran, and neither reads nor copies red.json', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  // AC-11: the run id is REUSED from findCompletedSecurityRun, never minted — an inline run has a
+  // real security-history run behind it, unlike a lite one.
+  assert.deepEqual(ledgerRunIds(root), [RUN_ID], 'the entry must land under security.json\'s own cited run id');
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+
+  assert.deepEqual(entryJson.verdicts, { review: 'PASS', security: 'PASS' },
+    'security genuinely ran on this lane — its verdict is the ordinary PASS, never a SKIPPED_* literal');
+  assert.equal(entryJson.securityRunId, RUN_ID, 'the entry still points at the immutable audit record for this run');
+  assert.equal(entryJson.bypass, false, 'an ordinary inline run passed both gates on its own — it is a disclosure, not a bypass');
+  assert.deepEqual(entryJson.overrides, []);
+  assert.equal(entryJson.regate, null);
+  assert.equal(entryJson.lite, null);
+  assert.ok(entryJson.filesTouched.includes('app/inline-change.ts'));
+
+  // AC-16: red.json is never read and never copied; the entry lists no red-test paths.
+  assert.deepEqual(entryJson.redTestPaths, []);
+  assert.ok(!existsSync(join(runDir, 'red.json')), 'the inline lane ran no red stage — copying a sidecar for it would manufacture evidence of one');
+
+  // The stages that DID run still have their artifacts filed, and the security audit copy is made
+  // (unlike lite, where there is nothing to copy).
+  for (const name of ['spec.md', 'spec.json', 'entry.md', 'entry.json', 'changes.json', 'review.json', 'security.json']) {
+    assert.ok(existsSync(join(runDir, name)), `expected .sdd/ledger/${RUN_ID}/${name} to be filed`);
+  }
+  for (const name of ['manifest.json', 'results.json', 'report.md']) {
+    assert.ok(existsSync(join(runDir, 'security', name)), `expected the immutable security/${name} copy — security really ran on this lane`);
+  }
+
+  // Indexed, not excluded: a real, ratified spec that both gates passed against the final tree.
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.ok(index['app/inline-change.ts']?.some((entry) => entry.runId === RUN_ID),
+    'an inline entry must still answer "which spec governs this file" — the spec really was ratified before the edit');
+});
+
+// @spec AC-11
+test('[inline] --inline relaxes no gate: a NEEDS_FIXES review.json, a BLOCKED security.json, a missing security-history run, and a results.json that disagrees are each still refused', () => {
+  const needsFixes = fixtureRepo({ pipeline: { ...inlinePipeline(), 'review.json': reviewJson('NEEDS_FIXES') } });
+  inlineEditOnDisk(needsFixes);
+  const needsFixesResult = runInline(needsFixes);
+  assertInlineRefusal(needsFixesResult, needsFixes, 'a NEEDS_FIXES review.json on the inline path');
+  assert.match(needsFixesResult.stderr, /NEEDS_FIXES/);
+
+  const blockedPipeline = inlinePipeline();
+  blockedPipeline['security.json'] = securityJson(RUN_ID, 'BLOCKED');
+  blockedPipeline[`security-history/${RUN_ID}/results.json`] = resultsJson(RUN_ID, 'BLOCKED');
+  const blocked = fixtureRepo({ pipeline: blockedPipeline });
+  inlineEditOnDisk(blocked);
+  const blockedResult = runInline(blocked);
+  assertInlineRefusal(blockedResult, blocked, 'a BLOCKED security.json on the inline path');
+  assert.match(blockedResult.stderr, /BLOCKED/);
+
+  // findCompletedSecurityRun still independently re-verifies the cited run — an inline disclosure is
+  // not a substitute for the audit record existing.
+  const noRunPipeline = inlinePipeline();
+  noRunPipeline['security.json'] = securityJson('some-other-run-id-not-on-disk', 'PASS');
+  const noRun = fixtureRepo({ pipeline: noRunPipeline });
+  inlineEditOnDisk(noRun);
+  const noRunResult = runInline(noRun);
+  assertInlineRefusal(noRunResult, noRun, 'a security.json citing a run id with no directory on disk');
+  assert.match(noRunResult.stderr, /some-other-run-id-not-on-disk/);
+
+  const disagreeingPipeline = inlinePipeline();
+  disagreeingPipeline[`security-history/${RUN_ID}/results.json`] = resultsJson(RUN_ID, 'BLOCKED');
+  const disagreeing = fixtureRepo({ pipeline: disagreeingPipeline });
+  inlineEditOnDisk(disagreeing);
+  const disagreeingResult = runInline(disagreeing);
+  assertInlineRefusal(disagreeingResult, disagreeing, 'a results.json that contradicts security.json\'s own claimed verdict');
+  assert.match(disagreeingResult.stderr, /not PASS/);
+});
+
+// @spec EC-9
+test('[inline] a STALE review.json or security.json is refused on the inline path, and is not bypassable by --inline or by an override', () => {
+  for (const [sidecar, contents] of /** @type {[string, object][]} */ ([
+    ['review.json', { verdict: 'PASS' }],
+    ['security.json', { verdict: 'PASS', runId: RUN_ID }],
+  ])) {
+    for (const extraArgs of [[], ['--override-review', 'Accepting the finding, but not the staleness.']]) {
+      const root = realGitignoreFixtureRepo({ pipeline: inlinePipeline() });
+      const staleStamp = buildStamp(root); // accurate for the clean tree, one moment before it moves on
+      writeFileSync(join(root, '.pipeline', sidecar), JSON.stringify({ ...contents, stamp: staleStamp }, null, 2), 'utf8');
+      // A later, never-gated edit lands on the tree — exactly the laundering refuseIfStale closes.
+      inlineEditOnDisk(root, 'app/never-gated.ts');
+
+      const result = runInline(root, [...INLINE_ARGS, ...extraArgs]);
+      assertInlineRefusal(result, root, `a STALE ${sidecar} (--inline ${extraArgs.join(' ')})`);
+      assert.match(result.stderr, new RegExp(`${sidecar.replace('.', '\\.')}'s stamp is STALE`));
+    }
+  }
+});
+
+// @spec EC-3
+test('[inline] the unconditional spec.json/spec.md agreement check fires on the inline path exactly as on every other — the --inline ticket check is not a replacement for it', () => {
+  const pipeline = { ...inlinePipeline({ ticket: 'PL-99z' }), 'spec.md': specMarkdown('PL-03h') };
+  const root = fixtureRepo({ pipeline });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root);
+  assertInlineRefusal(result, root, 'a spec.json/spec.md ticket disagreement on the inline path');
+  assert.match(result.stderr, /does not agree with .*spec\.md/,
+    'the agreement check, not the --inline --ticket cross-check, is what must fire here: --ticket agreeing with spec.json says nothing about spec.md, which is the file copied verbatim into the ledger');
+});
+
+// --- AC-12 / EC-8: the two lane collisions, refused before any .pipeline/ file is read ------------
+
+// @spec AC-12 EC-8
+test('[inline] --inline --lite and --inline --re-gate are each refused, with distinct messages, before any .pipeline/ file is read', () => {
+  // A fixture with NO .pipeline/ artifacts at all: if either refusal is ordered after the first
+  // sidecar read, the run fails with "review.json does not exist" instead, which is what this
+  // deliberately-empty fixture is here to detect. Placement is the assertion.
+  const withLite = fixtureRepo({ pipeline: {} });
+  const liteResult = runInline(withLite, [...INLINE_ARGS, '--lite']);
+  assertInlineRefusal(liteResult, withLite, '--inline --lite');
+  assert.match(liteResult.stderr, /--lite/);
+  assert.match(liteResult.stderr, /--inline/);
+  assert.doesNotMatch(liteResult.stderr, /review\.json does not exist/,
+    'the mutual-exclusion refusal must fire before any .pipeline/ file is read, so it can never be confused with a later check firing for an unrelated reason');
+
+  const withRegate = fixtureRepo({ pipeline: {} });
+  const regateResult = runInline(withRegate, [...INLINE_ARGS, '--re-gate', '--tester-ran', 'true']);
+  assertInlineRefusal(regateResult, withRegate, '--inline --re-gate');
+  assert.match(regateResult.stderr, /--re-gate/);
+  assert.match(regateResult.stderr, /--inline/);
+  assert.doesNotMatch(regateResult.stderr, /review\.json does not exist/);
+
+  assert.notEqual(liteResult.stderr, regateResult.stderr,
+    'the two refusals must be distinct messages naming why the lanes differ — one shared "flags conflict" string tells a caller nothing about which lane they actually want');
+});
+
+// --- AC-13 / EC-1 / EC-2: --ticket, the mechanically-checkable half of "spec-first, forced" -------
+
+// @spec AC-13 EC-1
+test('[inline] --inline without --ticket is refused, naming the flag and stating it is the caller\'s own assertion', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root, ['--inline', '--why-inline', INLINE_REASON]);
+  assertInlineRefusal(result, root, '--inline with no --ticket');
+  assert.match(result.stderr, /--ticket/);
+  assert.ok(
+    /assert/i.test(result.stderr) || /caller/i.test(result.stderr) || /spec\.json/.test(result.stderr),
+    'the refusal must say the value is the caller\'s own assertion, never derived from spec.json — deriving it from the file it is meant to check is the circularity /re-gate already warns about',
+  );
+
+  // A flag-shaped or empty value is refused the same way, rather than guessed at.
+  const flagShaped = runInline(root, ['--inline', '--ticket', '--why-inline', INLINE_REASON]);
+  assertInlineRefusal(flagShaped, root, '--inline --ticket with a flag-shaped value');
+  assert.match(flagShaped.stderr, /--ticket/);
+});
+
+// @spec AC-13 EC-2
+test('[inline] --inline --ticket that does not match spec.json\'s own ticket is refused, and says a fabricated --ticket is not the fix', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline({ ticket: 'PL-99z' }) });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root, ['--inline', '--ticket', 'PL-05', '--why-inline', INLINE_REASON]);
+  assertInlineRefusal(result, root, '--inline --ticket naming a different ticket than spec.json');
+  assert.match(result.stderr, /PL-05/, 'the refusal must name the asserted ticket');
+  assert.match(result.stderr, /PL-99z/, 'and the one spec.json actually describes');
+  assert.ok(
+    /ratif/i.test(result.stderr) || /planner/i.test(result.stderr) || /author/i.test(result.stderr),
+    'and must point at the real fix (ratify the correct spec first) rather than leaving "retry with a different --ticket" as the obvious next move',
+  );
+});
+
+// @spec AC-13
+test('[inline] --ticket supplied with neither --re-gate nor --inline still fails, with the message widened to name both', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(root);
+
+  const result = runLedgerAppendWithArgs(root, ['--ticket', 'PL-99z']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--ticket/);
+  assert.match(result.stderr, /--re-gate/);
+  assert.match(result.stderr, /--inline/,
+    '--ticket is now legal on two lanes, so the "given without --re-gate" refusal must name both rather than sending an inline caller to the wrong lane');
+  assertNothingWritten(root, '--ticket with neither lane flag');
+});
+
+// --- AC-14 / EC-7: --why-inline, the disclosure requirement --------------------------------------
+
+// @spec AC-14 EC-7
+test('[inline] --why-inline is required, fails closed on every empty/flag-shaped form, and is recorded verbatim when supplied', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(root);
+
+  for (const args of [
+    ['--inline', '--ticket', 'PL-99z'],                                  // absent entirely
+    ['--inline', '--ticket', 'PL-99z', '--why-inline'],                  // present with no value
+    ['--inline', '--ticket', 'PL-99z', '--why-inline', ''],              // empty
+    ['--inline', '--ticket', 'PL-99z', '--why-inline', '   '],           // whitespace-only
+    ['--inline', '--why-inline', '--ticket', 'PL-99z'],                  // immediately followed by another flag
+  ]) {
+    const result = runInline(root, args);
+    assertInlineRefusal(result, root, `--why-inline as: ${JSON.stringify(args)}`);
+    assert.match(result.stderr, /--why-inline/, `${JSON.stringify(args)}: the refusal must name the flag — "no reason, no inline entry"`);
+  }
+
+  // ...and the supplied reason reaches both renderings, verbatim.
+  const ok = runInline(root);
+  assert.equal(ok.status, 0, ok.stderr);
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.inline.reason, INLINE_REASON, 'the reason is recorded verbatim — not summarized, normalized, or truncated');
+  assert.ok(readFileSync(join(runDir, 'entry.md'), 'utf8').includes(INLINE_REASON),
+    'and rendered in the human-facing entry, where a reader will actually meet it');
+});
+
+// --- AC-15 / EC-4 / EC-5 / EC-6: the inline-specific preconditions -------------------------------
+
+// @spec AC-15 EC-4
+test('[inline] an unstamped .pipeline/spec.json is refused, with the inline-specific reason in the message', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline({ specStamp: null }) });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root);
+  assertInlineRefusal(result, root, 'an unstamped spec.json on the inline path');
+  assert.match(result.stderr, /stamp/);
+  assert.match(result.stderr, /spec\.json/);
+  assert.match(result.stderr, /(?:inline|dev)/i,
+    'the message must carry the inline-specific clause: there is no `dev` stage on this lane whose own procedure guarantees a freshly-written sidecar');
+});
+
+// @spec AC-15 EC-5
+test('[inline] a missing .pipeline/changes.md or .pipeline/changes.json is refused, naming which one and why this lane requires it', () => {
+  const noChangesMd = fixtureRepo({ pipeline: inlinePipeline({ includeChangesMd: false }) });
+  inlineEditOnDisk(noChangesMd);
+  const mdResult = runInline(noChangesMd);
+  assertInlineRefusal(mdResult, noChangesMd, 'a missing changes.md');
+  assert.match(mdResult.stderr, /changes\.md/);
+  assert.match(mdResult.stderr, /dev/i, 'the refusal must say why: there is no `dev` stage on this lane that would have written it');
+
+  const noChangesJson = fixtureRepo({ pipeline: inlinePipeline({ includeChangesJson: false }) });
+  inlineEditOnDisk(noChangesJson);
+  const jsonResult = runInline(noChangesJson);
+  assertInlineRefusal(jsonResult, noChangesJson, 'a missing changes.json');
+  assert.match(jsonResult.stderr, /changes\.json/,
+    'changes.json is optional on the plain path (a run that predates the sidecar) but required here — the editor writes it themselves, and nothing else records what they touched');
+});
+
+// @spec AC-15 EC-6
+test('[inline] a missing .pipeline/test-results.md is refused — tester is mandatory on this lane', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline({ includeTestResults: false }) });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root);
+  assertInlineRefusal(result, root, 'a missing test-results.md');
+  assert.match(result.stderr, /test-results\.md/);
+  assert.match(result.stderr, /tester/i,
+    'the refusal must name which stage has to run first — this lane already gives up `red`, so making `tester` optional too would leave the change with no test gate at all');
+});
+
+// --- AC-16 / EC-11: red never ran, and the entry says exactly that -------------------------------
+
+// @spec AC-16 EC-11
+test('[inline] a leftover red.json is never read, never copied, and never contributes to redTestPaths — and the red-absence note is this lane\'s own, not the plain path\'s disjunction', () => {
+  const pipeline = { ...inlinePipeline(), 'red.json': redJson(['scripts/left-over-from-another-ticket.test.mjs']) };
+  const root = fixtureRepo({ pipeline });
+  inlineEditOnDisk(root);
+
+  const result = runInline(root);
+  assert.equal(result.status, 0, `${result.stderr}\n(a leftover red.json must not REFUSE the run: a genuine same-round red.json is indistinguishable from a leftover at ledger time, which the lane records as an honest limit rather than papering over with a check that cannot work)`);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  assert.ok(!existsSync(join(runDir, 'red.json')), 'copying it would file evidence of a stage that never ran this round');
+
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.redTestPaths, []);
+  assert.ok(!readFileSync(join(runDir, 'entry.md'), 'utf8').includes('scripts/left-over-from-another-ticket.test.mjs'));
+
+  assert.match(entryJson.redAbsenceNote, /inline/i, 'the note must name this lane specifically');
+  assert.ok(!/predates/i.test(entryJson.redAbsenceNote),
+    'the plain path\'s "either it predates the red stage or it genuinely produced nothing" disjunction has both branches false here — writing it would be a known-false sentence in an append-only record');
+  assert.equal(entryJson.redAbsenceNote, ledgerAppendExports.INLINE_RED_ABSENCE_NOTE,
+    'and it must come from the exported constant, so entry.json can never drift from what .sdd/ledger/README.md documents');
+});
+
+// --- AC-17 / AC-18: the disclosure itself ---------------------------------------------------------
+
+// @spec AC-17
+test('[inline] entry.json carries inline: { skippedStages, reason, note, size }, derived from exported constants, and the key is null on every other run', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(root);
+  const result = runInline(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.deepEqual(Object.keys(entryJson.inline).sort(), ['note', 'reason', 'size', 'skippedStages']);
+  assert.deepEqual(entryJson.inline.skippedStages, ['red', 'dev'],
+    '`dev` is listed because the STAGE did not run — not because no implementation happened; the implementation was made directly, inline');
+  assert.deepEqual(entryJson.inline.skippedStages, ledgerAppendExports.INLINE_SKIPPED_STAGES,
+    'derived from the exported constant, never re-typed per call site');
+  assert.equal(entryJson.inline.note, ledgerAppendExports.INLINE_NOTE);
+  assert.equal(typeof entryJson.inline.note, 'string');
+  assert.ok((entryJson.inline.note ?? '').length > 0);
+  assert.deepEqual(Object.keys(entryJson.inline.size).sort(), ['changedLines', 'fileCount', 'maxLineLength', 'unsizable']);
+
+  // The note has to say what the lane actually gave up, not merely that it was taken.
+  assert.match(entryJson.inline.note, /\bred\b/, 'the note must name the red stage');
+  assert.match(entryJson.inline.note, /\bdev\b/, 'and the dev stage');
+  assert.ok(/self-report/i.test(entryJson.inline.note) || /editor's own/i.test(entryJson.inline.note),
+    'and that changes.md/changes.json are the editor\'s own self-report rather than a separate agent\'s');
+  assert.ok(/security/i.test(entryJson.inline.note) && /review/i.test(entryJson.inline.note),
+    'while stating what DID run in full — a disclosure that only lists losses misrepresents this lane as heavier than it is');
+
+  // Neither half is caller-supplied: there is no flag to set either. Each case gets its own fresh
+  // root (rather than reusing `root` above, which already holds the successful run's own RUN_ID
+  // directory from the assertions just above) — assertInlineRefusal's assertNothingWritten checks
+  // that THIS invocation wrote no run directory at all, which a root already carrying an earlier,
+  // legitimate entry could never satisfy regardless of how --skipped-stages/--inline-note are handled.
+  for (const args of [['--skipped-stages', 'red'], ['--inline-note', 'nothing to see here']]) {
+    const freshRoot = fixtureRepo({ pipeline: inlinePipeline() });
+    inlineEditOnDisk(freshRoot);
+    const result = runInline(freshRoot, [...INLINE_ARGS, ...args]);
+    assertInlineRefusal(result, freshRoot, `${args[0]} must not be accepted`);
+    assert.match(result.stderr, new RegExp(`unrecognized argument "${args[0]}"`));
+  }
+
+  // ...and the key is always present, explicitly null, on a run that did not take this lane.
+  const plain = fixtureRepo({ pipeline: terminalPassPipeline() });
+  assert.equal(runLedgerAppend(plain).status, 0);
+  const plainEntry = JSON.parse(readFileSync(join(plain, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.ok('inline' in plainEntry, 'the field is always present — an absent key and a null one are different claims, and only one of them is "this run did not take that lane"');
+  assert.equal(plainEntry.inline, null);
+  assert.ok(!readFileSync(join(plain, '.sdd', 'ledger', RUN_ID, 'entry.md'), 'utf8').includes('(INLINE)'));
+});
+
+// @spec AC-18
+test('[inline] entry.md is titled "(INLINE)" and carries a "## Inline edit" section immediately after "## Verdicts", rendering the note verbatim plus the stages, reason, and measured size', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(root);
+  const result = runInline(root);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+
+  assert.match(entry, /^# Ledger entry — .+\(INLINE\)/m,
+    'a bare, clean-looking title is indistinguishable at a glance from a full six-stage run — which is exactly what this entry is not');
+
+  const verdictsIdx = entry.indexOf('## Verdicts');
+  const inlineIdx = entry.indexOf('## Inline edit');
+  assert.ok(verdictsIdx !== -1, 'entry.md must still carry ## Verdicts');
+  assert.ok(inlineIdx > verdictsIdx, 'entry.md must carry a ## Inline edit section after ## Verdicts');
+  const between = entry.slice(verdictsIdx + '## Verdicts'.length, inlineIdx);
+  assert.ok(!/^## /m.test(between),
+    '## Inline edit must sit IMMEDIATELY after ## Verdicts — the same slot ## Lite lane/## Re-gate claim; a reader must not have to scroll past other sections to learn two stages never ran');
+
+  const inlineSection = entry.slice(inlineIdx);
+  assert.ok(inlineSection.includes(entryJson.inline.note),
+    'entry.md must carry the same fixed disclosure note entry.json records, verbatim — two renderings of one fact cannot be allowed to drift');
+  assert.match(inlineSection, /\bred\b/);
+  assert.match(inlineSection, /\bdev\b/);
+  assert.ok(inlineSection.includes(INLINE_REASON));
+  assert.ok(inlineSection.includes(String(entryJson.inline.size.changedLines)),
+    'the measured size belongs in the human-facing entry too — it is the whole substitute for a mechanical size bound on this lane');
+
+  assert.match(entry, /## Security run ID[\s\S]{0,200}20260803T120000000Z/,
+    'unlike a lite entry, this one really does point at an immutable audit record');
+});
+
+// @spec EC-10
+test('[inline] a non-PASS gate accepted via --override-* composes with the inline disclosure: (INLINE) (OVERRIDE), bypass true, excluded from index.json, inline object intact', () => {
+  const pipeline = { ...inlinePipeline({ changesFiles: ['app/still-nitty.ts'] }), 'review.json': reviewJson('NEEDS_FIXES') };
+  const root = fixtureRepo({ pipeline });
+  inlineEditOnDisk(root, 'app/still-nitty.ts');
+
+  const result = runInline(root, [...INLINE_ARGS, '--override-review', 'A style nit accepted on purpose; the fix itself is one line.']);
+  assert.equal(result.status, 0, result.stderr);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.bypass, true, 'the override, not the inline lane, is what drives bypass here');
+  assert.equal(entryJson.overrides.length, 1);
+  assert.deepEqual(entryJson.inline.skippedStages, ['red', 'dev'], 'the inline disclosure survives alongside the override, orthogonally');
+  assert.equal(entryJson.inline.reason, INLINE_REASON, 'and is not overwritten by the override\'s own, different reason');
+  assert.deepEqual(entryJson.verdicts, { review: 'NEEDS_FIXES', security: 'PASS' });
+
+  const index = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', 'index.json'), 'utf8'));
+  assert.equal(index['app/still-nitty.ts'], undefined, 'an overridden run must never answer "which spec governs this file"');
+
+  const entry = readFileSync(join(runDir, 'entry.md'), 'utf8');
+  assert.match(entry, /^# Ledger entry — .+\(INLINE\) \(OVERRIDE\)/m, 'the markers compose in the documented (RE-GATE)(INLINE)(LITE)(OVERRIDE) order');
+});
+
+// --- AC-19 / EC-13 / EC-14: the size is measured for disclosure, and gates nothing ---------------
+
+// @spec AC-19
+test('[inline] a change far past every lite bound — file count, changed lines, line length, and a barred path — is recorded, not refused: the measurement gates nothing', () => {
+  const root = fixtureRepo({ pipeline: inlinePipeline() });
+  for (let i = 0; i < 7; i++) inlineEditOnDisk(root, `app/change-${i}.ts`, 30);
+  // A path in the lite lane's barred union, and a single ~2,000-character line: both would refuse a
+  // --lite run outright. On this lane `security` genuinely ran over them, so importing that gate
+  // would be a bound reasoned from a premise that does not hold here (D-2).
+  inlineEditOnDisk(root, 'services/core/src/services/technicalTreeService.ts', 4);
+  const longLine = join(root, 'app', 'shaped.ts');
+  writeFileSync(longLine, `export const shaped = "${'x'.repeat(2000)}";\n`, 'utf8');
+
+  const result = runInline(root);
+  assert.equal(result.status, 0, `${result.stderr}\n(the inline lane has NO mechanical size bound — a refusal here means lite's bounds were imported onto a lane whose justification for them does not hold)`);
+
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.equal(entryJson.inline.size.fileCount, 9, 'the recorded file count is the same touched-file set the entry reports, not a second, independently-derived list');
+  assert.equal(entryJson.inline.size.fileCount, entryJson.filesTouched.length);
+  assert.ok(entryJson.inline.size.changedLines > 150,
+    'a change well past max_changed_lines is recorded with its real number — "how big were the changes that skipped red?" must have an answer');
+  assert.ok(entryJson.inline.size.maxLineLength >= 2000, 'and the longest line, which a line count alone would hide');
+  assert.deepEqual(entryJson.inline.size.unsizable, []);
+});
+
+// @spec AC-19 EC-13
+test('[inline] a measurement that cannot be taken records size: null and prints a note, rather than refusing a legitimate record or silently omitting the field', () => {
+  // No git at all: countChangedLines/maxChangedLineLength shell out to git, so both throw here.
+  // filesTouched already tolerates this (it falls back to changes.json), which is what makes the
+  // run otherwise legitimate — the ONLY thing that fails is the disclosure measurement.
+  const root = fixtureRepo({ pipeline: inlinePipeline({ changesFiles: ['app/inline-change.ts'] }), git: false });
+  const notARepo = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: root, encoding: 'utf8' });
+  assert.notEqual(notARepo.status, 0,
+    'fixture premise: this fixture must NOT be a git repository, or the measurement failure it exists to construct never happens');
+
+  const result = runInline(root);
+  assert.equal(result.status, 0, `${result.stderr}\n(measurement is disclosure, never a gate — a failed measurement must not fail closed into refusing a legitimate record)`);
+
+  const runDir = join(root, '.sdd', 'ledger', RUN_ID);
+  const entryJson = JSON.parse(readFileSync(join(runDir, 'entry.json'), 'utf8'));
+  assert.ok('size' in entryJson.inline, 'the field is present and explicitly null — silently omitting it would read as "not applicable" rather than "could not be measured"');
+  assert.equal(entryJson.inline.size, null);
+  assert.match(`${result.stdout}${result.stderr}`, /(?:size|measure)/i, 'a measurement that quietly failed is exactly the kind of decision this pipeline prints instead');
+
+  const inlineSection = readFileSync(join(runDir, 'entry.md'), 'utf8').split('## Inline edit')[1] ?? '';
+  assert.match(inlineSection, /(?:could not be measured|not measured|unmeasured)/i,
+    'entry.md must say so explicitly — a missing number in a disclosure section reads as zero');
+});
+
+// @spec EC-14
+test('[inline] a binary (or otherwise unsizable) file in the change is recorded in size.unsizable, so changedLines is never read as a complete count', () => {
+  // A committed binary asset, then modified: `git diff --numstat` reports "-\t-" for it, which is the
+  // one shape a line count genuinely cannot represent.
+  const root = fixtureRepo({ pipeline: inlinePipeline(), git: false });
+  const binaryPath = join(root, 'app', 'icon.bin');
+  mkdirSync(dirname(binaryPath), { recursive: true });
+  writeFileSync(binaryPath, Buffer.from([0, 1, 2, 3, 0, 255, 7, 0, 9]));
+  initGit(root);
+  commitAll(root, 'initial fixture state, with a committed binary asset');
+  writeFileSync(binaryPath, Buffer.from([0, 9, 8, 7, 0, 6, 5, 4, 3, 0, 1]));
+  inlineEditOnDisk(root, 'app/inline-change.ts');
+
+  const result = runInline(root);
+  assert.equal(result.status, 0, `${result.stderr}\n(an unsizable file is disclosed, never a refusal — this lane has no size gate for it to fail)`);
+
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.notEqual(entryJson.inline.size, null, 'one unsizable path does not make the whole measurement unavailable');
+  assert.ok(entryJson.inline.size.unsizable.includes('app/icon.bin'),
+    'the path must be named, so a reader knows changedLines is a floor rather than a complete count');
+  assert.ok(entryJson.inline.size.fileCount >= 2, 'and it still counts toward the file count — it was genuinely touched');
+});
+
+// --- EC-12 / EC-15: the shared checks, re-asserted ON the inline branch ---------------------------
+
+// @spec EC-12
+test('[inline] a clean tree at ledger time falls back to changes.json\'s filesChanged, and an empty filesChanged against a clean tree still fails loudly', () => {
+  // fixtureRepo committed everything, so `git diff`/`ls-files --others` come up empty — the inline
+  // edit was committed before the ledger step, which is an ordinary way to finish this lane.
+  const root = fixtureRepo({ pipeline: inlinePipeline({ changesFiles: ['app/already-committed-fix.ts', 'docs/note.md'] }) });
+  const result = runInline(root);
+  assert.equal(result.status, 0, result.stderr);
+  const entryJson = JSON.parse(readFileSync(join(root, '.sdd', 'ledger', RUN_ID, 'entry.json'), 'utf8'));
+  assert.deepEqual(entryJson.filesTouched, ['app/already-committed-fix.ts', 'docs/note.md']);
+
+  const empty = fixtureRepo({ pipeline: { ...inlinePipeline(), 'changes.json': { filesChanged: [], redTestChanges: [] } } });
+  const emptyResult = runInline(empty);
+  assertInlineRefusal(emptyResult, empty, 'an empty filesChanged against a clean tree');
+  assert.match(emptyResult.stderr, /"filesChanged" is empty/,
+    'unchanged by this lane: a change nobody can name is not a change this script will record');
+});
+
+// @spec EC-15
+test('[inline] an existing .sdd/ledger/<runId>/ is never overwritten on the inline path — including one that holds only a security/ subdirectory', () => {
+  const full = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(full);
+  const fullRunDir = join(full, '.sdd', 'ledger', RUN_ID);
+  mkdirSync(fullRunDir, { recursive: true });
+  writeFileSync(join(fullRunDir, 'entry.md'), 'PRE-EXISTING, MUST NOT BE OVERWRITTEN\n', 'utf8');
+
+  const fullResult = runInline(full);
+  assert.notEqual(fullResult.status, 0);
+  assert.doesNotMatch(fullResult.stderr, /unrecognized argument "--inline"/);
+  assert.match(fullResult.stderr, /already exists/);
+  assert.equal(readFileSync(join(fullRunDir, 'entry.md'), 'utf8'), 'PRE-EXISTING, MUST NOT BE OVERWRITTEN\n');
+
+  const partial = fixtureRepo({ pipeline: inlinePipeline() });
+  inlineEditOnDisk(partial);
+  const securityDir = join(partial, '.sdd', 'ledger', RUN_ID, 'security');
+  mkdirSync(securityDir, { recursive: true });
+  writeFileSync(join(securityDir, 'manifest.json'), 'PRE-EXISTING\n', 'utf8');
+
+  const partialResult = runInline(partial);
+  assert.notEqual(partialResult.status, 0);
+  assert.doesNotMatch(partialResult.stderr, /unrecognized argument "--inline"/);
+  assert.match(partialResult.stderr, /already exists — refusing to overwrite an existing ledger entry/);
+  assert.equal(readFileSync(join(securityDir, 'manifest.json'), 'utf8'), 'PRE-EXISTING\n',
+    'copySecurityHistoryIntoLedger\'s own guard is behind this one, and neither may be reached past the other on this lane');
 });

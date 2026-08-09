@@ -424,6 +424,75 @@ itself force `bypass: true`, since there is nothing to have failed on that gate)
 other override — the lite disclosure survives on the entry regardless, orthogonal to the override the
 same way `regate` and an override already compose freely.
 
+## Inline-edit entries (PL-12, `/inline-edit`)
+
+`scripts/ledger-append.mjs --inline --ticket <id> --why-inline "<reason>"` writes a normal,
+**non-bypass** entry — see `.sdd/pipeline.md`'s `/inline-edit` section for the full lane (a spec-first
+gate → a direct, in-session edit, no `dev` subagent → editor-authored `changes.md`/`changes.json` →
+`tester` → `review` → `security` → this step, deliberately skipping `red` and `dev`) and the
+preconditions this command re-checks before writing anything — modeled as closely as possible on
+`--re-gate`: a **disclosure-only** marker on the plain path that relaxes no gate at all.
+
+**Indexed, not excluded** — the same reasoning this file already gives for a `--re-gate` or `--lite`
+entry, above. An inline run has a real, ratified `spec.md`/`spec.json` that `review` genuinely passed
+against the final tree, and — unlike the lite lane — `security` genuinely ran and passed against it
+too. Excluding it, the way a `--hotfix`/override entry is excluded, would answer "which spec governs
+this file" with silence when a real, reviewed, ratified spec exists — the opposite of what that
+exclusion is for (a run whose spec was never ratified, or whose final verdict was not `PASS`,
+genuinely has nothing to point at).
+
+`entry.json`'s exact shape for an inline run:
+
+```json
+{
+  "verdicts": { "review": "PASS", "security": "PASS" },
+  "bypass": false,
+  "regate": null,
+  "lite": null,
+  "inline": {
+    "skippedStages": ["red", "dev"],
+    "reason": "<the caller's own --why-inline reason, verbatim>",
+    "note": "<the fixed inline disclosure sentence>",
+    "size": { "fileCount": 3, "changedLines": 84, "maxLineLength": 118, "unsizable": [] }
+  },
+  "redTestPaths": [],
+  "securityRunId": "<the security run this run's PASS came from>"
+}
+```
+
+`skippedStages` is always `["red", "dev"]` — `dev` is listed because the STAGE did not run, not
+because no implementation happened; the implementation was made directly, inline. `size` is `null`
+when it could not be measured (git unavailable, an unresolvable ref, an unreadable file) — measurement
+is disclosure only, and a failed one must never block an otherwise-legitimate entry.
+
+`entry.md`'s title reads `# Ledger entry — <runId> (INLINE)` (markers compose `(RE-GATE)(INLINE)(LITE)
+(OVERRIDE)`, in that order, when more than one applies — though only `(INLINE)` and `(INLINE)
+(OVERRIDE)` can actually occur, since `--inline` refuses composition with `--lite`/`--re-gate`), and
+carries a `## Inline edit` section, placed immediately after `## Verdicts` (the same slot `## Lite
+lane`/`## Re-gate` claim — all three are mutually exclusive), rendering the fixed disclosure note
+verbatim, the skipped stages, the reason, and the measured size (or an explicit "could not be
+measured" line). `## Security run ID` renders normally, unlike a lite entry — `security` genuinely ran
+on this lane.
+
+**`index.json`** carries the same disclosure, condensed the same way `regate: { testerRan }` and
+`lite: { skippedStages }` already are: every record `build-ledger-index.mjs`'s `buildIndex()` writes
+for an inline run's files gets an additional `"inline": { "skippedStages": [...] }` field alongside
+`runId`/`ticket`/`date`/`spec` — small on purpose, so a reader following the fast path (buggy file →
+`index.json`) sees the attribution is qualified without a second hop into `entry.json`. Absent
+entirely (not `null`) from every non-inline run's records.
+
+The verdicts gate is **unchanged** by this lane: an inline entry's `verdicts` is the ordinary
+byte-for-byte `{ "review": "PASS", "security": "PASS" }` — `inline` is not a widening case the way
+`lite`'s `SKIPPED_LITE` is, because `security` genuinely ran here.
+
+**What an inline entry structurally lacks**, compared to a normal completed run: **no `red.json`** —
+a leftover one on disk is never read and never copied into the run directory, and never contributes to
+`redTestPaths`, the same reasoning this file's "Lite-lane entries" section above already gives for its
+own leftover `red.json`: copying one would manufacture evidence of a stage that never ran this round.
+`spec.md`/`spec.json`/`changes.json`/`review.json`/`security.json` and the `security/` audit-history
+copy are all copied exactly as for a normal run — unlike the lite lane, this one really did produce a
+security run.
+
 ## The query path: buggy file → spec that mandated it
 
 ```
