@@ -23,6 +23,34 @@ When documentation and the checked-out implementation disagree about an executab
 path, verify against the files on disk and report the mismatch; do not invent missing scripts or
 directories.
 
+## Secret paths — `.agentignore`
+
+`.agentignore` lists the paths no agent may read or write. It is runtime-neutral, uses gitignore
+pattern syntax, and is the **only** source for the `Read()`/`Edit()` entries in
+`.claude/settings.json`'s `permissions.deny` — `npm run generate:agent-ignore` regenerates them and
+CI's `npm run check:agent-ignore` fails if the two have drifted. Add a secret path there, never to
+the settings file directly.
+
+Be precise about what this does and does not buy you, because the difference is the whole point:
+
+- **Claude Code enforces it.** The generated deny rules are applied by Claude Code itself, not by
+  the model, so no prompt or instruction can talk its way past them. They cover the built-in file
+  tools and the file commands Claude Code recognizes in Bash (`cat`, `head`, `tail`, `sed`).
+- **They do not cover arbitrary subprocesses.** A Node or Python script that opens the file itself
+  is outside this mechanism. For an OS-level boundary, that needs sandboxing, which this repo does
+  not currently enable.
+- **No other runtime reads `.agentignore` today.** There is no `.claudeignore`, and Codex/Cursor
+  have no equivalent this file plugs into. For every runtime except Claude Code, treat it as a
+  declaration of intent, not a control — and act accordingly when working in one.
+- **Deny rules cannot carry exceptions.** A leading `!` enforces nothing (verified, not assumed),
+  which is why the patterns are written narrowly enough to never match a tracked, placeholder-only
+  `.env.example`. Those templates stay readable on purpose; onboarding depends on them. The
+  consequence is that a secret-bearing `.env.<name>` outside the listed forms is not covered —
+  `.gitignore` still stops it being committed, but an agent could read it.
+
+Secret *values* are governed separately and more strictly: see `SECRETS.md` for the closed catalog
+of secret names, and `.claude/rules/security-multitenancy.md` for the never-log/never-commit rules.
+
 ## Repo shape
 
 **Both of these are true at once, not either/or:** the repository root is a Vite/React marketing

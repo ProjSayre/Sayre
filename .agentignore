@@ -1,0 +1,40 @@
+# Paths no coding agent may read or write.
+#
+# Runtime-neutral, gitignore pattern syntax. This file is the ONLY source for the
+# Read()/Edit() entries in .claude/settings.json's permissions.deny — regenerate with
+# `npm run generate:agent-ignore`, verify with `npm run check:agent-ignore` (CI runs it).
+# Editing the settings file by hand will be reverted by the next regeneration.
+#
+# Scope: secrets only. This is not a "don't look here" list for noisy or large files —
+# every entry here is a path whose CONTENTS are credential material.
+#
+# Two limits worth knowing before you trust this file (see AGENTS.md § Secret paths):
+#
+# 1. Deny rules cannot carry exceptions. Claude Code evaluates deny before allow and a
+#    leading `!` does not exempt anything — verified empirically, not assumed. So the
+#    patterns below must never match a placeholder template: `.env.*` is deliberately
+#    NOT listed, because it would swallow the tracked, placeholder-only `.env.example`
+#    files that onboarding depends on reading. The cost is that a secret-bearing
+#    `.env.<name>` outside the forms below is not covered here — .gitignore still stops
+#    it being committed, but an agent could read it.
+#
+# 2. Enforcement is per-runtime. Claude Code enforces this file (generated into
+#    permissions.deny). No other agent runtime reads it today. For those, it is a
+#    declaration, not a control.
+
+# Local environment files holding resolved secret values.
+# `.env.example` templates are intentionally NOT matched — they are placeholder-only,
+# tracked, and required reading for onboarding.
+.env
+.env.local
+.env.*.local
+
+# Key material — GitHub App private keys, TLS material, signing keys.
+*.pem
+*.key
+
+# infra/ scratch files. .gitignore allowlists this directory rather than denylisting it
+# because secret-bearing scratch files here have repeatedly been named things no pattern
+# catches (a stray "New Text Document.txt" is present as of 2026-08-05). infra/ holds no
+# legitimate .txt, so denying the extension outright costs nothing.
+infra/*.txt
