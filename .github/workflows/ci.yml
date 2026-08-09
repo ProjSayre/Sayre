@@ -167,6 +167,16 @@ jobs:
       - name: Checker read-only guard — tests
         run: npm run test:readonly-guard
 
+      # W0-00's two suites, brought over unwired by PR #78 (main's older sdd-completeness
+      # didn't require wiring; this branch's PL-11-era assertion does — PL-14).
+      # dependency-install re-runs `npm ci` at the repo root (clean-state by design); its
+      # Poetry half self-skips on this runner (no poetry on PATH) — see PL-14 spec EC-5.
+      - name: Dependency baseline — tests
+        run: npm run test:dependency-baseline
+
+      - name: Dependency install — tests
+        run: npm run test:dependency-install
+
       # PL-04 / item 4: the root tsconfig.json's "include" is ["src"] only, so `npx tsc --noEmit`
       # (the config — typecheck / web — typecheck / core — typecheck steps below) has never checked
       # anything under scripts/ — every "tsc clean" this pipeline tooling reported was vacuous for

@@ -41,6 +41,8 @@
     "check:lite-eligible": "node scripts/check-lite-eligible.mjs",
     "test:lite-eligible": "node --test scripts/check-lite-eligible.test.mjs",
     "test:readonly-guard": "node --test scripts/guard-checker-readonly.test.mjs",
+    "test:dependency-baseline": "node --test scripts/dependency-baseline.test.mjs",
+    "test:dependency-install": "node --test scripts/dependency-install.test.mjs",
     "typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "dev:workspaces": "turbo run dev --parallel",
     "build:workspaces": "turbo run build",

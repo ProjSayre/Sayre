@@ -107,6 +107,18 @@
       "ticket": "PL-11",
       "date": "2026-08-08",
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
+    },
+    {
+      "runId": "20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3",
+      "ticket": "PL-14",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3/spec.md",
+      "inline": {
+        "skippedStages": [
+          "red",
+          "dev"
+        ]
+      }
     }
   ],
   ".gitignore": [
@@ -743,6 +755,18 @@
       "ticket": "PL-11",
       "date": "2026-08-08",
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
+    },
+    {
+      "runId": "20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3",
+      "ticket": "PL-14",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3/spec.md",
+      "inline": {
+        "skippedStages": [
+          "red",
+          "dev"
+        ]
+      }
     }
   ],
   "scripts/build-ledger-index.mjs": [
@@ -897,6 +921,18 @@
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3",
+      "ticket": "PL-14",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T081650273Z-951bb3dc4c0c-PR_DELTA-7d64c3/spec.md",
+      "inline": {
+        "skippedStages": [
+          "red",
+          "dev"
+        ]
+      }
     }
   ],
   "scripts/tsconfig.json": [

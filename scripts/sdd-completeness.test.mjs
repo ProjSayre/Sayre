@@ -1386,24 +1386,35 @@ test('[inline] coverage and wiring: [inline]-tagged cases in the three existing 
   assert.deepEqual(untrackedScripts, [],
     'PL-12 adds flags to two existing scripts; a new scripts/ file would need package.json/ci.yml/tsconfig wiring this ticket states it does not need');
 
-  const changed = execFileSync('git', ['diff', '--name-only', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' })
-    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  for (const path of [
-    'package.json',
-    '.github/workflows/ci.yml',
-    'scripts/tsconfig.json',
-    '.sdd/runtimes.yml',
-    '.sdd/bounds.yml',
-    '.sdd/bounds.md',
-    '.sdd/hotfix.md',
-    'scripts/check-lite-eligible.mjs',
-    'scripts/check-bounds.mjs',
-    'scripts/pipeline-contracts.mjs',
-  ]) {
-    assert.ok(!changed.includes(path), `${path} must be untouched by PL-12 — see spec.md's "Files deliberately not touched"`);
-  }
-  assert.ok(!changed.some((file) => file.startsWith('.claude/agents/')),
-    '.claude/agents/** must be untouched — /inline-edit is an entry point that composes existing stages, not a new stage');
+  // CONVERTED from a `git diff --name-only HEAD` loop (PL-14 / A1): a live-diff assertion was a
+  // correct pin only during PL-12's own run — as a permanent test it failed on ANY later,
+  // legitimate uncommitted edit to these files, while gating nothing in CI (clean checkout ⇒ empty
+  // diff). These content assertions pin the same facts by keying on tokens unique to PL-12's
+  // feature — the exact pattern the docs/PRD_Tickets.md clauses below already document. Whether an
+  // unrelated ticket may touch these files is that ticket's own review/bounds question, not this
+  // test's (PL-14 spec EC-9).
+  assert.ok(!Object.entries(JSON.parse(read('package.json')).scripts).some(([k, v]) => k.includes('inline') || String(v).includes('inline')),
+    'package.json must carry no inline-edit script (key or value) — /inline-edit needed no wiring (PL-12)');
+  assert.doesNotMatch(read('.github/workflows/ci.yml'), /npm run [\w:-]*inline/,
+    'ci.yml must carry no inline-edit step — /inline-edit needed no wiring (PL-12)');
+  assert.doesNotMatch(read('scripts/tsconfig.json'), /["'][^"']*inline[^"']*\.(?:mjs|ts)["']/,
+    "scripts/tsconfig.json's file list must carry no inline-edit entry (PL-12 added no script file; prose comments may say 'inline')");
+  assert.ok(!read('.sdd/runtimes.yml').includes('inline-edit'),
+    '.sdd/runtimes.yml must register no inline-edit stage — the lane composes existing stages');
+  assert.ok(!read('.sdd/bounds.yml').includes('inline'),
+    '.sdd/bounds.yml must carry no inline lane bounds — D-2 deliberately imported none');
+  assert.ok(!/inline[-_ ](edit|lane)/i.test(read('.sdd/bounds.md')),
+    '.sdd/bounds.md must not define inline-lane bounds — D-2 deliberately imported none');
+  assert.ok(!/inline[-_ ](edit|lane)/i.test(read('.sdd/hotfix.md').replace(/`\/inline-edit`/g, '')),
+    ".sdd/hotfix.md may reference the lane's name (backtick-quoted) in routing prose only, never define inline rules");
+  assert.ok(!read('scripts/check-lite-eligible.mjs').includes('inline'),
+    'check-lite-eligible.mjs must carry no --inline handling — eligibility is a lite-lane concept');
+  assert.ok(!read('scripts/check-bounds.mjs').includes('inline'),
+    'check-bounds.mjs must carry no inline handling — no inline bounds exist (D-2)');
+  assert.ok(!read('scripts/pipeline-contracts.mjs').includes('inline'),
+    'pipeline-contracts.mjs must carry no inline sidecar shape — the entry shape lives in ledger-append.mjs');
+  assert.ok(!readdirSync(resolve(repoRoot, '.claude', 'agents')).some((f) => f.includes('inline')),
+    '.claude/agents/** must carry no inline agent — /inline-edit is an entry point that composes existing stages, not a new stage');
 
   // docs/PRD_Tickets.md is asserted BY CONTENT, not by the diff: this checkout already carries an
   // unrelated, pre-existing modification to that file (it is dirty against HEAD before PL-12 starts),
