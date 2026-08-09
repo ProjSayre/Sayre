@@ -13,13 +13,19 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
-// Only these three files may reference the raw columns: the store that reads/
+// Only these files may reference the raw columns: the store that reads/
 // writes them (encrypting/decrypting at the boundary), the org-scoped loader
-// that performs the locked refresh dance, and schema.ts's definition site.
+// that performs the locked refresh dance, schema.ts's definition site, and
+// the RLS test that asserts Postgres blocks cross-org raw reads at the
+// database level (mirrors src/db/rls.test.ts's conventions) — that assertion
+// is only meaningful if the test queries the raw columns directly, bypassing
+// the application-layer store the same way a misconfigured policy would let
+// a real cross-org read slip through.
 const ALLOWLIST = new Set([
   'services/core/src/db/jiraConnectionStore.ts',
   'services/core/src/integrations/tickets/jira/orgSecrets.ts',
   'services/core/src/db/schema.ts',
+  'services/core/src/db/jiraConnectionStore.rls.test.ts',
 ]);
 
 // Same extensions/exclusions as scripts/check-secret-access.mjs.

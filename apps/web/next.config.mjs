@@ -14,6 +14,9 @@ const nextConfig = {
   // Browser fixtures can opt into an isolated cache so they can run beside a
   // developer's local Next process without contending for `.next`.
   distDir: fixtureDistDir,
+  // Docker builds (see apps/web/Dockerfile) copy only .next/standalone into
+  // the runtime image, not the full node_modules tree.
+  output: 'standalone',
 };
 
 export default nextConfig;

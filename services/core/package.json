@@ -21,8 +21,10 @@
     "mcp-interop:local": "tsx test/mcp-interop/cli.ts",
     "test:rls": "node --env-file=../../infra/.env --import tsx --test src/db/rls.test.ts",
     "test:rls:acceptance": "node --env-file=../../infra/.env --import tsx --test src/db/rls_acceptance.tester.test.ts",
+    "test:rls:jira": "NODE_ENV=test node --env-file=../../infra/.env --import tsx --test src/db/jiraConnectionStore.rls.test.ts",
     "test:rls:ci": "node --import tsx --test src/db/rls.test.ts",
     "test:rls:acceptance:ci": "node --import tsx --test src/db/rls_acceptance.tester.test.ts",
+    "test:rls:jira:ci": "NODE_ENV=test node --import tsx --test src/db/jiraConnectionStore.rls.test.ts",
     "worker:tickets": "tsx src/integrations/tickets/worker.ts",
     "worker:tickets-poll": "tsx src/integrations/tickets/pollWorker.ts"
   },
@@ -42,7 +44,7 @@
     "jsonwebtoken": "9.0.2",
     "neo4j-driver": "5.26.x",
     "pg": "8.13.x",
-    "zod": "3.25.76"
+    "zod": "4.4.x"
   },
   "devDependencies": {
     "@types/express": "4.17.x",
