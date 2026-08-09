@@ -808,7 +808,12 @@ test('[AC-8][EC-4] the loose top-level directories are placed, and no repo-root 
     'filetree-graph.svg',
   ]);
 
-  assert.deepEqual(walk('docs/product'), ['PRD-V1.pdf', 'SAYRE_FRONTEND_SPEC.md']);
+  assert.deepEqual(walk('docs/product'), [
+    'Audit-Rebuild-Cheat-Sheet.md',
+    'PRD-V1.pdf',
+    'SAYRE_FRONTEND_SPEC.md',
+    'Ticket-Backlog-by-Feature-2.md',
+  ]);
 
   // The exported SVG is a generated artifact whose first line records its generator. AC-12 requires
   // that reference repointed; nothing else in the 147-line file may drift (it is a design asset, and
