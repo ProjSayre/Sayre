@@ -854,3 +854,99 @@ export function readSecurityJson(pipelineDir, { required = true } = {}) {
   const stamp = readStamp(raw.stamp, label);
   return { verdict, runId, stamp };
 }
+
+// --- .pipeline/gaps.json — written by gap-scout (/pipeline-gapfill) ---------------------------------
+//
+// { ticket, overlays, securityRequired, auditFirst?, verdict, items: [...], stamp? }
+//
+// Control decisions on the gapfill lane (continue vs stop vs escalate; ledger --gapfill) read only
+// this file, never gaps.md prose.
+
+export const GAP_ID_PATTERN = /^GAP-\d+[a-z]?$/;
+export const GAP_STATUSES = [
+  'OK',
+  'MISSING',
+  'STUBBED',
+  'MOCKED',
+  'HARDCODED',
+  'TODO',
+  'NARROWED',
+  'UNTESTED',
+];
+export const GAP_VERDICTS = ['GAPFILL', 'ALREADY_COMPLETE', 'ESCALATE_FULL_PIPELINE'];
+
+export function readGapsJson(pipelineDir, { required = true } = {}) {
+  const label = '.pipeline/gaps.json';
+  const raw = readJsonSidecar(pipelineDir, 'gaps.json', label);
+  if (raw === null) {
+    if (required) {
+      fail(
+        `${label} does not exist. gap-scout must write it alongside gaps.md before the gapfill lane ` +
+        'continues — see .sdd/stages/gap-scout.md.',
+      );
+    }
+    return null;
+  }
+  requireObject(raw, label);
+  const ticket = requireString(raw.ticket, label, 'ticket');
+  const overlays = requireArray(raw.overlays, label, 'overlays').map((item, i) =>
+    requireString(item, label, `overlays[${i}]`),
+  );
+  if (typeof raw.securityRequired !== 'boolean') {
+    fail(`${label}: field "securityRequired" must be a boolean — got ${JSON.stringify(raw.securityRequired)}.`);
+  }
+  const auditFirst = raw.auditFirst === undefined ? false : raw.auditFirst === true;
+  if (raw.auditFirst !== undefined && typeof raw.auditFirst !== 'boolean') {
+    fail(`${label}: field "auditFirst" must be a boolean when present — got ${JSON.stringify(raw.auditFirst)}.`);
+  }
+  const verdict = requireEnum(raw.verdict, label, 'verdict', GAP_VERDICTS);
+  const items = requireArray(raw.items, label, 'items');
+  const seenIds = new Set();
+  const normalizedItems = items.map((item, i) => {
+    const itemLabel = `${label}: items[${i}]`;
+    requireObject(item, itemLabel);
+    const id = requireString(item.id, itemLabel, 'id');
+    if (!GAP_ID_PATTERN.test(id)) {
+      fail(`${itemLabel}: field "id" must match ${GAP_ID_PATTERN} — got ${JSON.stringify(id)}.`);
+    }
+    if (seenIds.has(id)) fail(`${itemLabel}: duplicate gap id ${JSON.stringify(id)}.`);
+    seenIds.add(id);
+    const status = requireEnum(item.status, itemLabel, 'status', GAP_STATUSES);
+    const source = requireString(item.source, itemLabel, 'source');
+    const evidence = requireArray(item.evidence, itemLabel, 'evidence').map((ev, j) =>
+      requireString(ev, itemLabel, `evidence[${j}]`),
+    );
+    if (typeof item.needsTest !== 'boolean') {
+      fail(`${itemLabel}: field "needsTest" must be a boolean — got ${JSON.stringify(item.needsTest)}.`);
+    }
+    return { id, status, source, evidence, needsTest: item.needsTest };
+  });
+  if (verdict === 'GAPFILL') {
+    const open = normalizedItems.filter((item) => item.status !== 'OK');
+    if (open.length === 0) {
+      fail(
+        `${label}: verdict is "GAPFILL" but every item is "OK" — use "ALREADY_COMPLETE" instead, or ` +
+        'list at least one non-OK gap.',
+      );
+    }
+  }
+  if (verdict === 'ALREADY_COMPLETE') {
+    const open = normalizedItems.filter((item) => item.status !== 'OK');
+    if (open.length > 0) {
+      fail(
+        `${label}: verdict is "ALREADY_COMPLETE" but items ${open.map((i) => i.id).join(', ')} are not ` +
+        '"OK" — fix the statuses or use "GAPFILL"/"ESCALATE_FULL_PIPELINE".',
+      );
+    }
+  }
+  const stamp = readStamp(raw.stamp, label);
+  return {
+    ticket,
+    overlays,
+    securityRequired: raw.securityRequired,
+    auditFirst,
+    verdict,
+    items: normalizedItems,
+    stamp,
+  };
+}

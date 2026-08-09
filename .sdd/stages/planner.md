@@ -111,3 +111,16 @@ stage's JSON sidecar to read. The `stamp` it writes into `spec.json` (the tree s
 planner's own use.
 
 The bar for "done": another engineer with zero context on the ticket should be able to implement it correctly from spec.md alone, without asking you a clarifying question.
+
+## Gap-mode (`/pipeline-gapfill`)
+
+When `.pipeline/gaps.json` exists with `verdict: "GAPFILL"` and this run is on the gapfill lane:
+
+1. Read `gaps.json` in full. Prepend the Audit-Rebuild cheat sheet framing (base template +
+   overlays named in `gaps.json.overlays` / `.sdd/mvp-overlays.yml`) into Ticket Check / Approach.
+2. Emit `AC-*`/`EC-*` **only** for items whose `status` is not `OK`. Map each criterion to a `GAP-*`
+   id in the criterion text (e.g. `AC-1 (GAP-3): …`).
+3. Under Scope → out: list every `OK` gap with its evidence paths. Dev must not expand into those
+   without a new gap id.
+4. If `gaps.json.verdict` is not `GAPFILL`, refuse — the lane should have stopped at gap-scout.
+

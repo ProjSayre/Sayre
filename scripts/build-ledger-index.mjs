@@ -168,6 +168,16 @@ function readInlineField(raw, label) {
   return { skippedStages };
 }
 
+/** Gapfill disclosure — only `overlays` carried into index.json; counts/note stay entry.json-only. */
+function readGapfillField(raw, label) {
+  if (raw === undefined || raw === null) return null;
+  const gapLabel = `${label}: gapfill`;
+  requireObject(raw, gapLabel);
+  const overlays = requireArray(raw.overlays, gapLabel, 'overlays')
+    .map((item, i) => requireString(item, gapLabel, `overlays[${i}]`));
+  return { overlays };
+}
+
 function readEntryJson(runId) {
   const label = `.sdd/ledger/${runId}/entry.json`;
   const path = join(ledgerDir, runId, 'entry.json');
@@ -187,6 +197,7 @@ function readEntryJson(runId) {
   const regate = readRegateField(raw.regate, label);
   const lite = readLiteField(raw.lite, label);
   const inline = readInlineField(raw.inline, label);
+  const gapfill = readGapfillField(raw.gapfill, label);
 
   if (!bypass) {
     requireObject(raw.verdicts, `${label}: verdicts`);
@@ -198,10 +209,8 @@ function readEntryJson(runId) {
     // indexed one, and is refused exactly like any other malformed `verdicts` value below. Every
     // other non-bypass entry still enforces the original PASS/PASS check byte-for-byte, unchanged.
     //
-    // PL-12: `inline` is deliberately NOT part of this widening — an inline entry's `verdicts` is held
-    // to the exact same byte-for-byte { review: "PASS", security: "PASS" } every ordinary entry is,
-    // because `security` genuinely ran on that lane. `isDeclaredLite` below reads only `lite`, never
-    // `inline`, so an entry that declares itself inline buys no widening at all here.
+    // PL-12 / gapfill: `inline` and `gapfill` are deliberately NOT part of this widening — both keep
+    // security running, so verdicts stay PASS/PASS.
     const isDeclaredLite = lite !== null && lite.skippedStages.includes('security');
     const expected = isDeclaredLite ? { review: 'PASS', security: 'SKIPPED_LITE' } : { review: 'PASS', security: 'PASS' };
     if (actual.review !== expected.review || actual.security !== expected.security) {
@@ -214,7 +223,7 @@ function readEntryJson(runId) {
     }
   }
 
-  return { runId: runIdField, ticket, date, filesTouched, bypass, regate, lite, inline };
+  return { runId: runIdField, ticket, date, filesTouched, bypass, regate, lite, inline, gapfill };
 }
 
 /** Builds the in-memory index (file path -> sorted array of run references) from every ledger run
@@ -261,6 +270,7 @@ export function buildIndex() {
       // (never `reason`/`note`/`size`), only when this run's entry.json actually declared itself
       // inline, omitted entirely (not `inline: null`) otherwise.
       if (entry.inline) record.inline = { skippedStages: entry.inline.skippedStages };
+      if (entry.gapfill) record.gapfill = { overlays: entry.gapfill.overlays };
       index[file].push(record);
     }
   }

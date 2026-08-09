@@ -493,6 +493,35 @@ own leftover `red.json`: copying one would manufacture evidence of a stage that 
 copy are all copied exactly as for a normal run — unlike the lite lane, this one really did produce a
 security run.
 
+## Gapfill-lane entries (`/pipeline-gapfill`)
+
+`scripts/ledger-append.mjs --gapfill` writes a normal, **non-bypass** entry — see
+`.sdd/pipeline.md`'s `/pipeline-gapfill` section. Disclosure-only: `review` and `security` both
+genuinely ran and passed; work was scoped by `gap-scout` via `.pipeline/gaps.json`.
+
+**Indexed, not excluded** — same reasoning as `--inline` / `--re-gate`.
+
+`entry.json` carries:
+
+```json
+{
+  "verdicts": { "review": "PASS", "security": "PASS" },
+  "bypass": false,
+  "gapfill": {
+    "overlays": ["base"],
+    "note": "<fixed GAPFILL_NOTE>",
+    "counts": { "total": 4, "ok": 2, "nonOk": 2, "byStatus": { "OK": 2, "NARROWED": 2 } }
+  }
+}
+```
+
+Title reads `(GAPFILL)`. A `## Gapfill lane` section names overlays and gap counts. `gaps.json` is
+copied into the run directory alongside the ordinary sidecars. `index.json` records
+`"gapfill": { "overlays": [...] }` on each touched-file record (counts/note stay entry.json-only).
+
+`--gapfill` refuses combination with `--lite`, `--inline`, and `--re-gate`. It requires
+`gaps.json.verdict === "GAPFILL"` and `securityRequired === true`.
+
 ## The query path: buggy file → spec that mandated it
 
 ```

@@ -20,6 +20,13 @@ automatically"; that was false — see the SEC-10 entry below — and the file's
 directly, rather than being cleaned up into a shorter, confidently wrong sentence.) Moving history
 out of a stage file is about removing *dated narration*, never about removing a *correction*.
 
+## `/pipeline-gapfill` + `gap-scout` stage
+
+- New lane for MVP Wave 0–4 audit-and-gap-fill (cheat sheet + `.sdd/mvp-overlays.yml`).
+- New stage `.sdd/stages/gap-scout.md` (read-only agent; writes `gaps.md`/`gaps.json`).
+- Planner/red gain gap-mode sections; review gains undeclared-scope check when `gaps.json` is present.
+- Ledger: `node scripts/ledger-append.mjs --gapfill` (disclosure marker; security still required).
+
 ## Shared: read-only enforcement for `review` / `security-checker` / `pr-review`
 
 - **PL-03a (initial extraction).** The pre-`.sdd/` Claude Code definitions for these three stages

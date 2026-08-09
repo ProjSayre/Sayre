@@ -8,6 +8,7 @@
 //   node scripts/ledger-append.mjs --lite
 //   node scripts/ledger-append.mjs --inline --ticket <id> --why-inline "<reason>"
 //     [--override-review "<reason>"] [--override-security "<reason>"]
+//   node scripts/ledger-append.mjs --gapfill
 //   node scripts/ledger-append.mjs --hotfix --what-broke <text> --what-changed <text> \
 //     --why-skipped <text> --not-verified <text> --follow-up-ticket <text> \
 //     [--files <path...>]
@@ -186,6 +187,7 @@ import { fileURLToPath } from 'node:url';
 import { writeIndex } from './build-ledger-index.mjs';
 import {
   readChangesJson,
+  readGapsJson,
   readJsonFile,
   readRedJson,
   readReviewJson,
@@ -543,9 +545,9 @@ const REGATE_NOTE = 'code was changed in the working tree outside the pipeline\'
  * verbatim, the skipped stages, the reason, and the measured size (or an explicit "could not be
  * measured" line when `size` is `null`) — unlike `lite`, `## Security run ID` renders normally here:
  * `security` genuinely ran on this lane. */
-export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null, inline = null }) {
+export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commitLine, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null, inline = null, gapfill = null }) {
   const lines = [];
-  const titleMarkers = `${regate ? ' (RE-GATE)' : ''}${inline ? ' (INLINE)' : ''}${lite ? ' (LITE)' : ''}${overrides.length > 0 ? ' (OVERRIDE)' : ''}`;
+  const titleMarkers = `${regate ? ' (RE-GATE)' : ''}${inline ? ' (INLINE)' : ''}${gapfill ? ' (GAPFILL)' : ''}${lite ? ' (LITE)' : ''}${overrides.length > 0 ? ' (OVERRIDE)' : ''}`;
   lines.push(`# Ledger entry — ${runId}${titleMarkers}`);
   lines.push('');
   lines.push('## Date');
@@ -570,6 +572,17 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
   lines.push(`- review: ${reviewVerdict}`);
   lines.push(`- security: ${securityVerdict}`);
   lines.push('');
+  if (gapfill) {
+    lines.push('## Gapfill lane');
+    lines.push(gapfill.note);
+    lines.push('');
+    lines.push(`Overlays: ${gapfill.overlays.join(', ') || '(none)'}.`);
+    lines.push(
+      `Gap counts: ${gapfill.counts.nonOk} non-OK of ${gapfill.counts.total} ` +
+      `(OK ${gapfill.counts.ok}; open statuses: ${JSON.stringify(gapfill.counts.byStatus)}).`,
+    );
+    lines.push('');
+  }
   if (inline) {
     lines.push('## Inline edit');
     lines.push(inline.note);
@@ -683,7 +696,7 @@ export function buildEntryMarkdown({ runId, date, ticketId, ticketTitle, goal, f
  * `inline`-specific amendment: an inline run's `securityVerdict` is the ordinary `'PASS'` literal
  * (security genuinely ran, unlike on the lite lane), so the existing `(!lite && securityVerdict !==
  * 'PASS')` clause already produces the right answer without change. */
-export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null, inline = null }) {
+export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files, redTestPaths, redAbsenceNote, securityRunId, commit, reviewVerdict, securityVerdict, overrides = [], regate = null, lite = null, inline = null, gapfill = null }) {
   const bypass = reviewVerdict !== 'PASS' || (!lite && securityVerdict !== 'PASS');
   return {
     runId,
@@ -698,6 +711,7 @@ export function buildEntryJson({ runId, date, ticketId, ticketTitle, goal, files
     regate: regate ? { testerRan: regate.testerRan, gatesOnly: regate.gatesOnly, note: REGATE_NOTE } : null,
     lite,
     inline,
+    gapfill,
     redTestPaths,
     redAbsenceNote: redTestPaths.length > 0 ? null : redAbsenceNote,
     securityRunId,
@@ -1168,6 +1182,16 @@ export const INLINE_RED_ABSENCE_NOTE = 'The `red` stage was deliberately not inv
   'predating `red`\'s own existence nor a run where `red` ran and produced nothing; it was never ' +
   'invoked for this run at all.';
 
+/** Disclosure-only marker for `/pipeline-gapfill` — gates are not skipped; scout scoped the work. */
+export const GAPFILL_NOTE = 'this run took the gapfill lane (`.sdd/pipeline.md`\'s `/pipeline-gapfill`): ' +
+  '`gap-scout` audited an already-shipped MVP ticket against its acceptance criteria, and ' +
+  '`planner`/`red`/`dev` only addressed non-OK gaps. `tester`, `review`, and `security` all ran in ' +
+  'full. Overlays came from `.sdd/mvp-overlays.yml` and the Audit-Rebuild cheat sheet. This is ' +
+  'disclosure that the work was gap-scoped, not a skipped-gate bypass.';
+
+/** Everything the default sidecar set carries, plus `gaps.json` for a `--gapfill` run. */
+const GAPFILL_SIDECAR_NAMES = ['spec.json', 'red.json', 'changes.json', 'review.json', 'security.json', 'gaps.json'];
+
 /** Everything the default sidecar set (`DEFAULT_SIDECAR_NAMES` above) carries except `red.json` —
  * the same "never manufacture evidence of a stage that did not run this round" reasoning
  * `LITE_SIDECAR_NAMES` already uses. Unlike `LITE_SIDECAR_NAMES`, `security.json` stays in this set:
@@ -1260,7 +1284,7 @@ function measureInlineSize(files) {
   return { fileCount: files.length, changedLines: sized.changedLines, maxLineLength: lineLength, unsizable: sized.unsizable };
 }
 
-const MAIN_KNOWN_FLAGS = new Set(['--override-review', '--override-security', '--re-gate', '--tester-ran', '--ticket', '--lite', '--inline', '--why-inline']);
+const MAIN_KNOWN_FLAGS = new Set(['--override-review', '--override-security', '--re-gate', '--tester-ran', '--ticket', '--lite', '--inline', '--why-inline', '--gapfill']);
 const MAIN_VALUE_FLAGS = new Set(['--override-review', '--override-security', '--tester-ran', '--ticket', '--why-inline']);
 
 /** Reads `--re-gate`/`--tester-ran`/`--ticket` off argv. Returns `null` when this is not a re-gate run
@@ -1342,6 +1366,7 @@ function main() {
   assertKnownFlags(argv, { knownFlags: MAIN_KNOWN_FLAGS, valueFlags: MAIN_VALUE_FLAGS });
   const lite = argv.includes('--lite');
   const inline = argv.includes('--inline');
+  const gapfill = argv.includes('--gapfill');
   const overrideReviewReason = readOverrideReason(argv, '--override-review');
   const overrideSecurityReason = readOverrideReason(argv, '--override-security');
   const regate = readRegateArgs(argv, { inline });
@@ -1362,6 +1387,12 @@ function main() {
         '--lite --re-gate is not accepted in this ticket — finish through the full lane instead (run ' +
         '`/security`, then `--re-gate`), or re-run `/review` against the current tree and use plain ' +
         '--lite (the non-stale review.json requirement below already forces this).',
+      );
+    }
+    if (gapfill) {
+      fail(
+        '--lite --gapfill is not accepted — lite skips red/security; gapfill keeps both and scopes ' +
+        'work via gap-scout. Pick one.',
       );
     }
   }
@@ -1390,6 +1421,19 @@ function main() {
         '/inline-edit.',
       );
     }
+    if (gapfill) {
+      fail(
+        '--inline --gapfill is not accepted — gapfill uses gap-scout + gap-mode planner/red/dev; ' +
+        'inline is a direct in-session edit. Pick one.',
+      );
+    }
+  }
+
+  if (gapfill && (regate || argv.includes('--re-gate'))) {
+    fail(
+      '--gapfill --re-gate is not accepted — gapfill is a first, gap-scoped pass; re-gate re-verifies ' +
+      'after a hand-edit. Pick one.',
+    );
   }
 
   // PL-12: `--inline`'s own required-flag checks (AC-13, AC-14) — pure argv validation, so this runs
@@ -1456,6 +1500,46 @@ function main() {
   // see EC-11 in ledger-append.test.mjs's own [inline] block for the identical reasoning, applied here.
   const redJson = (lite || inline) ? null : readRedJson(pipelineDir, { required: false });
   const changesJson = readChangesJson(pipelineDir, { required: false });
+
+  let gapsJson = null;
+  let gapfillInfo = null;
+  if (gapfill) {
+    gapsJson = readGapsJson(pipelineDir, { required: true });
+    if (gapsJson.verdict !== 'GAPFILL') {
+      fail(
+        `--gapfill requires .pipeline/gaps.json verdict "GAPFILL" (got ${JSON.stringify(gapsJson.verdict)}). ` +
+        'ALREADY_COMPLETE / ESCALATE_FULL_PIPELINE stop the lane before ledger — do not append a PASS.',
+      );
+    }
+    if (!gapsJson.stamp) {
+      fail(
+        '--gapfill requires .pipeline/gaps.json to carry a "stamp" field (node ' +
+        'scripts/write-stamp.mjs .pipeline/gaps.json) — gap-scout attaches one as its last step.',
+      );
+    }
+    // Presence-and-shape only — not refuseIfStale. Downstream stages (planner through security)
+    // legitimately move the tree after gap-scout writes gaps.json; requiring freshness here would
+    // make every successful gapfill ledger append impossible. review.json/security.json remain the
+    // trusted-fresh gates for "this tree passed."
+    if (!gapsJson.securityRequired) {
+      fail(
+        '--gapfill requires gaps.json.securityRequired === true on this lane — security is never ' +
+        'skipped for MVP gapfill (see .sdd/pipeline.md). Use /pipeline-lite only when mechanically ' +
+        'eligible for a tiny doc/cleanup change.',
+      );
+    }
+    const byStatus = {};
+    for (const item of gapsJson.items) {
+      byStatus[item.status] = (byStatus[item.status] ?? 0) + 1;
+    }
+    const ok = byStatus.OK ?? 0;
+    const total = gapsJson.items.length;
+    gapfillInfo = {
+      overlays: gapsJson.overlays,
+      note: GAPFILL_NOTE,
+      counts: { total, ok, nonOk: total - ok, byStatus },
+    };
+  }
 
   // CORRECTED (SEC-10 v2 fix round — FND-bd78355b6ae7, HIGH): the three checks that used to live here
   // were all scoped inside `if (regate)` — see the two "PL-04 review pass N" paragraphs this comment
@@ -1551,9 +1635,9 @@ function main() {
   // PL-12 / AC-15, EC-4: --inline requires the same check for its own stated reason — this lane has no
   // `dev` stage whose own procedure would guarantee a freshly-written spec.json the way a normal run's
   // sequence does, so presence-and-shape is, again, the one hygiene signal available.
-  if (regate || lite || inline) {
+  if (regate || lite || inline || gapfill) {
     if (!specJson.stamp) {
-      const laneLabel = regate ? 're-gate' : (lite ? 'lite' : 'inline');
+      const laneLabel = regate ? 're-gate' : (lite ? 'lite' : (inline ? 'inline' : 'gapfill'));
       fail(
         `--${laneLabel} requires .pipeline/spec.json to carry a "stamp" field (node ` +
         'scripts/write-stamp.mjs .pipeline/spec.json) before this run can be attributed to it — planner ' +
@@ -1572,6 +1656,9 @@ function main() {
           ? ' The /inline-edit lane has no `dev` stage whose own procedure would guarantee a freshly-' +
             'written spec.json the way a normal run\'s sequence does, so this presence-and-shape check ' +
             'is the one hygiene signal available here.'
+          : gapfill
+          ? ' The /pipeline-gapfill lane scopes work from gaps.json; a stamped spec.json is required ' +
+            'so the gap-mode AC/EC set can be attributed to this tree.'
           : ' (This checks presence and shape, not exact currency against the tree right now — see this ' +
             'file\'s header for why literal freshness is deliberately not required here; --ticket and ' +
             'the agreement check above are what verify content.)'),
@@ -1762,6 +1849,7 @@ function main() {
     regate,
     lite: liteInfo,
     inline: inlineInfo,
+    gapfill: gapfillInfo,
   });
   writeFileSync(join(runDir, 'entry.md'), entryMarkdown, 'utf8');
 
@@ -1782,10 +1870,14 @@ function main() {
     regate,
     lite: liteInfo,
     inline: inlineInfo,
+    gapfill: gapfillInfo,
   });
   writeFileSync(join(runDir, 'entry.json'), JSON.stringify(entryJson, null, 2) + '\n', 'utf8');
 
-  copySidecarsIntoLedger(runId, lite ? LITE_SIDECAR_NAMES : (inline ? INLINE_SIDECAR_NAMES : undefined));
+  copySidecarsIntoLedger(
+    runId,
+    lite ? LITE_SIDECAR_NAMES : (inline ? INLINE_SIDECAR_NAMES : (gapfill ? GAPFILL_SIDECAR_NAMES : undefined)),
+  );
   if (!lite) copySecurityHistoryIntoLedger(runId);
 
   const index = writeIndex();
@@ -1819,6 +1911,14 @@ function main() {
         `— see .sdd/ledger/${runId}/entry.md's "## Inline edit" section. NOT excluded from index.json's ` +
         'file->spec map (unless also overridden above): a real spec was ratified before the edit, and ' +
         'review and security both genuinely ran and passed against the final tree.',
+      );
+    }
+    if (gapfill) {
+      console.log(
+        `ledger-append --gapfill: recorded a GAPFILL-lane run (overlays: ${gapfillInfo.overlays.join(', ')}; ` +
+        `${gapfillInfo.counts.nonOk} non-OK gap(s)) — see .sdd/ledger/${runId}/entry.md's "## Gapfill lane" ` +
+        'section. NOT excluded from index.json\'s file->spec map: review and security both passed; work ' +
+        'was gap-scoped by gap-scout.',
       );
     }
     console.log(`ledger-append: wrote .sdd/ledger/${runId}/{spec.md,spec.json,entry.md,entry.json,security/}`);

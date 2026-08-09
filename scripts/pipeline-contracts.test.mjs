@@ -58,6 +58,7 @@ import {
   knownSpecIds,
   parseJsonOrThrow,
   readChangesJson,
+  readGapsJson,
   readJsonFile,
   readJsonSidecar,
   readRedJson,
@@ -415,6 +416,56 @@ test('readSecurityJson requires runId even when verdict is BLOCKED — a run id 
   const security = readSecurityJson(dir);
   assert.equal(security.verdict, 'BLOCKED');
   assert.equal(security.runId, 'run-123');
+});
+
+// --- gaps.json (/pipeline-gapfill) ----------------------------------------------------------------
+
+test('readGapsJson accepts a GAPFILL sidecar with non-OK items and rejects ALREADY_COMPLETE with open gaps', () => {
+  const good = pipelineDir({
+    'gaps.json': {
+      ticket: 'W2-04',
+      overlays: ['base'],
+      securityRequired: true,
+      auditFirst: false,
+      verdict: 'GAPFILL',
+      items: [
+        {
+          id: 'GAP-1',
+          status: 'NARROWED',
+          source: 'Acceptance sentence',
+          evidence: ['apps/web/x.ts'],
+          needsTest: true,
+        },
+      ],
+    },
+  });
+  const parsed = readGapsJson(good);
+  assert.equal(parsed.verdict, 'GAPFILL');
+  assert.equal(parsed.items[0].id, 'GAP-1');
+
+  assert.throws(
+    () =>
+      readGapsJson(
+        pipelineDir({
+          'gaps.json': {
+            ticket: 'W2-04',
+            overlays: ['base'],
+            securityRequired: true,
+            verdict: 'ALREADY_COMPLETE',
+            items: [
+              {
+                id: 'GAP-1',
+                status: 'MISSING',
+                source: 'x',
+                evidence: [],
+                needsTest: true,
+              },
+            ],
+          },
+        }),
+      ),
+    /ALREADY_COMPLETE/,
+  );
 });
 
 // --- Freshness stamps (PL-04 / A2) -----------------------------------------------------------------
