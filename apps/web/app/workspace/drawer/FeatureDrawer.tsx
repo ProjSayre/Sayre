@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useMock } from '../state';
+import { useWorkspaceQueries, useWorkspaceSelection } from '../state';
 import { buildProductFeatureConnections } from '../canvas/productGraph';
 import { isStructuralEdge } from '../types';
 import { EmptyState, Module, formatTimestamp } from '../components/ui';
@@ -32,11 +32,12 @@ function codeArea(path: string): string {
 }
 
 export function FeatureDrawer() {
-  const { state, dispatch, graph, graphStatus } = useMock();
+  const { graph, graphStatus } = useWorkspaceQueries();
+  const selection = useWorkspaceSelection();
   const [activeTab, setActiveTab] =
     useState<FeatureDrawerTab>('description');
   const feature = graph.features.find(
-    (item) => item.id === state.selectedFeatureId,
+    (item) => item.id === selection.selectedFeatureId,
   );
   useEffect(() => {
     setActiveTab('description');
@@ -133,20 +134,7 @@ export function FeatureDrawer() {
             <button
               type="button"
               className="mock-btn mock-btn-ghost mock-btn-sm"
-              onClick={() =>
-                dispatch({
-                  type: 'patch',
-                  patch: {
-                    view: 'technical',
-                    selectedNodeId: firstFile.id,
-                    selectedFeatureId: null,
-                    returnFeatureId: feature.id,
-                    drawerOpen: true,
-                    fileTreeOpen: true,
-                    search: '',
-                  },
-                })
-              }
+              onClick={() => selection.openNodeInTechnicalView(firstFile.id)}
             >
               Explore code →
             </button>
@@ -155,7 +143,7 @@ export function FeatureDrawer() {
             type="button"
             className="mock-btn mock-btn-ghost"
             aria-label="Close details"
-            onClick={() => dispatch({ type: 'closeDrawer' })}
+            onClick={selection.closeInspector}
           >
             ✕
           </button>
@@ -263,12 +251,7 @@ export function FeatureDrawer() {
                       <button
                         type="button"
                         className="mock-list-row"
-                        onClick={() =>
-                          dispatch({
-                            type: 'selectFeature',
-                            featureId: related.id,
-                          })
-                        }
+                        onClick={() => selection.selectFeature(related.id)}
                       >
                         <span className="mock-row-top">
                           <span className="mock-row-title">{related.name}</span>
@@ -300,9 +283,7 @@ export function FeatureDrawer() {
                   <button
                     type="button"
                     className="mock-list-row"
-                    onClick={() =>
-                      dispatch({ type: 'selectNode', nodeId: file.id })
-                    }
+                    onClick={() => selection.selectNode(file.id)}
                   >
                     <span className="mock-row-top">
                       <span className="mock-row-title">{file.name}</span>

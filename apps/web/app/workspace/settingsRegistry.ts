@@ -4,7 +4,8 @@ export interface SettingsSectionDefinition {
   id: SettingsSection;
   label: string;
   title: string;
-  capability: 'source-control' | 'model-provider' | 'agent-access';
+  capability: 'workspace-customization' | 'source-control' | 'model-provider' | 'agent-access';
+  minimumRole: 'member' | 'admin' | 'owner';
   availability: 'available';
 }
 
@@ -16,10 +17,19 @@ export interface SettingsSectionDefinition {
 export const settingsSections: readonly SettingsSectionDefinition[] =
   Object.freeze([
     {
+      id: 'workspace-packs',
+      label: 'Workspace Packs',
+      title: 'Workspace Packs',
+      capability: 'workspace-customization',
+      minimumRole: 'member',
+      availability: 'available',
+    },
+    {
       id: 'github',
       label: 'GitHub Integrations',
       title: 'GitHub Integrations',
       capability: 'source-control',
+      minimumRole: 'admin',
       availability: 'available',
     },
     {
@@ -27,6 +37,7 @@ export const settingsSections: readonly SettingsSectionDefinition[] =
       label: 'Model Providers',
       title: 'Model Providers',
       capability: 'model-provider',
+      minimumRole: 'admin',
       availability: 'available',
     },
     {
@@ -34,6 +45,7 @@ export const settingsSections: readonly SettingsSectionDefinition[] =
       label: 'MCP Agent Access',
       title: 'MCP Agent Access',
       capability: 'agent-access',
+      minimumRole: 'admin',
       availability: 'available',
     },
   ] satisfies SettingsSectionDefinition[]);

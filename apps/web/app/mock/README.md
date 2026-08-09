@@ -14,8 +14,10 @@ leak into them.
 
 Open **Mock controls** in the top bar. The dials there drive session, role,
 repository access, readiness, graph data, semantic processing, realtime
-status, backend availability, GitHub installation outcome, and the
-Agent/Skill MD conflict case. Nothing in that panel ships.
+status, backend availability, GitHub installation outcome, the Agent/Skill MD
+conflict case, Workspace Pack selection, and 320/736/desktop layout previews.
+The pack and layout controls use the same resolver and trusted catalog as the
+live product; the surrounding scenario panel remains fixture-only.
 
 ## Layout
 
@@ -34,9 +36,10 @@ apps/web/app/mock/
   settings/                   GitHub Integrations, Model Providers
 ```
 
-The shell is assembled from view, toolbar, canvas, drawer, panel, and
-status-banner slots so a later custom-view mechanism can compose it without an
-MVP-facing view builder.
+The shell is assembled from versioned Workspace Pack regions backed by a
+trusted component/capability catalog. Open **Workspace recovery → Edit
+workspace layout** to exercise drag/reorder, replacement, hide/restore,
+resizing, and semantic theme tokens without changing product code.
 
 ## Rules the mock holds to
 
@@ -68,6 +71,8 @@ the **realtime sync indicator**, which reports state and controls nothing.
 
 Onboarding Tree and sandboxed setup execution, dynamic test-coverage badges,
 MCP tools and key management, organization/member/permission administration,
-the macro project-to-repository view, LLM-created custom views and the preset
-marketplace, raw API-key entry, Jira/Linear connection setup, full repository
-sync control, and a working chatbot.
+the macro project-to-repository view, deployable LLM authoring, marketplace
+transport/publication, raw API-key entry, Jira/Linear connection setup, full
+repository sync control, and a working chatbot. Workspace Packs are locally
+importable/exportable; marketplace ingestion remains a separately scoped trust
+and distribution layer.

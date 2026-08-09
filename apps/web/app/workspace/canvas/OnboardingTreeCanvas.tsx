@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { OnboardingExecutionResponse } from '../../lib/onboardingTree';
-import { useMock } from '../state';
+import { useWorkspaceNavigation, useWorkspaceOperations, useWorkspaceQueries, useWorkspaceSession } from '../state';
 import type { CanvasCommand, RendererId } from '../rendererRegistry';
 import type {
   GraphNode,
@@ -192,14 +192,10 @@ export function OnboardingTreeCanvas({
   fitKey,
   onSelect,
 }: OnboardingTreeCanvasProps) {
-  const {
-    dispatch,
-    isAdmin,
-    reloadGraph,
-    runOnboardingStep,
-    semanticState,
-    state,
-  } = useMock();
+  const { isAdmin } = useWorkspaceSession();
+  const { reloadGraph, semanticState } = useWorkspaceQueries();
+  const { runOnboardingStep } = useWorkspaceOperations();
+  const navigation = useWorkspaceNavigation();
   const [runningStepId, setRunningStepId] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, StepResult>>(() =>
     storedResults(workflow.revisionSha),
@@ -275,15 +271,7 @@ export function OnboardingTreeCanvas({
   );
 
   const openTechnicalTree = (): void => {
-    dispatch({
-      type: 'patch',
-      patch: {
-        view: 'technical',
-        selectedFeatureId: null,
-        drawerOpen: state.selectedNodeId !== null,
-        search: '',
-      },
-    });
+    navigation.selectView('technical');
   };
 
   return (

@@ -1,0 +1,469 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260807T023831742Z-e7d473d-PR_DELTA-247f84",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-07T02:38:31.7540265Z",
+  "completed_at": "2026-08-07T02:55:53.719Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre-worktrees\\fe-arch-01"
+  },
+  "target": {
+    "commit_sha": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+    "branch": "ticket/fe-arch-01-workspace-packs",
+    "dirty": true,
+    "environment": "Local isolated ticket worktree; bounded static, unit, build, CLI, and localhost browser checks only; no shared or production services.",
+    "base_urls": [
+      "http://127.0.0.1:3101/mock"
+    ],
+    "changed_paths": [
+      ".claude/skills/workspace-pack-author/SKILL.md",
+      ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/entry.md",
+      ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/security/manifest.json",
+      ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/security/report.md",
+      ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/security/results.json",
+      ".sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/spec.md",
+      ".sdd/ledger/index.json",
+      "apps/web/.gitignore",
+      "apps/web/app/layout.tsx",
+      "apps/web/app/mock/components/ControlPanel.tsx",
+      "apps/web/app/mock/components/WorkspaceLayoutReviewFixture.tsx",
+      "apps/web/app/mock/page.tsx",
+      "apps/web/app/mock/README.md",
+      "apps/web/app/page.tsx",
+      "apps/web/app/testSetup.ts",
+      "apps/web/app/workspace/canvas/OnboardingTreeCanvas.tsx",
+      "apps/web/app/workspace/components/CanvasStates.tsx",
+      "apps/web/app/workspace/components/GlobalStates.tsx",
+      "apps/web/app/workspace/components/StatusBanner.tsx",
+      "apps/web/app/workspace/components/SystemRecoveryMenu.review.test.tsx",
+      "apps/web/app/workspace/components/SystemRecoveryMenu.test.tsx",
+      "apps/web/app/workspace/components/SystemRecoveryMenu.tsx",
+      "apps/web/app/workspace/components/TopBar.tsx",
+      "apps/web/app/workspace/components/ViewRail.tsx",
+      "apps/web/app/workspace/components/WorkspaceShell.tsx",
+      "apps/web/app/workspace/components/WorkspaceSystemInterruption.review.test.tsx",
+      "apps/web/app/workspace/drawer/AgentSkillModule.tsx",
+      "apps/web/app/workspace/drawer/FeatureDrawer.tsx",
+      "apps/web/app/workspace/drawer/NodeDrawer.tsx",
+      "apps/web/app/workspace/drawer/nodeModuleRenderers.tsx",
+      "apps/web/app/workspace/editor/ComponentPalette.tsx",
+      "apps/web/app/workspace/editor/dragController.test.ts",
+      "apps/web/app/workspace/editor/dragController.ts",
+      "apps/web/app/workspace/editor/editor.css",
+      "apps/web/app/workspace/editor/LayoutEditMode.review-remediation.test.tsx",
+      "apps/web/app/workspace/editor/LayoutEditMode.test.tsx",
+      "apps/web/app/workspace/editor/LayoutEditMode.tsx",
+      "apps/web/app/workspace/editor/ThemeTokenEditor.tsx",
+      "apps/web/app/workspace/editor/WorkspaceEditorProvider.tsx",
+      "apps/web/app/workspace/layout/ResizeHandle.test.tsx",
+      "apps/web/app/workspace/layout/ResizeHandle.tsx",
+      "apps/web/app/workspace/layout/workspace-layout.css",
+      "apps/web/app/workspace/layout/WorkspaceLayout.geometry.review-remediation.test.tsx",
+      "apps/web/app/workspace/layout/WorkspaceLayout.test.tsx",
+      "apps/web/app/workspace/layout/WorkspaceLayout.tsx",
+      "apps/web/app/workspace/packs/builtins.ts",
+      "apps/web/app/workspace/packs/capabilityCatalog.ts",
+      "apps/web/app/workspace/packs/componentCatalog.tsx",
+      "apps/web/app/workspace/packs/packRegistry.ts",
+      "apps/web/app/workspace/packs/packStorage.test.ts",
+      "apps/web/app/workspace/packs/packStorage.ts",
+      "apps/web/app/workspace/packs/runtimeCatalog.ts",
+      "apps/web/app/workspace/packs/WorkspacePackProvider.review.test.tsx",
+      "apps/web/app/workspace/packs/WorkspacePackProvider.test.tsx",
+      "apps/web/app/workspace/packs/WorkspacePackProvider.tsx",
+      "apps/web/app/workspace/settings/McpSettings.tsx",
+      "apps/web/app/workspace/settings/SettingsPanel.tsx",
+      "apps/web/app/workspace/settings/workspacePackDownload.test.ts",
+      "apps/web/app/workspace/settings/workspacePackDownload.ts",
+      "apps/web/app/workspace/settings/WorkspacePackSettings.review.test.tsx",
+      "apps/web/app/workspace/settings/WorkspacePackSettings.test.tsx",
+      "apps/web/app/workspace/settings/WorkspacePackSettings.tsx",
+      "apps/web/app/workspace/settingsRegistry.ts",
+      "apps/web/app/workspace/state.tsx",
+      "apps/web/app/workspace/state/contracts.ts",
+      "apps/web/app/workspace/state/fixture.tsx",
+      "apps/web/app/workspace/state/focusedProviders.test.tsx",
+      "apps/web/app/workspace/state/index.ts",
+      "apps/web/app/workspace/state/navigation.tsx",
+      "apps/web/app/workspace/state/operations.tsx",
+      "apps/web/app/workspace/state/queries.tsx",
+      "apps/web/app/workspace/state/realtime.tsx",
+      "apps/web/app/workspace/state/selection.tsx",
+      "apps/web/app/workspace/state/session.tsx",
+      "apps/web/app/workspace/state/store.tsx",
+      "apps/web/app/workspace/state/WorkspaceProvider.tsx",
+      "apps/web/app/workspace/technicalExpansionState.tsx",
+      "apps/web/app/workspace/theme.ts",
+      "apps/web/app/workspace/theme/workspace-theme.css",
+      "apps/web/app/workspace/theme/workspaceTheme.ts",
+      "apps/web/app/workspace/types.ts",
+      "apps/web/app/workspace/views/LegacyWorkspaceView.tsx",
+      "apps/web/app/workspace/views/OnboardingWorkspaceView.tsx",
+      "apps/web/app/workspace/views/PitchSummaryPanel.tsx",
+      "apps/web/app/workspace/views/ProductReturn.review.test.tsx",
+      "apps/web/app/workspace/views/ProductWorkspaceView.tsx",
+      "apps/web/app/workspace/views/TechnicalWorkspaceView.tsx",
+      "apps/web/app/workspace/views/WorkspaceViewRuntime.tsx",
+      "apps/web/app/workspace/views/WorkspaceViews.test.tsx",
+      "apps/web/app/workspace/workspace.css",
+      "apps/web/app/workspace/workspaceEditor.red.test.tsx",
+      "apps/web/app/workspace/workspaceLayoutRecovery.red.test.tsx",
+      "apps/web/app/workspace/workspacePacks.red.test.ts",
+      "apps/web/app/workspace/workspacePackStorageCli.red.test.ts",
+      "apps/web/app/workspace/workspaceProductArchitecture.red.test.ts",
+      "apps/web/next.config.mjs",
+      "apps/web/package.json",
+      "apps/web/tsconfig.json",
+      "apps/web/vitest.config.ts",
+      "apps/web/workspace-packs/default/README.md",
+      "apps/web/workspace-packs/default/sayre.workspace.json",
+      "apps/web/workspace-packs/pitch/from-default.operations.json",
+      "apps/web/workspace-packs/pitch/README.md",
+      "apps/web/workspace-packs/pitch/sayre.workspace.json",
+      "docs/workspace-pack-authoring.md",
+      "docs/workspace-pack-llm-rd.md",
+      "docs/workspace-packs.md",
+      "package-lock.json",
+      "package.json",
+      "packages/workspace-packs/package.json",
+      "packages/workspace-packs/src/bin.mjs",
+      "packages/workspace-packs/src/canonicalize.test.ts",
+      "packages/workspace-packs/src/canonicalize.ts",
+      "packages/workspace-packs/src/cli-entry.ts",
+      "packages/workspace-packs/src/cli.test.ts",
+      "packages/workspace-packs/src/cli.ts",
+      "packages/workspace-packs/src/contracts.ts",
+      "packages/workspace-packs/src/edit.test.ts",
+      "packages/workspace-packs/src/edit.ts",
+      "packages/workspace-packs/src/index.ts",
+      "packages/workspace-packs/src/limits.ts",
+      "packages/workspace-packs/src/parse.test.ts",
+      "packages/workspace-packs/src/parse.ts",
+      "packages/workspace-packs/src/patch.test.ts",
+      "packages/workspace-packs/src/patch.ts",
+      "packages/workspace-packs/src/resolve.test.ts",
+      "packages/workspace-packs/src/resolve.ts",
+      "packages/workspace-packs/src/runtime.ts",
+      "packages/workspace-packs/src/testFixture.ts",
+      "packages/workspace-packs/tsconfig.json",
+      "packages/workspace-packs/vitest.config.ts",
+      "scripts/check-org-secret-access.mjs",
+      "scripts/check-org-secret-access.test.mjs",
+      "scripts/check-secret-access.mjs",
+      "scripts/check-secret-access.test.mjs",
+      "scripts/test-product-workspace-ux.mjs"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
+    "commit_sha": "e7d473db5ac52f59a654d3ace636fa385e23e3f0",
+    "comparable": true,
+    "selection_reason": "Newest compatible successor run by immutable run chronology: COMPLETE terminal PASS, same repository, branch, committed target, local environment, authorization ceiling, empty credential/tenant-fixture set, checker hashes, and the same 58 selected checks. Its manifest explicitly succeeds the earlier a3df57 run, and git merge-base --is-ancestor verified the baseline commit is the current HEAD. Current dirty content expands from 111 to 136 paths, so stable matching observations remain comparable while 25 current-only remediation/ledger paths are audited as the delta.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "FE-ARCH-01R product frontend remediation before LLM authoring R&D",
+    "phase": "Founder-directed Workspace Pack MVP/product-frontend remediation; local-only proof",
+    "source_references": [
+      ".pipeline/spec.md",
+      "origin/main:docs/prd.md (5dfe7366d742615e1edb0aaa4833acd47af3c440)",
+      "origin/main:docs/PRD_Tickets.md (5dfe7366d742615e1edb0aaa4833acd47af3c440)"
+    ],
+    "documentation_code_drift": [
+      "PRD v5 defines the Next.js product canvas but not Workspace Packs, visual workspace editing, LLM authoring, or a marketplace; this ticket preserves founder-directed FE-ARCH scope without changing server authorization boundaries.",
+      "Target HEAD e7d473db5ac52f59a654d3ace636fa385e23e3f0 is two commits behind origin/main 5dfe7366d742615e1edb0aaa4833acd47af3c440, which contains service/Jira scanner remediations absent from the pinned branch."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Repository owner via explicit instruction to run the full sanctioned pipeline autonomously.",
+    "resource_ceiling": "Read-only/static inspection plus bounded local unit, build, CLI, and localhost browser checks; no external scanning, destructive payloads, or shared-service mutations.",
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-01.",
+      "rationale": "Server-side graph organization guards and tenant-aware persistence/query controls exist; no tenant-bearing backend path changed.",
+      "code_references": [
+        "services/core/src/security/graphOrgGuard.ts",
+        "services/core/src/graph-query/permissions.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-02.",
+      "rationale": "Graph authorization remains in the core Graph Query Service; the changed client consumes authorized DTOs.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts",
+        "apps/web/app/workspace/dataSource.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-03.",
+      "rationale": "Phase-aware secret loaders exist; no credential-bearing path changed.",
+      "code_references": [
+        "packages/config/src/secrets.ts",
+        "services/workers/sayre_workers/config/secrets.py"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-04.",
+      "rationale": "GitHub webhook signature verification exists and no receiver or queue handoff changed.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts",
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-05.",
+      "rationale": "Worker repository lifecycle and bounded projection paths exist; no ingestion path changed.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/sayre_workers/ingestion/service.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-06 and changed Workspace Pack parser/CLI/browser input boundaries.",
+      "rationale": "Workspace Pack input is parsed through closed schemas and semantic operations; CLI paths require focused review.",
+      "code_references": [
+        "packages/workspace-packs/src/parse.ts",
+        "packages/workspace-packs/src/patch.ts",
+        "packages/workspace-packs/src/cli.ts"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected in PR_DELTA: no changed-path trigger or implicated shared control for llm-rag; readiness is inventoried from executable code.",
+      "rationale": "The ticket's LLM authoring documentation invokes a local deterministic CLI and does not add a production retrieval or model boundary.",
+      "code_references": [
+        "services/workers/sayre_workers/retrieval/service.py",
+        "services/workers/sayre_workers/ingestion/embeddings.py"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected in PR_DELTA: no changed-path trigger or implicated shared control for model-provider; readiness is inventoried from executable code.",
+      "rationale": "Existing model-provider adapters are outside this frontend/package delta.",
+      "code_references": [
+        "services/workers/sayre_workers/model_provider/factory.py",
+        "services/workers/sayre_workers/model_provider/resilience.py"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected in PR_DELTA: no changed-path trigger or implicated shared control for mcp; readiness is inventoried from executable code.",
+      "rationale": "The edited MCP settings component only migrated frontend state-hook imports; transport and keys are unchanged.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Client realtime state was split into apps/web/app/workspace/state/realtime.tsx; select sibling gateway authorization and current-message filtering despite no backend change.",
+      "rationale": "The client still performs first-frame token authentication, waits for server readiness before subscribing, filters repository IDs on received messages, and retains the existing gateway protocol; those claims require verification against sibling server controls.",
+      "code_references": [
+        "services/gateway/src/index.ts",
+        "services/core/src/services/realtimeDeltaService.ts",
+        "apps/web/app/workspace/state/realtime.tsx"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected in PR_DELTA: no changed-path trigger or implicated shared control for ingestion-queue-webhook; readiness is inventoried from executable code.",
+      "rationale": "Existing ingestion/queue/webhook boundaries are not modified by this frontend ticket.",
+      "code_references": [
+        "services/core/src/queue/sqs.ts",
+        "services/core/src/queue/bullmq.ts",
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "apps/web/** changed; local Workspace Pack import/storage/fork, trusted catalog rendering, localStorage, recovery/editor interruption, and URL/browser policy boundaries are directly affected.",
+      "rationale": "The product client and browser-local pack-management surface are executable and directly affected.",
+      "code_references": [
+        "apps/web/app/workspace/packs/packStorage.ts",
+        "apps/web/app/workspace/settings/WorkspacePackSettings.tsx",
+        "apps/web/app/workspace/components/WorkspaceShell.tsx"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Changed scanner scripts/tests and browser fixture process/cache cleanup route this brief; execute SEC-01 through SEC-14.",
+      "rationale": "Repository security scanners are executable and their existsSync deletion guards changed; the browser harness also creates and removes a port-scoped cache/process. Actual scan coverage and cleanup require delta verification.",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-org-secret-access.mjs",
+        "scripts/test-product-workspace-ux.mjs"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": "PARTIAL",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Root/app/package manifests, lockfile, Next fixture CLI parsing, and executable browser script changed.",
+      "rationale": "The repository has locked npm workspaces and CI/local infrastructure, while production infrastructure remains incomplete; the new private workspace package and scripts require delta review.",
+      "code_references": [
+        "package.json",
+        "package-lock.json",
+        "packages/workspace-packs/package.json",
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".sdd/stages/security.md",
+      "sha256": "d8f2d947bb0c8483bd570c72445fedb768c491d7c2a0acd8d4247f207d4878fa"
+    },
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "No live credentials, synthetic Org A/Org B tenant fixtures, external providers, shared services, production infrastructure, backup store, or browser-authenticated customer session were supplied.",
+    "Dynamic evidence is limited to bounded local repository tests, CLI execution, build checks, and localhost browser behavior; checks requiring live tenant, provider, queue, CI, cloud, backup, rotation, revocation, or external-origin infrastructure remain UNVERIFIED.",
+    "The target branch is two commits behind origin/main. Root secret scanners retain known Jira service findings relative to this pinned HEAD; this audit must prove the ticket delta adds none and must not claim those root gates are green.",
+    "The target is dirty. The immutable baseline shares and ancestrally matches the committed HEAD, but uncommitted content lineage is represented by the explicit path inventory rather than Git ancestry."
+  ]
+}

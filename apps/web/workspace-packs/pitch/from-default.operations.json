@@ -1,0 +1,8 @@
+[
+  { "type": "set-default-view", "viewId": "product" },
+  { "type": "set-theme-color", "token": "accent", "value": "#B86BFF" },
+  { "type": "set-theme-choice", "token": "density", "value": "presentation" },
+  { "type": "set-region-hidden", "layoutId": "layout.default", "regionId": "region.explorer", "hidden": true },
+  { "type": "replace-region-component", "layoutId": "layout.default", "regionId": "region.inspector", "component": { "id": "sayre.pitch-summary", "version": 1 } },
+  { "type": "resize-region-default", "layoutId": "layout.default", "regionId": "region.inspector", "size": 440 }
+]

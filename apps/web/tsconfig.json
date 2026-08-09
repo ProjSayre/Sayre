@@ -34,7 +34,11 @@
     "next.config.mjs",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next-product-workspace-ux-59484/types/**/*.ts",
+    ".next-product-workspace-ux-62857/types/**/*.ts",
+    ".next-product-workspace-ux-60294/types/**/*.ts",
+    ".next-product-workspace-ux-60476/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

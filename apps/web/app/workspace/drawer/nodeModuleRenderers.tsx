@@ -1,9 +1,8 @@
-import type { ComponentType, Dispatch } from 'react';
+import type { ComponentType } from 'react';
 import type {
   NodeModuleDefinition,
   NodeModuleId,
 } from '../moduleRegistry';
-import type { WorkspaceAction } from '../state';
 import type { GraphNode, NodeOverlay, ViewId } from '../types';
 import {
   EmptyState,
@@ -19,12 +18,15 @@ export interface NodeModuleRendererProps {
   overlay: NodeOverlay | null;
   semanticsUsable: boolean;
   currentView: ViewId;
-  dispatch: Dispatch<WorkspaceAction>;
+  selectNode(nodeId: string): void;
+  openNodeInTechnical(nodeId: string): void;
+  openFeature(featureId: string): void;
 }
 
 function DependenciesModule({
   definition,
-  dispatch,
+  selectNode,
+  openNodeInTechnical,
   currentView,
   node,
   overlay,
@@ -38,20 +40,10 @@ function DependenciesModule({
     .sort((left, right) => left.path.localeCompare(right.path));
   const openDependency = (nodeId: string): void => {
     if (currentView === 'technical') {
-      dispatch({ type: 'selectNode', nodeId });
+      selectNode(nodeId);
       return;
     }
-    dispatch({
-      type: 'patch',
-      patch: {
-        view: 'technical',
-        selectedNodeId: nodeId,
-        selectedFeatureId: null,
-        drawerOpen: true,
-        fileTreeOpen: true,
-        search: '',
-      },
-    });
+    openNodeInTechnical(nodeId);
   };
   const renderGroup = (
     title: string,
@@ -160,7 +152,7 @@ function RecentChangesModule({
 
 function SpecificFeaturesModule({
   definition,
-  dispatch,
+  openFeature,
   overlay,
   semanticsUsable,
 }: NodeModuleRendererProps) {
@@ -185,19 +177,7 @@ function SpecificFeaturesModule({
               <button
                 type="button"
                 className="mock-list-row"
-                onClick={() =>
-                  dispatch({
-                    type: 'patch',
-                    patch: {
-                      view: 'product',
-                      selectedFeatureId: feature.id,
-                      selectedNodeId: null,
-                      returnFeatureId: null,
-                      drawerOpen: true,
-                      search: '',
-                    },
-                  })
-                }
+                onClick={() => openFeature(feature.id)}
               >
                 <span className="mock-row-top">
                   <span className="mock-row-title">{feature.name}</span>

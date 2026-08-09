@@ -1,0 +1,281 @@
+.workspace-product-frame {
+  background: var(--bg, #131412);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-rows: minmax(0, 1fr);
+  inset: 0;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  position: fixed;
+}
+
+.workspace-product-frame__content {
+  grid-column: 1;
+  grid-row: 1;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.workspace-product-frame[data-viewport-preview='compact'] { inline-size: min(320px, 100vw); }
+.workspace-product-frame[data-viewport-preview='standard'] { inline-size: min(736px, 100vw); }
+.workspace-product-frame[data-viewport-preview='wide'] { inline-size: min(1280px, 100vw); }
+
+.workspace-system-recovery {
+  align-self: start;
+  align-items: flex-start;
+  block-size: 44px;
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  inline-size: 44px;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  position: relative;
+  z-index: 100;
+}
+
+.workspace-layout {
+  container-type: inline-size;
+  display: grid;
+  grid-template-rows: max-content minmax(0, 1fr) max-content;
+  block-size: 100%;
+  inline-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.workspace-layout__body {
+  display: flex;
+  grid-row: 2;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.workspace-layout__slot-group {
+  display: flex;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+.workspace-layout__slot-group--top,
+.workspace-layout__slot-group--bottom {
+  flex-direction: column;
+  inline-size: 100%;
+  /* Block-edge resize targets straddle the dock/body seam by 22px. The
+     workspace root still clips document overflow, while the slot group must
+     expose both halves of the 44px target to the adjacent workspace region. */
+  overflow: visible;
+}
+
+.workspace-layout__slot-group--top { grid-row: 1; }
+.workspace-layout__slot-group--bottom { grid-row: 3; }
+
+.workspace-layout__slot-group--navigation,
+.workspace-layout__slot-group--explorer,
+.workspace-layout__slot-group--inspector {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.workspace-layout__slot-group--primary {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.workspace-layout__slot-group--overlay {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 20;
+}
+
+.workspace-layout__slot-group--overlay > .workspace-layout__dock {
+  inset: 0;
+  pointer-events: auto;
+  position: absolute;
+}
+
+.workspace-layout__dock {
+  display: flex;
+  flex: 0 0 auto;
+  min-block-size: 0;
+  min-inline-size: 0;
+  position: relative;
+}
+
+.workspace-layout__dock--primary {
+  flex: 1 1 0;
+  inline-size: auto !important;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.workspace-layout__dock--top,
+.workspace-layout__dock--bottom {
+  inline-size: 100%;
+}
+
+.workspace-layout__region {
+  block-size: 100%;
+  inline-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: auto;
+}
+
+.workspace-layout__region--primary {
+  overflow: hidden;
+  position: relative;
+}
+
+.workspace-product-frame__content [data-workspace-view],
+.workspace-product-frame__content .mock-root {
+  block-size: 100%;
+  inline-size: 100%;
+  inset: auto;
+  max-block-size: 100%;
+  max-inline-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.workspace-product-frame__content [data-workspace-view] {
+  display: block;
+}
+
+.workspace-product-frame__content .mock-root {
+  inset: auto;
+}
+
+.workspace-layout__restore {
+  block-size: 44px;
+  inline-size: 44px;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  overflow: hidden;
+}
+
+.workspace-resize-handle {
+  align-items: center;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  touch-action: none;
+  z-index: 30;
+}
+
+.workspace-resize-handle::after {
+  background: var(--border, #353630);
+  content: '';
+  display: block;
+}
+
+.workspace-resize-handle--horizontal {
+  block-size: max(44px, 100%);
+  cursor: col-resize;
+  inline-size: 44px;
+  inset-block-start: 0;
+}
+
+.workspace-resize-handle--horizontal::after {
+  block-size: 100%;
+  inline-size: 1px;
+}
+
+.workspace-resize-handle--vertical {
+  block-size: 44px;
+  cursor: row-resize;
+  inline-size: max(44px, 100%);
+  inset-inline-start: 0;
+}
+
+.workspace-resize-handle--vertical::after {
+  block-size: 1px;
+  inline-size: 100%;
+}
+
+.workspace-resize-handle--inline-start {
+  inset-inline-start: -22px;
+}
+
+.workspace-resize-handle--inline-end {
+  inset-inline-end: -22px;
+}
+
+.workspace-resize-handle--block-start {
+  inset-block-start: -22px;
+}
+
+.workspace-resize-handle--block-end {
+  inset-block-end: -22px;
+}
+
+.workspace-resize-handle:focus-visible {
+  outline: 2px solid var(--accent, #5a6cff);
+  outline-offset: -4px;
+}
+
+/* Compact layouts intentionally layer side docks over a fluid, shrinkable primary. */
+@container (max-width: 735px) {
+  .workspace-layout__body {
+    isolation: isolate;
+  }
+
+  .workspace-layout__slot-group--primary {
+    flex-basis: 100%;
+    inline-size: 100%;
+  }
+
+  .workspace-layout__slot-group--navigation,
+  .workspace-layout__slot-group--explorer,
+  .workspace-layout__slot-group--inspector {
+    inset-block-end: 0;
+    inset-block-start: 48px;
+    max-inline-size: calc(100% - 76px);
+    position: absolute;
+    z-index: 10;
+  }
+
+  .workspace-layout__slot-group--navigation,
+  .workspace-layout__slot-group--explorer {
+    inset-inline-start: 54px;
+  }
+
+  .workspace-layout__slot-group--inspector {
+    inset-inline-end: 0;
+  }
+
+  .workspace-layout__dock--navigation,
+  .workspace-layout__dock--explorer,
+  .workspace-layout__dock--inspector {
+    max-inline-size: 100%;
+  }
+
+  .workspace-layout__dock[data-compact-behavior='collapse'] {
+    inline-size: 44px !important;
+  }
+
+  .workspace-layout__region[data-compact-behavior='collapse'] {
+    inline-size: 44px;
+    overflow: hidden;
+  }
+}
+
+@container (min-width: 736px) {
+  .workspace-layout__region { min-block-size: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-layout *,
+  .workspace-resize-handle { transition-duration: 0.01ms !important; }
+}

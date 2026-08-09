@@ -1,6 +1,7 @@
 'use client';
 
-import { useMock, type MockState } from '../../workspace/state';
+import { useWorkspaceFixture, type MockState } from '../../workspace/state';
+import { useWorkspacePack } from '../../workspace/packs/WorkspacePackProvider';
 
 interface ControlSpec {
   key: keyof MockState;
@@ -50,6 +51,7 @@ const CONTROLS: ControlSpec[] = [
       option('normal', 'loaded'),
       option('loading'),
       option('empty', 'no authorized nodes'),
+      option('unavailable', 'graph unavailable'),
     ],
   },
   {
@@ -95,7 +97,10 @@ const CONTROLS: ControlSpec[] = [
  * this wireframe specifies without a backend; it is not a product surface.
  */
 export function ControlPanel() {
-  const { state, dispatch } = useMock();
+  const fixture = useWorkspaceFixture();
+  const packs = useWorkspacePack();
+  if (fixture === null) return null;
+  const { state } = fixture;
   if (!state.controlsOpen) return null;
 
   return (
@@ -106,7 +111,7 @@ export function ControlPanel() {
           type="button"
           className="mock-btn mock-btn-ghost"
           aria-label="Close mock controls"
-          onClick={() => dispatch({ type: 'patch', patch: { controlsOpen: false } })}
+          onClick={() => fixture.patch({ controlsOpen: false })}
         >
           ✕
         </button>
@@ -118,19 +123,41 @@ export function ControlPanel() {
           MVP has to handle.
         </p>
 
+        <label className="mock-control">
+          <span>Workspace Pack</span>
+          <select
+            data-fixture-control="workspacePack"
+            value={`${packs.activePackRef.id}@${packs.activePackRef.version}`}
+            onChange={(event) => {
+              const item = packs.store.list().find((candidate) => `${candidate.ref.id}@${candidate.ref.version}` === event.currentTarget.value);
+              if (item) packs.activatePack(item.ref);
+            }}
+          >
+            {packs.store.list().map((item) => <option key={`${item.ref.id}@${item.ref.version}`} value={`${item.ref.id}@${item.ref.version}`}>{item.pack.metadata.name} {item.ref.version}</option>)}
+          </select>
+        </label>
+
+        <label className="mock-control">
+          <span>Workspace width</span>
+          <select data-fixture-control="viewportPreview" value={packs.viewportPreview ?? 'actual'} onChange={(event) => packs.setViewportPreview(event.currentTarget.value === 'actual' ? null : event.currentTarget.value as 'compact' | 'standard' | 'wide')}>
+            <option value="actual">actual viewport</option>
+            <option value="compact">compact · 320px</option>
+            <option value="standard">standard · 736px</option>
+            <option value="wide">wide · desktop</option>
+          </select>
+        </label>
+
         {CONTROLS.map((control) => (
           <label className="mock-control" key={control.key}>
             <span>{control.label}</span>
             <select
+              data-fixture-control={control.key}
               value={(state[control.key] as string | null) ?? ''}
               onChange={(event) =>
-                dispatch({
-                  type: 'patch',
-                  patch: {
+                fixture.patch({
                     [control.key]:
                       event.target.value === '' ? null : event.target.value,
-                  } as Partial<MockState>,
-                })
+                  } as Partial<MockState>)
               }
             >
               {control.options.map((item) => (
@@ -145,12 +172,10 @@ export function ControlPanel() {
         <label className="mock-control">
           <span>Agent/Skill MD</span>
           <select
+            data-fixture-control="agentSkillConflict"
             value={state.agentSkillConflict ? 'conflict' : 'normal'}
             onChange={(event) =>
-              dispatch({
-                type: 'patch',
-                patch: { agentSkillConflict: event.target.value === 'conflict' },
-              })
+              fixture.patch({ agentSkillConflict: event.target.value === 'conflict' })
             }
           >
             <option value="normal">saves normally</option>
@@ -161,7 +186,8 @@ export function ControlPanel() {
         <button
           type="button"
           className="mock-btn mock-btn-secondary mock-btn-sm"
-          onClick={() => dispatch({ type: 'reset' })}
+          data-fixture-reset="true"
+          onClick={fixture.reset}
         >
           Reset to defaults
         </button>

@@ -34,6 +34,8 @@
     "test:ledger-append": "node --test scripts/ledger-append.test.mjs",
     "check:red-integrity": "node scripts/check-red-integrity.mjs",
     "test:red-integrity": "node --test scripts/check-red-integrity.test.mjs",
+    "test:product-workspace-ux": "node scripts/test-product-workspace-ux.mjs",
+    "workspace-pack": "vite-node packages/workspace-packs/src/cli-entry.ts",
     "test:pipeline-contracts": "node --test scripts/pipeline-contracts.test.mjs",
     "stamp": "node scripts/write-stamp.mjs",
     "test:write-stamp": "node --test scripts/write-stamp.test.mjs",

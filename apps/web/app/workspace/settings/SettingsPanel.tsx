@@ -16,13 +16,15 @@ import {
   draftFor,
   type ProviderSettingsDraft,
 } from '../../settings/providers/providerSettingsClient';
-import { useMock } from '../state';
+import { useWorkspaceFixture, useWorkspaceNavigation, useWorkspaceOperations, useWorkspaceSession } from '../state';
 import { reconnectFixtureJira } from '../dataSource';
 import type { InstallationOutcome } from '../types';
 import { Badge, Reserved } from '../components/ui';
 import { settingsSection, settingsSections } from '../settingsRegistry';
 import { providerConfigurationStatus } from '../providerSettingsContract';
 import { McpSettings } from './McpSettings';
+import { WorkspacePackSettings } from './WorkspacePackSettings';
+import { useOptionalWorkspacePack } from '../packs/WorkspacePackProvider';
 
 const PURPOSES: readonly ProviderPurpose[] = ['generation', 'embedding'];
 
@@ -120,14 +122,9 @@ function providerLabel(provider: ProviderKind): string {
 }
 
 function GitHubIntegrations() {
-  const {
-    dispatch,
-    githubInstallUrl,
-    loadGitHubIntegrationStatus,
-    mode,
-    reloadCatalog,
-    state,
-  } = useMock();
+  const { githubInstallUrl, loadGitHubIntegrationStatus } = useWorkspaceOperations();
+  const session = useWorkspaceSession();
+  const fixture = useWorkspaceFixture();
   const [status, setStatus] =
     useState<GitHubIntegrationStatusResponse | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>(
@@ -149,7 +146,7 @@ function GitHubIntegrations() {
           if (response.repositories.some(
             (repository) => repository.state === 'preparing',
           )) {
-            reloadCatalog();
+            session.reloadCatalog();
             timer = setTimeout(refresh, 2_500);
           }
         })
@@ -167,23 +164,23 @@ function GitHubIntegrations() {
       if (timer !== null) clearTimeout(timer);
       controller.abort();
     };
-  }, [loadGitHubIntegrationStatus, reloadCatalog, reloadVersion]);
+  }, [loadGitHubIntegrationStatus, reloadVersion, session]);
 
   const hasActiveInstallation =
     status?.installations.some(
       (installation) => installation.state === 'active',
     ) ?? false;
   const outcome =
-    mode === 'fixture'
-      ? state.installation
+    session.mode === 'fixture'
+      ? fixture?.state.installation ?? 'not-installed'
       : hasActiveInstallation
         ? 'installed'
         : 'not-installed';
   const copy = INSTALL_COPY[outcome];
 
   function startInstallation(): void {
-    if (mode === 'fixture') {
-      dispatch({ type: 'patch', patch: { installation: 'installed' } });
+    if (session.mode === 'fixture') {
+      fixture?.patch({ installation: 'installed' });
       return;
     }
     window.location.assign(githubInstallUrl);
@@ -375,8 +372,8 @@ function readableJiraDate(value: string | null): string {
 }
 
 function JiraIntegration() {
-  const { disconnectJira, jiraConnectUrl, loadJiraIntegrationStatus, mode } =
-    useMock();
+  const { disconnectJira, jiraConnectUrl, loadJiraIntegrationStatus } = useWorkspaceOperations();
+  const { mode } = useWorkspaceSession();
   const [status, setStatus] = useState<JiraStatusResponse | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>(
     'loading',
@@ -521,7 +518,7 @@ type SaveState = Partial<
 >;
 
 function ProviderSettings() {
-  const { loadProviderSettings, saveProviderSetting } = useMock();
+  const { loadProviderSettings, saveProviderSetting } = useWorkspaceOperations();
   const [data, setData] = useState<ProviderSettingsResponse | null>(null);
   const [drafts, setDrafts] = useState<Record<
     ProviderPurpose,
@@ -814,25 +811,26 @@ function ProviderSettings() {
 }
 
 export function SettingsPanel() {
-  const { dispatch, isAdmin, state } = useMock();
-  const section = state.settingsSection;
+  const { isAdmin } = useWorkspaceSession();
+  const navigation = useWorkspaceNavigation();
+  const packRuntime = useOptionalWorkspacePack();
+  const section = navigation.settingsSection;
   if (section === null) return null;
+  const configuredOrder = packRuntime?.store.get(packRuntime.activePackRef)?.pack.settingsOrder;
+  const orderedSections = configuredOrder === undefined
+    ? settingsSections
+    : configuredOrder.map((id) => settingsSections.find((definition) => definition.id === id)).filter((definition): definition is (typeof settingsSections)[number] => definition !== undefined);
 
   return (
     <div className="mock-overlay" role="region" aria-label="Settings">
       <nav className="mock-settings-nav" aria-label="Settings sections">
         <p className="mock-settings-nav-label">Settings</p>
-        {settingsSections.map((definition) => (
+        {orderedSections.filter((definition) => definition.minimumRole === 'member' || isAdmin).map((definition) => (
           <button
             type="button"
             key={definition.id}
             aria-current={section === definition.id ? 'page' : undefined}
-            onClick={() =>
-              dispatch({
-                type: 'patch',
-                patch: { settingsSection: definition.id },
-              })
-            }
+            onClick={() => navigation.openSettings(definition.id)}
           >
             {definition.label}
           </button>
@@ -845,16 +843,16 @@ export function SettingsPanel() {
           <button
             type="button"
             className="mock-btn mock-btn-secondary mock-btn-sm"
-            onClick={() =>
-              dispatch({ type: 'patch', patch: { settingsSection: null } })
-            }
+            onClick={navigation.closeSettings}
           >
             Back to graph
           </button>
         </div>
 
         <div className="mock-settings-body">
-          {!isAdmin ? (
+          {section === 'workspace-packs' ? (
+            <WorkspacePackSettings />
+          ) : !isAdmin ? (
             <section className="mock-card">
               <div className="mock-card-head">
                 <div>

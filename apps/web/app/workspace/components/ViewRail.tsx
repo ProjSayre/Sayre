@@ -1,33 +1,17 @@
 'use client';
 
-import { useMock } from '../state';
-import { workspaceViews } from '../viewRegistry';
+import { useWorkspaceNavigation } from '../state';
+import { useResolvedWorkspace } from '../packs/WorkspacePackProvider';
+import type { ViewId } from '../types';
 
 export function ViewRail() {
-  const { state, dispatch } = useMock();
+  const navigation = useWorkspaceNavigation();
+  const workspace = useResolvedWorkspace();
+  const technicalAvailable = workspace.views.some((view) => view.id === 'technical' && view.available);
 
-  const switchView = (viewId: typeof state.view): void => {
-    if (viewId === state.view) return;
-    dispatch({
-      type: 'patch',
-      patch:
-        viewId === 'technical'
-          ? {
-              view: viewId,
-              selectedFeatureId: null,
-              drawerOpen:
-                state.selectedNodeId !== null && state.drawerOpen,
-              search: '',
-            }
-          : {
-              view: viewId,
-              selectedNodeId: null,
-              selectedFeatureId: null,
-              returnFeatureId: null,
-              drawerOpen: false,
-              search: '',
-            },
-    });
+  const switchView = (viewId: ViewId): void => {
+    if (viewId === navigation.viewId) return;
+    navigation.selectView(viewId);
   };
 
   return (
@@ -37,23 +21,9 @@ export function ViewRail() {
         className="mock-rail-item"
         title="Repository explorer"
         aria-label="Repository explorer"
-        aria-pressed={state.view === 'technical' && state.fileTreeOpen}
-        onClick={() =>
-          dispatch({
-            type: 'patch',
-            patch:
-              state.view === 'technical'
-                ? { fileTreeOpen: !state.fileTreeOpen }
-                : {
-                    view: 'technical',
-                    fileTreeOpen: true,
-                    selectedFeatureId: null,
-                    drawerOpen:
-                      state.selectedNodeId !== null && state.drawerOpen,
-                    search: '',
-                  },
-          })
-        }
+        disabled={!technicalAvailable}
+        aria-pressed={navigation.viewId === 'technical' && navigation.fileTreeOpen}
+        onClick={navigation.toggleTechnicalExplorer}
       >
         <span className="mock-rail-glyph">F</span>
         <span className="mock-rail-label">Files</span>
@@ -61,16 +31,22 @@ export function ViewRail() {
 
       <span className="mock-rail-divider" />
 
-      {workspaceViews.map((view) => (
+      {workspace.views.map((view) => (
         <button
           key={view.id}
           type="button"
           className="mock-rail-item"
           title={view.hint}
-          aria-label={view.label}
-          aria-current={state.view === view.id ? 'page' : undefined}
-          disabled={!view.enabled}
-          onClick={() => switchView(view.id)}
+          aria-label={view.id === 'technical'
+            ? 'Technical Tree'
+            : view.id === 'product'
+              ? 'Product Tree'
+              : view.id === 'onboarding'
+                ? 'Onboarding Tree'
+                : view.label}
+          aria-current={navigation.viewId === view.id ? 'page' : undefined}
+          disabled={!view.available}
+          onClick={() => switchView(view.id as ViewId)}
         >
           <span className="mock-rail-glyph">{view.glyph}</span>
           <span className="mock-rail-label">

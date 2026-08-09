@@ -42,6 +42,21 @@ const camelRefresh = ['jiraRefreshToken', 'Enc'].join('');
 const snakeAccess = ['jira_access_token', '_enc'].join('');
 const snakeRefresh = ['jira_refresh_token', '_enc'].join('');
 
+// @spec AC-1
+test('ignores tracked source files deleted from the worktree', () => {
+  const root = fixtureRepo({
+    'services/core/src/services/deleted.ts':
+      `export const row = { ${camelAccess}: 'removed' };`,
+    'services/core/src/services/clean.ts': 'export const answer = 42;',
+  });
+  rmSync(resolve(root, 'services/core/src/services/deleted.ts'));
+
+  const result = run(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /passed/);
+});
+
 test('allows only the three allowlisted store/loader/schema files', () => {
   const root = fixtureRepo({
     'services/core/src/db/jiraConnectionStore.ts':

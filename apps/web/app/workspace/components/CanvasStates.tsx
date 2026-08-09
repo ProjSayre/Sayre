@@ -1,19 +1,21 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useMock } from '../state';
+import { useWorkspaceNavigation, useWorkspaceQueries, useWorkspaceSession } from '../state';
 
 function CanvasState({
+  state,
   title,
   role = 'status',
   children,
 }: {
+  state: string;
   title: string;
   role?: 'status' | 'alert';
   children: ReactNode;
 }) {
   return (
-    <div className="mock-canvas-state" role={role}>
+    <div className="mock-canvas-state" role={role} data-canvas-state={state}>
       <strong>{title}</strong>
       {children}
     </div>
@@ -21,9 +23,10 @@ function CanvasState({
 }
 
 export function NoRepositoryState({ reason }: { reason: 'none' | 'restricted' }) {
-  const { dispatch, isAdmin } = useMock();
+  const { isAdmin } = useWorkspaceSession();
+  const navigation = useWorkspaceNavigation();
   return (
-    <CanvasState title="No repository selected">
+    <CanvasState state="no-repository" title="No repository selected">
       {reason === 'none' ? (
         <>
           <p>
@@ -36,12 +39,7 @@ export function NoRepositoryState({ reason }: { reason: 'none' | 'restricted' })
             <button
               type="button"
               className="mock-btn mock-btn-primary"
-              onClick={() =>
-                dispatch({
-                  type: 'patch',
-                  patch: { settingsSection: 'github' },
-                })
-              }
+              onClick={() => navigation.openSettings('github')}
             >
               Connect a GitHub repository
             </button>
@@ -59,7 +57,7 @@ export function NoRepositoryState({ reason }: { reason: 'none' | 'restricted' })
 
 export function PreparingState({ repositoryLabel }: { repositoryLabel: string }) {
   return (
-    <CanvasState title="Preparing repository">
+    <CanvasState state="preparing" title="Preparing repository">
       <p>
         <code>{repositoryLabel}</code> is registered and its structure is being
         read for the first time. The Technical Tree opens here as soon as it is
@@ -72,7 +70,7 @@ export function PreparingState({ repositoryLabel }: { repositoryLabel: string })
 
 export function LoadingState({ label }: { label: string }) {
   return (
-    <CanvasState title={`Loading ${label}`}>
+    <CanvasState state="loading" title={`Loading ${label}`}>
       <p>Requesting the repository context for this ref.</p>
     </CanvasState>
   );
@@ -80,7 +78,7 @@ export function LoadingState({ label }: { label: string }) {
 
 export function EmptyGraphState() {
   return (
-    <CanvasState title="Nothing to show on this ref">
+    <CanvasState state="empty" title="Nothing to show on this ref">
       <p>
         The repository is authorized and prepared, but this ref produced no
         Folder or File nodes you can view.
@@ -91,7 +89,7 @@ export function EmptyGraphState() {
 
 export function ForbiddenState() {
   return (
-    <CanvasState title="You do not have access to this repository" role="alert">
+    <CanvasState state="repository-forbidden" title="You do not have access to this repository" role="alert">
       <p>
         Your role does not grant access to this repository&apos;s graph. Ask an
         administrator if you think this is wrong.
@@ -101,9 +99,9 @@ export function ForbiddenState() {
 }
 
 export function UnavailableState() {
-  const { reloadGraph } = useMock();
+  const { reloadGraph } = useWorkspaceQueries();
   return (
-    <CanvasState title="Sayre is unavailable right now" role="alert">
+    <CanvasState state="graph-unavailable" title="Sayre is unavailable right now" role="alert">
       <p>
         The graph could not be reached. Nothing has been lost — reload the page
         once the service is back.
@@ -111,6 +109,7 @@ export function UnavailableState() {
       <button
         type="button"
         className="mock-btn mock-btn-secondary"
+        data-canvas-recovery-action="reload-graph"
         onClick={reloadGraph}
       >
         Try again
@@ -124,9 +123,9 @@ export function ProductUnavailableState({
 }: {
   reason: 'generating' | 'failed';
 }) {
-  const { dispatch } = useMock();
+  const navigation = useWorkspaceNavigation();
   return (
-    <CanvasState title={reason === 'generating' ? 'Generating Product Tree' : 'Product Tree unavailable'}>
+    <CanvasState state={`product-${reason}`} title={reason === 'generating' ? 'Generating Product Tree' : 'Product Tree unavailable'}>
       <p>
         {reason === 'generating'
           ? 'Feature boundaries for this ref are still being generated. They appear here as they land.'
@@ -135,18 +134,7 @@ export function ProductUnavailableState({
       <button
         type="button"
         className="mock-btn mock-btn-secondary"
-        onClick={() =>
-          dispatch({
-            type: 'patch',
-            patch: {
-              view: 'technical',
-              selectedFeatureId: null,
-              drawerOpen: false,
-              search: '',
-              fileTreeOpen: true,
-            },
-          })
-        }
+        onClick={() => { navigation.selectView('technical'); navigation.setFileTreeOpen(true); }}
       >
         Open Technical Tree
       </button>

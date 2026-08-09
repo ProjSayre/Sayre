@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import '@xyflow/react/dist/style.css';
 import './globals.css';
 import './workspace/workspace.css';
+import './workspace/layout/workspace-layout.css';
+import './workspace/theme/workspace-theme.css';
+import './workspace/editor/editor.css';
 
 export const metadata: Metadata = {
   title: 'Sayre — Engineering memory graph',

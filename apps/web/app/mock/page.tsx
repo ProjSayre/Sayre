@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { WorkspaceShell } from '../workspace/components/WorkspaceShell';
 import { MockProvider } from '../workspace/state';
+import { WorkspaceLayoutReviewFixture } from './components/WorkspaceLayoutReviewFixture';
 
 export const metadata: Metadata = {
   title: 'Sayre — workspace fixture lab',
@@ -23,7 +24,14 @@ export const metadata: Metadata = {
  * force-sync controls remain out of scope because no MVP browser contract
  * backs them.
  */
-export default function MockPage() {
+export default function MockPage({
+  searchParams,
+}: {
+  searchParams?: { layoutProbe?: string };
+}) {
+  if (searchParams?.layoutProbe === 'same-slot-axis-matrix') {
+    return <WorkspaceLayoutReviewFixture />;
+  }
   return (
     <MockProvider>
       <WorkspaceShell />

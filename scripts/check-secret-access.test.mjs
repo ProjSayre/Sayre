@@ -78,6 +78,20 @@ const nodeRuntimeAlias = ['const runtime', '=', 'process;'].join(' ');
 const nodeRuntimeEnv = ['runtime', 'env'].join('.');
 const pythonCombinedAliasImport = ['import sys, os as', 'operating_system'].join(' ');
 const nodeProcessModule = ['node:', 'process'].join('');
+
+// @spec AC-1
+test('ignores tracked source files deleted from the worktree', () => {
+  const root = fixtureRepo({
+    'src/deleted.ts': `export const token = ${nodeAccess}.TOKEN;`,
+    'src/clean.ts': 'export const answer = 42;',
+  });
+  rmSync(resolve(root, 'src/deleted.ts'));
+
+  const result = run(root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /passed/);
+});
 const bareProcessModule = ['pro', 'cess'].join('');
 
 test('allows only the four exact loader paths', () => {

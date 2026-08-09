@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useMock } from '../state';
+import { useWorkspaceFixture, useWorkspaceOperations, useWorkspaceQueries, useWorkspaceSession } from '../state';
 import type { AgentSkillVersion, NodeOverlay } from '../types';
 import { EmptyState, Module, formatTimestamp } from '../components/ui';
 import {
@@ -44,13 +44,10 @@ export function AgentSkillModule({
   title = 'Agent / Skill MD',
   defaultOpen = true,
 }: AgentSkillModuleProps) {
-  const {
-    dispatch,
-    isAdmin,
-    reloadOverlay,
-    saveAgentSkillMd,
-    state,
-  } = useMock();
+  const { isAdmin } = useWorkspaceSession();
+  const { reloadOverlay } = useWorkspaceQueries();
+  const { saveAgentSkillMd } = useWorkspaceOperations();
+  const fixture = useWorkspaceFixture();
   const current = overlay?.agentSkillMd ?? null;
   const history = overlay?.agentSkillHistory ?? [];
 
@@ -102,7 +99,7 @@ export function AgentSkillModule({
       setSaveState({ kind: 'saved', version: result.version });
     } catch (error) {
       const status = requestStatus(error);
-      if (status === 409 || state.agentSkillConflict) {
+      if (status === 409 || fixture?.state.agentSkillConflict === true) {
         setSaveState({ kind: 'conflict' });
       } else if (status === 400) {
         setSaveState({
@@ -259,10 +256,7 @@ export function AgentSkillModule({
               type="button"
               className="mock-btn mock-btn-secondary mock-btn-sm"
               onClick={() => {
-                dispatch({
-                  type: 'patch',
-                  patch: { agentSkillConflict: false },
-                });
+                fixture?.patch({ agentSkillConflict: false });
                 reloadOverlay();
                 setSaveState({ kind: 'idle' });
               }}

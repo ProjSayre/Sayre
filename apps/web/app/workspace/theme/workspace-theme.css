@@ -1,0 +1,12 @@
+.mock-root[data-workspace-density='compact'] { font-size: 12px; }
+.mock-root[data-workspace-density='comfortable'] { font-size: 13px; }
+.mock-root[data-workspace-density='presentation'] { font-size: 16px; }
+
+.mock-root[data-workspace-radius='square'] { --workspace-control-radius: 0; }
+.mock-root[data-workspace-radius='subtle'] { --workspace-control-radius: 6px; }
+.mock-root[data-workspace-radius='rounded'] { --workspace-control-radius: 12px; }
+
+.mock-root :where(button, input, select, textarea, .mock-card) {
+  border-radius: var(--workspace-control-radius, 6px);
+}
+

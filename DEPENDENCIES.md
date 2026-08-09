@@ -32,6 +32,7 @@ build/test support** rather than using an ambiguous dash.
 | `graphology-layout` | apps/web (dep) | Client-side layout algorithms (local pre-processing only, never RBAC/traversal) | `.claude/rules/security-multitenancy.md` | — |
 | `@sayre/config` | apps/web (dep) | Shared non-secret config / secret-reference loader consumed by the web client (server routes under `app/api/**`) | W0-07; `docs/wave0-foundation-contracts.md` | — |
 | `@sayre/shared-types` | apps/web (dep) | Cross-package wire/type contracts, imported directly by `apps/web`'s workspace/provider-settings/realtime modules | W0-01 D-4 | — |
+| `@sayre/workspace-packs` | apps/web (dep) | Contract-based Workspace Pack runtime (versioned pack manifests, shape/renderer registry) backing the product workspace and its visual editor | FE-ARCH-01/01R/02; `.sdd/ledger/20260806T212025975Z-e7d473d-PR_DELTA-4d53ce/` | — |
 | `typescript` | apps/web (devDep) | Type checking | `CLAUDE.md` Stack | — |
 | `@types/react` | apps/web (devDep) | React type defs | Not named in PRD; build/test support | — |
 | `@types/react-dom` | apps/web (devDep) | React-DOM type defs | Not named in PRD; build/test support | — |
