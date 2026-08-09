@@ -292,7 +292,7 @@ def ensure_tracking_table(pg_conn: "Connection") -> None:
                 WHERE c.conrelid = 'graph_migrations'::regclass
                   AND c.contype = 'p'
                 GROUP BY c.conname
-                HAVING array_agg(a.attname ORDER BY a.attname) = ARRAY['layer', 'target', 'version']
+                HAVING array_agg(a.attname ORDER BY a.attname)::text[] = ARRAY['layer', 'target', 'version']
               ) INTO pk_is_correct;
 
               IF NOT COALESCE(pk_is_correct, false) THEN
