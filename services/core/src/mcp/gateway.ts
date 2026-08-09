@@ -28,6 +28,22 @@ import {
 } from './toolServices';
 
 const BEARER_RE = /^Bearer\s+(\S+)\s*$/i;
+// NODE_ID_SCHEMA/QUERY_SCHEMA below (an `as any` widening of NODE_ID/QUERY) is a deliberate, narrow
+// type-only workaround for a known npm dual-package hazard, not a zod-4 API incompatibility
+// (confirmed at runtime: gateway.test.ts's
+// live HTTP round-trip through these exact schemas passes unchanged). services/core is the only
+// workspace member pinned to zod 4.4.x; a sibling dependency elsewhere in the workspace (unrelated
+// to this ticket, pulled in by the root marketing site's own tooling) still requires zod ^3.x, so
+// npm cannot hoist a single physical zod copy to the workspace root and nests a second, real
+// zod@4.4.x install under services/core/node_modules instead (see .pipeline/changes.md). At the
+// type level only, @modelcontextprotocol/sdk's `AnySchema` (server/zod-compat.d.ts) resolves its
+// zod-4 branch via `zod/v4/core`, which node module resolution walks up from the SDK's own
+// on-disk location to the workspace-root zod install — an older transitional zod 3.25.x release
+// that bundles a pre-release preview of the v4 core types. That preview predates the final zod 4.4
+// release enough that TypeScript's structural check (nominal, via private class fields) rejects a
+// real zod 4.4.x ZodString as neither zod-3's ZodTypeAny nor that outdated zod-3-bundled v4
+// preview. Re-pinning the workspace root's zod resolution (e.g. via npm `overrides`) would touch
+// the out-of-scope marketing-site dependency graph, so the cast is scoped to these two call sites.
 const NODE_ID = z
   .string()
   .min(1)
@@ -38,6 +54,10 @@ const QUERY = z
   .min(1)
   .max(2_000)
   .refine((value) => value.trim().length > 0 && !value.includes('\0'));
+// Widened SDK-facing types only (see block comment above) — real .min()/.max()/.refine() checks
+// still run at parse time on the original NODE_ID/QUERY schemas.
+const NODE_ID_SCHEMA = NODE_ID as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+const QUERY_SCHEMA = QUERY as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 const READ_ONLY = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -123,7 +143,7 @@ function createServer(
     {
       description:
         'Find authorized Folder/File nodes relevant to a natural-language query.',
-      inputSchema: { query: QUERY },
+      inputSchema: { query: QUERY_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ query }) =>
@@ -136,7 +156,7 @@ function createServer(
     {
       description:
         'Traverse an authorized, bounded graph neighborhood from a Folder/File node.',
-      inputSchema: { node_id: NODE_ID, intent: QUERY },
+      inputSchema: { node_id: NODE_ID_SCHEMA, intent: QUERY_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id, intent }) =>
@@ -154,7 +174,7 @@ function createServer(
     {
       description:
         'Get the authorized sidebar metadata snapshot for a Folder/File node.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>
@@ -167,7 +187,7 @@ function createServer(
     {
       description:
         'Get the latest immutable Agent/Skill Markdown for an authorized node.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>
@@ -180,7 +200,7 @@ function createServer(
     {
       description:
         'Resolve inherited coding and comment style rules for an authorized node.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>
@@ -193,7 +213,7 @@ function createServer(
     {
       description:
         'Get authorized COVERS-linked tests with pass/fail and freshness status.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>
@@ -206,7 +226,7 @@ function createServer(
     {
       description:
         'Get authorized product feature-cluster metadata attached to a node.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>
@@ -219,7 +239,7 @@ function createServer(
     {
       description:
         'Get recent authorized commit/ownership metadata for a node.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>
@@ -235,7 +255,7 @@ function createServer(
         'only by tests, or by nothing. Call this before editing an unfamiliar ' +
         'file to avoid changing a superseded duplicate. File-level evidence, ' +
         'not a deletion verdict: entry points legitimately have no importers.',
-      inputSchema: { node_id: NODE_ID },
+      inputSchema: { node_id: NODE_ID_SCHEMA },
       annotations: READ_ONLY,
     },
     ({ node_id }) =>

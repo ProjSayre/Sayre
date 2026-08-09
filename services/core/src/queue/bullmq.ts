@@ -89,10 +89,18 @@ export async function createRedisConnection(
     if (!(error instanceof SecretNotFoundError)) throw error;
   }
 
+  // Off by default (local dev's docker-compose redis:7.4-alpine has no TLS
+  // listener). Managed Redis outside the VPC (e.g. Redis Cloud) sets
+  // REDIS_TLS=true -- otherwise the AUTH password and all job payloads
+  // cross whatever network sits between here and the Redis host in
+  // plaintext.
+  const tls = getConfig('REDIS_TLS') === 'true' ? {} : undefined;
+
   return factory({
     host: getConfig('REDIS_HOST'),
     port,
     password,
+    tls,
     maxRetriesPerRequest: null,
   });
 }
