@@ -14,9 +14,9 @@ proof the ticket is done.
 ## Required inputs
 
 1. The ticket id and full ticket text (from the invocation, or from
-   `Documents/PRD/Ticket-Backlog-by-Feature-2.md` / the wave backlog). If you cannot identify a
+   `docs/product/Ticket-Backlog-by-Feature-2.md` / the wave backlog). If you cannot identify a
    short ticket id matching `W[0-9]+-[0-9]+`, stop and say so — this lane is id-keyed.
-2. Read `Documents/PRD/Audit-Rebuild-Cheat-Sheet.md` in full — especially the base template and
+2. Read `docs/product/Audit-Rebuild-Cheat-Sheet.md` in full — especially the base template and
    overlays.
 3. Read `.sdd/mvp-overlays.yml`. Look up the ticket id under `tickets:`.
    - If the id is **absent**, stop: this ticket is ineligible for `/pipeline-gapfill`. Tell the

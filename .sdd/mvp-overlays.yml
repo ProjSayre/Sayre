@@ -1,6 +1,6 @@
 # MVP Wave 0–4 polish overlays for `/pipeline-gapfill`.
 # Source of truth for which cheat-sheet overlay(s) stack on a ticket:
-# Documents/PRD/Audit-Rebuild-Cheat-Sheet.md §3.
+# docs/product/Audit-Rebuild-Cheat-Sheet.md §3.
 #
 # gap-scout reads this file. Do not invent overlays at runtime for ids listed here.
 # Tickets not listed are ineligible for `/pipeline-gapfill` (route to `/pipeline`).

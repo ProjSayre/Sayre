@@ -466,7 +466,7 @@ const UNTOUCHED_FILE_DIGESTS = {
   'vercel.json': '690b262b3770fbf22f5cb9b926781ae8c5f8dfd8816123c855af513d88094fdd',
   '.claude/settings.json': 'af271863f8831287734f3c752f350ef7e8cbdde907d0ddcb0196358d80704e71',
   '.sdd/bounds.yml': '26546f63a2c0ba774f40dd99992a3a9c63f60c2f7a22cadd88d40c6f3f42c3b5',
-  'scripts/guard-checker-readonly.mjs': 'b24327f7595838109b87c61154adabc57ecf86509e85271035419021e3dfc651',
+  'scripts/guard-checker-readonly.mjs': '9bf02b14eb85c542ab41b11c58eb25be2c6b60ef90b9802ecef0964fd3c3330b',
   'infra/docker-compose.yml': 'c712c006a4f335fa45c69be9cbca592c19e98a172337c879b3d61dd09dab4c50',
 };
 

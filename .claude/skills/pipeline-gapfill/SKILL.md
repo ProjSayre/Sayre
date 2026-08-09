@@ -29,5 +29,5 @@ This file only maps that procedure onto Claude Code's subagents:
 9. **ledger** → `node scripts/ledger-append.mjs --gapfill` on terminal PASS
 
 Before starting, load overlays from `.sdd/mvp-overlays.yml` and the base template from
-`Documents/PRD/Audit-Rebuild-Cheat-Sheet.md`. Do not restate `.sdd/pipeline.md`'s procedure here —
+`docs/product/Audit-Rebuild-Cheat-Sheet.md`. Do not restate `.sdd/pipeline.md`'s procedure here —
 read it fresh each time.

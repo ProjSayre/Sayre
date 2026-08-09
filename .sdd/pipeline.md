@@ -438,7 +438,7 @@ it.
 ### `/pipeline-gapfill <ticket>`
 
 The MVP **audit-and-gap-fill** lane for already-shipped Wave 0–4 tickets (see
-`Documents/PRD/Audit-Rebuild-Cheat-Sheet.md` and `.sdd/mvp-overlays.yml`). It exists because
+`docs/product/Audit-Rebuild-Cheat-Sheet.md` and `.sdd/mvp-overlays.yml`). It exists because
 `/pipeline` either stops with “already implemented” or rewrites around gaps, and `/pipeline-lite`
 is barred from nearly all product code and skips `security`. This lane keeps the full rear gates
 (`red` → `dev` → `tester` → `review` → `security`) but **scopes the work to gaps** a dedicated
