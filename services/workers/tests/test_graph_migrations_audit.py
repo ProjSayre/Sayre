@@ -1182,7 +1182,9 @@ def test_real_reverse_desync_reports_all_skipped_and_status_shows_it(live_stores
         cwd=WORKERS_DIR,
         capture_output=True,
         text=True,
-        timeout=60,
+        # 60s observed timing out in CI (shared runner, neo4j+postgres+LocalStack all
+        # competing for CPU) even though --status touches only Postgres.
+        timeout=120,
     )
     assert status.returncode == 0, status.stderr
     assert "[applied]" in status.stdout, (

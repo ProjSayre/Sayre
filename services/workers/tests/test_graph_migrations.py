@@ -1179,7 +1179,11 @@ def test_real_cli_status_and_dry_run_do_not_mutate(real_infra):
         cwd=workers_dir,
         capture_output=True,
         text=True,
-        timeout=30,
+        # 30s wasn't enough headroom on a shared CI runner with neo4j+postgres+
+        # LocalStack all competing for CPU (this subprocess spawns a fresh Python
+        # interpreter + imports + a new Postgres connection) -- observed timing out
+        # in CI even though the operation itself does no Neo4j work at all.
+        timeout=60,
     )
     assert status_result.returncode == 0, status_result.stderr
     assert "[pending]" in status_result.stdout
@@ -1195,7 +1199,7 @@ def test_real_cli_status_and_dry_run_do_not_mutate(real_infra):
         cwd=workers_dir,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
     )
     assert dry_run_result.returncode == 0, dry_run_result.stderr
 
