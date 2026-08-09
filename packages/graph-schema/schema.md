@@ -14,7 +14,7 @@ applied/tracked by `services/workers/sayre_workers/graph_migrations/runner.py`. 
 query-builder code lives here yet — that is a later ticket (W2-02, Graph Query
 Service).
 
-Non-goals of this ticket (see `docs/PRD_Tickets.md` W0-02 and
+Non-goals of this ticket (see `docs/product/Ticket-Backlog-by-Feature-2.md` W0-02 and
 `docs/wave0-foundation-contracts.md`): no Tree-sitter parsing / real node+edge
 population (W1-01/W1-05), no Graph Query Service / RBAC node-stripping / query
 builders (W2-02), no risk & health signal properties beyond the minimal
@@ -48,7 +48,7 @@ coverage/status fields named below (W3-07), no `CONNECTS_TO` cross-repo inferenc
 
 ## Scope & identity
 
-`docs/PRD_Tickets.md`'s identity contract (repository identity stable / ref mutable /
+`docs/product/Ticket-Backlog-by-Feature-2.md`'s identity contract (repository identity stable / ref mutable /
 revision an immutable SHA) is carried on every scope-bearing node and edge:
 
 - `repo_id` (string) — the repository's stable identity (mirrors the Postgres
@@ -90,7 +90,7 @@ Where `\0` is the literal NUL-byte field separator, `label` is the node's label
 `uid`. Because `repository_id`/`ref_name` are part of the hash, the same logical file
 in two different repositories, or on two different refs of the same repository, never
 collides — this is "Stable node UIDs include repository/ref scope and canonical
-path/symbol identity" (`docs/PRD_Tickets.md`) implemented.
+path/symbol identity" (`docs/product/Ticket-Backlog-by-Feature-2.md`) implemented.
 
 ### COVERS same-scope invariant
 
@@ -116,7 +116,7 @@ writers matching all four components on *both* endpoints before `MERGE`ing the e
 | `Person` | `name`, `email`, `provider`, `provider_login`, `github_login` | Provider-neutral identity; `github_login` remains as a compatibility alias for GitHub-backed people. No scope triple (a person is not repo/ref-scoped). |
 | `Commit` | `sha`, `message`, `timestamp`, `author_name`, `author_email` | `author_name`/`author_email` are a denormalized cache; the canonical author link is the `AUTHORED` edge to a `Person`. **Notes (flagged, not fixed here):** `services/core/src/integrations/git/graphOwnershipStore.ts` additionally sets `commit.repository_id` (not `repo_id` — a naming inconsistency with every other scope-bearing label, discovered during the W0-02 audit) plus `commit.ref_name`/`commit.revision_sha`. Out of this ticket's scope to change (it does not own that file's Cypher); raised for a follow-up ticket rather than silently documented as if it were the canonical `repo_id` convention. |
 | `Feature` | `description`, `team`, `name`, `repo_id`, `ref_name`, `revision_sha` | Cached fields for the Product tree view. |
-| `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `title`, `status`, `url`, `synced_at`, `repo_id`, `ref_name` | Mirror pointer to the Jira/Linear system of record. `repo_id`/`ref_name` are set by `services/core/src/integrations/tickets/graphTicketStore.ts` (consistent with the canonical naming, unlike `Commit`'s `repository_id`); no `005` composite index exists for `Ticket` yet, since `005`'s index set is derived from the Python ingestion fleet's label scans (`docs/PRD_Tickets.md` finding D2) and `Ticket` is written by the Node-side store instead — noted here rather than silently added to `005`'s scope. |
+| `Ticket` | `external_id`, `system` (`'jira'` \| `'linear'`), `title`, `status`, `url`, `synced_at`, `repo_id`, `ref_name` | Mirror pointer to the Jira/Linear system of record. `repo_id`/`ref_name` are set by `services/core/src/integrations/tickets/graphTicketStore.ts` (consistent with the canonical naming, unlike `Commit`'s `repository_id`); no `005` composite index exists for `Ticket` yet, since `005`'s index set is derived from the Python ingestion fleet's label scans (`docs/product/Ticket-Backlog-by-Feature-2.md` finding D2) and `Ticket` is written by the Node-side store instead — noted here rather than silently added to `005`'s scope. |
 | `EnvStep` | `sequence` (int), `command`, `repo_id`, `ref_name`, `revision_sha` | Onboarding steps, ordered by `sequence`. |
 | `Test` | `path`, `name`, `coverage_status` (`'pass'` \| `'fail'` \| `'unknown'`), `repo_id`, `ref_name`, `revision_sha` | Statically discovered tests begin as `unknown`; W4-03 updates measured results. |
 
@@ -256,7 +256,7 @@ CREATE TABLE IF NOT EXISTS graph_migrations (
 
 The primary key is `(target, layer, version)`, not `version` alone (W0-02 audit
 correction): history is now tracked **per logical/physical layer and per graph
-target**, per `docs/PRD_Tickets.md`'s acceptance line. With a single-column `version`
+target**, per `docs/product/Ticket-Backlog-by-Feature-2.md`'s acceptance line. With a single-column `version`
 key, applying the logical files to `neo4j` first and then running `--target neptune`
 against the same Postgres would report every logical file as "already applied" and
 apply nothing to Neptune — the exact scenario the Neptune cutover (PM-03) needs to

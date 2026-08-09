@@ -5,7 +5,7 @@
 // Targets: neo4j
 //
 // Purpose: composite (org_id, repo_id, ref_name) indexes for every scope-bearing node
-// label (finding D2). The PRD's identity contract (docs/PRD_Tickets.md, "Stable node
+// label (finding D2). The PRD's identity contract (docs/product/Ticket-Backlog-by-Feature-2.md, "Stable node
 // UIDs include repository/ref scope and canonical path/symbol identity") means almost
 // every ingestion, delete/rebuild, and Graph Query Service statement matches on exactly
 // this triple (sayre_workers/ingestion/graph.py, sayre_workers/enrichment/

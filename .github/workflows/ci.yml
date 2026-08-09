@@ -76,7 +76,7 @@ jobs:
       # in CI. (A third suite, scripts/validate-pipeline-only-bash.test.mjs, tested a Bash
       # PreToolUse guard that was deleted in PL-03a loop 3 — a diagnostic run established that
       # frontmatter-declared subagent hooks never fire on this checkout, so the guard was dead code
-      # the whole time; see docs/PRD_Tickets.md's PL-03g for the real-enforcement follow-up.)
+      # the whole time; see docs/product/Ticket-Backlog-by-Feature-2.md's PL-03g for the real-enforcement follow-up.)
       - name: Agent shims — generator tests
         run: npm run test:agent-shims
 
