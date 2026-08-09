@@ -784,6 +784,26 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 
 **Acceptance criteria:** a written answer naming which pipeline capabilities are load-bearing for multi-tenant SaaS and which are not required for single-tenant BYOC; either a recorded decision that the current architecture stands, or a scoped follow-up ticket; the answer lands in the founder decision log, not only here.
 
+### **PL-09 — Disconnect the dead Cloudflare Workers build from the repo** **_(observed 2026-08-04)_**
+
+**Depends on:** none · **Executor:** Human (Cloudflare account settings — no repo change exists)
+
+A Cloudflare **Workers** service named `sayre`, on account `791596923276fe565adfc43b1fff1a2b`, is connected to this repo and posts a `Workers Builds: sayre` check on every commit and PR. It has **failed on every commit** since it first appears at `e37e009` (2026-07-27), because there is no Worker source to build: no `wrangler.toml`/`.jsonc`, no `_worker.js`, and none anywhere in git history (`git log --all --diff-filter=D` over those paths is empty). It deploys nothing and verifies nothing — it is pure red noise on every PR, which is corrosive precisely because it trains reviewers to ignore a failing check.
+
+Verified not connected to the live site before recommending removal: the deployment that actually succeeds is **Cloudflare Pages** — a *different* account (`9b15e5f59433622fdb582ece92652441`), same project name `sayre`, publishing to `sayre.pages.dev`. Separately, `trysayre.com` is not pointed at Cloudflare at all: it resolves to Namecheap parking (`192.64.119.121`; `www` → `parkingpage.namecheap.com`) and refuses connections on 443, so no Worker route can be serving it. The one check not closable from outside the account is whether that Worker has routes bound in the dashboard.
+
+**Do not** revoke repo access from the "Cloudflare Workers and Pages" GitHub App to achieve this — Pages runs through the same installation and would be taken down with it. The disconnect is Workers & Pages → `sayre` → Settings → Build → disconnect repository, on the `791596…` account only.
+
+**Acceptance criteria:** the `Workers Builds: sayre` check no longer appears on new commits; the `Cloudflare Pages` check still appears and still passes; `sayre.pages.dev` still serves the site.
+
+### **PL-10 — `main` is red: `check:secret-access` fails in CI** **_(observed 2026-08-04)_**
+
+**Depends on:** none · **Executor:** AI agent
+
+The `web + core (lint, typecheck, test)` job fails on `main` and on both open PRs (#76, #77), at the **"Secret-access boundary"** step — `npm run check:secret-access` (`scripts/check-secret-access.mjs`). This is a governing security check per `.claude/rules/security-multitenancy.md`, so a red result here is not cosmetic: while it stays red, no one can distinguish a real secret-access violation from the standing failure. Root cause not yet diagnosed — that is the first task, not an assumption to carry in.
+
+**Acceptance criteria:** the underlying violation is fixed (not the check weakened) or, if the check itself is wrong, its defect is fixed and a regression test pins the corrected behaviour; `web + core` passes on `main`; the reason it was red is recorded so the same class is recognisable next time.
+
 ## **Quick-reference dependency table** 
 
 |**Ticket**|**Depends on**|**Wave**|
@@ -847,6 +867,8 @@ D-021 asked whether maintaining Sayre's own Tree-sitter structural tier is the b
 |PL-06|W4-06|Platform|
 |PL-07|W4-06|Platform|
 |PL-08|PL-01 (gate)|Platform|
+|PL-09|none|Platform|
+|PL-10|none|Platform|
 
 
 
