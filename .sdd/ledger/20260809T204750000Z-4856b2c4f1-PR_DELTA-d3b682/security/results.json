@@ -1,0 +1,529 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-09T21:05:00Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "NOT_APPLICABLE": 18,
+      "PASS": 1,
+      "FAIL": 1
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 20
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 20
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "ABSENT": 5,
+      "IMPLEMENTED": 6,
+      "PARTIAL": 3
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|sayre-workers-parsing-module|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "ABSENT",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Read the full diff (18 changed paths) and the whole sayre_workers/parsing package for any org_id stamping, injection, or tenant-scoped read/write. Ran test_parse_result_carries_no_tenant_or_uid_fields and test_parsing_package_imports_no_graph_queue_or_git_modules myself.",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/models.py:5-7 -- 'Every model here is deliberately tenant-free: no org_id/repo_id/ref_name/... (parsing has no tenant context; W1-05 stamps identity on write)'",
+        "services/workers/sayre_workers/parsing/__init__.py:34-35 -- boundary docstring restates the same invariant",
+        "poetry run pytest tests/test_parsing.py::test_parse_result_carries_no_tenant_or_uid_fields tests/test_parsing.py::test_parsing_package_imports_no_graph_queue_or_git_modules -q -> 2 passed (run myself)",
+        "git diff -- services/workers/sayre_workers/parsing/ | grep -i org_id -> no output"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read + `poetry run pytest tests/test_parsing.py -k 'carries_no_tenant_or_uid_fields or imports_no_graph_queue_or_git_modules'` from services/workers/.",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/models.py:5-7",
+        "services/workers/sayre_workers/parsing/__init__.py:8-25"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|sayre-workers-parsing-module|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "ABSENT",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Searched the diff and the whole parsing package for any node-level authorization, RBAC filter, or graph-traversal logic that would duplicate the Graph Query Service's job.",
+      "evidence": [
+        "grep -rn 'rbac\\|authoriz\\|permission\\|graph.?query.?service' services/workers/sayre_workers/parsing/ -> no hits",
+        "sayre_workers/parsing has zero graph-read code of any kind (confirmed by CORE-01's same import-boundary test, which also forbids `neo4j`) -- there is nothing here that could duplicate RBAC filtering even by accident"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|sayre-workers-parsing-module|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "ABSENT",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Grepped the full diff and every new/modified fixture file for credential-shaped patterns (AWS access-key prefix, PEM private-key headers, secret_key=/api_key= literal assignment) and for any credential-loader import.",
+      "evidence": [
+        "grep -rniE 'AKIA[0-9A-Z]{16}|BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|secret_key|api_key\\s*=' services/workers/tests/fixtures/parsing/javascript/*.js services/workers/tests/fixtures/parsing/typescript/*.ts* -> no hits",
+        "SourceFile (the only input type this module accepts) carries only `path: str` and `content: bytes` -- no credential-shaped field exists anywhere in models.py"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static grep; re-run: grep -rniE 'AKIA|BEGIN .* PRIVATE KEY|secret_key|api_key' services/workers/tests/fixtures/parsing/",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|sayre-workers-parsing-module|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "ABSENT",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Searched the diff for any webhook receiver, signature check, or route handler.",
+      "evidence": [
+        "grep -rn 'webhook\\|signature\\|X-Hub-Signature' services/workers/sayre_workers/parsing/ -> no hits; this diff touches only queries/*.scm, adapters/{javascript,typescript}.py, __init__.py docstrings, and fixtures/tests"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|sayre-workers-parsing-module|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "ABSENT",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Searched the diff and the whole module for filesystem access, scratch-clone creation, or cleanup logic.",
+      "evidence": [
+        "test_parsing_package_imports_no_graph_queue_or_git_modules forbids `git`/`subprocess` imports anywhere under sayre_workers/parsing -- passed, run myself",
+        "grep -rn 'open(\\|tempfile\\|shutil\\|os.remove' services/workers/sayre_workers/parsing/*.py services/workers/sayre_workers/parsing/adapters/*.py -> no hits (the only `Path`/file-read code is the pre-existing, unmodified test harness `_load_fixture_repo()`, which reads committed fixtures for tests, not a runtime scratch clone)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read + the same import-boundary test as CORE-01.",
+      "code_references": [
+        "services/workers/tests/test_parsing.py:306"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|sayre-workers-parsing-module|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Cold-read every new/modified line in queries/javascript.scm, queries/typescript.scm, adapters/javascript.py, and adapters/typescript.py for any dynamic query/command construction from parsed (untrusted) source content -- string-built Cypher/SQL/shell, eval/exec, or an f-string/`.format()`/`%`-built `.scm` query text. Then constructed adversarial fixture content (module names containing quote characters, backticks, semicolons, and shell metacharacters inside `export \u2026 from \"...\"` and `import x = require(\"...\")` strings) and ran `parse_full` against it to confirm the extracted `module`/`symbols` strings are stored as inert data, never re-interpreted.",
+      "evidence": [
+        "`.scm` query sources are 100% static, package-resource-loaded text (`load_query_source()` in adapters/base.py, unmodified by this diff) -- never built by concatenating parsed content; grep of the full diff for `eval(|exec(|subprocess|os.system|pickle|yaml.load|__import__` -> zero hits",
+        "Every new extraction branch (`class.expression`, `reexport.stmt`, `import.equals`) stores extracted text as a plain `str` field on a frozen Pydantic model (`ParsedImport.module`/`.symbols`, `ParsedClass.name`) -- never passed to a shell, SQL, or Cypher statement anywhere in this diff or the unmodified parser.py/models.py",
+        "Constructed `export * from \"'; DROP TABLE x; --\"` and `import fs = require(\"$(rm -rf /)\")` as adversarial fixture content and ran `parse_full` on them in-memory (disposable, never written to the repo) -- both produced ordinary `ParsedImport` rows with the literal attacker string stored verbatim in `.module`, no execution, no exception"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduce: construct a `SourceFile` whose content contains `export * from \"'; DROP TABLE x; --\";` and call `sayre_workers.parsing.parser.parse_full([sf])` -- expect one `ParsedImport(module=\"'; DROP TABLE x; --\")` and no exception. No cleanup needed (in-memory only).",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/adapters/base.py:217-221 (load_query_source, static resource text)",
+        "services/workers/sayre_workers/parsing/adapters/javascript.py (class.expression/reexport.stmt/import.equals branches)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-01",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether signature-before-processing has any target asset in this diff.",
+      "evidence": [
+        "No webhook receiver, raw-body handler, or signature-validation code exists anywhere in this diff or in sayre_workers/parsing -- this module has no HTTP entry point of any kind."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-02",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether webhook replay/idempotency has any target asset in this diff.",
+      "evidence": [
+        "No webhook delivery-ID or idempotency-key handling exists in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-03",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether installation/repository binding has any target asset in this diff.",
+      "evidence": [
+        "No GitHub App installation-state or tenant-binding code exists in this diff -- SourceFile.path is a plain string with no installation context attached."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-04",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether forged queue envelope has any target asset in this diff.",
+      "evidence": [
+        "No SQS/BullMQ producer or consumer code exists in this diff or in sayre_workers/parsing -- confirmed by the same import-boundary test (CORE-01/05) forbidding `boto3`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-05",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether cross-queue confusion has any target asset in this diff.",
+      "evidence": [
+        "No queue consumer of any kind exists in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-06",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether retry, poison, and DLQ behavior has any target asset in this diff.",
+      "evidence": [
+        "No queue/retry/DLQ code exists in this diff; parse_full/parse_diff are synchronous pure functions with no retry semantics of their own."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-07",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether priority starvation and cost abuse has any target asset in this diff.",
+      "evidence": [
+        "No priority-lane or job-scheduling code exists in this diff -- parsing has no queue of its own."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-08",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether malicious repository paths has any target asset in this diff.",
+      "evidence": [
+        "SourceFile.path is never used to open a file from a real filesystem anywhere in this diff or the unmodified parser.py -- callers supply already-read bytes; adapters only store the path string on output records. No traversal, symlink, or device-name risk exists at this layer (that risk, if any, belongs to W1-05's future scratch-clone/file-read code, explicitly out of this diff's scope per spec.md)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-10",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether scratch-clone isolation has any target asset in this diff.",
+      "evidence": [
+        "No scratch-clone creation exists anywhere in this diff or module -- confirmed by CORE-05's import-boundary test forbidding `git`/`subprocess`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-11",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether transactional graph/vector writes has any target asset in this diff.",
+      "evidence": [
+        "No graph, vector, or relational write exists in this diff -- confirmed by CORE-01's import-boundary test forbidding `neo4j`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-12",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether unsafe provider responses has any target asset in this diff.",
+      "evidence": [
+        "No Git/Jira/Linear API client code exists in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-13",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether sync poisoning and conflict has any target asset in this diff.",
+      "evidence": [
+        "No scheduled/webhook sync logic exists in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|sayre-workers-parsing-module|v1",
+      "check_id": "ING-14",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "sayre-workers-parsing-module",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether worker secret exposure has any target asset in this diff.",
+      "evidence": [
+        "No credential, clone-URL, or installation-token handling exists in this diff -- covered again independently from CORE-03."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; no target asset exists in this diff to reproduce against.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|parsing-module-nested-scope-depth-resource-ceiling|v1",
+      "check_id": "ING-09",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "parsing-module-nested-scope-depth-resource-ceiling",
+      "attack_path_version": "v1",
+      "attempt": "Cold-attack-model hypothesis: the diff adds three new node types (generator_function_declaration, generator_function, class-expression) to adapters/javascript.py's _classify_scope(), each of which is now walked by the pre-existing ancestor_scope_chain() helper (adapters/base.py:157-177) for every scope-classified node in a file. Constructed synthetic, purely in-memory SourceFile fixtures with deeply nested constructs (nested generator function declarations, nested bound class expressions, a 50000-symbol re-export list, 20000 sibling class declarations) and called parse_full() directly, measuring wall-clock time at increasing depth to determine whether an adversarial file can force disproportionate CPU consumption with no depth/size ceiling anywhere in the call path. Then isolated attribution: reran the identical depth series using ONLY pre-existing, unmodified function_declaration nesting (not touched by this diff) via both (a) the current working tree and (b) a disposable `git worktree add --detach` checkout of the pre-diff commit (4856b2c4f1b7455fb5d82be7c16458d7bbaf065e's parent state), to determine whether this diff introduces or worsens the behavior versus merely extending an already-existing mechanism to new syntax.",
+      "evidence": [
+        "Nested `function* g(){}` (generator, NEW code path this diff adds to _classify_scope): depth=125 -> 0.129s, depth=250 -> 0.975s, depth=500 -> 7.674s (measured via poetry run python against parse_full([SourceFile(...)]))",
+        "Nested plain `function g(){}` (PRE-EXISTING, unmodified code path, same working tree): depth=125 -> 0.120s, depth=250 -> 0.901s, depth=500 -> 7.029s -- within measurement noise of the generator series",
+        "Nested plain `function g(){}` on a disposable `git worktree add --detach 4856b2c4f1b7455fb5d82be7c16458d7bbaf065e` checkout of the exact pre-diff commit (base.py/parser.py/registry.py are provably untouched by this diff -- `git diff --stat` for those three files returns empty): depth=125 -> 0.122s, depth=250 -> 0.891s, depth=500 -> 6.977s -- confirms the growth curve is IDENTICAL before and after this diff for the pre-existing construct",
+        "50000-symbol `export { a0, ..., a49999 } from \"./m\"` (GAP-5, new): 0.097s -- linear, not a concern",
+        "20000 sibling `const K0 = class {}; ...` bound class-expression declarations (GAP-7, new): 0.253s -- linear (siblings do not chain ancestor_scope_chain depth), not a concern",
+        "No `MAX_DEPTH`, file-size cap, or timeout wrapper exists anywhere in sayre_workers/parsing (grepped parser.py, adapters/base.py, adapters/javascript.py, adapters/typescript.py, registry.py for MAX/size_limit/timeout/signal.alarm/ulimit -- zero hits)",
+        "No crash, exception, or incorrect SkippedFile classification was observed at any tested depth -- tree-sitter's own error-tolerant C parser and parser.py's broad except-to-SkippedFile boundary both hold; the finding is worst-case TIME, not a crash or a bypass of the skip mechanism"
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-d572b816804c",
+        "status": "OPEN",
+        "first_seen_run_id": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+        "first_seen_commit": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+        "last_seen_run_id": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+        "last_seen_commit": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Reproduce: from services/workers/, `poetry run python -c \"import time; from sayre_workers.parsing.parser import parse_full; from sayre_workers.parsing.models import SourceFile; src=''.join(f'function* g{i}() {{\\n' for i in range(500)) + 'yield 1;\\n' + '}\\n'*500; t=time.time(); parse_full([SourceFile(path='a.js', content=src.encode())]); print(time.time()-t)\\\"` -> ~7s at depth 500, and grows super-linearly with depth (empirically consistent with polynomial, not linear, growth -- not re-derived to an exact exponent here). Cleanup: none required, every probe was in-memory only; the one `git worktree add --detach` fixture used for pre/post-diff isolation was removed via `git worktree remove --force` immediately after use, confirmed via `git worktree list` and `git status --porcelain` showing no leftover path.",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/adapters/base.py:157-177 (ancestor_scope_chain -- unmodified by this diff, the actual mechanism)",
+        "services/workers/sayre_workers/parsing/adapters/javascript.py (_classify_scope extended for generator_function_declaration/generator_function/class -- this diff's new callers of the pre-existing mechanism)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "ticket": "W1-01",
+  "overlays": [
+    "base"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "OK",
+      "source": "parsing a fixture repo produces the expected function/class/import graph, verified by a snapshot test.",
+      "evidence": [
+        "services/workers/tests/test_parsing.py",
+        "services/workers/tests/fixtures/parsing/python/expected_parse.json",
+        "services/workers/tests/fixtures/parsing/javascript/expected_parse.json",
+        "services/workers/tests/fixtures/parsing/typescript/expected_parse.json",
+        "services/workers/tests/fixtures/parsing/go/expected_parse.json",
+        ".github/workflows/ci.yml",
+        "ran: poetry run pytest tests/test_parsing.py tests/test_parsing_tester.py -q -> 49 passed",
+        "tamper check: mutated go/expected_parse.json functions[0].name -> test_parse_full_matches_golden_snapshot[go] FAILED (golden restored, tree clean)"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-2",
+      "status": "OK",
+      "source": "Incremental + full-parse AST extraction (JS/TS/Py/Go to start)",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/registry.py",
+        "services/workers/sayre_workers/parsing/adapters/base.py",
+        "services/workers/sayre_workers/parsing/adapters/python.py",
+        "services/workers/sayre_workers/parsing/adapters/javascript.py",
+        "services/workers/sayre_workers/parsing/adapters/typescript.py",
+        "services/workers/sayre_workers/parsing/adapters/go.py",
+        "services/workers/tests/test_parsing.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3",
+      "status": "OK",
+      "source": "producing structural relationships behind a common `ParseResult` interface",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/models.py",
+        "services/workers/sayre_workers/parsing/__init__.py",
+        "services/workers/sayre_workers/ingestion/service.py",
+        "services/workers/sayre_workers/ingestion/projection.py",
+        "services/workers/scripts/affected_tests.py",
+        "services/workers/tests/test_parsing.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-4",
+      "status": "OK",
+      "source": "callable as full parse (cold start) or diff parse (changed files only)",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/parser.py",
+        "services/workers/tests/test_parsing.py",
+        "services/workers/tests/test_parsing_tester.py",
+        "note: 'incremental' is a stateless re-parse of the changed subset, not tree-sitter tree.edit() reparse; documented in parser.py docstring and asserted by test_parse_diff_signature_takes_source_files_not_a_prior_tree"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-5",
+      "status": "NARROWED",
+      "source": "parsing a fixture repo produces the expected function/class/import graph",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/queries/javascript.scm",
+        "services/workers/sayre_workers/parsing/queries/typescript.scm",
+        "services/workers/sayre_workers/parsing/adapters/javascript.py",
+        "probe: parse_full(barrel.ts with 'export * from \"./a\"; export { b } from \"./b\"; export * as ns from \"./c\";') -> imports == []",
+        "tree-sitter node type is export_statement (source field), never captured by any query pattern"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-6",
+      "status": "NARROWED",
+      "source": "Incremental + full-parse AST extraction (JS/TS/Py/Go to start) producing structural relationships",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/queries/javascript.scm",
+        "services/workers/sayre_workers/parsing/queries/typescript.scm",
+        "probe: parse_full(gen.js = 'function* genFn() { yield 1; }') -> functions == [] while gen.js is listed in parsed_files",
+        "probe: gen.ts with function*/export function*/async function* + class C { *m(){} async *am(){} } -> only C.m and C.am captured",
+        "tree-sitter node types generator_function_declaration / generator_function are absent from the capture set"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-7",
+      "status": "NARROWED",
+      "source": "producing structural relationships behind a common `ParseResult` interface",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/queries/typescript.scm",
+        "services/workers/sayre_workers/parsing/queries/javascript.scm",
+        "probe: 'import fs = require(\"fs\");' in a .ts file -> no ParsedImport",
+        "probe: 'const C = class { m() {} };' -> no ParsedClass; method emitted as top-level function qualified_name 'm'",
+        "probe: 'const D = class extends B {};' -> no ParsedClass, no inherits"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-8",
+      "status": "UNTESTED",
+      "source": "verified by a snapshot test.",
+      "evidence": [
+        "services/workers/tests/fixtures/parsing/javascript/index.js",
+        "services/workers/tests/fixtures/parsing/javascript/shapes.js",
+        "services/workers/tests/fixtures/parsing/javascript/widget.jsx",
+        "services/workers/tests/fixtures/parsing/typescript/models.ts",
+        "services/workers/tests/fixtures/parsing/typescript/widget.tsx",
+        "no 'export' keyword, generator, re-export, class expression, or TS import-equals appears in any committed fixture, so the passing snapshot suite cannot detect GAP-5/6/7",
+        "services/workers/tests/fixtures/parsing/mixed has no expected_parse.json (assertion-based test only)"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-9",
+      "status": "OK",
+      "source": "producing structural relationships (function/class/import graph)",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/__init__.py",
+        "services/workers/sayre_workers/parsing/adapters/go.py",
+        "services/workers/sayre_workers/parsing/queries/typescript.scm",
+        "services/workers/tests/test_parsing.py",
+        "services/workers/tests/test_parsing_tester.py",
+        "documented deliberate exclusions: Go has no classes/inheritance; TS interface/implements excluded; raw unresolved callee/base/module strings; anonymous callbacks and IIFEs excluded; no Module/DEPENDS_ON extraction"
+      ],
+      "needsTest": false
+    }
+  ],
+  "stamp": {
+    "treeHash": "dbd46ddbdfe7c8e7d1c158587e50b89ebeb08405f5416c173a3097020fa91b84",
+    "headSha": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+    "dirty": true,
+    "writtenAt": "2026-08-09T19:23:44.524Z"
+  }
+}

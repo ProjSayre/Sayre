@@ -1,0 +1,48 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/workers/tests/test_parsing_gapfill.py",
+      "sha256": "4f43b3d681995434788beed1cb5f0f197b8d3215ee5be82334196834c22662d1",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "82edd909c11d0bedc9cfa462ffc7012a7f9303f0af18fa06fae3032ceef724fd",
+    "headSha": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+    "dirty": true,
+    "writtenAt": "2026-08-09T19:49:27.911Z"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "filesChanged": [
+    "services/workers/sayre_workers/parsing/queries/javascript.scm",
+    "services/workers/sayre_workers/parsing/queries/typescript.scm",
+    "services/workers/sayre_workers/parsing/adapters/javascript.py",
+    "services/workers/sayre_workers/parsing/adapters/typescript.py",
+    "services/workers/sayre_workers/parsing/__init__.py",
+    "services/workers/tests/fixtures/parsing/javascript/expected_parse.json",
+    "services/workers/tests/fixtures/parsing/typescript/expected_parse.json",
+    "services/workers/tests/test_parsing.py",
+    "services/workers/tests/test_parsing_gapfill.py",
+    "services/workers/tests/fixtures/parsing/javascript/barrel.js",
+    "services/workers/tests/fixtures/parsing/javascript/generators.js",
+    "services/workers/tests/fixtures/parsing/javascript/expressions.js",
+    "services/workers/tests/fixtures/parsing/typescript/barrel.ts",
+    "services/workers/tests/fixtures/parsing/typescript/generators.ts",
+    "services/workers/tests/fixtures/parsing/typescript/legacy.ts",
+    "services/workers/tests/fixtures/parsing/typescript/expressions.ts",
+    "services/workers/tests/fixtures/parsing/typescript/stream.tsx",
+    "services/workers/tests/fixtures/parsing/mixed/expected_parse.json"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/workers/tests/test_parsing_gapfill.py",
+      "reason": "test_class_expression_nested_in_a_function_chains_its_qualified_names (@spec EC-12) originally asserted _function_names(result) == [\"m\"], i.e. that the enclosing function f(){...} would be absent from result.functions. That contradicts EC-12's own spec.md text (which only specifies C.qualified_name, m.qualified_name, m.enclosing_class) and pre-existing declared-OK GAP-2 behavior (a named top-level function_declaration is always extracted). Changed the assertion to check \"m\" in _function_names(result) and select the method by its exact qualified_name instead of assuming list length/order."
+    }
+  ],
+  "stamp": {
+    "treeHash": "590d82db4bd6634816a2a44c601db9bc3b4d0f4eb9753dd419c0c99fb827e790",
+    "headSha": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+    "dirty": true,
+    "writtenAt": "2026-08-09T20:05:44.771Z"
+  }
+}

@@ -34,6 +34,32 @@
   "classes": [
     {
       "base_names": [],
+      "end_line": 9,
+      "file_path": "expressions.js",
+      "name": "Registry",
+      "qualified_name": "Registry",
+      "start_line": 7
+    },
+    {
+      "base_names": [
+        "Registry"
+      ],
+      "end_line": 11,
+      "file_path": "expressions.js",
+      "name": "Extended",
+      "qualified_name": "Extended",
+      "start_line": 11
+    },
+    {
+      "base_names": [],
+      "end_line": 27,
+      "file_path": "generators.js",
+      "name": "Counter",
+      "qualified_name": "Counter",
+      "start_line": 23
+    },
+    {
+      "base_names": [],
       "end_line": 10,
       "file_path": "shapes.js",
       "name": "Shape",
@@ -54,6 +80,60 @@
   "covers": [],
   "deleted_file_paths": [],
   "functions": [
+    {
+      "enclosing_class": "Registry",
+      "end_line": 8,
+      "file_path": "expressions.js",
+      "name": "register",
+      "qualified_name": "Registry.register",
+      "signature": "register()",
+      "start_line": 8
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 9,
+      "file_path": "generators.js",
+      "name": "plainGen",
+      "qualified_name": "plainGen",
+      "signature": "plainGen()",
+      "start_line": 7
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 13,
+      "file_path": "generators.js",
+      "name": "exportedGen",
+      "qualified_name": "exportedGen",
+      "signature": "exportedGen()",
+      "start_line": 11
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 17,
+      "file_path": "generators.js",
+      "name": "asyncGen",
+      "qualified_name": "asyncGen",
+      "signature": "asyncGen()",
+      "start_line": 15
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 21,
+      "file_path": "generators.js",
+      "name": "exprGen",
+      "qualified_name": "exprGen",
+      "signature": "exprGen()",
+      "start_line": 19
+    },
+    {
+      "enclosing_class": "Counter",
+      "end_line": 26,
+      "file_path": "generators.js",
+      "name": "increment",
+      "qualified_name": "Counter.increment",
+      "signature": "increment()",
+      "start_line": 24
+    },
     {
       "enclosing_class": null,
       "end_line": 14,
@@ -147,6 +227,32 @@
   ],
   "imports": [
     {
+      "file_path": "barrel.js",
+      "is_relative": true,
+      "module": "./a",
+      "start_line": 5,
+      "symbols": []
+    },
+    {
+      "file_path": "barrel.js",
+      "is_relative": true,
+      "module": "./b",
+      "start_line": 6,
+      "symbols": [
+        "b",
+        "c"
+      ]
+    },
+    {
+      "file_path": "barrel.js",
+      "is_relative": true,
+      "module": "./c",
+      "start_line": 7,
+      "symbols": [
+        "ns"
+      ]
+    },
+    {
       "file_path": "index.js",
       "is_relative": true,
       "module": "./shapes",
@@ -207,12 +313,20 @@
   ],
   "inherits": [
     {
+      "base_name": "Registry",
+      "file_path": "expressions.js",
+      "subclass_qualified_name": "Extended"
+    },
+    {
       "base_name": "Shape",
       "file_path": "shapes.js",
       "subclass_qualified_name": "Circle"
     }
   ],
   "parsed_files": [
+    "barrel.js",
+    "expressions.js",
+    "generators.js",
     "index.js",
     "shapes.js",
     "widget.jsx"

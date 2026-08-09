@@ -53,10 +53,16 @@ def _load_fixture_repo(root: Path) -> list[SourceFile]:
     """Read every regular file under `root` into a `SourceFile` with a
     repo-relative POSIX path, sorted for a stable base input order (the
     parser must produce identical output regardless of this order anyway --
-    see the determinism tests below)."""
+    see the determinism tests below).
+
+    `expected_parse.json` (the golden itself) is always excluded here --
+    GAP-8 (gapfill delta): every fixture dir may now carry a golden
+    (`mixed/` included, see `test_parse_full_over_mixed_language_repo`), so
+    the exclusion has to live in the shared loader rather than being
+    filtered out ad hoc by only the golden-snapshot test."""
     files: list[SourceFile] = []
     for path in sorted(root.rglob("*")):
-        if not path.is_file():
+        if not path.is_file() or path.name == "expected_parse.json":
             continue
         relative = path.relative_to(root).as_posix()
         files.append(SourceFile(path=relative, content=path.read_bytes()))
@@ -326,7 +332,6 @@ def test_parsing_package_imports_no_graph_queue_or_git_modules():
 def test_parse_full_matches_golden_snapshot(language):
     root = FIXTURES_ROOT / language
     files = _load_fixture_repo(root)
-    files = [f for f in files if f.path != "expected_parse.json"]
     result = parse_full(files)
     _assert_matches_golden(result, root / "expected_parse.json")
 

@@ -716,6 +716,58 @@
       }
     }
   ],
+  "Documents/PRD/Audit-Rebuild-Cheat-Sheet.md": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "Documents/PRD/PRD V1.md": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "Documents/PRD/Ticket-Backlog-Flat.md": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "Documents/PRD/Ticket-Backlog-by-Feature-2.md": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "README.md": [
     {
       "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
@@ -5182,6 +5234,240 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/workers/sayre_workers/parsing/__init__.py": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/parsing/adapters/javascript.py": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/parsing/adapters/typescript.py": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/parsing/queries/javascript.scm": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/parsing/queries/typescript.scm": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/javascript/barrel.js": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/javascript/expected_parse.json": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/javascript/expressions.js": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/javascript/generators.js": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/mixed/expected_parse.json": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/typescript/barrel.ts": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/typescript/expected_parse.json": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/typescript/expressions.ts": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/typescript/generators.ts": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/typescript/legacy.ts": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/fixtures/parsing/typescript/stream.tsx": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_parsing.py": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_parsing_gapfill.py": [
+    {
+      "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+      "ticket": "W1-01",
+      "date": "2026-08-09",
+      "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "tsconfig.json": [

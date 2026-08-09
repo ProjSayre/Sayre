@@ -1,0 +1,71 @@
+{
+  "calls": [
+    {
+      "callee_name": "fmt.Sprintf",
+      "caller_qualified_name": "Greet",
+      "file_path": "greet.go",
+      "start_line": 6
+    }
+  ],
+  "classes": [],
+  "covers": [],
+  "deleted_file_paths": [],
+  "functions": [
+    {
+      "enclosing_class": null,
+      "end_line": 7,
+      "file_path": "greet.go",
+      "name": "Greet",
+      "qualified_name": "Greet",
+      "signature": "func Greet(name string) string",
+      "start_line": 5
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 3,
+      "file_path": "greet.js",
+      "name": "greet",
+      "qualified_name": "greet",
+      "signature": "greet(name)",
+      "start_line": 1
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 5,
+      "file_path": "greet.py",
+      "name": "greet",
+      "qualified_name": "greet",
+      "signature": "def greet(name)",
+      "start_line": 4
+    }
+  ],
+  "imports": [
+    {
+      "file_path": "greet.go",
+      "is_relative": false,
+      "module": "fmt",
+      "start_line": 3,
+      "symbols": []
+    },
+    {
+      "file_path": "greet.py",
+      "is_relative": false,
+      "module": "os",
+      "start_line": 1,
+      "symbols": []
+    }
+  ],
+  "inherits": [],
+  "parsed_files": [
+    "greet.go",
+    "greet.js",
+    "greet.py"
+  ],
+  "skipped_files": [
+    {
+      "path": "README.md",
+      "reason": "unsupported_extension"
+    }
+  ],
+  "tests": []
+}

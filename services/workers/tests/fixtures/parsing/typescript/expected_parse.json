@@ -22,6 +22,24 @@
   "classes": [
     {
       "base_names": [],
+      "end_line": 8,
+      "file_path": "expressions.ts",
+      "name": "Registry",
+      "qualified_name": "Registry",
+      "start_line": 6
+    },
+    {
+      "base_names": [
+        "Registry"
+      ],
+      "end_line": 10,
+      "file_path": "expressions.ts",
+      "name": "Extended",
+      "qualified_name": "Extended",
+      "start_line": 10
+    },
+    {
+      "base_names": [],
       "end_line": 15,
       "file_path": "models.ts",
       "name": "Shape",
@@ -37,11 +55,64 @@
       "name": "Circle",
       "qualified_name": "Circle",
       "start_line": 17
+    },
+    {
+      "base_names": [],
+      "end_line": 20,
+      "file_path": "stream.tsx",
+      "name": "Panel",
+      "qualified_name": "Panel",
+      "start_line": 16
     }
   ],
   "covers": [],
   "deleted_file_paths": [],
   "functions": [
+    {
+      "enclosing_class": "Registry",
+      "end_line": 7,
+      "file_path": "expressions.ts",
+      "name": "register",
+      "qualified_name": "Registry.register",
+      "signature": "register() : void",
+      "start_line": 7
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 6,
+      "file_path": "generators.ts",
+      "name": "plainGen",
+      "qualified_name": "plainGen",
+      "signature": "plainGen() : Generator<number>",
+      "start_line": 4
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 10,
+      "file_path": "generators.ts",
+      "name": "exportedGen",
+      "qualified_name": "exportedGen",
+      "signature": "exportedGen() : Generator<number>",
+      "start_line": 8
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 14,
+      "file_path": "generators.ts",
+      "name": "asyncGen",
+      "qualified_name": "asyncGen",
+      "signature": "asyncGen() : AsyncGenerator<number>",
+      "start_line": 12
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 18,
+      "file_path": "generators.ts",
+      "name": "exprGen",
+      "qualified_name": "exprGen",
+      "signature": "exprGen() : Generator<number>",
+      "start_line": 16
+    },
     {
       "enclosing_class": "Shape",
       "end_line": 14,
@@ -98,6 +169,33 @@
     },
     {
       "enclosing_class": null,
+      "end_line": 14,
+      "file_path": "stream.tsx",
+      "name": "streamGen",
+      "qualified_name": "streamGen",
+      "signature": "streamGen()",
+      "start_line": 12
+    },
+    {
+      "enclosing_class": "Panel",
+      "end_line": 19,
+      "file_path": "stream.tsx",
+      "name": "render",
+      "qualified_name": "Panel.render",
+      "signature": "render()",
+      "start_line": 17
+    },
+    {
+      "enclosing_class": null,
+      "end_line": 24,
+      "file_path": "stream.tsx",
+      "name": "View",
+      "qualified_name": "View",
+      "signature": "View()",
+      "start_line": 22
+    },
+    {
+      "enclosing_class": null,
       "end_line": 12,
       "file_path": "widget.tsx",
       "name": "Widget",
@@ -117,12 +215,92 @@
   ],
   "imports": [
     {
+      "file_path": "barrel.ts",
+      "is_relative": true,
+      "module": "./a",
+      "start_line": 4,
+      "symbols": []
+    },
+    {
+      "file_path": "barrel.ts",
+      "is_relative": true,
+      "module": "./b",
+      "start_line": 5,
+      "symbols": [
+        "b",
+        "c"
+      ]
+    },
+    {
+      "file_path": "barrel.ts",
+      "is_relative": true,
+      "module": "./c",
+      "start_line": 6,
+      "symbols": [
+        "ns"
+      ]
+    },
+    {
+      "file_path": "barrel.ts",
+      "is_relative": true,
+      "module": "./types",
+      "start_line": 7,
+      "symbols": [
+        "T"
+      ]
+    },
+    {
+      "file_path": "legacy.ts",
+      "is_relative": true,
+      "module": "./a",
+      "start_line": 6,
+      "symbols": [
+        "A"
+      ]
+    },
+    {
+      "file_path": "legacy.ts",
+      "is_relative": false,
+      "module": "fs",
+      "start_line": 7,
+      "symbols": [
+        "fs"
+      ]
+    },
+    {
+      "file_path": "legacy.ts",
+      "is_relative": true,
+      "module": "./util",
+      "start_line": 8,
+      "symbols": [
+        "util"
+      ]
+    },
+    {
       "file_path": "models.ts",
       "is_relative": true,
       "module": "./types",
       "start_line": 5,
       "symbols": [
         "Describable"
+      ]
+    },
+    {
+      "file_path": "stream.tsx",
+      "is_relative": false,
+      "module": "react",
+      "start_line": 9,
+      "symbols": [
+        "React"
+      ]
+    },
+    {
+      "file_path": "stream.tsx",
+      "is_relative": true,
+      "module": "./helper",
+      "start_line": 10,
+      "symbols": [
+        "helper"
       ]
     },
     {
@@ -137,13 +315,23 @@
   ],
   "inherits": [
     {
+      "base_name": "Registry",
+      "file_path": "expressions.ts",
+      "subclass_qualified_name": "Extended"
+    },
+    {
       "base_name": "Shape",
       "file_path": "models.ts",
       "subclass_qualified_name": "Circle"
     }
   ],
   "parsed_files": [
+    "barrel.ts",
+    "expressions.ts",
+    "generators.ts",
+    "legacy.ts",
     "models.ts",
+    "stream.tsx",
     "widget.tsx"
   ],
   "skipped_files": [],

@@ -1,0 +1,306 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-09T20:38:10Z",
+  "completed_at": "2026-08-09T21:05:00Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "4856b2c4f1b7455fb5d82be7c16458d7bbaf065e",
+    "branch": "main",
+    "dirty": true,
+    "environment": "local-dev checkout; no live CI run; no Docker/Neo4j/Postgres reachable in this environment; dirty worktree carries unrelated in-progress changes on other tickets (.github/workflows, apps/web, packages/config, services/core, infra/, scripts/ci/ etc.) that are NOT part of this run's target diff -- confirmed by git diff/git status scoped to services/workers/sayre_workers/parsing and services/workers/tests only",
+    "base_urls": [],
+    "changed_paths": [
+      "services/workers/sayre_workers/parsing/__init__.py",
+      "services/workers/sayre_workers/parsing/adapters/javascript.py",
+      "services/workers/sayre_workers/parsing/adapters/typescript.py",
+      "services/workers/sayre_workers/parsing/queries/javascript.scm",
+      "services/workers/sayre_workers/parsing/queries/typescript.scm",
+      "services/workers/tests/fixtures/parsing/javascript/expected_parse.json",
+      "services/workers/tests/fixtures/parsing/typescript/expected_parse.json",
+      "services/workers/tests/test_parsing.py",
+      "services/workers/tests/fixtures/parsing/javascript/barrel.js",
+      "services/workers/tests/fixtures/parsing/javascript/expressions.js",
+      "services/workers/tests/fixtures/parsing/javascript/generators.js",
+      "services/workers/tests/fixtures/parsing/mixed/expected_parse.json",
+      "services/workers/tests/fixtures/parsing/typescript/barrel.ts",
+      "services/workers/tests/fixtures/parsing/typescript/expressions.ts",
+      "services/workers/tests/fixtures/parsing/typescript/generators.ts",
+      "services/workers/tests/fixtures/parsing/typescript/legacy.ts",
+      "services/workers/tests/fixtures/parsing/typescript/stream.tsx",
+      "services/workers/tests/test_parsing_gapfill.py"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No compatible baseline selected. Per audit-contract.md's baseline order (option 4: 'No baseline. Mark every observation FIRST_OBSERVATION; do not invent progress.'): none of the five prior runs under .pipeline/security-history/ (20260723T045054983Z-dcd04559ef, 20260726T014535000Z-7f22125a81, 20260727T042955000Z-fd80b6e8dc, 20260804T055818422Z-e7d473db5a, 20260809T044344000Z-fbdf003b67) audited or selected services/workers/sayre_workers/parsing/** as a target surface. The 20260727 run's results.json contains exactly one line referencing 'services/workers/sayre_workers/parsing/ (untouched by this diff)' as scope-boundary evidence for an unrelated ticket (W2-09 GitHub installation/repos reconciliation), not an audit of the parsing module itself. No comparable prior observation exists for any target asset this run selects.",
+    "incompatible_dimensions": [
+      "No prior run's surface_inventory or observations cover services/workers/sayre_workers/parsing/** (queries/*.scm, adapters/javascript.py, adapters/typescript.py, __init__.py) as a target asset for CORE-01 through CORE-06 or any ING-* check.",
+      "The nearest-in-time complete run (20260809T044344000Z-fbdf003b67, an ancestor commit with a comparable local-dev environment) scoped its CORE-01 tenant-isolation observations to services/workers/graph-migrations/** and general Neo4j write call sites (ingestion/graph.py, enrichment_graph.py, dynamic_coverage/graph.py) -- a different target asset family entirely, since this run's target module (sayre_workers/parsing) has zero graph/queue/filesystem I/O of its own.",
+      "This run additionally selects the ingestion-queue-webhook brief (ING-09, parser/repository bombs) for the first time against this module; no prior run selected that brief against any parsing-module target asset."
+    ]
+  },
+  "product_progress": {
+    "milestone": "Wave 1 -- W1-01 multi-language Tree-sitter parsing module (MVP audit-and-gapfill: GAP-5/6/7/8 -- export-from re-exports, generator functions, TS import-equals, class expressions)",
+    "phase": "pre-external-customer MVP (CLAUDE.md / security-multitenancy.md secrets-phase posture: gitignored local .env, no KMS store yet -- not implicated by this diff, which handles no secrets)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/async-messaging.md",
+      "CLAUDE.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Pipeline convention (security stage may execute existing, non-destructive local test suites and construct disposable, purely in-memory adversarial fixtures as read-only verification -- no production source file was modified; every constructed fixture stayed either in-memory (parse_full() called directly on synthetic SourceFile objects, never written to the repo) or under this run's own logged scratchpad path).",
+    "resource_ceiling": "Local pytest execution (services/workers/tests/test_parsing.py, test_parsing_gapfill.py, test_parsing_tester.py, and the full services/workers suite) plus disposable in-memory parse_full() adversarial-input probes (deeply nested class/function/generator constructs up to depth 3000, a 50000-symbol re-export list, 20000 sibling class declarations) bounded by a 30-120s per-probe wall-clock alarm (perl -e 'alarm N; exec ...'); one throwaway `git worktree add --detach` at a uniquely-named scratchpad path (logged: /private/tmp/claude-501/.../scratchpad/baseline-wt) for pre-diff/post-diff timing A/B comparison, removed via `git worktree remove --force` immediately after use; no network egress; no live cloud/CI execution; no destructive operations against the primary working tree.",
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01), always executed against this run's target asset (services/workers/sayre_workers/parsing).",
+      "rationale": "No persistence or query boundary of any kind exists in this module -- confirmed by the AST-based import-boundary test (test_parsing_package_imports_no_graph_queue_or_git_modules, forbids neo4j/boto3/git/subprocess imports anywhere under sayre_workers/parsing) passing in the full suite, and by my own grep of the diff and module finding zero org_id/tenant/graph/query code. 'ABSENT' describes THIS module specifically, not the repo-wide tenant-isolation surface (which is IMPLEMENTED/PARTIAL elsewhere -- see Limitations for the unrelated, still-open FND-9dae50213232 on the general Python worker Neo4j write call sites, out of this diff's scope).",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/__init__.py (module boundary docstring: 'no tenant context... W1-01 has no tenant scope')",
+        "services/workers/sayre_workers/parsing/models.py:5-7 (every model deliberately tenant-free)",
+        "services/workers/tests/test_parsing.py:101 (test_parse_result_carries_no_tenant_or_uid_fields)",
+        "services/workers/tests/test_parsing.py:306 (test_parsing_package_imports_no_graph_queue_or_git_modules)"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02), always executed against this run's target asset.",
+      "rationale": "No node-level authorization or graph traversal code exists in this module at all -- it is a pure Tree -> FileExtract function with no awareness of the Graph Query Service, which lives in services/core, a different service entirely. Confirmed by reading the full diff and the unchanged adapters/base.py.",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/__init__.py (boundary docstring)"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03), always executed against this run's target asset.",
+      "rationale": "No credential, token, or secret handling exists anywhere in this diff or module -- SourceFile carries only a path string and content bytes. Grepped the full diff and every new/modified fixture file for credential-shaped patterns (AKIA key prefix, PEM private-key headers, secret_key=/api_key= literals) -- zero hits.",
+      "code_references": []
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04), always executed against this run's target asset.",
+      "rationale": "No webhook receiver code exists in this module. This diff touches only queries/*.scm and adapters/{javascript,typescript}.py plus fixtures/tests.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05), always executed against this run's target asset.",
+      "rationale": "No scratch-clone or filesystem access exists in this module -- confirmed by the same AST import-boundary test (forbids `git`/`subprocess` imports) and by grep finding zero `open(` calls anywhere in the diff's production code (adapters/tests use pathlib only in the pre-existing, unmodified test harness _load_fixture_repo(), which reads committed fixtures, not a scratch clone).",
+      "code_references": [
+        "services/workers/tests/test_parsing.py:306 (import-boundary test)"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06), always executed. This diff adds new tree-sitter query patterns (.scm) and new adapter extraction branches that parse untrusted-shaped source content for the first time exercising these five constructs (re-exports, generators, class expressions, TS import-equals).",
+      "rationale": "'IMPLEMENTED' + changed:true describes the boundary as a control that exists and was touched by this diff (new query patterns/branches added), not a finding -- see the CORE-06 observation in results.json for the PASS verdict and evidence (static .scm query text, never built from parsed content; extracted strings stored as plain data, never re-interpolated into Cypher/SQL/shell).",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/queries/javascript.scm",
+        "services/workers/sayre_workers/parsing/queries/typescript.scm",
+        "services/workers/sayre_workers/parsing/adapters/javascript.py"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Registry trigger path (services/workers/**) matched by directory glob only (floor, not a boundary). Diff inventory (git diff --stat, all 18 changed paths read in full) contains zero embedding, retrieval, prompt-construction, or LangChain/LangGraph code -- .scm query files, JS/TS adapter extraction, docstrings, and parsing fixtures only. Not selected; no target asset in this diff implicates this surface.",
+      "rationale": "Confirmed by reading every changed file's full diff myself before selection.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Registry trigger path (services/workers/**) matched by directory glob only. Diff contains no HTTP client, provider adapter, or egress code of any kind. Not selected.",
+      "rationale": "Confirmed no requests/httpx/urllib/socket import anywhere in the diff (grepped).",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (services/core/src/mcp/**, *mcp*, *api-key*) -- this diff is entirely under services/workers/sayre_workers/parsing and services/workers/tests. Not selected.",
+      "rationale": "No path in the 18-file changed-paths list matches any MCP trigger.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (services/gateway/**, *realtime*, *websocket*, *redis*). Not selected.",
+      "rationale": "No path in the changed-paths list matches any websocket/gateway/redis trigger.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Registry trigger path (services/workers/**) matched. Path routing is a floor, not a boundary (per orchestrator step 3) -- most of this brief's checklist (signatures, replay, queue envelopes, DLQ, priority lanes, scratch-clone isolation, provider responses, sync conflicts, worker secrets) has no target asset in this diff and is marked NOT_APPLICABLE below. ING-09 (parser and repository bombs) IS directly implicated: this diff adds new tree-sitter-matched constructs (generator declarations/expressions, bound class expressions, export-from re-exports) that flow through the pre-existing per-node ancestor_scope_chain() ancestor walk, the exact mechanism a cold-attack-model probe found exhibits unbounded polynomial-time growth on deeply nested input with no depth/size ceiling anywhere in the module or its callers.",
+      "rationale": "'PARTIAL' describes this module's parser-bomb resistance specifically: tree-sitter's own C parser and this module's exception-to-SkippedFile boundary correctly prevent a CRASH on malformed/adversarial input (EC-9/EC-14 verified), but no resource/depth/size ceiling exists to bound WORST-CASE TIME -- see the ING-09 FAIL observation in results.json for full dynamic evidence.",
+      "code_references": [
+        "services/workers/sayre_workers/parsing/adapters/base.py:157-177 (ancestor_scope_chain -- unmodified by this diff, but now reachable via 3 additional node types)",
+        "services/workers/sayre_workers/parsing/adapters/javascript.py (generator_function_declaration, generator_function, class-expression additions to _classify_scope)"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (apps/web/**, src/**, services/core/src/routes/**, services/core/src/http/**). Not selected.",
+      "rationale": "No path in the changed-paths list matches any web-api-client trigger.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (.github/**, infra/**, scripts/**, *secret*, *audit*, *backup*, *delet*). Not selected.",
+      "rationale": "No path in the changed-paths list matches any secrets-audit-data-lifecycle trigger.",
+      "code_references": []
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (.github/**, infra/**, Dockerfile*, package.json/-lock, pyproject.toml, poetry.lock). This diff adds no dependency and changes no dependency manifest. Not selected.",
+      "rationale": "No path in the changed-paths list matches any supply-chain trigger.",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "security-checker-stage",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "fde0283ab0d6cc50a2a289eaad12ac485580bef5c67366bb10b460b8355d759e"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "c1a24a105aa49d8ae317a1b740e8ecf3076f326b0ff669c2d4916c8a39b4cd0e"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "a6b52b93f7233cf685cd28e9c84902364723d181f10db6a094f02299c6759db8"
+    }
+  ],
+  "limitations": [
+    "No live CI run executed; local poetry-managed pytest only (services/workers/), matching dev/tester/review's own disclosed environment for this run.",
+    "This run's baseline is 'no baseline' per audit-contract.md option 4 -- no prior run under .pipeline/security-history/ has ever audited services/workers/sayre_workers/parsing/** as a target surface; every observation below is FIRST_OBSERVATION, not a progress claim.",
+    "FND-9dae50213232 (CORE-01, HIGH, OPEN, first observed in run 20260809T044344000Z-fbdf003b67-PR_DELTA-9f2c1a) concerns the absence of a structural org-id guard on the general Python worker fleet's Neo4j write call sites (ingestion/graph.py, enrichment/enrichment_graph.py, dynamic_coverage/graph.py). Those files are untouched by this diff and outside services/workers/sayre_workers/parsing (which has zero graph I/O of any kind, confirmed by this run's own CORE-01 observation). Not re-verified by this run; remains open, tracked under its own finding id, and unaffected by this run's verdict.",
+    "The ING-09 finding below (parser/repository resource-exhaustion) is a genuinely PRE-EXISTING characteristic of services/workers/sayre_workers/parsing/adapters/base.py::ancestor_scope_chain(), confirmed identical (within measurement noise) on a throwaway git-worktree checkout of the pre-diff commit using only unmodified function_declaration nesting -- this diff does not introduce or measurably worsen it, it only adds three more node types that reach the same pre-existing mechanism. Disclosed in full regardless, per the task's explicit request to check whether adversarial source content can cause anything worse than a parse error.",
+    "No file-size or byte-count ceiling was probed beyond ~2MB-equivalent synthetic inputs (50000-symbol re-export list, 20000 sibling declarations); an even larger adversarial file was not constructed, since the depth-based ING-09 finding already demonstrates the missing control without needing to also characterize the exact byte-size failure curve."
+  ]
+}
