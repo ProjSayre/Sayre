@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   resetConfigForTests,
@@ -19,6 +20,10 @@ import {
   publishIngestionEvent,
   publishInitialParseEvent,
 } from './sqs';
+// CH-03 additions are reached through a namespace import so this file keeps
+// loading (and the pre-existing cases above keep running) before `dev` adds the
+// new exports — a missing named import would fail the whole module at load.
+import * as sqsModule from './sqs';
 
 // This suite runs with the real @aws-sdk/client-sqs Command classes, but the
 // client's `send` is always intercepted via a fake client factory (guarded by
@@ -378,5 +383,181 @@ describe('publishInitialParseEvent', () => {
     await getSqsClient(() => ({ send: vi.fn() }) as never);
     const envelope = buildInitialParseEnvelope({ ref: '' });
     await expect(publishInitialParseEvent(envelope)).rejects.toThrow(/ref/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CH-03 — "Ask Sayre" chat-turns.fifo lane (authored by `red` from spec.md).
+// ---------------------------------------------------------------------------
+
+const CH03_CONVERSATION_ID = '44444444-4444-4444-8444-444444444444';
+const CH03_ASSISTANT_TURN_ID = '66666666-6666-4666-8666-666666666666';
+
+function readRepoFile(relativePath: string): string {
+  const url = new URL(`../../../../${relativePath}`, import.meta.url);
+  return existsSync(url) ? readFileSync(url, 'utf8') : '';
+}
+
+function buildChatTurnEnvelope(
+  overrides: Record<string, unknown> = {},
+): MessageEnvelope<Record<string, unknown>> {
+  return makeEnvelope<Record<string, unknown>>({
+    org_id: '11111111-1111-4111-8111-111111111111',
+    type: 'chat.turn.request',
+    source: 'sayre-core-chat',
+    idempotency_key: `chat.turn:${CH03_ASSISTANT_TURN_ID}`,
+    payload: {
+      schema: 'chat.turn.request.v1',
+      turnId: CH03_ASSISTANT_TURN_ID,
+      conversationId: CH03_CONVERSATION_ID,
+      orgId: '11111111-1111-4111-8111-111111111111',
+      userId: '22222222-2222-4222-8222-222222222222',
+      question: 'How does login work?',
+      scope: { view: 'technical', anchorNodeId: 'file-42' },
+      history: [{ role: 'user', content: 'earlier' }],
+      mcpCredential: null,
+      ...overrides,
+    },
+  });
+}
+
+describe('publishChatTurnRequest', () => {
+  // @spec AC-8
+  it('publishes to chat-turns.fifo grouped by conversation id and deduplicated by the turn key', async () => {
+    const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
+      if ('QueueName' in (command.input ?? {})) {
+        expect(command.input?.QueueName).toBe('chat-turns.fifo');
+        return { QueueUrl: 'https://sqs.example/chat-turns.fifo' };
+      }
+      return { MessageId: 'sqs-msg-chat' };
+    });
+    await getSqsClient(() => ({ send }) as never);
+
+    const envelope = buildChatTurnEnvelope();
+    const messageId = await sqsModule.publishChatTurnRequest(envelope as never);
+
+    expect(messageId).toBe('sqs-msg-chat');
+    const sendMessageCall = send.mock.calls
+      .map(([command]) => command as { input: Record<string, unknown> })
+      .find((call) => 'MessageBody' in call.input);
+    expect(sendMessageCall?.input.MessageGroupId).toBe(CH03_CONVERSATION_ID);
+    expect(sendMessageCall?.input.MessageDeduplicationId).toBe(
+      messageDeduplicationId(`chat.turn:${CH03_ASSISTANT_TURN_ID}`),
+    );
+    expect(String(sendMessageCall?.input.MessageDeduplicationId)).toHaveLength(64);
+  });
+
+  // @spec AC-6
+  it('serializes the pinned chat.turn.request.v1 payload with its key order intact', async () => {
+    const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
+      if ('QueueName' in (command.input ?? {})) {
+        return { QueueUrl: 'https://sqs.example/chat-turns.fifo' };
+      }
+      return { MessageId: 'sqs-msg-chat-order' };
+    });
+    await getSqsClient(() => ({ send }) as never);
+
+    const envelope = buildChatTurnEnvelope();
+    await sqsModule.publishChatTurnRequest(envelope as never);
+
+    const sendMessageCall = send.mock.calls
+      .map(([command]) => command as { input: Record<string, unknown> })
+      .find((call) => 'MessageBody' in call.input);
+    const body = String(sendMessageCall?.input.MessageBody);
+    expect(body).toBe(JSON.stringify(envelope));
+    const parsed = JSON.parse(body) as { payload: Record<string, unknown> };
+    expect(Object.keys(parsed.payload)).toEqual([
+      'schema',
+      'turnId',
+      'conversationId',
+      'orgId',
+      'userId',
+      'question',
+      'scope',
+      'history',
+      'mcpCredential',
+    ]);
+    expect(parsed.payload.schema).toBe('chat.turn.request.v1');
+    expect(parsed.payload.mcpCredential).toBeNull();
+  });
+
+  // @spec AC-8
+  it('refuses to publish without a conversation id to group by', async () => {
+    await getSqsClient(() => ({ send: vi.fn() }) as never);
+    const envelope = buildChatTurnEnvelope({ conversationId: '   ' });
+    await expect(sqsModule.publishChatTurnRequest(envelope as never)).rejects.toThrow(
+      /conversationId/i,
+    );
+  });
+
+  // @spec EC-21
+  it('treats a send that returned no MessageId as a failure', async () => {
+    const send = vi.fn(async (command: { input?: Record<string, unknown> }) => {
+      if ('QueueName' in (command.input ?? {})) {
+        return { QueueUrl: 'https://sqs.example/chat-turns.fifo' };
+      }
+      return {};
+    });
+    await getSqsClient(() => ({ send }) as never);
+
+    await expect(
+      sqsModule.publishChatTurnRequest(buildChatTurnEnvelope() as never),
+    ).rejects.toThrow(/MessageId/u);
+  });
+});
+
+describe('chat-turns lane declaration', () => {
+  // @spec AC-9
+  it('names one physical FIFO queue, distinct from every existing lane', () => {
+    expect(sqsModule.CHAT_TURNS_QUEUE).toBe('chat-turns.fifo');
+    expect(sqsModule.CHAT_TURNS_QUEUE.endsWith('.fifo')).toBe(true);
+    expect([INGESTION_QUEUE, 'graph-updated-realtime', 'enrichment-default', 'embedding-upserts'])
+      .not.toContain(sqsModule.CHAT_TURNS_QUEUE);
+  });
+
+  // @spec AC-9
+  it('is provisioned by the LocalStack init hook with a FIFO DLQ, redrive and retention — and no SNS fan-out', () => {
+    const hook = readRepoFile('infra/localstack/init/ready.d/01-create-sqs-queues.sh');
+    expect(hook).toMatch(/create_fifo_queue chat-turns-dlq\.fifo/u);
+    expect(hook).toMatch(/create_fifo_queue chat-turns\.fifo/u);
+    // The DLQ joins the retention loop (14 days) and the source gets the shared
+    // 5-receive redrive policy.
+    expect(hook).toMatch(/"\$chat_turns_dlq_url"/u);
+    expect(hook).toMatch(/configure_source "\$chat_turns_url" "\$\(queue_arn "\$chat_turns_dlq_url"\)"/u);
+    expect(hook).toMatch(/RETENTION_SECONDS=1209600/u);
+    expect(hook).toMatch(/MAX_RECEIVE_COUNT=5/u);
+    // Deliberately never subscribed to the graph-updated topic.
+    expect(hook).not.toMatch(/allow_topic "\$chat_turns_url"/u);
+    expect(hook).not.toMatch(/ensure_raw_subscription "\$chat_turns_url"/u);
+  });
+
+  // @spec AC-9
+  it('is declared to the Python fleet as a production queue that requires a durable delivery store', () => {
+    const client = readRepoFile('services/workers/messaging/sqs_client.py');
+    expect(client).toMatch(/CHAT_TURNS_QUEUE = "chat-turns\.fifo"/u);
+    const productionQueues = /_PRODUCTION_QUEUES = frozenset\(\s*\{([\s\S]*?)\}\s*\)/u.exec(client);
+    expect(productionQueues?.[1] ?? '').toContain('CHAT_TURNS_QUEUE');
+
+    const envExample = readRepoFile('infra/.env.example');
+    expect(envExample).toMatch(/SQS_CHAT_TURNS_QUEUE=chat-turns\.fifo/u);
+  });
+
+  // @spec AC-10
+  it('is recorded in the approved messaging topology contract', () => {
+    const contracts = readRepoFile('docs/wave0-foundation-contracts.md');
+    const afterHeading = contracts.split('## Ingestion, events, and background work')[1] ?? '';
+    const section = afterHeading.split(/\n## /u)[0] ?? '';
+    // The whole bullet (a `- ` item that may wrap over several lines).
+    const bullet =
+      (section.split(/\n- /u).find((item) => item.includes('chat-turns.fifo')) ?? '')
+        .replace(/\s+/gu, ' ');
+
+    expect(bullet).toContain('chat-turns.fifo');
+    expect(bullet).toContain('chat-turns-dlq.fifo');
+    expect(bullet).toMatch(/FIFO/u);
+    expect(bullet).toMatch(/message-group|message group/u);
+    expect(bullet).toMatch(/conversation id/u);
+    expect(bullet).toMatch(/idempoten/u);
+    expect(bullet).toMatch(/never subscribed|not subscribed/u);
   });
 });

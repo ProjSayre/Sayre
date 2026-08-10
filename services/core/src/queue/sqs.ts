@@ -6,7 +6,11 @@
 // violation of it: `services/core` (Node) PRODUCES onto the Python fleet's
 // `ingestion.fifo` queue from the GitHub webhook receiver (W1-02) — Python remains
 // the exclusive CONSUMER (`services/workers/messaging/sqs_client.py`, `INGESTION_QUEUE`).
-// Do not add a consumer/worker loop here.
+// Do not add a consumer/worker loop here. CH-03's `chat-turns.fifo` (below) is a
+// THIRD produce-only exception to the same fleet-split consume direction:
+// `services/core`'s chatService produces a `chat.turn.request` work order after
+// committing a user turn + its pending assistant turn; CH-04's Python consumer is
+// the exclusive CONSUMER, exactly like INGESTION_QUEUE and ENRICHMENT_DEFAULT_QUEUE.
 //
 // Webhook-trust invariant (`.claude/rules/security-multitenancy.md`): callers MUST
 // resolve `org_id` server-side and HMAC-validate the webhook body BEFORE calling
@@ -259,6 +263,50 @@ export async function publishTicketReferenceMatchEvent(
   envelope: MessageEnvelope<TicketReferenceMatchRequest>,
 ): Promise<string> {
   return publish(ENRICHMENT_DEFAULT_QUEUE, envelope);
+}
+
+// ---------------------------------------------------------------------------
+// CH-03 — "Ask Sayre" chat-turns.fifo lane. Matches `CHAT_TURNS_QUEUE` in
+// services/workers/messaging/sqs_client.py, which CH-04 exclusively consumes.
+// Deliberately NOT subscribed to the `graph-updated` SNS topic (spec.md
+// "Out") — see infra/localstack/init/ready.d/01-create-sqs-queues.sh.
+// ---------------------------------------------------------------------------
+export const CHAT_TURNS_QUEUE = 'chat-turns.fifo';
+
+/**
+ * PINNED WIRE CONTRACT — CH-04 consumes this verbatim. Key order is part of
+ * the contract (spec.md AC-6): callers must construct object literals with
+ * these keys in this exact order.
+ */
+export interface ChatTurnRequestPayload {
+  schema: 'chat.turn.request.v1';
+  turnId: string; // the ASSISTANT turn id — the row CH-04 writes into
+  conversationId: string;
+  orgId: string;
+  userId: string;
+  question: string;
+  scope: { view: 'technical' | 'product' | 'onboarding' | null; anchorNodeId: string | null };
+  history: Array<{ role: 'user' | 'assistant'; content: string }>;
+  mcpCredential: string | null; // always null until CH-04 wires minting
+}
+
+/**
+ * Publishes a `chat.turn.request.v1` envelope to `chat-turns.fifo`, grouped
+ * by conversation id (per-conversation ordering) and deduplicated by the
+ * envelope's semantic `idempotency_key` (SHA-256 hashed by `publish()` into
+ * the 128-char transport id).
+ */
+export async function publishChatTurnRequest(
+  envelope: MessageEnvelope<ChatTurnRequestPayload>,
+): Promise<string> {
+  const conversationId = envelope.payload.conversationId;
+  if (typeof conversationId !== 'string' || conversationId.trim().length === 0) {
+    throw new Error('publishChatTurnRequest requires a non-blank payload.conversationId to group by.');
+  }
+  return publish(CHAT_TURNS_QUEUE, envelope, {
+    messageGroupId: conversationId,
+    messageDeduplicationId: envelope.idempotency_key,
+  });
 }
 
 /** Graceful shutdown / test teardown. */

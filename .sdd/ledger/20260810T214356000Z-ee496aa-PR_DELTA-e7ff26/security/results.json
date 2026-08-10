@@ -1,0 +1,646 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-10T21:46:02.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": { "PASS": 19, "FAIL": 2, "UNVERIFIED": 2, "NOT_APPLICABLE": 23 },
+    "result_transitions": { "FIRST_OBSERVATION": 46 },
+    "coverage_transitions": { "NOT_COMPARABLE": 46 },
+    "finding_statuses": { "OPEN": 2 },
+    "surface_readiness": { "IMPLEMENTED": 14 },
+    "readiness_transitions": { "FIRST_OBSERVATION": 14 }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|chatStore-org-id-injection|v1",
+      "check_id": "CORE-01", "surface_id": "tenant-isolation", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/db/chatStore.ts + drizzle/0019_ch03_chat_conversations_and_turns.sql",
+      "attack_path_version": "v1",
+      "attempt": "Cold-read every write/read path for a client-supplied org_id, then dynamically attacked RLS with a real second organization: created a conversation as Org A, then attempted getConversation/appendTurnPair/listConversations as Org B against the SAME conversation id through the real withOrgContext(RLS) path; also queried chat_conversations directly under an Org-B session to prove RLS (not just the store's WHERE clause) is what blocks it. Independently re-ran route.test.ts's smuggled `?orgId=attacker` + body `{orgId:'attacker'}` case and confirmed the server-derived owner ignores it.",
+      "evidence": [
+        "services/core/src/services/chatService.ts:118-120 ownerFrom(ctx) derives {orgId,userId} solely from AuthContext; grep across chatStore.ts/chatService.ts/routes/chat.ts finds zero reads of req.body.orgId/org_id or req.query.orgId",
+        "services/core/src/db/client.ts withOrgContext(): validates orgId is a UUID, then `select set_config('app.org_id', ${orgId}, true)` via drizzle's bound sql tag (not string concatenation)",
+        "drizzle/0019...sql:152-164: ALTER TABLE ... ENABLE ROW LEVEL SECURITY; ... FORCE ROW LEVEL SECURITY; CREATE POLICY org_isolation ... USING/WITH CHECK (org_id = current_setting('app.org_id',...))  on BOTH chat_conversations and chat_turns",
+        "DYNAMIC: ran `NODE_ENV=test DATABASE_ADMIN_URL=<local dev DSN> node --import tsx --test src/db/chatStore.rls.test.ts` against the repo's own local Postgres (services/core/) — 11/11 pass, including '[CROSS-ORG ISOLATION] org B never sees org A's conversation through the REAL withOrgContext(RLS) path', which additionally executes `select count(*) from chat_conversations` under Org B's own RLS context and asserts 0 rows",
+        "DYNAMIC: ran services/core's chatService.test.ts + routes/chat.test.ts (vitest) fresh — both smuggled-orgId tests pass, and `JSON.stringify(...).not.toContain('attacker')` holds"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Reproduction: services/core `npm run test:rls:chat` (or the manual node --import tsx --test invocation above) against a local Postgres with DATABASE_ADMIN_URL set; `npx vitest run src/services/chatService.test.ts src/routes/chat.test.ts`. Cleanup: this run's own throwaway `ch03_chat_rls_test` database was dropped (`DROP DATABASE ch03_chat_rls_test`) after the suite completed; no fixture data left behind.",
+      "code_references": ["services/core/src/db/chatStore.ts:133-139,205-284", "services/core/src/db/client.ts:73-89", "services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql:152-164", "services/core/src/services/chatService.ts:113-120"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|chat-graph-traversal|v1",
+      "check_id": "CORE-02", "surface_id": "rbac-boundary", "surface_readiness": "ABSENT",
+      "target_asset": "chat conversation/turn persistence (no graph traversal in this diff)",
+      "attack_path_version": "v1",
+      "attempt": "Searched every new/changed file for a Graph Query Service call, Cypher construction, node-level RBAC filter, or client-side graphology usage.",
+      "evidence": [
+        "grep across all 8 new files + the 15 modified files for 'neo4j-driver', 'graph-query', 'graphology', 'Cypher' returns no hits",
+        "services/core/.eslintrc.json's src/routes/** override structurally forbids importing **/graph-query/* from routes; `npx eslint . --ext .ts` in services/core exits 0 with zero warnings"
+      ],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Static grep only; no fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|chat-turns-producer-secrets|v1",
+      "check_id": "CORE-03", "surface_id": "secret-handling", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/queue/sqs.ts publishChatTurnRequest + chatService.ts mcpCredential pinning",
+      "attack_path_version": "v1",
+      "attempt": "Grepped every new/changed file for a hardcoded credential; ran the repo's automated secret-access gates; then dynamically published a real ChatTurnRequestPayload envelope to the local LocalStack chat-turns.fifo queue and received it back to confirm the on-wire `mcpCredential` value and full key set.",
+      "evidence": [
+        "grep for AKIA/BEGIN...PRIVATE KEY/sk-.../ghp_.../xox[a-z]-/password=\"...\" across chatStore.ts/chatService.ts/chat.ts/sqs.ts: no hits",
+        "`npm run check:secret-access` -> 'Secret-access gate passed.'; `npm run check:org-secret-access` -> 'Org-secret access gate passed.'",
+        "services/core/src/queue/sqs.ts:64-113 resolves AWS credentials only via `getSecret('env://AWS_ACCESS_KEY_ID'|...)`, never a direct process.env read (grep confirms zero `process.env` in the 4 new chat files)",
+        "DYNAMIC: published a synthetic chat.turn.request.v1 envelope via the real publishChatTurnRequest() against the repo's LocalStack container, then received and printed the raw message body: `mcpCredential` is literally `null` on the wire, and the payload has exactly the 9 pinned keys (schema, turnId, conversationId, orgId, userId, question, scope, history, mcpCredential) — nothing extra"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Reproduction: from services/core with SQS_ENDPOINT_URL=http://localhost:4566, AWS_REGION=us-east-1, dummy AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, call publishChatTurnRequest() with a synthetic envelope and receive from chat-turns.fifo. Cleanup: the one synthetic message this run published was received and deleted via DeleteMessageCommand in the same probe; queue left empty (0 ApproximateNumberOfMessages confirmed after).",
+      "code_references": ["services/core/src/queue/sqs.ts:73-113,268-311", "services/core/src/services/chatService.ts:316-345"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|chat-webhook-receiver|v1",
+      "check_id": "CORE-04", "surface_id": "webhook-trust", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no webhook receiver in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no webhook receiver, HMAC validator, or raw-body handler is touched by this diff.",
+      "evidence": ["Affected-files list (spec.md + git diff) contains no file under a webhook-receiver path (e.g. githubWebhookService.ts is untouched); grep for 'webhook' across the 8 new files returns no hits"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Static grep only.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|chat-scratch-clone|v1",
+      "check_id": "CORE-05", "surface_id": "ingestion-ephemerality", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no ingestion/scratch-clone code in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no ingestion worker, Git clone, or scratch-path code is touched by this diff.",
+      "evidence": ["No file under services/workers/ingestion/** or a clone/checkout path appears in the changed-paths list; the only services/workers change is a queue-name constant + two test files"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Static review only.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|chatStore-sql-construction|v1",
+      "check_id": "CORE-06", "surface_id": "injection-boundaries", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/db/chatStore.ts SQL construction", "attack_path_version": "v1",
+      "attempt": "Read every query in chatStore.ts for string-concatenated user input; checked the two raw `sql` tagged-template usages (advisory lock, set_config) for parameter binding rather than interpolation. Cross-checked against the live RLS test suite, which exercises every one of these query paths against a real Postgres and would surface a malformed/injectable query as a runtime error.",
+      "evidence": [
+        "All SELECT/INSERT/UPDATE calls in chatStore.ts use drizzle-orm's query builder (eq/and/lt/desc) with bound values, never raw string SQL",
+        "The only two `sql\\`...\\`` usages (chatStore.ts:212 pg_advisory_xact_lock(hashtextextended(${...},0)); client.ts:86 set_config('app.org_id', ${orgId}, true)) use drizzle's `${}` interpolation, which binds as a parameter, not string concatenation — same idiom as the pre-existing agentSkillMdStore.ts",
+        "DYNAMIC: all 11 chatStore.rls.test.ts cases (including two that intentionally issue a raw pool.query INSERT to prove the composite-FK boundary) ran cleanly against a real Postgres with no syntax/injection-related failures"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as CORE-01's dynamic run. No cleanup beyond the shared throwaway database drop.",
+      "code_references": ["services/core/src/db/chatStore.ts:133-139,205-284,297-351", "services/core/src/db/client.ts:73-89"]
+    },
+
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|chat-webhook-signature|v1",
+      "check_id": "ING-01", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no webhook receiver in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no signature-validated webhook receiver is touched.",
+      "evidence": ["Same evidence as CORE-04."], "evidence_type": "STATIC", "result": "NOT_APPLICABLE",
+      "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|chat-webhook-replay|v1",
+      "check_id": "ING-02", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no webhook delivery-ID replay surface in this diff (application-level idempotency is instead covered by CORE-01/WEB-09/ING-06)",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed there is no webhook delivery to replay in this diff; the chat idempotency mechanism (client-supplied idempotencyKey) is a different mechanism, assessed under WEB-09.",
+      "evidence": ["No webhook receiver in this diff (see CORE-04)."], "evidence_type": "STATIC", "result": "NOT_APPLICABLE",
+      "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|chat-installation-binding|v1",
+      "check_id": "ING-03", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no GitHub/Jira/Linear installation binding in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no installation/repository-binding code is touched.",
+      "evidence": ["No file under services/core/src/integrations/** or githubInstall*/jiraConnect* appears in the changed-paths list."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|chatService-buildChatTurnEnvelope|v1",
+      "check_id": "ING-04", "surface_id": "ingestion-queue-webhook", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/services/chatService.ts buildChatTurnEnvelope/postTurn", "attack_path_version": "v1",
+      "attempt": "Attempted to make the producer place attacker-supplied identity fields (org_id, userId, job type) into the published envelope by supplying orgId/userId/org_id in the request body and query string. Separately, cold-read postTurn's retry path (result.created === false) for whether the envelope it publishes is re-derived from the freshly-submitted request or from the already-committed/idempotency-keyed row.",
+      "evidence": [
+        "chatService.ts:316-345 buildChatTurnEnvelope() takes `owner` (ctx-derived only) for org_id/userId — never client input; dynamically confirmed via chatService.test.ts + route.test.ts's attacker-smuggled-field cases (both re-run, both pass, publish.calls[0].payload.orgId/userId equal the authenticated context's values, JSON.stringify(...) never contains 'attacker')",
+        "FINDING: chatService.ts:347-392 postTurn() builds the envelope from the locally-validated `question`/`scope` request variables on EVERY publish attempt, including the `result.created === false` (idempotency-key-match / retry) path, rather than from `result.userTurn.content`/`result.userTurn.scope` — the row that was actually committed and is what the idempotency guarantee is supposed to protect. If a first publish attempt fails (dispatched_at stays null) and the SAME authenticated user retries with the SAME idempotencyKey but a DIFFERENT question/scope, the persisted user turn keeps its original content (verified: chatStore.appendTurnPair's existing-pair branch never updates content) but the message actually published to chat-turns.fifo — and thus what CH-04's future consumer would answer — carries the new, unpersisted question instead. `schema.ts`'s own comment and spec.md's OQ-5 both assert `scope` exists 'so a repair republish rebuilds the identical payload', which this code path does not honor."
+      ],
+      "evidence_type": "BOTH", "result": "FAIL", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "LOW", "confidence": "HIGH", "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-3d7445ebdad6", "status": "OPEN",
+        "first_seen_run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+        "first_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "last_seen_run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+        "last_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "owner": null, "due_at": null,
+        "remediation_reference": "review.md Warning W-1 (independently rediscovered here); one-line fix: on the created===false path, source `question` from `result.userTurn.content` and `scope` from `result.userTurn.scope` instead of the local request variables (chatService.ts:374-382)",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Static code read of chatService.ts:347-392 plus chatStore.ts's existingPair() branch; no dynamic exploitation attempted (would require a deliberately-failing publish() injected mid-retry, which is exercised only at the unit-test level in chatService.test.ts, not reproduced live here). No fixture created.",
+      "code_references": ["services/core/src/services/chatService.ts:374-392", "services/core/src/db/chatStore.ts:222-232"]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|chat-turns-fifo-cross-queue|v1",
+      "check_id": "ING-05", "surface_id": "ingestion-queue-webhook", "surface_readiness": "PARTIAL",
+      "target_asset": "chat-turns.fifo queue identity/consumer boundary", "attack_path_version": "v1",
+      "attempt": "Confirmed chat-turns.fifo is physically distinct from every other queue at the broker level, and that no consumer (CH-04) exists yet to be confused by a cross-queue shape mismatch.",
+      "evidence": [
+        "DYNAMIC: `awslocal sqs list-queues` against the repo's LocalStack container after applying this diff's init-hook changes shows chat-turns.fifo and chat-turns-dlq.fifo as two additional, distinctly-URLed/ARNed queues alongside the 13 pre-existing queues — no name/URL collision",
+        "services/workers/tests/test_sqs_delivery.py's new test (read, not executed — no local Poetry env) asserts CHAT_TURNS_QUEUE is disjoint from every other named queue constant and is in _PRODUCTION_QUEUES",
+        "No consumer for chat-turns.fifo exists anywhere in this diff or the wider services/workers tree (CH-04 is a future ticket), so there is no live handler that could misinterpret a chat.turn.request.v1 message as a different job shape today"
+      ],
+      "evidence_type": "BOTH", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Reproduction: `docker exec sayre-localstack sh <copy-of-01-create-sqs-queues.sh>` then `awslocal sqs list-queues`. No cleanup needed — the created queues are the intended, permanent local-dev topology this ticket adds (empty, no data); left in place rather than torn down, matching what a normal `docker compose` restart would produce once this diff lands.",
+      "code_references": ["infra/localstack/init/ready.d/01-create-sqs-queues.sh:64-97", "services/workers/tests/test_sqs_delivery.py (new test, +30 lines)"]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|chat-turns-fifo-dlq-redrive|v1",
+      "check_id": "ING-06", "surface_id": "ingestion-queue-webhook", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chat-turns.fifo / chat-turns-dlq.fifo redrive policy + Python production-queue guard", "attack_path_version": "v1",
+      "attempt": "Dynamically inspected the live queue attributes after applying the init hook, and statically confirmed the Python-side guard that forces a durable delivery_store for any consumer of a _PRODUCTION_QUEUES member.",
+      "evidence": [
+        "DYNAMIC: `awslocal sqs get-queue-attributes --queue-url .../chat-turns.fifo --attribute-names All` -> FifoQueue=true, RedrivePolicy={\"deadLetterTargetArn\":\".../chat-turns-dlq.fifo\",\"maxReceiveCount\":\"5\"} — identical shape to ingestion.fifo's own RedrivePolicy, confirmed side-by-side",
+        "DYNAMIC: chat-turns-dlq.fifo's MessageRetentionPeriod is 1209600 (14 days), matching every other DLQ (e.g. ingestion-dlq.fifo, also 1209600); the SOURCE queue's retention is the AWS default 345600s, matching ingestion.fifo's own source-queue retention exactly — this is the repo's existing convention (only DLQs get the 14-day override via configure_dlq()), not a CH-03-specific gap",
+        "services/workers/messaging/sqs_client.py:48-54,67 adds CHAT_TURNS_QUEUE to _PRODUCTION_QUEUES; test_sqs_delivery.py's new test (read, not executed) asserts consume_once() raises ValueError('...durable delivery_store...') for this queue without one, mirroring the pre-existing test_production_queue_requires_store_before_receive pattern for every other production queue"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as ING-05. No cleanup needed (see ING-05).",
+      "code_references": ["infra/localstack/init/ready.d/01-create-sqs-queues.sh:64-97", "services/workers/messaging/sqs_client.py:48-54,67"]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|chat-turns-priority-lanes|v1",
+      "check_id": "ING-07", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — chat-turns.fifo is a single lane, no priority tiers in this ticket", "attack_path_version": "v1",
+      "attempt": "Confirmed no priority/starvation-relevant lane sharing exists for chat-turns.fifo.",
+      "evidence": ["spec.md Scope 'Out' explicitly excludes any consumer/dispatcher for this ticket; the queue is not shared with enrichment-onboarding-priority or any other lane."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|chat-malicious-repo-paths|v1",
+      "check_id": "ING-08", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no repository/filesystem path handling in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no path/clone handling code is touched.", "evidence": ["No ingestion/clone code in the changed-paths list."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|chat-parser-bombs|v1",
+      "check_id": "ING-09", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no parser code in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no Tree-sitter/parser code is touched; `question` is bounded to 8000 chars, not parsed as code.",
+      "evidence": ["CHAT_QUESTION_MAX_CHARACTERS = 8_000 in chatService.ts; no parsing library imported by any new file."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|chat-scratch-clone-isolation|v1",
+      "check_id": "ING-10", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no scratch-clone code in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no clone/scratch-path code is touched.", "evidence": ["Same as CORE-05."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|chatStore-appendTurnPair-transaction|v1",
+      "check_id": "ING-11", "surface_id": "ingestion-queue-webhook", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/db/chatStore.ts appendTurnPair (Postgres transaction) + chatService.ts postTurn (post-commit publish)",
+      "attack_path_version": "v1",
+      "attempt": "Verified the user-turn+assistant-turn insert is atomic and that a publish failure after commit leaves state consistent and retryable rather than corrupt or duplicated.",
+      "evidence": [
+        "DYNAMIC: chatStore.rls.test.ts AC-1 case confirms exactly 2 rows exist immediately after appendTurnPair() returns, in the correct paired shape, via a fresh SELECT against the real database (not a mock)",
+        "chatService.ts:383-392: publish() is called strictly AFTER appendTurnPair()'s transaction has committed; on a publish failure the committed rows are explicitly NOT rolled back (documented, by design, per spec OQ-7) and dispatched_at stays null so a same-idempotencyKey retry re-publishes — dynamically confirmed by chatStore.rls.test.ts's AC-2/AC-3 retry case (first attempt undispatched -> retry re-observes dispatched_at:null -> markTurnDispatched -> next retry observes it set)"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as CORE-01's dynamic run.",
+      "code_references": ["services/core/src/db/chatStore.ts:205-284", "services/core/src/services/chatService.ts:347-399"]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|chat-provider-responses|v1",
+      "check_id": "ING-12", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no Git/Jira/Linear provider client code in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no provider-response handling is touched.", "evidence": ["No integrations/** file in the changed-paths list."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|chat-sync-poisoning|v1",
+      "check_id": "ING-13", "surface_id": "ingestion-queue-webhook", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no scheduled/webhook sync code in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no sync-conflict code is touched.", "evidence": ["No ticketSyncService.ts/githubInstallationReconcile* changes in this diff."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|chat-turns-payload-secret-exposure|v1",
+      "check_id": "ING-14", "surface_id": "ingestion-queue-webhook", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chat-turns.fifo message payload + services/core/src/queue/sqs.ts publish()", "attack_path_version": "v1",
+      "attempt": "Inspected the actual on-wire message body (dynamically) for any credential, and confirmed publish() never logs the envelope.",
+      "evidence": [
+        "DYNAMIC: the full received message body from the live-probe publish (CORE-03) contains only the 9 pinned payload keys plus the standard envelope fields (message_id, idempotency_key, org_id, type, schema_version, occurred_at, source, trace_id, payload) — no credential, token, or connection string anywhere in the body",
+        "grep for 'console.' in services/core/src/queue/sqs.ts: zero matches — publish()/publishChatTurnRequest() never log the envelope or any part of it"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction/cleanup as CORE-03.",
+      "code_references": ["services/core/src/queue/sqs.ts:174-311"]
+    },
+
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|chat-routes-surface-inventory|v1",
+      "check_id": "WEB-01", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/routes/chat.ts + apps/web/app/api/core/[...path]/route.ts", "attack_path_version": "v1",
+      "attempt": "Enumerated every route this diff adds and confirmed each is behind authenticate()+authorize('member') and behind the proxy's closed allowlist, with no undocumented/debug endpoint added.",
+      "evidence": [
+        "chat.ts declares exactly 4 routes, each `authenticate(), authorize('member')`: POST/GET /chat/conversations, GET /chat/conversations/:id, POST /chat/conversations/:id/turns",
+        "route.ts's coreRoute() closed-allowlist gains exactly the same 4 entries, matching method+segment shape; every unlisted chat sub-path (e.g. /chat/conversations/x/turns/y) falls through to the existing 404, dynamically confirmed by route.test.ts's new EC-22 case"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "DYNAMIC: `npx vitest run \"app/api/core/[...path]/route.test.ts\"` from apps/web/ — 14/14 pass.",
+      "code_references": ["services/core/src/routes/chat.ts", "apps/web/app/api/core/[...path]/route.ts:234-267"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|chatStore-chatService-injection|v1",
+      "check_id": "WEB-02", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chatService.ts validators + chatStore.ts queries", "attack_path_version": "v1",
+      "attempt": "Same injection analysis as CORE-06, reframed against the API boundary: verified every field the API accepts is validated/regex-constrained before reaching SQL.",
+      "evidence": [
+        "idempotencyKey must match /^[A-Za-z0-9._:-]+$/u (8-200 chars); question/title/anchorNodeId are length- and NUL-checked; scope.view is checked against a fixed 3-value set; conversationId path param must match a UUID regex before any store call",
+        "No field is ever concatenated into a raw SQL string (see CORE-06)"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same dynamic reproduction as CORE-01/ING-11.",
+      "code_references": ["services/core/src/services/chatService.ts:162-264"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|chat-content-xss|v1",
+      "check_id": "WEB-03", "surface_id": "web-api-client", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — pure JSON API in this diff; rendering is CH-06's scope", "attack_path_version": "v1",
+      "attempt": "Confirmed this diff contains no HTML/Markdown rendering of chat content.",
+      "evidence": ["res.json(...) is the only response mechanism in chat.ts; no template/HTML construction anywhere in the 8 new files; CH-03 spec.md Scope 'Out' explicitly excludes any React component/rendering."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A. Downstream rendering (CH-06) should independently sanitize on render — noted for that future ticket, not a CH-03 gap.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|chat-routes-csrf|v1",
+      "check_id": "WEB-04", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web session-cookie forwarding (authorizationFor) + the newly-reachable POST chat routes", "attack_path_version": "v1",
+      "attempt": "Checked whether the session cookie the proxy forwards as a Bearer token would be attached by a browser to a cross-site POST against the newly-reachable chat routes.",
+      "evidence": [
+        "apps/web/app/api/session/route.ts:39,53: the `sayre_session` cookie is set with `sameSite: 'lax'` (pre-existing, unmodified by this diff) — Lax cookies are not attached to a cross-site subrequest (fetch/XHR/auto-submitting form), only to a top-level navigation",
+        "services/core's authenticate() reads only the Authorization header (never a cookie directly) — cookie-to-bearer translation happens exclusively in the same-origin Next.js proxy (authorizationFor()), so a request that reaches core directly carries no ambient cross-site credential either",
+        "This posture is inherited, not introduced by CH-03: the proxy's cookie-forwarding and SameSite setting are unmodified by this diff; CH-03 only adds routing entries and widens POST-body forwarding to include the new/existing content-type-gated body"
+      ],
+      "evidence_type": "STATIC", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "MEDIUM", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Static review only; did not attempt a live cross-site request against a browser (would require a second origin/browser harness this environment doesn't have).",
+      "code_references": ["apps/web/app/api/session/route.ts:39,53", "apps/web/app/api/core/[...path]/route.ts:272-278"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|chat-routes-clickjacking|v1",
+      "check_id": "WEB-05", "surface_id": "web-api-client", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no framing/CSP surface touched by this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no CSP/frame-header code is touched; chat is a JSON API, not a framed page.",
+      "evidence": ["No security-header middleware file appears in the changed-paths list."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|chatService-mass-assignment|v1",
+      "check_id": "WEB-06", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chatService.ts createConversation/postTurn field allowlisting", "attack_path_version": "v1",
+      "attempt": "Sent hidden/admin/org/owner/unknown fields (orgId, userId, org_id, role, status, id) in both the request body and query string for every mutating route and inspected what actually reached the store.",
+      "evidence": [
+        "chatService.ts's validators read only named fields off the body object (title | idempotencyKey/question/scope.view/scope.anchorNodeId) via `body.title`/`body.question`/etc. — never a spread or Object.assign of the raw body onto a store/DB argument",
+        "DYNAMIC: route.test.ts's 'uses only the server-derived tenant context' case (re-run) posts a body containing `orgId`, `userId`, plus a query-string `?orgId=attacker` and asserts the store call's owner strictly equals the ctx-derived value and that the smuggled string never appears anywhere in the store call"
+      ],
+      "evidence_type": "DYNAMIC", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/services/chatService.test.ts src/routes/chat.test.ts` from services/core/.",
+      "code_references": ["services/core/src/services/chatService.ts:266-279,347-399"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|chatService-input-ambiguity|v1",
+      "check_id": "WEB-07", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chatService.ts parseListLimit/requireBodyObject/validate*", "attack_path_version": "v1",
+      "attempt": "Sent a duplicate `limit` query key (which Express represents as an array), a JSON array/string/number/null body, and NUL-byte-containing strings.",
+      "evidence": [
+        "parseListLimit(): `typeof raw !== 'string'` rejects an array (Express turns a duplicate query key into string[]) with a 400, never silently picks the first/last value",
+        "requireBodyObject(): array/string/number/null bodies are all rejected with 400 before any field is read — DYNAMIC: EC-19's array-body case and the duplicate-content-type case in route.test.ts both pass",
+        "validateTitle/validateQuestion/validateScope's anchorNodeId all explicitly check `.includes('\\0')` and reject"
+      ],
+      "evidence_type": "DYNAMIC", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as WEB-06.",
+      "code_references": ["services/core/src/services/chatService.ts:131-136,162-264,253-264"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|chat-routes-resource-consumption|v1",
+      "check_id": "WEB-08", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chatService.ts bound constants + apps/web proxy body-size cap", "attack_path_version": "v1",
+      "attempt": "Confirmed every list/window size and body size is a fixed server-side constant, never client-influenced beyond a validated numeric range, and dynamically confirmed the proxy's 64KB request-size cap.",
+      "evidence": [
+        "CHAT_QUESTION_MAX_CHARACTERS=8000, CHAT_HISTORY_MAX_TURNS=12 (hardcoded, not a parameter), CHAT_CONVERSATION_LIST_MAX_LIMIT=100, CHAT_CONVERSATION_TURNS_LIMIT=200 (hardcoded, not a parameter) — the only client-influenced bound is `limit` on listConversations, itself clamped 1-100",
+        "DYNAMIC: route.test.ts's '413s a chat POST body over the 64 KB bound without reaching core' case (re-run, passes)"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as WEB-01.",
+      "code_references": ["services/core/src/services/chatService.ts:24-30", "apps/web/app/api/core/[...path]/route.ts:5-6,291-308"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|chatStore-appendTurnPair-race|v1",
+      "check_id": "WEB-09", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chatStore.ts appendTurnPair advisory lock + partial unique indexes", "attack_path_version": "v1",
+      "attempt": "Raced two concurrent postTurn-equivalent calls with the same idempotency key (double-click / retry-storm simulation), and two concurrent calls with different keys, against a real Postgres.",
+      "evidence": [
+        "DYNAMIC: chatStore.rls.test.ts's EC-9 case — two truly concurrent (Promise.all) appendTurnPair() calls with the SAME idempotencyKey on the same conversation — produced exactly one user/assistant pair (2 rows total), the same ids returned to both callers, and exactly one `created:true`",
+        "DYNAMIC: EC-10 case — two concurrent calls with DIFFERENT keys produced 4 contiguous seq values (1,2,3,4) with no unique-constraint violation",
+        "Structural backing: pg_advisory_xact_lock serializes same-conversation writers; chat_turns_idempotency_unique and chat_turns_request_turn_unique partial unique indexes make a double-insert structurally impossible even if the lock were somehow bypassed"
+      ],
+      "evidence_type": "DYNAMIC", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction/cleanup as CORE-01's dynamic run.",
+      "code_references": ["services/core/src/db/chatStore.ts:205-232", "services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql:211-219"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|chat-routes-cache-leakage|v1",
+      "check_id": "WEB-10", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chat.ts response headers / any intermediary between the client and services/core", "attack_path_version": "v1",
+      "attempt": "Checked for an explicit Cache-Control/Vary header on the new responses and for any CDN/shared-cache topology information in this diff.",
+      "evidence": [
+        "chat.ts sets no Cache-Control/Vary header on any of the 4 routes — this is the SAME posture as every other existing services/core route (e.g. repositoryCatalog, onboardingTree), not a CH-03-specific regression",
+        "No infra/deployment file in this diff describes a CDN or shared reverse-proxy cache in front of services/core"
+      ],
+      "evidence_type": "STATIC", "result": "UNVERIFIED", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "MEDIUM", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "No production/staging cache topology available to test against from this diff; would need a MILESTONE/FULL run with infra visibility to close.",
+      "code_references": ["services/core/src/routes/chat.ts"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|chat-routes-error-enumeration|v1",
+      "check_id": "WEB-11", "surface_id": "web-api-client", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "http/express.ts errorHandler chat-error mapping", "attack_path_version": "v1",
+      "attempt": "Compared status/body for (a) a nonexistent conversation id, (b) a same-org non-owner's conversation, (c) a cross-org conversation, and (d) a downstream publish failure, looking for any distinguishing signal an attacker could use to enumerate valid conversation ids or infer infrastructure detail.",
+      "evidence": [
+        "DYNAMIC (live Postgres): (b) and (c) both return `getConversation()===null` -> ChatNotFoundError -> identical 404 `{error:'not found'}`; a non-UUID path segment also short-circuits to the SAME 404 before any SQL runs (EC-6) — three different causes, one indistinguishable response",
+        "DYNAMIC: the 502 case's response body and every console.error/warn/log call were captured by a spy and asserted NOT to match /amazonaws|arn:aws|us-east-1|NonExistentQueue|chat-turns\\.fifo/u — re-run, passes",
+        "The generic 500 fallback (unknown error) is unmodified by this diff and still returns a fixed `{error:'Internal server error'}` with no stack trace"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as CORE-01 (RLS) + WEB-01 (route tests).",
+      "code_references": ["services/core/src/http/express.ts:235-260", "services/core/src/services/chatService.ts:122-129"]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|chat-routes-redirect-handling|v1",
+      "check_id": "WEB-12", "surface_id": "web-api-client", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — none of the 4 new proxy entries sets `redirect: true`", "attack_path_version": "v1",
+      "attempt": "Confirmed none of the 4 new coreRoute() entries opts into redirect handling.",
+      "evidence": ["route.ts:234-267 — none of the four new CoreRoute literals includes a `redirect` key."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": ["apps/web/app/api/core/[...path]/route.ts:234-267"]
+    },
+
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|chat-turns-secret-loader|v1",
+      "check_id": "SEC-01", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/queue/sqs.ts credential resolution", "attack_path_version": "v1",
+      "attempt": "Searched every new/changed file for a direct process.env read or an alternate credential path outside getSecret()/getConfig().",
+      "evidence": ["grep 'process.env' across chatStore.ts/chatService.ts/chat.ts/sqs.ts: zero hits; AWS creds resolved exclusively via getSecret('env://...') (unmodified pre-existing function, reused as-is)."],
+      "evidence_type": "STATIC", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Static grep only.", "code_references": ["services/core/src/queue/sqs.ts:49-113"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|chat-diff-hardcoded-secrets|v1",
+      "check_id": "SEC-02", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "every new/changed file in this diff", "attack_path_version": "v1",
+      "attempt": "Ran the repo's automated secret-access gates and manually grepped every new file for common credential-format patterns.",
+      "evidence": [
+        "`npm run check:secret-access` -> 'Secret-access gate passed.'",
+        "`npm run check:org-secret-access` -> 'Org-secret access gate passed.'",
+        "Manual grep for AKIA/BEGIN...PRIVATE KEY/sk-.../ghp_.../xox[a-z]-/-----BEGIN across the 4 new source files and the 3 infra/queue diffs: no hits",
+        "infra/.env.example's one addition (`SQS_CHAT_TURNS_QUEUE=chat-turns.fifo`) is a queue NAME, matching the sibling `SQS_*_QUEUE=` entries in the same file exactly — not a credential"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "`npm run check:secret-access && npm run check:org-secret-access` from the repo root.",
+      "code_references": ["infra/.env.example:63-68"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|chat-frontend-secret-exposure|v1",
+      "check_id": "SEC-03", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chat.turn.request.v1 payload as it would reach any future frontend surface", "attack_path_version": "v1",
+      "attempt": "Confirmed no server secret is ever placed in a response body reachable by the browser, and that mcpCredential (the one credential-shaped field this ticket introduces) is always null.",
+      "evidence": ["ChatConversationView/ChatTurnView (the two response DTOs) carry no credential field; mcpCredential exists only inside the internal chat.turn.request.v1 SQS payload, never in an HTTP response, and is dynamically confirmed null on the wire (see CORE-03)."],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as CORE-03.", "code_references": ["services/core/src/services/chatService.ts:65-94"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|chatService-postTurn-logging|v1",
+      "check_id": "SEC-04", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "chatService.ts postTurn's catch block + console.*", "attack_path_version": "v1",
+      "attempt": "Forced a synthetic AWS-shaped publish failure (embedding an ARN, region, and NonExistentQueue error code) and inspected every console.error/warn/log call, not just the HTTP response body, for leakage.",
+      "evidence": ["DYNAMIC (re-run): chat.test.ts's 502 case spies on console.error/warn/log, throws an Error whose message contains 'arn:aws:sqs:us-east-1:...chat-turns.fifo' and 'NonExistentQueue', and asserts none of the captured log text matches /amazonaws|arn:aws|us-east-1|NonExistentQueue/u — passes, because postTurn's catch block discards the error entirely and throws a fresh ChatEnqueueError with no message interpolation."],
+      "evidence_type": "DYNAMIC", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/routes/chat.test.ts` from services/core/.",
+      "code_references": ["services/core/src/services/chatService.ts:383-391"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|chat-tables-storage-access|v1",
+      "check_id": "SEC-05", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "drizzle/0019...sql GRANT statements + RLS FORCE", "attack_path_version": "v1",
+      "attempt": "Confirmed the runtime role is least-privileged (no DELETE) and that RLS is FORCEd so even the runtime role itself cannot see cross-org rows regardless of query shape.",
+      "evidence": [
+        "migration:187,191: `GRANT SELECT, INSERT, UPDATE ON chat_conversations/chat_turns TO sayre_app` — no DELETE grant on either table (matches spec's 'no delete in v1')",
+        "migration:153,161: `FORCE ROW LEVEL SECURITY` on both tables — this applies RLS even to the table owner/non-superuser roles, not just non-owner roles",
+        "DYNAMIC: the org-B-under-real-RLS probe (CORE-01) executed `select count(*) from chat_conversations` under an Org B session and got 0, proving the FORCE'd policy actually holds at runtime, not just in the DDL text"
+      ],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Same reproduction as CORE-01.",
+      "code_references": ["services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql:152-191"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|chat-credential-rotation|v1",
+      "check_id": "SEC-06", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no credential material introduced or cached by this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed mcpCredential is always null and no new credential is cached anywhere.",
+      "evidence": ["mcpCredential is a literal `null` at construction (chatService.ts:335), never populated from any source; AWS credential resolution is unmodified pre-existing code."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": ["services/core/src/services/chatService.ts:326-336"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|chat-worker-sandbox-exposure|v1",
+      "check_id": "SEC-07", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no worker/sandbox code executes in this diff (CH-04's consumer does not exist yet)", "attack_path_version": "v1",
+      "attempt": "Confirmed the Python-side change is a queue-name constant addition only, with no process/environment handling.",
+      "evidence": ["services/workers/messaging/sqs_client.py's diff is 7 lines: one constant + its _PRODUCTION_QUEUES membership."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": ["services/workers/messaging/sqs_client.py:48-54,67"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|chat-ci-test-leakage|v1",
+      "check_id": "SEC-08", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — .github/workflows/** is untouched by this diff (AC-18 boundary)", "attack_path_version": "v1",
+      "attempt": "Confirmed no CI workflow file is modified.",
+      "evidence": ["Changed-paths list contains no .github/** entry; spec.md AC-18 explicitly scopes .github/ out of this ticket except a since-superseded PL-15 concern unrelated to CH-03."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|chat-audit-log-completeness|v1",
+      "check_id": "SEC-09", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "services/core-wide audit-log subsystem (does not exist)", "attack_path_version": "v1",
+      "attempt": "Checked whether an audit-log convention exists elsewhere in services/core that CH-03 skipped for its state-changing actions.",
+      "evidence": ["grep for auditLog/recordAudit/audit_log/AuditEvent across all of services/core/src (not just this diff): zero hits anywhere in the codebase — no audit-log subsystem exists for ANY service today, so CH-03 not adding one is consistent with the current baseline, not a new regression."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Repo-wide grep only.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|chat-audit-log-tampering|v1",
+      "check_id": "SEC-10", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no audit log exists to tamper with (see SEC-09)", "attack_path_version": "v1",
+      "attempt": "Same finding as SEC-09.", "evidence": ["Same as SEC-09."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|chat-tenant-deletion|v1",
+      "check_id": "SEC-11", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no delete/offboarding path exists on chat_conversations/chat_turns", "attack_path_version": "v1",
+      "attempt": "Confirmed both new tables cascade-delete correctly as CHILDREN of organizations/users (so org offboarding still removes chat data) but have no standalone delete API.",
+      "evidence": ["migration:43,48,113: chat_conversations/chat_turns FKs are `ON DELETE cascade` against organizations/users — deleting an org or user cascades correctly; grants explicitly omit DELETE for the app role (spec's deliberate v1 scope, not a gap)."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Static DDL review only.", "code_references": ["services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql:42-53,112-115"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|chat-backup-restore-isolation|v1",
+      "check_id": "SEC-12", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "N/A — production backup/restore topology not visible from this diff", "attack_path_version": "v1",
+      "attempt": "Checked this diff and this checkout for backup/restore configuration relevant to the two new tables.",
+      "evidence": ["No backup/restore infrastructure file is touched by this diff; the two new tables inherit whatever RDS/Postgres backup posture already applies to every other tenant-scoped table (unverifiable from a worktree diff)."],
+      "evidence_type": "STATIC", "result": "UNVERIFIED", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "MEDIUM", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "No production backup/restore topology accessible from this diff or this local checkout; would need infra-level access to close.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|chat-export-support-tooling|v1",
+      "check_id": "SEC-13", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "ABSENT",
+      "target_asset": "N/A — no export/support-tooling endpoint touches chat data in this diff", "attack_path_version": "v1",
+      "attempt": "Confirmed no export/support-tooling route reads chat_conversations/chat_turns.",
+      "evidence": ["grep for 'chatConversations\\|chatTurns' outside src/db|services/chatService.ts|routes/chat.ts: no hits in any export/support-tooling file."],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "N/A.", "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|chatService.postTurn-publish-failure-logging|v1",
+      "check_id": "SEC-14", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/services/chatService.ts postTurn's catch block", "attack_path_version": "v1",
+      "attempt": "Checked whether a systematically failing chat-turns.fifo lane (e.g. a misconfigured queue name, permanent AWS outage, or exhausted quota) produces any operator-visible, tenant-safe signal at all, and compared against the repo's own established convention for the same class of failure elsewhere.",
+      "evidence": [
+        "chatService.ts:383-391: `catch { throw new ChatEnqueueError(); }` — the underlying error is discarded entirely; no console.error/warn/log call of any kind on this path (confirmed by SEC-04's dynamic spy: zero log lines emitted, not even a redacted one)",
+        "FINDING: this differs from the repo's own established convention for the identical failure class. services/core/src/services/initialParseOutboxDispatcher.ts:48-52's `defaultReportError()` emits a deliberately redacted `console.error('[core] initial-parse outbox ${stage} failed; delivery will retry')` on the exact same kind of post-commit publish failure, with an explicit comment: 'Never attach the raw error: provider/DB errors can contain repository names, endpoints, DSNs, or credentials.' chatService.ts has no equivalent line at all — as shipped, a systematically broken chat-turns.fifo lane produces a stream of 502s with zero operator signal anywhere, which is an availability/observability gap (matches review.md's independently-raised, non-blocking Suggestion S-1)."
+      ],
+      "evidence_type": "BOTH", "result": "FAIL", "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE",
+      "severity": "LOW", "confidence": "HIGH", "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-9ea77a9c5745", "status": "OPEN",
+        "first_seen_run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+        "first_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "last_seen_run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+        "last_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "owner": null, "due_at": null,
+        "remediation_reference": "review.md Suggestion S-1 (independently rediscovered here); add a single redacted structured log line (error name/class only, matching initialParseOutboxDispatcher.ts's defaultReportError() convention — no queue URL, region, ARN, or AWS code) in chatService.ts's postTurn catch block before throwing ChatEnqueueError",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Same reproduction as SEC-04 (the dynamic console-spy test proves the ABSENCE of any log line); cross-referenced statically against initialParseOutboxDispatcher.ts's sibling pattern. No fixture created.",
+      "code_references": ["services/core/src/services/chatService.ts:374-392", "services/core/src/services/initialParseOutboxDispatcher.ts:48-52"]
+    }
+  ]
+}

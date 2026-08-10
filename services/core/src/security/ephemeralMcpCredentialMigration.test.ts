@@ -104,7 +104,18 @@ describe('CH-01 migration 0020 contract', () => {
   });
 
   // @spec AC-13
-  it('records a matching journal entry as the newest migration', () => {
+  // RELAXED BY CH-03 (stacked PR `main <- ch-01 <- ch-02 <- ch-03`): this case
+  // originally also asserted `journal.entries.at(-1)` equalled this entry, i.e. that
+  // CH-01's migration is the *newest* journal entry. That claim is only satisfiable
+  // inside CH-01's own commit range — CH-03 stacks migration
+  // `0021_ch03_chat_conversations_and_turns` on top, so 0020 is necessarily no longer
+  // the tip, and any later ticket adding a migration would break it again. The
+  // tip-position assertion is therefore replaced by a presence + shape assertion, which
+  // is what the ticket actually cares about; CH-01's original stronger claim remains
+  // verifiable at its own commit range. Nothing else here is weakened: the entry's full
+  // shape (idx/version/when/tag/breakpoints) and the journal-wide unique-idx invariant
+  // are asserted exactly as before.
+  it('records a matching journal entry', () => {
     const journal = JSON.parse(
       readFileSync(fileURLToPath(JOURNAL_URL), 'utf8'),
     ) as { entries: JournalEntry[] };
@@ -116,8 +127,8 @@ describe('CH-01 migration 0020 contract', () => {
     // 0019_w0_05_tenant_consistent_repo_fks at idx 19 first, so CH-01's
     // migration moves after it. `when` moves with it (strictly greater than
     // idx 19's 1785384300000) so journal order and drizzle's own apply order
-    // agree. This stays a strict tip assertion, not a presence check -- the
-    // at(-1) equality below is what proves 0020 is the newest entry.
+    // agree. (On CH-03's stacked range the tip-position claim is relaxed per
+    // the note above; the full entry shape stays asserted exactly.)
     expect(entry).toEqual({
       idx: 20,
       version: '7',
@@ -125,7 +136,6 @@ describe('CH-01 migration 0020 contract', () => {
       tag: '0020_ch01_ephemeral_mcp_credentials',
       breakpoints: true,
     });
-    expect(journal.entries.at(-1)).toEqual(entry);
     expect(new Set(journal.entries.map((item) => item.idx)).size).toBe(
       journal.entries.length,
     );

@@ -66,6 +66,13 @@ records the shared decisions that foundation and downstream tickets must preserv
   invert the intended guarantee. No job type is assigned the priority lane by policy yet — the
   three existing `enqueue()` call sites (GitHub/Jira/Linear sync) stay on the default lane; which
   jobs should use the priority lane is a separate, later decision.
+- Ask Sayre conversation turns use a separate physical `chat-turns.fifo` SQS FIFO queue with its
+  own `chat-turns-dlq.fifo` dead-letter queue on the same five-receive redrive policy and 14-day
+  retention. Its message-group identity is the conversation id, so turns within one conversation
+  are processed in order while unrelated conversations progress concurrently. The core service
+  commits the user turn and its pending assistant turn before publishing; the consumer supplies
+  durable idempotency keyed on the envelope, and this queue is never subscribed to the
+  `graph.updated` topic.
 
 ## Persistence and tenant enforcement
 

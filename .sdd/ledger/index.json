@@ -2030,6 +2030,22 @@
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
+  "apps/web/app/api/core/[...path]/route.test.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "apps/web/app/api/core/[...path]/route.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
   "apps/web/app/layout.tsx": [
     {
       "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
@@ -4442,6 +4458,12 @@
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
     },
     {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
       "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
       "ticket": "CH-01",
       "date": "2026-08-11",
@@ -4527,6 +4549,22 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "infra/.env.example": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "infra/localstack/init/ready.d/01-create-sqs-queues.sh": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
     }
   ],
   "package-lock.json": [
@@ -5578,6 +5616,14 @@
       }
     }
   ],
+  "services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
   "services/core/drizzle/0020_ch01_ephemeral_mcp_credentials.sql": [
     {
       "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
@@ -5595,6 +5641,12 @@
       "ticket": "CH-01",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
     },
     {
       "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
@@ -5638,6 +5690,12 @@
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
     },
     {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
       "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
       "ticket": "CH-01",
       "date": "2026-08-11",
@@ -5667,6 +5725,12 @@
   ],
   "services/core/src/app.ts": [
     {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
       "date": "2026-08-11",
@@ -5677,6 +5741,30 @@
           "spot-check"
         ]
       }
+    }
+  ],
+  "services/core/src/db/chatMigration.test.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "services/core/src/db/chatStore.rls.test.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "services/core/src/db/chatStore.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
     }
   ],
   "services/core/src/db/ephemeralMcpCredentialStore.ts": [
@@ -5838,6 +5926,12 @@
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
     },
     {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
       "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
       "ticket": "CH-01",
       "date": "2026-08-11",
@@ -5932,6 +6026,12 @@
     }
   ],
   "services/core/src/http/express.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
     {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
@@ -6217,6 +6317,38 @@
       }
     }
   ],
+  "services/core/src/queue/sqs.test.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "services/core/src/queue/sqs.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "services/core/src/routes/chat.test.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "services/core/src/routes/chat.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
   "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts": [
     {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
@@ -6312,6 +6444,22 @@
       "ticket": "CH-01",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
+  "services/core/src/services/chatService.test.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
+  "services/core/src/services/chatService.ts": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
     }
   ],
   "services/core/src/services/ephemeralMcpCredentialService.test.ts": [
@@ -6717,6 +6865,14 @@
       }
     }
   ],
+  "services/workers/messaging/sqs_client.py": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    }
+  ],
   "services/workers/poetry.lock": [
     {
       "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
@@ -7108,6 +7264,12 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
     }
   ],
   "services/workers/tests/test_parsing.py": [
@@ -7147,6 +7309,14 @@
           "base"
         ]
       }
+    }
+  ],
+  "services/workers/tests/test_sqs_delivery.py": [
+    {
+      "runId": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+      "ticket": "CH-03",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
     }
   ],
   "services/workers/tests/test_sqs_roundtrip.py": [

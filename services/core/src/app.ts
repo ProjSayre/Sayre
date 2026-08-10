@@ -14,6 +14,7 @@ import { nodeOverlayRouter } from './routes/nodeOverlay';
 import { repositoryCatalogRouter } from './routes/repositoryCatalog';
 import { onboardingTreeRouter } from './routes/onboardingTree';
 import { mcpKeysRouter } from './routes/mcpKeys';
+import { chatRouter } from './routes/chat';
 import { mcpGatewayRouter } from './mcp/gateway';
 import { errorHandler } from './http/express';
 
@@ -78,6 +79,9 @@ export function createApp(): Express {
   // unauthenticated for the same reason githubInstall's callback does).
   app.use(jiraConnectRouter);
   app.use(mcpKeysRouter);
+  // "Ask Sayre" conversation/turn API (CH-03) — session-authenticated, mounted
+  // alongside the other post-express.json() routers above.
+  app.use(chatRouter);
   app.use(mcpGatewayRouter);
   app.use(errorHandler);
   return app;

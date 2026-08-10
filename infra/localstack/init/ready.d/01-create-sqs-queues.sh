@@ -61,6 +61,9 @@ enrichment_default_dlq_url=$(create_standard_queue enrichment-default-dlq)
 enrichment_priority_dlq_url=$(create_standard_queue enrichment-onboarding-priority-dlq)
 embedding_dlq_url=$(create_standard_queue embedding-upserts-dlq)
 dynamic_coverage_dlq_url=$(create_standard_queue dynamic-coverage-refresh-dlq)
+# CH-03: the "Ask Sayre" chat-turns lane is FIFO with its own FIFO DLQ, same
+# 5-receive redrive policy and 14-day retention as every other lane.
+chat_turns_dlq_url=$(create_fifo_queue chat-turns-dlq.fifo)
 
 for dlq_url in \
   "$ingestion_dlq_url" \
@@ -68,7 +71,8 @@ for dlq_url in \
   "$enrichment_default_dlq_url" \
   "$enrichment_priority_dlq_url" \
   "$embedding_dlq_url" \
-  "$dynamic_coverage_dlq_url"; do
+  "$dynamic_coverage_dlq_url" \
+  "$chat_turns_dlq_url"; do
   configure_dlq "$dlq_url"
 done
 
@@ -78,6 +82,7 @@ enrichment_default_url=$(create_standard_queue enrichment-default)
 enrichment_priority_url=$(create_standard_queue enrichment-onboarding-priority)
 embedding_url=$(create_standard_queue embedding-upserts)
 dynamic_coverage_url=$(create_standard_queue dynamic-coverage-refresh)
+chat_turns_url=$(create_fifo_queue chat-turns.fifo)
 create_standard_queue w0-04-selftest >/dev/null
 
 configure_source "$ingestion_url" "$(queue_arn "$ingestion_dlq_url")"
@@ -86,6 +91,10 @@ configure_source "$enrichment_default_url" "$(queue_arn "$enrichment_default_dlq
 configure_source "$enrichment_priority_url" "$(queue_arn "$enrichment_priority_dlq_url")"
 configure_source "$embedding_url" "$(queue_arn "$embedding_dlq_url")"
 configure_source "$dynamic_coverage_url" "$(queue_arn "$dynamic_coverage_dlq_url")"
+# CH-03: chat-turns.fifo is produced by services/core and consumed by CH-04's
+# Python worker. Deliberately no allow_topic/ensure_raw_subscription below —
+# this lane is never subscribed to the graph-updated SNS topic (spec.md "Out").
+configure_source "$chat_turns_url" "$(queue_arn "$chat_turns_dlq_url")"
 
 topic_arn=$(awslocal sns create-topic --name graph-updated --query TopicArn --output text)
 

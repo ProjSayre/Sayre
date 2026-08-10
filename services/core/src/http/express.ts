@@ -46,6 +46,12 @@ import {
   McpKeyNotFoundError,
   McpKeyValidationError,
 } from '../services/mcpKeyService';
+import {
+  ChatEnqueueError,
+  ChatForbiddenError,
+  ChatNotFoundError,
+  ChatValidationError,
+} from '../services/chatService';
 
 // Reserved for a future throwing-stub variant of the Graph Query Service
 // (see spec.md's Interfaces section) — not thrown anywhere today, but mapped
@@ -257,6 +263,28 @@ export function errorHandler(
 
   if (err instanceof McpKeyNotFoundError) {
     res.status(404).json({ error: 'not found' });
+    return;
+  }
+
+  if (err instanceof ChatValidationError) {
+    res.status(400).json({ error: 'invalid chat request', issues: err.issues });
+    return;
+  }
+
+  if (err instanceof ChatForbiddenError) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+
+  if (err instanceof ChatNotFoundError) {
+    res.status(404).json({ error: 'not found' });
+    return;
+  }
+
+  if (err instanceof ChatEnqueueError) {
+    // Fixed body only — never the underlying SQS message, queue URL, region,
+    // or AWS error code (spec.md AC-12/EC-13).
+    res.status(502).json({ error: 'chat turn could not be queued' });
     return;
   }
 
