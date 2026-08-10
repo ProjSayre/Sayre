@@ -8,6 +8,7 @@ import {
   traverseFrom,
 } from '../services/retrievalContextService';
 import { getStyleRules } from '../services/styleRulesService';
+import { getReadyTickets } from '../services/ticketReadinessService';
 
 export interface McpToolServices {
   findRelevantNodes(query: string, ctx: AuthContext): Promise<unknown>;
@@ -23,6 +24,7 @@ export interface McpToolServices {
   getFeatureCluster(nodeId: string, ctx: AuthContext): Promise<unknown>;
   getRecentChanges(nodeId: string, ctx: AuthContext): Promise<unknown>;
   checkLiveness(nodeId: string, ctx: AuthContext): Promise<unknown>;
+  getReadyTickets(ctx: AuthContext): Promise<unknown>;
 }
 
 export const mcpToolServices: McpToolServices = {
@@ -51,4 +53,5 @@ export const mcpToolServices: McpToolServices = {
       : null;
   },
   checkLiveness: getNodeLiveness,
+  getReadyTickets,
 };

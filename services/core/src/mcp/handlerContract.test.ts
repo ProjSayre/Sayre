@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('MCP thin-handler contract', () => {
+  // @spec AC-8
   it('keeps exactly one dependency-free adapter per exposed tool', () => {
     const directory = new URL('./handlers/', import.meta.url);
     const files = readdirSync(directory)
@@ -15,6 +16,7 @@ describe('MCP thin-handler contract', () => {
         'getCoveringTests.ts',
         'getFeatureCluster.ts',
         'getNodeContext.ts',
+        'getReadyTickets.ts',
         'getRecentChanges.ts',
         'getStyleRules.ts',
         'traverseFrom.ts',

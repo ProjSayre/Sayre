@@ -43,6 +43,10 @@ import type {
   RetrievalGraphQueryService,
   RetrievalTraversal,
   StructuralEdgeType,
+  TicketReadinessFeature,
+  TicketReadinessGraphQueryService,
+  TicketReadinessPrerequisite,
+  TicketReadinessTicket,
   Viewport,
 } from './types';
 import { canonicalRefName } from '../refName';
@@ -833,6 +837,68 @@ RETURN target.uid AS target_id,
        toString(coverage.last_run) AS coverage_last_run
 ORDER BY test.path, test.uid
 LIMIT 256
+`;
+
+/**
+ * Row cap. When the executor returns exactly this many records the result may
+ * have been truncated mid-ticket, so the mapper drops the final row's ticket —
+ * a partially-read prerequisite list must never be able to make a blocked
+ * ticket look ready.
+ */
+export const GET_READY_TICKETS_ROW_LIMIT = 4096;
+
+export const GET_READY_TICKETS_CYPHER = `
+MATCH (ticket:Ticket)
+WHERE ticket.org_id = $org_id
+  AND ticket.uid IS NOT NULL
+  AND ticket.external_id IS NOT NULL
+  AND ticket.system IS NOT NULL
+  AND ticket.repo_id IS NOT NULL
+  AND ticket.ref_name IS NOT NULL
+  AND ANY(rule IN $allow_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = ticket.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = ticket.ref_name) AND
+    rule.path_prefix IS NULL)
+  AND NOT ANY(rule IN $deny_rules WHERE
+    (rule.repo_id IS NULL OR rule.repo_id = ticket.repo_id) AND
+    (rule.branch IS NULL OR rule.branch = ticket.ref_name) AND
+    rule.path_prefix IS NULL)
+OPTIONAL MATCH (ticket)-[prerequisite_edge]->(prerequisite:Ticket)
+WHERE prerequisite_edge.org_id = $org_id
+  AND prerequisite.org_id = $org_id
+  AND prerequisite.uid IS NOT NULL
+  AND type(prerequisite_edge) IN ['REQUIRES', 'DEPENDS_ON']
+OPTIONAL MATCH (ticket)-[membership:PART_OF]->(feature:Feature)
+WHERE membership.org_id = $org_id
+  AND feature.org_id = $org_id
+  AND feature.uid IS NOT NULL
+  AND feature.name IS NOT NULL
+  AND feature.repo_id = ticket.repo_id
+  AND feature.ref_name = ticket.ref_name
+RETURN ticket.uid AS ticket_id,
+       ticket.org_id AS ticket_org_id,
+       ticket.external_id AS ticket_external_id,
+       ticket.system AS ticket_system,
+       ticket.title AS ticket_title,
+       ticket.status AS ticket_status,
+       ticket.url AS ticket_url,
+       ticket.repo_id AS ticket_repo_id,
+       ticket.ref_name AS ticket_ref_name,
+       prerequisite.uid AS prerequisite_id,
+       prerequisite.org_id AS prerequisite_org_id,
+       prerequisite.repo_id AS prerequisite_repo_id,
+       prerequisite.ref_name AS prerequisite_ref_name,
+       prerequisite.status AS prerequisite_status,
+       prerequisite_edge.org_id AS prerequisite_edge_org_id,
+       type(prerequisite_edge) AS prerequisite_edge_type,
+       feature.uid AS feature_id,
+       feature.name AS feature_name,
+       feature.org_id AS feature_org_id,
+       feature.repo_id AS feature_repo_id,
+       feature.ref_name AS feature_ref_name,
+       membership.org_id AS membership_org_id
+ORDER BY ticket_external_id, ticket_id, feature_name, feature_id, prerequisite_id
+LIMIT ${GET_READY_TICKETS_ROW_LIMIT}
 `;
 
 function valueAsString(record: GraphReadRecord, key: string): string | null {
@@ -1913,6 +1979,164 @@ function isStructuralEdgeType(value: string | null): value is StructuralEdgeType
   return value === 'CONTAINS' || value === 'IMPORTS';
 }
 
+interface TicketRowIdentity {
+  externalId: string;
+  system: string;
+  title: string | null;
+  status: string | null;
+  url: string | null;
+  repoId: string;
+  refName: string;
+}
+
+function ticketIdentityKey(identity: TicketRowIdentity): string {
+  return JSON.stringify([
+    identity.externalId,
+    identity.system,
+    identity.title,
+    identity.status,
+    identity.url,
+    identity.repoId,
+    identity.refName,
+  ]);
+}
+
+interface TicketReadinessRow {
+  identity: TicketRowIdentity;
+  prerequisites: Map<string, TicketReadinessPrerequisite>;
+  features: Map<string, TicketReadinessFeature>;
+}
+
+/**
+ * Module-private mapper for GET_READY_TICKETS_CYPHER. Mirrors the query's
+ * predicates in TypeScript as defense in depth (same posture as every other
+ * mapper in this file) and repeats `distinctFeatureClusters`' invalid-identity
+ * handling for a ticket whose rows disagree about its own fields (EC-11).
+ */
+function mapTicketReadiness(
+  records: readonly GraphReadRecord[],
+  orgId: string,
+  scope: ReadScope,
+): TicketReadinessTicket[] {
+  const tickets = new Map<string, TicketReadinessRow>();
+  const invalidTickets = new Set<string>();
+
+  const truncatedTicketId =
+    records.length >= GET_READY_TICKETS_ROW_LIMIT
+      ? valueAsString(records[records.length - 1] as GraphReadRecord, 'ticket_id')
+      : null;
+
+  for (const record of records) {
+    const ticketId = valueAsString(record, 'ticket_id');
+    const externalId = valueAsString(record, 'ticket_external_id');
+    const system = valueAsString(record, 'ticket_system');
+    const repoId = valueAsString(record, 'ticket_repo_id');
+    const refName = valueAsString(record, 'ticket_ref_name');
+    if (
+      !ticketId ||
+      !externalId ||
+      !system ||
+      !repoId ||
+      !refName ||
+      valueAsString(record, 'ticket_org_id') !== orgId ||
+      !canReadResource(scope, { repoId, refName, path: '' })
+    ) {
+      continue;
+    }
+    if (invalidTickets.has(ticketId)) continue;
+
+    const identity: TicketRowIdentity = {
+      externalId,
+      system,
+      title: valueAsOptionalString(record, 'ticket_title'),
+      status: valueAsOptionalString(record, 'ticket_status'),
+      url: safeWebUrl(valueAsOptionalString(record, 'ticket_url')),
+      repoId,
+      refName,
+    };
+
+    let row = tickets.get(ticketId);
+    if (row === undefined) {
+      row = { identity, prerequisites: new Map(), features: new Map() };
+      tickets.set(ticketId, row);
+    } else if (ticketIdentityKey(row.identity) !== ticketIdentityKey(identity)) {
+      tickets.delete(ticketId);
+      invalidTickets.add(ticketId);
+      continue;
+    }
+
+    const prerequisiteId = valueAsString(record, 'prerequisite_id');
+    const prerequisiteEdgeType = valueAsString(record, 'prerequisite_edge_type');
+    if (
+      prerequisiteId &&
+      prerequisiteId !== ticketId &&
+      valueAsString(record, 'prerequisite_org_id') === orgId &&
+      valueAsString(record, 'prerequisite_edge_org_id') === orgId &&
+      (prerequisiteEdgeType === 'REQUIRES' || prerequisiteEdgeType === 'DEPENDS_ON')
+    ) {
+      const prerequisiteRepoId = valueAsString(record, 'prerequisite_repo_id');
+      const prerequisiteRefName = valueAsString(record, 'prerequisite_ref_name');
+      const visible =
+        prerequisiteRepoId !== null &&
+        prerequisiteRefName !== null &&
+        canReadResource(scope, {
+          repoId: prerequisiteRepoId,
+          refName: prerequisiteRefName,
+          path: '',
+        });
+      row.prerequisites.set(prerequisiteId, {
+        id: prerequisiteId,
+        status: visible ? valueAsOptionalString(record, 'prerequisite_status') : null,
+        visible,
+      });
+    }
+
+    const featureId = valueAsString(record, 'feature_id');
+    const featureName = valueAsString(record, 'feature_name');
+    if (
+      featureId &&
+      featureName &&
+      valueAsString(record, 'feature_org_id') === orgId &&
+      valueAsString(record, 'membership_org_id') === orgId &&
+      valueAsString(record, 'feature_repo_id') === repoId &&
+      valueAsString(record, 'feature_ref_name') === refName
+    ) {
+      row.features.set(featureId, { id: featureId, name: featureName });
+    }
+  }
+
+  if (truncatedTicketId !== null) {
+    tickets.delete(truncatedTicketId);
+  }
+
+  return [...tickets.entries()]
+    .map(([id, row]): TicketReadinessTicket => {
+      const prerequisites = [...row.prerequisites.values()].sort((left, right) =>
+        left.id.localeCompare(right.id),
+      );
+      const features = [...row.features.values()].sort(
+        (left, right) =>
+          left.name.localeCompare(right.name) || left.id.localeCompare(right.id),
+      );
+      return {
+        id,
+        externalId: row.identity.externalId,
+        system: row.identity.system,
+        title: row.identity.title,
+        status: row.identity.status,
+        url: row.identity.url,
+        repositoryId: row.identity.repoId,
+        refName: row.identity.refName,
+        prerequisites,
+        feature: features[0] ?? null,
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.externalId.localeCompare(right.externalId) || left.id.localeCompare(right.id),
+    );
+}
+
 function scopeParameters(scope: ReadScope): Record<string, unknown> {
   return {
     allow_rules: cypherRules(scope.allows),
@@ -1927,7 +2151,8 @@ export class RbacGraphQueryService
     StyleRuleGraphQueryService,
     NodeOverlayGraphQueryService,
     OnboardingGraphQueryService,
-    CoveringTestsGraphQueryService
+    CoveringTestsGraphQueryService,
+    TicketReadinessGraphQueryService
 {
   constructor(
     private readonly graph: GraphReadExecutor,
@@ -2342,6 +2567,22 @@ export class RbacGraphQueryService
       scope,
     );
   }
+
+  async getTicketReadiness(ctx: AuthContext): Promise<TicketReadinessTicket[]> {
+    const scope = await this.permissions.getReadScope(ctx);
+    if (scope.allows.length === 0) return [];
+
+    const result = await this.graph.run(
+      ctx.orgId,
+      'traversal',
+      GET_READY_TICKETS_CYPHER,
+      {
+        org_id: ctx.orgId,
+        ...scopeParameters(scope),
+      },
+    );
+    return mapTicketReadiness(result.records, ctx.orgId, scope);
+  }
 }
 
 export const graphQueryService:
@@ -2350,7 +2591,8 @@ export const graphQueryService:
   StyleRuleGraphQueryService &
   NodeOverlayGraphQueryService &
   OnboardingGraphQueryService &
-  CoveringTestsGraphQueryService =
+  CoveringTestsGraphQueryService &
+  TicketReadinessGraphQueryService =
   new RbacGraphQueryService(
     new LazyGraphReadExecutor(),
     new PostgresPermissionStore(),
