@@ -1,0 +1,65 @@
+{
+  "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+  "date": "2026-08-10",
+  "ticket": "W0-04",
+  "ticketTitle": "W0-04 — SQS + BullMQ wiring (GAPFILL: GAP-3a/4/4a/5)",
+  "goal": "Close W0-04's literal acceptance line against a live broker: build a real priority mechanism on the BullMQ (Node) side so a priority job demonstrably drains ahead of a default backlog, and add genuine cross-language, live-broker round-trip tests (Node→Python and Python→Node) to replace the current same-language-only round-trips and the single static on-disk fixture.",
+  "filesTouched": [
+    ".github/workflows/ci.yml",
+    "Documents/PRD/Audit-Rebuild-Cheat-Sheet.md",
+    "Documents/PRD/PRD V1.md",
+    "Documents/PRD/Ticket-Backlog-Flat.md",
+    "Documents/PRD/Ticket-Backlog-by-Feature-2.md",
+    "docs/wave0-foundation-contracts.md",
+    "services/core/src/queue/__tests__/bullmq.lane.test.ts",
+    "services/core/src/queue/__tests__/bullmq.priority.test.ts",
+    "services/core/src/queue/__tests__/initialParse.fixture.test.ts",
+    "services/core/src/queue/__tests__/w0-04.acceptance-wiring.test.ts",
+    "services/core/src/queue/bullmq.ts",
+    "services/core/test/cross-runtime/publishIngestion.ts",
+    "services/core/vitest.config.ts",
+    "services/gateway/test/cross-runtime/consumeRealtime.ts",
+    "services/workers/tests/test_cross_runtime_roundtrip.py",
+    "services/workers/tests/test_initial_parse_wire_fixture.py",
+    "services/workers/tests/test_messaging_topology.py",
+    "services/workers/tests/test_sqs_roundtrip.py"
+  ],
+  "verdicts": {
+    "review": "PASS",
+    "security": "PASS"
+  },
+  "overrides": [],
+  "bypass": false,
+  "regate": null,
+  "lite": null,
+  "inline": null,
+  "gapfill": {
+    "overlays": [
+      "base"
+    ],
+    "note": "this run took the gapfill lane (`.sdd/pipeline.md`'s `/pipeline-gapfill`): `gap-scout` audited an already-shipped MVP ticket against its acceptance criteria, and `planner`/`red`/`dev` only addressed non-OK gaps. `tester`, `review`, and `security` all ran in full. Overlays came from `.sdd/mvp-overlays.yml` and the Audit-Rebuild cheat sheet. This is disclosure that the work was gap-scoped, not a skipped-gate bypass.",
+    "counts": {
+      "total": 7,
+      "ok": 3,
+      "nonOk": 4,
+      "byStatus": {
+        "OK": 3,
+        "NARROWED": 2,
+        "UNTESTED": 2
+      }
+    }
+  },
+  "redTestPaths": [
+    "services/core/src/queue/__tests__/bullmq.lane.test.ts",
+    "services/core/src/queue/__tests__/bullmq.priority.test.ts",
+    "services/core/src/queue/__tests__/w0-04.acceptance-wiring.test.ts",
+    "services/workers/tests/test_messaging_topology.py",
+    "services/workers/tests/test_cross_runtime_roundtrip.py"
+  ],
+  "redAbsenceNote": null,
+  "securityRunId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+  "commit": {
+    "sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true
+  }
+}

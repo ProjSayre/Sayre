@@ -1,0 +1,74 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/core/src/queue/__tests__/bullmq.lane.test.ts",
+      "sha256": "1bd2b44df24b8872c92de95555199eb7be97dde9f8583c1a95f0e6b96193408b",
+      "specIds": [
+        "AC-1",
+        "AC-3",
+        "EC-1",
+        "EC-3",
+        "EC-6"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/queue/__tests__/bullmq.priority.test.ts",
+      "sha256": "367ddf0ab1fca5bb764dbbd4066be09b052270ab15dd6ceaf5ea403c1a65989d",
+      "specIds": [
+        "AC-2",
+        "AC-4",
+        "EC-2",
+        "EC-5",
+        "EC-7"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/core/src/queue/__tests__/w0-04.acceptance-wiring.test.ts",
+      "sha256": "7c989b46d27060764445ac0672f731776b6e5690b74dee9d1c9c5ca612e1b79a",
+      "specIds": [
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "EC-4",
+        "EC-12"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_messaging_topology.py",
+      "sha256": "5704d1de3060ef906d9bb0b806c62fe003184944088d0c9539d71b66a1993796",
+      "specIds": [
+        "AC-5",
+        "EC-8",
+        "EC-9",
+        "EC-15"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/workers/tests/test_cross_runtime_roundtrip.py",
+      "sha256": "99549ed1344bf3681eb1e12367e1fd3c98d81cad6efd074cf4dfb2b4674ac8ad",
+      "specIds": [
+        "AC-6",
+        "AC-7",
+        "EC-10",
+        "EC-11",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-17"
+      ],
+      "classification": "RED-DEFERRED"
+    }
+  ],
+  "stamp": {
+    "treeHash": "9366a37bac22a54dd4432a66bd82ffd7909c07f60eaf21ed37fb570a35610b10",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-09T22:22:27.324Z"
+  }
+}

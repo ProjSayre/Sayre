@@ -1,0 +1,123 @@
+{
+  "ticket": "W0-04 — SQS + BullMQ wiring (GAPFILL: GAP-3a/4/4a/5)",
+  "goal": "Close W0-04's literal acceptance line against a live broker: build a real priority mechanism on the BullMQ (Node) side so a priority job demonstrably drains ahead of a default backlog, and add genuine cross-language, live-broker round-trip tests (Node→Python and Python→Node) to replace the current same-language-only round-trips and the single static on-disk fixture.",
+  "lane": null,
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-3a) services/core/src/queue/bullmq.ts exports JOB_LANES, JobLane, LANE_PRIORITY and DEFAULT_JOB_LANE, and enqueue() accepts an optional `lane` option whose resolved value is passed to BullMQ as the native `priority` job option on every queue.add() call."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-3a) Every job added through enqueue() lands in BullMQ's `prioritized` structure and never in the unprioritized `wait` list, for both lanes: after enqueueing N default-lane and M priority-lane jobs on a live Redis queue with no worker attached, getWaitingCount() === 0 and getPrioritizedCount() === N + M."
+    },
+    {
+      "id": "AC-3",
+      "text": "(GAP-3a) enqueue() throws (adding nothing to the queue) when given an unknown `lane` value, and throws when the caller supplies a raw `priority` key on opts, with an error message naming `lane` as the supported mechanism."
+    },
+    {
+      "id": "AC-4",
+      "text": "(GAP-3a, GAP-5) Against a live Redis broker: with 20 default-lane jobs enqueued first, then 1 priority-lane job, and only then a worker started at concurrency: 1, the priority-lane job is the first job processed, and all 21 jobs subsequently complete."
+    },
+    {
+      "id": "AC-5",
+      "text": "(GAP-5) Against a live LocalStack SQS broker, with no mocking of consume_once: with 20 envelopes on enrichment-default and 1 published afterwards to enrichment-onboarding-priority, consume_enrichment(mode=\"weighted\", priority_weight=3) handles the priority envelope at an index bounded by priority_weight (<= 3) in the handled sequence, strictly before the default backlog is exhausted, and the default backlog still drains to zero afterwards."
+    },
+    {
+      "id": "AC-6",
+      "text": "(GAP-4, GAP-4a) Node→Python, live broker: an envelope published by services/core/src/queue/sqs.ts's real publishInitialParseEvent onto ingestion.fifo is received and accepted by the real Python sqs_client.consume_once + MessageEnvelope.from_body + parse_ingestion_envelope, with org_id, ref_name, revision_sha and installation_id matching what Node sent. No on-disk fixture is read."
+    },
+    {
+      "id": "AC-7",
+      "text": "(GAP-4, GAP-4a) Python→Node, live broker: an envelope published by the real Python sns_client.publish_graph_updated to the graph-updated SNS topic is received off graph-updated-realtime by the real Node createRealtimeSqsConsumer, passes assertValidEnvelope, and is field-for-field equal (org_id, type, graph_scope_key, graph_version, payload, idempotency_key) to what Python published."
+    },
+    {
+      "id": "AC-8",
+      "text": "(GAP-4a) services/core/src/queue/__tests__/initialParse.fixture.test.ts, services/workers/tests/test_initial_parse_wire_fixture.py and services/workers/tests/test_sqs_roundtrip.py no longer describe themselves as satisfying W0-04's acceptance criterion; each cites docs/product/Ticket-Backlog-by-Feature-2.md §W0-04 as canonical, names docs/backlog.md as the superseded reword, and points at the new cross-runtime test as the cross-language evidence. Their test logic is unchanged and still passes."
+    },
+    {
+      "id": "AC-9",
+      "text": "(GAP-4, GAP-5) .github/workflows/ci.yml runs every new test with a zero-skip gate: the BullMQ priority test is added to the existing Redis-required step, and the cross-runtime test runs in the workers job under a junit skipped == 0 assertion identical in form to the existing messaging and graph-migration gates."
+    },
+    {
+      "id": "AC-10",
+      "text": "(GAP-3a) docs/wave0-foundation-contracts.md records the BullMQ lane contract (two named lanes, both mapped to non-zero BullMQ priority values, no job type assigned to the priority lane by policy) alongside the existing SQS enrichment-lane paragraph."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "(GAP-3a) `lane` omitted: enqueue() resolves DEFAULT_JOB_LANE. The three existing call sites (githubWebhookService.ts:83, ticketSyncIngress.ts:23, ticketSyncIngress.ts:25) compile and behave identically apart from lane placement, and are not edited."
+    },
+    {
+      "id": "EC-2",
+      "text": "(GAP-3a) FIFO within a lane is preserved: two default-lane jobs enqueued in order are processed in that order (BullMQ's prioCounter tie-break), and likewise for two priority-lane jobs. Lane priority must not degenerate into arbitrary reordering of same-lane work."
+    },
+    {
+      "id": "EC-3",
+      "text": "(GAP-3a) Unknown/invalid `lane` (e.g. 'urgent', '', null, a number) throws and adds nothing: the queue's job count is unchanged after the rejected call."
+    },
+    {
+      "id": "EC-4",
+      "text": "(GAP-3a) Rollout state: jobs already sitting in the `wait` list from a pre-change deploy will still drain ahead of any prioritized job until `wait` empties. Documented in the module header, not fixed (draining/migrating an in-flight queue is out of scope) — but it must be stated, because it is the one window in which AC-4's guarantee does not hold."
+    },
+    {
+      "id": "EC-5",
+      "text": "(GAP-3a) Any existing assertion that counts queued jobs via getWaitingCount() becomes structurally vacuous under this change. bullmq.roundtrip.test.ts's 'enqueue rejects an envelope with empty org_id and adds nothing' (lines ~390-419) compares before/after and still passes because the rejected call adds nothing either way — but dev must confirm this rather than assume it, and any new count-based assertion must use getPrioritizedCount()."
+    },
+    {
+      "id": "EC-6",
+      "text": "(GAP-3a) assertValidEnvelope still runs before lane resolution: an invalid envelope is rejected identically on the priority lane and the default lane, and nothing is added."
+    },
+    {
+      "id": "EC-7",
+      "text": "(GAP-5, BullMQ) Worker-start ordering: if the worker is attached before the backlog is fully enqueued it will drain jobs as they arrive and the ordering assertion becomes meaningless. The test must enqueue all 21 jobs first and use concurrency: 1."
+    },
+    {
+      "id": "EC-8",
+      "text": "(GAP-5, SQS) The priority message is published after the entire default backlog, so a pass cannot be an artifact of publish order."
+    },
+    {
+      "id": "EC-9",
+      "text": "(GAP-5, SQS) Weighted mode must not starve the default lane: after the priority envelope is handled, the 20-message default backlog still drains to zero within the test's deadline."
+    },
+    {
+      "id": "EC-10",
+      "text": "(GAP-4/4a) Cross-language malformed input: a body written by one runtime that fails the other runtime's validator is rejected and left on the queue (not deleted), matching the existing same-language behaviour in test_sqs_roundtrip.py::test_invalid_message_is_not_deleted and consumer.ts's redrive path."
+    },
+    {
+      "id": "EC-11",
+      "text": "(GAP-4/4a) Tenant context survives the crossing: org_id is byte-identical on both sides, and a cross-language message with a blank org_id is rejected by the consuming runtime (MessageEnvelope min_length / assertValidEnvelope), never silently defaulted."
+    },
+    {
+      "id": "EC-12",
+      "text": "(GAP-4/4a, GAP-5) Broker unreachable: every new integration test skips quietly for an ordinary local run and hard-fails under MESSAGING_INTEGRATION_REQUIRED=true, matching the existing pattern. A skipped run must never read as a pass in CI."
+    },
+    {
+      "id": "EC-13",
+      "text": "(GAP-4/4a) Subprocess failure modes: a non-zero exit, a crash, a timeout, or unparseable stdout from either tsx harness fails the pytest test with the captured stderr in the message. No bare except, no default-to-pass."
+    },
+    {
+      "id": "EC-14",
+      "text": "(GAP-4/4a) FIFO deduplication: ingestion.fifo has a 5-minute dedup window keyed on the hashed idempotency_key. The test must use a per-run-unique key, or a rerun within 5 minutes is silently swallowed and the test hangs/fails confusingly."
+    },
+    {
+      "id": "EC-15",
+      "text": "(GAP-4/4a, GAP-5) Test isolation: every new test drains its queues first and matches on a per-run-unique marker, so a leftover message from another suite can never satisfy an assertion. Both enrichment lanes and graph-updated-realtime are shared with test_messaging_topology.py."
+    },
+    {
+      "id": "EC-16",
+      "text": "(GAP-4/4a) Node harness environment: the harnesses resolve config/secrets through @sayre/config exactly like production (SQS_ENDPOINT_URL, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY). The pytest orchestrator must pass those through to the subprocess env; a missing one must surface as a clear failure, not as a silent fall-through to real AWS."
+    },
+    {
+      "id": "EC-17",
+      "text": "(GAP-4/4a) Concurrent/partial failure: if the Node consumer harness is killed after receiving but before deleting, the message is redelivered (at-least-once) rather than lost. The test's cleanup must not leave the shared realtime queue holding an unconsumed marker message for a later suite."
+    }
+  ],
+  "stamp": {
+    "treeHash": "e977fbc93e83738d1e527e3db6475b412c6bc826544191f453b898a726d348f8",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-09T22:05:47.129Z"
+  }
+}

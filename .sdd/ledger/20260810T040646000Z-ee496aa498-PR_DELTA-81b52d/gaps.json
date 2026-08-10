@@ -1,0 +1,101 @@
+{
+  "ticket": "W0-04",
+  "overlays": [
+    "base"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "OK",
+      "source": "Stands up both queues with local equivalents (LocalStack for SQS, Redis for BullMQ)",
+      "evidence": [
+        "infra/docker-compose.yml",
+        "infra/localstack/init/ready.d/01-create-sqs-queues.sh",
+        ".github/workflows/ci.yml"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-2",
+      "status": "OK",
+      "source": "base publisher/consumer wrappers per language",
+      "evidence": [
+        "services/workers/messaging/sqs_client.py",
+        "services/core/src/queue/bullmq.ts",
+        "services/workers/messaging/envelope.py",
+        "services/core/src/queue/envelope.ts",
+        "services/workers/tests/test_sqs_roundtrip.py",
+        "services/core/src/queue/__tests__/bullmq.roundtrip.test.ts"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3",
+      "status": "OK",
+      "source": "and a priority-lane mechanism (tier or separate queue)",
+      "evidence": [
+        "services/workers/messaging/sqs_client.py",
+        "infra/localstack/init/ready.d/01-create-sqs-queues.sh",
+        "docs/wave0-foundation-contracts.md"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3a",
+      "status": "NARROWED",
+      "source": "Stands up both queues with local equivalents (LocalStack for SQS, Redis for BullMQ), base publisher/consumer wrappers per language, and a priority-lane mechanism (tier or separate queue).",
+      "evidence": [
+        "services/core/src/queue/bullmq.ts",
+        ".claude/rules/async-messaging.md"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-4",
+      "status": "NARROWED",
+      "source": "Acceptance: cross-language test messages consumed correctly",
+      "evidence": [
+        "docs/backlog.md",
+        "services/workers/tests/test_sqs_roundtrip.py",
+        "services/core/src/queue/__tests__/bullmq.roundtrip.test.ts",
+        "services/core/src/queue/sqs.ts",
+        "services/gateway/src/sqs/consumer.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-4a",
+      "status": "UNTESTED",
+      "source": "Acceptance: cross-language test messages consumed correctly",
+      "evidence": [
+        "services/core/src/queue/__fixtures__/repo_initial_parse.envelope.json",
+        "services/core/src/queue/__tests__/initialParse.fixture.test.ts",
+        "services/workers/tests/test_initial_parse_wire_fixture.py",
+        "services/gateway/src/sqs/consumer.test.ts",
+        "services/core/src/queue/sqs.test.ts",
+        "services/gateway/src/e2e.test.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-5",
+      "status": "UNTESTED",
+      "source": "Acceptance: a priority message demonstrably drains ahead of a backlog of default messages.",
+      "evidence": [
+        "services/workers/tests/test_messaging_topology.py",
+        "services/workers/tests/test_onboarding_priority.py",
+        "services/workers/messaging/sqs_client.py"
+      ],
+      "needsTest": true
+    }
+  ],
+  "stamp": {
+    "treeHash": "e977fbc93e83738d1e527e3db6475b412c6bc826544191f453b898a726d348f8",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-09T21:51:57.561Z"
+  }
+}
