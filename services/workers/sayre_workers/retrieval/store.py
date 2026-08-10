@@ -8,7 +8,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from sayre_workers.config import get_secret
-from sayre_workers.telemetry.vector_metrics import instrument_vector_query
+from sayre_workers.telemetry.vector_metrics import execute_vector_query
 
 from .models import InvalidRetrievedChunkError, RetrievalScope, RetrievedChunk
 
@@ -86,14 +86,19 @@ class PostgresRetrievalStore:
         distinct_node_ids = tuple(dict.fromkeys(node_id for node_id in node_ids if node_id))
         if not distinct_node_ids:
             return ()
-        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_RETRIEVAL_CHUNKS:
+        if (
+            not isinstance(limit, int)
+            or isinstance(limit, bool)
+            or not 1 <= limit <= MAX_RETRIEVAL_CHUNKS
+        ):
             raise ValueError(f"retrieval chunk limit must be between 1 and {MAX_RETRIEVAL_CHUNKS}")
 
         connection = await self._connect(scope.org_id)
         async with connection:
-            async with instrument_vector_query(scope.org_id):
-                cursor = await connection.execute(
-                    """
+            cursor = await execute_vector_query(
+                connection,
+                org_id=scope.org_id,
+                query="""
                     SELECT chunk.id::text AS chunk_id,
                            chunk.graph_node_id,
                            chunk.content,
@@ -125,18 +130,18 @@ class PostgresRetrievalStore:
                              chunk.id
                     LIMIT %s
                     """,
-                    (
-                        scope.org_id,
-                        scope.repository_id,
-                        scope.ref_name,
-                        scope.revision_sha,
-                        scope.revision_sha,
-                        list(distinct_node_ids),
-                        list(distinct_node_ids),
-                        limit,
-                    ),
-                )
-                rows = await cursor.fetchall()
+                params=(
+                    scope.org_id,
+                    scope.repository_id,
+                    scope.ref_name,
+                    scope.revision_sha,
+                    scope.revision_sha,
+                    list(distinct_node_ids),
+                    list(distinct_node_ids),
+                    limit,
+                ),
+            )
+            rows = await cursor.fetchall()
         return tuple(_chunk_from_row(row) for row in rows)
 
     async def load_full_repo_token_count(self, scope: RetrievalScope) -> int:
@@ -144,9 +149,10 @@ class PostgresRetrievalStore:
         _require_scope(scope)
         connection = await self._connect(scope.org_id)
         async with connection:
-            async with instrument_vector_query(scope.org_id):
-                cursor = await connection.execute(
-                    """
+            cursor = await execute_vector_query(
+                connection,
+                org_id=scope.org_id,
+                query="""
                     SELECT COALESCE(SUM(chunk.token_count), 0)::bigint AS token_count
                     FROM code_chunks AS chunk
                     JOIN repository_refs AS ref
@@ -171,15 +177,15 @@ class PostgresRetrievalStore:
                           AND embedding.dimension = 1024
                       )
                     """,
-                    (
-                        scope.org_id,
-                        scope.repository_id,
-                        scope.ref_name,
-                        scope.revision_sha,
-                        scope.revision_sha,
-                    ),
-                )
-                row = await cursor.fetchone()
+                params=(
+                    scope.org_id,
+                    scope.repository_id,
+                    scope.ref_name,
+                    scope.revision_sha,
+                    scope.revision_sha,
+                ),
+            )
+            row = await cursor.fetchone()
         value = row.get("token_count") if row is not None else 0
         if not isinstance(value, int) or value < 0:
             raise InvalidRetrievedChunkError("retrieval baseline token count is invalid")
