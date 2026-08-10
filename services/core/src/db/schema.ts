@@ -154,9 +154,7 @@ export const permissions = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     subjectType: text("subject_type").notNull(), // 'user' | 'team' | 'role'
     subjectId: text("subject_id").notNull(),
-    repoId: uuid("repo_id").references(() => repositories.id, {
-      onDelete: "cascade",
-    }), // NULL = all repos in org
+    repoId: uuid("repo_id"), // NULL = all repos in org
     branch: text("branch"), // NULL = all branches
     pathPrefix: text("path_prefix"), // NULL = repo root / all paths
     action: text("action").notNull(), // 'read' | 'write' | 'admin'
@@ -164,6 +162,11 @@ export const permissions = pgTable(
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "permissions_org_repository_fk",
+      columns: [table.orgId, table.repoId],
+      foreignColumns: [repositories.orgId, repositories.id],
+    }).onDelete("cascade"),
     index("permissions_org_id_idx").on(table.orgId),
     // Supports future `path_prefix LIKE 'x%'` prefix scans by the Graph Query
     // Service; the text_pattern_ops opclass variant is added explicitly as raw
@@ -182,9 +185,7 @@ export const ticketCache = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    repoId: uuid("repo_id").references(() => repositories.id, {
-      onDelete: "cascade",
-    }),
+    repoId: uuid("repo_id"),
     provider: text("provider").notNull(), // 'jira' | 'linear'
     externalTicketId: text("external_ticket_id").notNull(), // e.g. 'PROJ-123'
     title: text("title"),
@@ -212,6 +213,11 @@ export const ticketCache = pgTable(
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "ticket_cache_org_repository_fk",
+      columns: [table.orgId, table.repoId],
+      foreignColumns: [repositories.orgId, repositories.id],
+    }).onDelete("cascade"),
     unique("ticket_cache_org_provider_external_unique").on(
       table.orgId,
       table.provider,
@@ -231,9 +237,7 @@ export const styleRules = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    repoId: uuid("repo_id").references(() => repositories.id, {
-      onDelete: "cascade",
-    }),
+    repoId: uuid("repo_id"),
     ruleType: text("rule_type").notNull(), // 'coding_style' | 'comment_style'
     scopeNodeId: text("scope_node_id"), // Graph node id (Folder/File); NULL = repo/org default
     branch: text("branch"),
@@ -241,7 +245,14 @@ export const styleRules = pgTable(
     content: text("content").notNull(),
     ...timestamps,
   },
-  (table) => [index("style_rules_org_id_idx").on(table.orgId)],
+  (table) => [
+    foreignKey({
+      name: "style_rules_org_repository_fk",
+      columns: [table.orgId, table.repoId],
+      foreignColumns: [repositories.orgId, repositories.id],
+    }).onDelete("cascade"),
+    index("style_rules_org_id_idx").on(table.orgId),
+  ],
 );
 
 /** EnvStep source data; Onboarding Tree = steps ordered by sequence. */
@@ -254,9 +265,7 @@ export const onboardingSteps = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    repoId: uuid("repo_id").references(() => repositories.id, {
-      onDelete: "cascade",
-    }),
+    repoId: uuid("repo_id"),
     branch: text("branch"),
     sequence: integer("sequence").notNull(), // ordering within (repo, branch)
     title: text("title").notNull(),
@@ -265,7 +274,14 @@ export const onboardingSteps = pgTable(
     graphNodeId: text("graph_node_id"), // link to EnvStep graph node once created
     ...timestamps,
   },
-  (table) => [index("onboarding_steps_org_id_idx").on(table.orgId)],
+  (table) => [
+    foreignKey({
+      name: "onboarding_steps_org_repository_fk",
+      columns: [table.orgId, table.repoId],
+      foreignColumns: [repositories.orgId, repositories.id],
+    }).onDelete("cascade"),
+    index("onboarding_steps_org_id_idx").on(table.orgId),
+  ],
 );
 
 /**
@@ -563,9 +579,7 @@ export const repositoryRefs = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    repositoryId: uuid("repository_id")
-      .notNull()
-      .references(() => repositories.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id").notNull(),
     // e.g. 'refs/heads/main' (or 'main').
     refName: text("ref_name").notNull(),
     // The currently accepted HEAD commit SHA. Text (SHA-1 40-hex today,
@@ -579,10 +593,20 @@ export const repositoryRefs = pgTable(
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "repository_refs_org_repository_fk",
+      columns: [table.orgId, table.repositoryId],
+      foreignColumns: [repositories.orgId, repositories.id],
+    }).onDelete("cascade"),
     unique("repository_refs_org_repo_ref_unique").on(
       table.orgId,
       table.repositoryId,
       table.refName,
+    ),
+    unique("repository_refs_org_repository_id_unique").on(
+      table.orgId,
+      table.repositoryId,
+      table.id,
     ),
     // NOTE: leading org_id in the unique above covers RLS — no separate index.
   ],
@@ -602,13 +626,9 @@ export const codeChunks = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    repositoryId: uuid("repository_id")
-      .notNull()
-      .references(() => repositories.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id").notNull(),
     // Ties the chunk to a (repo, ref) and thus a revision.
-    refId: uuid("ref_id")
-      .notNull()
-      .references(() => repositoryRefs.id, { onDelete: "cascade" }),
+    refId: uuid("ref_id").notNull(),
     // Denormalized for provenance/immutability if the ref later advances.
     revisionSha: text("revision_sha").notNull(),
     // Cross-store reference to the File/Function graph node (string key, NOT
@@ -626,6 +646,15 @@ export const codeChunks = pgTable(
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "code_chunks_org_repository_ref_fk",
+      columns: [table.orgId, table.repositoryId, table.refId],
+      foreignColumns: [
+        repositoryRefs.orgId,
+        repositoryRefs.repositoryId,
+        repositoryRefs.id,
+      ],
+    }).onDelete("cascade"),
     // Idempotent re-ingest; leading org_id covers RLS.
     unique("code_chunks_org_ref_node_index_hash_unique").on(
       table.orgId,
@@ -633,6 +662,12 @@ export const codeChunks = pgTable(
       table.graphNodeId,
       table.chunkIndex,
       table.contentHash,
+    ),
+    unique("code_chunks_org_repository_ref_id_unique").on(
+      table.orgId,
+      table.repositoryId,
+      table.refId,
+      table.id,
     ),
     // RAG lookups by node (org_id btree already provided by the unique above).
     index("code_chunks_graph_node_id_idx").on(table.graphNodeId),
@@ -652,16 +687,10 @@ export const codeEmbeddings = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    repositoryId: uuid("repository_id")
-      .notNull()
-      .references(() => repositories.id, { onDelete: "cascade" }),
-    refId: uuid("ref_id")
-      .notNull()
-      .references(() => repositoryRefs.id, { onDelete: "cascade" }),
+    repositoryId: uuid("repository_id").notNull(),
+    refId: uuid("ref_id").notNull(),
     revisionSha: text("revision_sha").notNull(),
-    chunkId: uuid("chunk_id")
-      .notNull()
-      .references(() => codeChunks.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id").notNull(),
     // Cross-store node reference (string, not FK).
     graphNodeId: text("graph_node_id"),
     embedding: vector1024("embedding").notNull(),
@@ -673,6 +702,21 @@ export const codeEmbeddings = pgTable(
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "code_embeddings_org_repository_ref_chunk_fk",
+      columns: [
+        table.orgId,
+        table.repositoryId,
+        table.refId,
+        table.chunkId,
+      ],
+      foreignColumns: [
+        codeChunks.orgId,
+        codeChunks.repositoryId,
+        codeChunks.refId,
+        codeChunks.id,
+      ],
+    }).onDelete("cascade"),
     // One embedding per chunk per provider/model.
     unique("code_embeddings_chunk_provider_model_unique").on(
       table.chunkId,

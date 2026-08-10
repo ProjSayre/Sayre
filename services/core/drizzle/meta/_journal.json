@@ -134,6 +134,13 @@
       "when": 1785384200000,
       "tag": "0018_ticket_cache_inferred_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785384300000,
+      "tag": "0019_w0_05_tenant_consistent_repo_fks",
+      "breakpoints": true
     }
   ]
 }
