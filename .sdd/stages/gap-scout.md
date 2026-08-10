@@ -13,18 +13,21 @@ proof the ticket is done.
 
 ## Required inputs
 
-1. The ticket id and full ticket text (from the invocation, or from
-   `docs/product/Ticket-Backlog-by-Feature-2.md` / the wave backlog). If you cannot identify a
-   short ticket id matching `W[0-9]+-[0-9]+`, stop and say so — this lane is id-keyed.
-2. Read `docs/product/Audit-Rebuild-Cheat-Sheet.md` in full — especially the base template and
-   overlays.
-3. Read `.sdd/mvp-overlays.yml`. Look up the ticket id under `tickets:`.
-   - If the id is **absent**, stop: this ticket is ineligible for `/pipeline-gapfill`. Tell the
-     caller to use `/pipeline` instead.
-   - Record `overlays`, `security_required`, `audit_first` (if any), `note`, and any matching
-     `spot_checks` entry.
+1. Resolve a short ticket id matching `W[0-9]+-[0-9]+`. If you cannot, stop — this lane is id-keyed.
+2. **Load only that ticket's slice — never the whole backlog or cheat sheet.** Run:
+   ```sh
+   node scripts/extract-ticket.mjs <TICKET-ID> --with-overlays
+   ```
+   (add `--json` if you prefer structured output). That command prints (a) the single `### <id>`
+   section from `docs/product/Ticket-Backlog-by-Feature-2.md` and (b) the base template plus only
+   the overlay blocks listed for this id in `.sdd/mvp-overlays.yml`. Do **not** `Read` either
+   markdown file end-to-end. If extract-ticket exits non-zero (id missing from backlog or from
+   `.sdd/mvp-overlays.yml`), stop and tell the caller to use `/pipeline` or fix the id.
+3. From the extract output / YAML, record `overlays`, `security_required`, `audit_first`, `note`,
+   and any spot-check clause. Do not invent overlays for an id that is absent from the YAML.
 4. Optionally read a prior ledger run if the caller passed `--prior-ledger <run-id>` — use it as
-   **evidence of past intent**, never as proof ACs are met today.
+   **evidence of past intent**, never as proof ACs are met today. Read only that run's
+   `spec.md`/`entry.md`, not the whole ledger index.
 
 ## Procedure
 
