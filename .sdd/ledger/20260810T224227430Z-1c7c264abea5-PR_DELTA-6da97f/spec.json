@@ -1,0 +1,147 @@
+{
+  "ticket": "CH-02 — get_ready_tickets service function + MCP tool",
+  "goal": "Give Sayre a deterministic, graph-computed answer to \"which tickets are unblocked and ready to start right now?\" — an ordered, feature-grouped list of open tickets whose prerequisite tickets are all done — exposed once as a service-layer function and once as a read-only MCP tool, so the CH-04 chat agent and any external MCP client get the identical, server-authorized answer with the model only narrating it.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "Given a fixture graph of tickets in mixed states with a REQUIRES chain, the service returns exactly the unblocked open set: a ticket whose prerequisite is in any non-done state (open, started, or unknown) is excluded, and a ticket whose prerequisites are all done is included. Verified in services/core/src/services/ticketReadinessService.test.ts."
+    },
+    {
+      "id": "AC-2",
+      "text": "A DEPENDS_ON prerequisite is treated identically to a REQUIRES prerequisite, both in the graph query (type(edge) IN ['REQUIRES','DEPENDS_ON']) and in the mapper's admission check. Verified in services/core/src/graph-query/ticketReadiness.test.ts."
+    },
+    {
+      "id": "AC-3",
+      "text": "Results are grouped by owning Feature via PART_OF; a ticket with no PART_OF Feature lands in a single trailing group whose feature is null, and that ungrouped group is always last. Verified in services/core/src/services/ticketReadinessService.test.ts."
+    },
+    {
+      "id": "AC-4",
+      "text": "Org isolation: the Cypher binds $org_id from ctx.orgId alone; neither the MCP tool's input nor any exported function signature accepts an org id; and the mapper drops any record whose ticket_org_id, prerequisite_org_id, prerequisite_edge_org_id, feature_org_id, or membership_org_id differs from ctx.orgId, so tenant A's call can never return tenant B's tickets. Verified in services/core/src/graph-query/ticketReadiness.test.ts."
+    },
+    {
+      "id": "AC-5",
+      "text": "Node-level RBAC is enforced server-side in the Graph Query Service: a caller with no repository-root-level allow rule (path_prefix IS NULL) for a ticket's (repo_id, ref_name) receives none of that repository's tickets, a matching deny removes them, and a caller with zero allow rules gets [] without a graph round trip. Verified in services/core/src/graph-query/ticketReadiness.test.ts."
+    },
+    {
+      "id": "AC-6",
+      "text": "A prerequisite that exists but is outside the caller's read scope is returned with visible: false and status: null, is never counted as satisfied, and therefore blocks its dependent — and neither its id nor any of its fields appears in the service's result. Verified in services/core/src/graph-query/ticketReadiness.test.ts and services/core/src/services/ticketReadinessService.test.ts."
+    },
+    {
+      "id": "AC-7",
+      "text": "The MCP gateway lists get_ready_tickets among its tools with readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, accepts a call with no arguments from an authorized credential, and returns the service function's result verbatim inside the {\"data\": ...} envelope, with one metered ok measurement. Verified in services/core/src/mcp/gateway.test.ts."
+    },
+    {
+      "id": "AC-8",
+      "text": "services/core/src/mcp/handlers/getReadyTickets.ts satisfies the thin-handler contract: it is in handlerContract.test.ts's expected file list, is under 20 lines, contains no data-access import, and delegates via services.getReadyTickets. Verified in services/core/src/mcp/handlerContract.test.ts."
+    },
+    {
+      "id": "AC-9",
+      "text": "Ordering is deterministic and stable across runs: two invocations over the same input produce deeply equal results; groups are ordered by feature.name then feature.id with the ungrouped group last; tickets within a group are ordered by externalId then node id. Verified in services/core/src/services/ticketReadinessService.test.ts."
+    },
+    {
+      "id": "AC-10",
+      "text": "Each returned entry carries the narration payload the ticket asked for — id, externalId, title, status, satisfiedPrerequisites, and feature (id/name) — with satisfiedPrerequisites equal to the number of distinct done prerequisites (0 when the ticket has none). Verified in services/core/src/services/ticketReadinessService.test.ts."
+    },
+    {
+      "id": "AC-11",
+      "text": "classifyTicketStatus maps DONE_TICKET_STATUSES / STARTED_TICKET_STATUSES / OPEN_TICKET_STATUSES case-, whitespace-, underscore-, hyphen-, and apostrophe-insensitively, and returns 'unknown' for null, blank, and any unrecognized status; 'unknown' is never treated as 'open' (never a candidate) and never as 'done' (never satisfies a prerequisite). Verified in services/core/src/services/ticketReadinessService.test.ts."
+    },
+    {
+      "id": "AC-12",
+      "text": "The published contract and the interop harness stay in sync with the gateway: V1_TOOL_CASES contains { name: 'get_ready_tickets', arguments: {} }, MCP_TOOL_CONTRACT.md contains a `### `get_ready_tickets`` section, and test/mcp-interop/interop.test.ts passes — which requires the fixture's full-scope result to contain 'private' and its limited-scope result not to. Verified in services/core/test/mcp-interop/interop.test.ts."
+    },
+    {
+      "id": "AC-13",
+      "text": "packages/graph-schema/schema.md records the endpoint pairs this read depends on — Ticket->Ticket for both REQUIRES and DEPENDS_ON, and Ticket->Feature for PART_OF — with no new node label and no new relationship type added to either closed set. Verified in services/core/src/graph-query/ticketReadiness.test.ts (a documentation assertion, in the same style as interop.test.ts's existing MCP_TOOL_CONTRACT.md check)."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "No Ticket nodes at all: returns { authorization: 'server-filtered', totalReady: 0, truncated: false, groups: [] }. Never null, never a throw."
+    },
+    {
+      "id": "EC-2",
+      "text": "The caller's read scope has zero allow rules: getTicketReadiness returns [] without calling the graph executor at all (assert the executor's run was never invoked)."
+    },
+    {
+      "id": "EC-3",
+      "text": "A ticket whose status is null, blank, or an unrecognized workflow name classifies as 'unknown': it is not offered as ready, and as a prerequisite it blocks its dependent."
+    },
+    {
+      "id": "EC-4",
+      "text": "A ticket already in a done state is never returned as ready, even with zero prerequisites."
+    },
+    {
+      "id": "EC-5",
+      "text": "A ticket in a started state (in progress, in review, blocked, on hold, ...) is not returned — 'ready to start' excludes work already begun or explicitly held."
+    },
+    {
+      "id": "EC-6",
+      "text": "A self-referential prerequisite (ticket -[:REQUIRES]-> same ticket) is dropped by the mapper: it is neither counted in satisfiedPrerequisites nor allowed to block, since a self-loop would otherwise hide the ticket permanently."
+    },
+    {
+      "id": "EC-7",
+      "text": "A prerequisite cycle (A requires B, B requires A, both open) yields neither ticket as ready, with no unbounded traversal — the query is single-hop by construction."
+    },
+    {
+      "id": "EC-8",
+      "text": "A ticket that is PART_OF more than one Feature appears exactly once, under the feature with the lowest (name, id) ordering."
+    },
+    {
+      "id": "EC-9",
+      "text": "A Feature in a different repository, ref, or org than the ticket is ignored; the ticket falls into the ungrouped bucket rather than being grouped under it."
+    },
+    {
+      "id": "EC-10",
+      "text": "A prerequisite relationship carrying a foreign org_id on the edge is ignored entirely: for this tenant the relationship does not exist, so it neither counts nor blocks."
+    },
+    {
+      "id": "EC-11",
+      "text": "The same ticket uid appearing on rows with conflicting identity fields (a corrupt or concurrently-rewritten projection) causes that ticket to be dropped from the result entirely and never re-added, mirroring distinctFeatureClusters' invalid-cluster handling."
+    },
+    {
+      "id": "EC-12",
+      "text": "Row-cap truncation: when the executor returns exactly GET_READY_TICKETS_ROW_LIMIT records, the final record's ticket is dropped as possibly-incomplete, so a partially-read prerequisite list can never make a blocked ticket look ready."
+    },
+    {
+      "id": "EC-13",
+      "text": "More than READY_TICKETS_LIMIT ready tickets: groups carry the first 200 in the deterministic order, totalReady reports the true pre-cap count, and truncated is true."
+    },
+    {
+      "id": "EC-14",
+      "text": "A Ticket.url that is not http:/https: (e.g. a javascript: value) is emitted as null via the existing safeWebUrl helper."
+    },
+    {
+      "id": "EC-15",
+      "text": "MCP failure paths are unchanged and reveal nothing: a rate-limited call returns isError: true with the fixed text 'MCP rate limit exceeded.', and a service throw returns isError: true with 'MCP tool execution failed.' and no graph, database, or validation detail."
+    },
+    {
+      "id": "EC-16",
+      "text": "Blank-string title, status, or url values normalize to null (via valueAsOptionalString) rather than surfacing as empty strings."
+    },
+    {
+      "id": "EC-17",
+      "text": "A Ticket missing repo_id or ref_name (a legacy row written before those were set) is dropped: it cannot be authorized, so it is never returned and, as a prerequisite, is never visible and therefore blocks."
+    },
+    {
+      "id": "EC-18",
+      "text": "No Ticket -[:PART_OF]-> Feature edge exists anywhere (today's real-data state, since the ticket sync writer emits REFERENCES): every ready ticket lands in the single ungrouped bucket and the result is still well-formed."
+    },
+    {
+      "id": "EC-19",
+      "text": "A Ticket -[:REFERENCES]-> Feature edge must NOT group the ticket; only PART_OF does. (Asserted so a future change to the writer cannot silently alter grouping.)"
+    },
+    {
+      "id": "EC-20",
+      "text": "The tool is called with unexpected arguments (e.g. { \"org_id\": \"<other tenant>\" }): because no inputSchema is registered the SDK ignores them, the handler receives only credential.context, and the result is byte-identical to a no-argument call — a client-supplied org id can never influence the query."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "bad93b98d859ace9fdd49684a8a92a2e1fdb8296ebdc582703a05ea8c7e9c70e",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": false,
+    "writtenAt": "2026-08-10T20:33:51.921Z"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "runId": "20260810T224227430Z-1c7c264abea5-PR_DELTA-6da97f",
+  "date": "2026-08-10",
+  "ticket": "CH-02",
+  "ticketTitle": "CH-02 — get_ready_tickets service function + MCP tool",
+  "goal": "Give Sayre a deterministic, graph-computed answer to \"which tickets are unblocked and ready to start right now?\" — an ordered, feature-grouped list of open tickets whose prerequisite tickets are all done — exposed once as a service-layer function and once as a read-only MCP tool, so the CH-04 chat agent and any external MCP client get the identical, server-authorized answer with the model only narrating it.",
+  "filesTouched": [
+    "services/core/src/services/ticketReadinessService.ts"
+  ],
+  "verdicts": {
+    "review": "PASS",
+    "security": "PASS"
+  },
+  "overrides": [],
+  "bypass": false,
+  "regate": {
+    "testerRan": true,
+    "gatesOnly": false,
+    "note": "code was changed in the working tree outside the pipeline's dev stage before this run; changes.md/changes.json describe the tree as it stood before that edit"
+  },
+  "lite": null,
+  "inline": null,
+  "gapfill": null,
+  "redTestPaths": [
+    "services/core/src/services/ticketReadinessService.test.ts",
+    "services/core/src/graph-query/ticketReadiness.test.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "services/core/src/mcp/handlerContract.test.ts",
+    "services/core/test/mcp-interop/interop.test.ts"
+  ],
+  "redAbsenceNote": null,
+  "securityRunId": "20260810T224227430Z-1c7c264abea5-PR_DELTA-6da97f",
+  "commit": {
+    "sha": "1c7c264abea51d7ab8de447c5442dc3dd1942551",
+    "dirty": true
+  }
+}

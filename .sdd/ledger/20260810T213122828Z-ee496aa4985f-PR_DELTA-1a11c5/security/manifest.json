@@ -1,0 +1,337 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-10T21:15:55.000Z",
+  "completed_at": "2026-08-10T21:45:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.claude\\worktrees\\agent-adeaa049fb5ae5378"
+  },
+  "target": {
+    "commit_sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "branch": "ticket/ch-02-get-ready-tickets",
+    "dirty": true,
+    "environment": "local-dev-worktree, no live Neo4j/Postgres; node_modules installed",
+    "base_urls": [],
+    "changed_paths": [
+      "MCP_TOOL_CONTRACT.md",
+      "docs/mcp-gateway.md",
+      "packages/graph-schema/schema.md",
+      "services/core/src/graph-query/index.ts",
+      "services/core/src/graph-query/types.ts",
+      "services/core/src/mcp/gateway.test.ts",
+      "services/core/src/mcp/gateway.ts",
+      "services/core/src/mcp/handlerContract.test.ts",
+      "services/core/src/mcp/toolServices.ts",
+      "services/core/test/mcp-interop/contract.ts",
+      "services/core/test/mcp-interop/fixtureGateway.ts",
+      "services/core/test/mcp-interop/interop.test.ts",
+      "services/core/src/graph-query/ticketReadiness.test.ts",
+      "services/core/src/mcp/handlers/getReadyTickets.ts",
+      "services/core/src/services/ticketReadinessService.test.ts",
+      "services/core/src/services/ticketReadinessService.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No prior run exists under .pipeline/security-history/ (directory did not exist before this run). Per audit-contract.md's baseline order, item 4 applies: no baseline, mark every observation FIRST_OBSERVATION rather than invent a trend.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "MVP / Wave 0-4 (CH-02: getReadyTickets service function + get_ready_tickets MCP tool)",
+    "phase": "pre-external-customer (local .env-file secrets phase per .claude/rules/security-multitenancy.md; KMS-backed secrets manager not yet required)",
+    "source_references": [
+      ".pipeline/spec.md",
+      "CLAUDE.md",
+      ".claude/rules/security-multitenancy.md",
+      "docs/product/Ticket-Backlog-by-Feature-2.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "coordinator dispatch instructions for this security stage run (local worktree, non-production, non-shared target; synthetic fixtures only)",
+    "resource_ceiling": "single local Express+MCP-SDK process per probe, one HTTP request at a time, no sustained/concurrent load, no destructive payloads; largest single request body ~500KB to exercise the body-size limit",
+    "credential_references": [
+      "synthetic in-process fixture bearer token (services/core/src/mcp/gateway.test.ts-style harness); no real MCP key, no real database credential used"
+    ],
+    "tenant_fixtures": [
+      "synthetic org 11111111-1111-4111-8111-111111111111 (repository-root-scoped fixture credential)",
+      "synthetic org 99999999-9999-4999-8999-999999999999 (referenced only as a rejected client-supplied org id, never a real second tenant fixture, per graph-query/ticketReadiness.test.ts's existing OTHER_ORG_ID convention)"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01); this diff adds a new org-scoped Cypher read (GET_READY_TICKETS_CYPHER) and a new graph-query method.",
+      "rationale": "org_id is bound from ctx.orgId only (never client input) in GET_READY_TICKETS_CYPHER and mapTicketReadiness; enforced structurally by the shared assertOrgScopedCypher guard (services/core/src/security/graphOrgGuard.ts) that both Neo4j executors call before every query, and independently re-checked by the static cypherOrgIdScan test.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_CYPHER",
+        "services/core/src/graph-query/index.ts:mapTicketReadiness",
+        "services/core/src/graph-query/index.ts:RbacGraphQueryService.getTicketReadiness",
+        "services/core/src/security/graphOrgGuard.ts:assertOrgScopedCypher",
+        "services/core/src/security/cypherOrgIdScan.test.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02); this diff adds new node-level RBAC predicates (allow/deny/path_prefix) entirely inside the Graph Query Service, per the ticket's explicit instruction to attack this hardest.",
+      "rationale": "Allow/deny/path_prefix predicates live only in GET_READY_TICKETS_CYPHER and are mirrored in TypeScript via the existing canReadResource (services/core/src/graph-query/permissions.ts), the same defense-in-depth pattern every other RbacGraphQueryService method uses. No traversal or node-stripping logic exists in any client, route, or resolver for this feature (there is no route at all; only the MCP handler, which is a one-line delegation).",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_CYPHER",
+        "services/core/src/graph-query/index.ts:mapTicketReadiness",
+        "services/core/src/graph-query/permissions.ts:canReadResource",
+        "services/core/src/graph-query/permissions.ts:PostgresPermissionStore.getReadScope",
+        "services/core/src/mcp/handlers/getReadyTickets.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03), run every mode regardless of path match.",
+      "rationale": "This diff introduces no credential, token, or key handling of any kind: a read-only Cypher query bound only to ctx.orgId/scope rules, and MCP wiring that carries no secret material. The existing phase-appropriate loader (services/core/src/db/client.ts:createPoolFromSecret) is untouched.",
+      "code_references": [
+        "services/core/src/db/client.ts:createPoolFromSecret",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04), run every mode regardless of path match.",
+      "rationale": "No webhook receiver, queue producer, or BullMQ job type is touched by this diff (services/core/src/webhooks/** and services/core/src/queue/** are absent from the changed-paths list).",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05), run every mode regardless of path match.",
+      "rationale": "No ingestion worker, scratch-clone, or source-tree persistence code is touched by this diff; services/workers/** is absent from the changed-paths list.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/sayre_workers/ingestion/service.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06); this diff adds a new Cypher constant and the tool accepts caller arguments (ignored, but worth verifying structurally).",
+      "rationale": "GET_READY_TICKETS_CYPHER is a static template string with only $org_id/$allow_rules/$deny_rules bound parameters; GET_READY_TICKETS_ROW_LIMIT is a compile-time numeric constant interpolated into LIMIT, never derived from request input. The tool takes zero arguments (no inputSchema registered), so no client-controlled string ever reaches the query at all.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_CYPHER",
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_ROW_LIMIT",
+        "services/core/src/mcp/gateway.ts:get_ready_tickets registration"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": false,
+      "selection_reason": "packages/graph-schema/** is a registry trigger path and schema.md was edited, but the edit is documentation-only (three relationship-endpoint-pair table rows recording Ticket->Ticket/Ticket->Feature; no new label, no new relationship type, no embedding/retrieval/prompt/enrichment code touched anywhere in this diff). Path routing is a floor, not a boundary, but nothing in this brief's checklist (indirect prompt injection, retrieval poisoning, model-output handling, etc.) has an applicable target asset in this diff.",
+      "rationale": "Inventory only; not audited by this run. The surface exists elsewhere in the repository (services/workers enrichment/retrieval fleet), untouched here.",
+      "code_references": [
+        "services/workers/sayre_workers/enrichment/",
+        "packages/graph-schema/schema.md (this diff's only touch: doc rows, no writer, no reader code)"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": false,
+      "selection_reason": "services/core/** is a registry trigger path (broad by design) and several services/core files changed, but none of them perform egress, call a ModelProvider/EmbeddingProvider, or construct an outbound request of any kind. This ticket is a pure graph read plus MCP wiring.",
+      "rationale": "Inventory only; not audited by this run. The surface exists elsewhere (services/workers enrichment/providers.py, ModelProvider boundary), untouched here.",
+      "code_references": [
+        "services/workers/sayre_workers/enrichment/providers.py"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "services/core/src/mcp/** is a direct registry trigger path; this diff registers a new tool (get_ready_tickets), a new thin handler, and new McpToolServices wiring. Selected in full.",
+      "rationale": "The new tool is registered through the same server.registerTool/execute wrapper, the same per-request createServer(credential, deps) closure, and the same createMcpGatewayRouter transport/auth pipeline as every one of the 9 pre-existing tools — none of which this diff modifies.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts",
+        "services/core/src/mcp/handlers/getReadyTickets.ts",
+        "services/core/src/mcp/toolExecution.ts",
+        "services/core/src/mcp/toolServices.ts",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched: services/gateway/**, *realtime*, *websocket*, and *redis* are all absent from the changed-paths list.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/gateway/src"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched: services/workers/**, *queue*, *webhook*, *integration*, *sqs*, *bullmq* are all absent from the changed-paths list.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts",
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched: apps/web/**, src/**, services/core/src/routes/**, services/core/src/http/** are all absent from the changed-paths list. Spec.md's Scope explicitly excludes any new REST route.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/core/src/routes",
+        "apps/web"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched: .github/**, infra/**, scripts/**, *secret*, *audit*, *backup*, *delet* are all absent from the changed-paths list.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        ".env.example",
+        "services/core/src/db"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched: .github/**, infra/**, Dockerfile*, package.json/package-lock.json/pyproject.toml/poetry.lock are all absent from the changed-paths list (no dependency was added or changed).",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "infra/"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-stage-procedure",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle-attacker",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    }
+  ],
+  "limitations": [
+    "No live Neo4j or Postgres in this environment. Org-scoping, RBAC allow/deny/path_prefix predicates, single-hop prerequisite traversal, and PART_OF-only grouping are proven against the exported Cypher text plus the TypeScript mapper exercised with real row fixtures, not against a running database — the same established convention as every existing query in graph-query/index.ts. Residual risk: a Cypher semantic error the text assertions cannot see.",
+    "MCPT-09/10/11 (API-key generation/storage, issuance scope, rotation/expiry/revocation) are UNVERIFIED: mcpKeyService.ts and the permissions/DB schema are unmodified by this diff, and no live Postgres is available to dynamically exercise rotation/revocation in this environment.",
+    "The MCP SDK's server-side Protocol implementation does not enforce that 'initialize' precede 'tools/call' (confirmed in vendored @modelcontextprotocol/sdk 1.29.0 source and reproduced dynamically against both get_ready_tickets and a sibling tool identically). This is 100% shared, vendored, pre-existing behavior untouched by this diff; authentication and RBAC are still fully enforced regardless (verified: a request without a valid bearer token is still rejected 401 even when initialize is skipped). Recorded as a limitation/informational note, not a FAIL, since no authorization boundary is bypassed.",
+    "test-impact resolver (poetry-based) could not run in this checkout ('poetry: command not found'), matching review.md's disclosed Warning 2; substituted with the full services/core suite, independently re-run by this stage (101 files / 1056 passed / 7 skipped / 0 failed, matching review's numbers).",
+    "spec.json and red.json report 'stale' per check-stamp-freshness.mjs; per this stage's own Staleness-of-required-inputs section both are advisory/re-derived, not trusted-fresh, so this is a Limitations note rather than a refusal. review.json (the one trusted-fresh input) is fresh, verified independently before this run began.",
+    "Surfaces llm-rag, model-provider, websocket-realtime, ingestion-queue-webhook, web-api-client, secrets-audit-data-lifecycle, and supply-chain-infrastructure are inventoried but not selected/audited this run; their IMPLEMENTED readiness reflects only that code for the surface exists elsewhere in the repository, not a security assessment of it in this PR_DELTA scope."
+  ]
+}
