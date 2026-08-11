@@ -1,25 +1,56 @@
 'use client';
 
 /**
- * Reserved dock for the contextual "Ask Sayre" surface.
- *
- * Graph-Guided RAG can already answer a question over an authorized node
- * neighbourhood and report which context nodes it used, but there is no public
- * API route for it yet. This reserves the shell slot the eventual surface needs
- * — scope, answer, and context-node list — without pretending to answer
- * anything. Every control is inert and says so.
+ * The real, collapsible Ask Sayre dock (rail + panel), driven by the
+ * standalone askSayreRegistry and the workspace chat context. Mounted once in
+ * the workspace body (views/LegacyWorkspaceView.tsx) so it appears across the
+ * Technical, Product, and Onboarding views.
  */
-export function AskSayreDock({ scopeLabel }: { scopeLabel: string }) {
+
+import { askSayreModule } from '../askSayreRegistry';
+import { askSayreModuleRenderers } from '../chat/askSayreRenderers';
+import { useWorkspaceChat } from '../chat/ChatProvider';
+import { CHAT_PANEL_ELEMENT_ID } from '../chat/chatContract';
+
+export function AskSayreDock() {
+  const chat = useWorkspaceChat();
+  const definition = askSayreModule('ask-sayre');
+  const Renderer = askSayreModuleRenderers[definition.id];
+
+  if (!chat.expanded) {
+    return (
+      <div className="mock-chat-dock mock-chat-dock-collapsed">
+        <button
+          type="button"
+          className="mock-chat-dock-toggle"
+          aria-expanded={false}
+          aria-label="Expand Ask Sayre"
+          onClick={() => chat.setExpanded(true)}
+        >
+          Ask Sayre
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="mock-dock" aria-label="Ask Sayre (not yet available)">
-      <span className="mock-reserved-tag">not yet available</span>
-      <span className="mock-dock-scope">scope: {scopeLabel}</span>
-      <span className="mock-dock-input" aria-hidden="true">
-        Ask a question about this repository…
-      </span>
-      <button type="button" className="mock-btn mock-btn-secondary mock-btn-sm" disabled>
-        Ask Sayre
-      </button>
+    <div className="mock-chat-dock mock-chat-dock-expanded">
+      <div className="mock-chat-dock-head">
+        <span className="mock-chat-dock-title">{definition.title}</span>
+        <button
+          type="button"
+          className="mock-chat-dock-toggle"
+          aria-expanded={true}
+          aria-controls={CHAT_PANEL_ELEMENT_ID}
+          aria-label="Collapse Ask Sayre"
+          onClick={() => chat.setExpanded(false)}
+        >
+          Collapse
+        </button>
+      </div>
+      <div id={CHAT_PANEL_ELEMENT_ID} className="mock-chat-panel">
+        <Renderer definition={definition} />
+      </div>
     </div>
   );
 }

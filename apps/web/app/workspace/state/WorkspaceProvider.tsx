@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { fixtureWorkspaceDataSource } from '../dataSource';
+import { WorkspaceChatProvider } from '../chat/ChatProvider';
 import { WorkspaceFixtureProvider } from './fixture';
 import { WorkspaceNavigationProvider } from './navigation';
 import { WorkspaceOperationsProvider } from './operations';
@@ -19,7 +20,9 @@ function FocusedWorkspaceProviders({ children }: { children: ReactNode }) {
           <WorkspaceQueryProvider>
             <WorkspaceRealtimeProvider>
               <WorkspaceOperationsProvider>
-                <WorkspaceFixtureProvider>{children}</WorkspaceFixtureProvider>
+                <WorkspaceChatProvider>
+                  <WorkspaceFixtureProvider>{children}</WorkspaceFixtureProvider>
+                </WorkspaceChatProvider>
               </WorkspaceOperationsProvider>
             </WorkspaceRealtimeProvider>
           </WorkspaceQueryProvider>
