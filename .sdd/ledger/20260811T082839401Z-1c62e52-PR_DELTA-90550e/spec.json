@@ -1,0 +1,191 @@
+{
+  "ticket": "CH-06 — Ask Sayre panel UI",
+  "goal": "Turn the reserved inert AskSayre dock into a real, collapsible right-hand Ask Sayre chat panel mounted across the Technical, Product, and Onboarding views: it auto-attaches the current view + selected node as scope, posts questions through the existing core proxy to CH-03's chat routes, renders live progress and markdown answers driven by CH-05's pinned chat.turn.* WebSocket events, and lets a citation chip select and zoom the cited Folder/File node on the canvas. The entire diff is confined to apps/web/.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "Ticket AC1. Submitting a non-blank question calls ChatClient.postTurn against POST /api/core/chat/conversations/:id/turns with body exactly { question, scope: { view, anchorNodeId }, idempotencyKey } and appends the returned userTurn plus the pending assistantTurn to the transcript in ordinal order. No other field (org id, repository id, user id) is ever placed in the body."
+    },
+    {
+      "id": "AC-2",
+      "text": "Ticket AC1. The conversation is created lazily exactly once per workspace session via POST /api/core/chat/conversations (body {}), reused by every later turn, and reset (transcript cleared, socket closed) when the repository/ref scope changes. A second concurrent ask never creates a second conversation."
+    },
+    {
+      "id": "AC-3",
+      "text": "Ticket AC1. chat.turn.progress pushes for the active conversation and a known turnId promote that assistant turn from 'pending' to 'running' and render an ordered progress ticker; a 'tool_call' line renders the tool name and detail in the quiet mono style, a 'status' line renders only its detail."
+    },
+    {
+      "id": "AC-4",
+      "text": "Ticket AC1. chat.turn.completed collapses the ticker and renders, in order, the markdown answer as safe block elements, the citation chip row, and the metrics footer formatted as 'N context nodes · X tokens · R× less than full repo'."
+    },
+    {
+      "id": "AC-5",
+      "text": "Ticket AC2. citationTarget(citation, { view, knownFeatureIds }) resolves: kind 'file'|'folder' -> select-node on resolvedNodeId ?? nodeId; kind 'feature' in the product view with a known feature id -> select-feature; kind 'feature'|'ticket' otherwise with a non-null resolvedNodeId -> select-node; anything else -> none. The panel dispatches select-node through selection.selectNode when the current view is 'technical' and selection.openNodeInTechnicalView otherwise, and select-feature through selection.selectFeature — the same mechanism DependenciesModule already uses — so the cited node becomes the canvas focus and is zoomed to."
+    },
+    {
+      "id": "AC-6",
+      "text": "Ticket AC2. A citation that resolves to 'none' renders as a non-interactive <span> chip carrying the 'not on canvas' hint and dispatches nothing. The accepted citation kind set is exactly file|folder|feature|ticket; any other kind is parsed to 'unknown' and can only resolve to 'none', so no code path in apps/web/app/workspace/chat/ can select or render a Function or Class node on canvas."
+    },
+    {
+      "id": "AC-7",
+      "text": "Ticket AC3. The scope chip above the input shows the current view and, when a node is selected, that node's label; it is a real dismissible button. Dismissing clears only anchorNodeId (the view stays), and the anchor re-attaches when a different node is subsequently selected."
+    },
+    {
+      "id": "AC-8",
+      "text": "Ticket AC3. The scope object sent in postTurn is byte-for-byte the chip's current state: { view: <current ViewId>, anchorNodeId: <selected node id or null after dismissal> }, and the turn stores that scope so a retry re-sends the same one."
+    },
+    {
+      "id": "AC-9",
+      "text": "Ticket AC4. With no turns, the panel renders the empty state whose per-view suggested prompt is a real <button type=\"button\"> ('technical' -> 'Explain this folder', 'product' -> 'What feature does this belong to?', 'onboarding' -> 'What should I start first?'); activating it submits that prompt as a turn."
+    },
+    {
+      "id": "AC-10",
+      "text": "Ticket AC4. When providerConfigurationStatus(providerSettings().settings.generation) is not 'configured', the panel renders the provider-unconfigured notice, disables the input with a stated reason, and offers a labeled button that opens the 'providers' settings section via navigation.openSettings('providers'). Any failure to read provider settings (including the 403 a member receives) resolves to 'unknown' and does NOT block the input."
+    },
+    {
+      "id": "AC-11",
+      "text": "Ticket AC4. chat.turn.error renders an inline error turn showing the server's sanitized message and a 'Try again' button; activating it re-posts that turn's stored question and scope with a NEW idempotency key and appends a fresh user + pending assistant pair."
+    },
+    {
+      "id": "AC-12",
+      "text": "Ticket AC5. On provider mount with an existing conversation and on every (re)connect of the chat socket, GET /api/core/chat/conversations/:id reconciles the transcript by turn id: the Postgres status/content/citations/metrics/error win, no turn id is duplicated, no locally known turn is dropped, and locally accumulated progress lines survive."
+    },
+    {
+      "id": "AC-13",
+      "text": "Ticket AC6. The composer is a <form> containing a labeled <input id=\"ask-sayre-input\"> so Enter submits natively; the dock toggle, the scope chip, every drawable citation chip, the suggested-prompt buttons, and the retry button are all real <button type=\"button\"> elements with accessible names, reachable by Tab and activated by Enter."
+    },
+    {
+      "id": "AC-14",
+      "text": "Ticket AC6. The progress ticker is rendered inside a container carrying aria-live=\"polite\" (and role=\"status\") so appended progress lines are announced without stealing focus."
+    },
+    {
+      "id": "AC-15",
+      "text": "Ticket AC7. The panel renders only server-delivered data. No module under apps/web/app/workspace/chat/ performs graph traversal, node-stripping, or any permission-like predicate; the only client-side filtering is the closed presentational citation-kind enum and canvas drawability, both of which are rendering decisions, not authorization."
+    },
+    {
+      "id": "AC-16",
+      "text": "The 'ask-sayre' entry is registered in apps/web/app/workspace/askSayreRegistry.ts following the moduleRegistry conventions (id/title/defaultOpen/capability/availability plus a dedicated renderer map), every registered id has exactly one renderer, no new canonical data shape is introduced, and AskSayreDock renders the panel with the correct view-scoped chip and suggested prompt for each of 'technical', 'product', and 'onboarding'."
+    },
+    {
+      "id": "AC-17",
+      "text": "The markdown answer is rendered through parseAnswerBlocks into React text nodes only: no dangerouslySetInnerHTML anywhere in apps/web/app/workspace/chat/, and no anchor/href is ever constructed from answer, citation, tool, or detail text."
+    },
+    {
+      "id": "AC-18",
+      "text": "The dock is collapsible: expanded it renders the panel with a labeled toggle carrying aria-expanded=\"true\" and aria-controls=\"ask-sayre-panel\"; collapsed it renders only a slim rail whose single labeled button carries aria-expanded=\"false\", and the panel body is not rendered."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "A duplicate chat.turn.progress (same turnId and same seq delivered twice) is applied exactly once — the ticker shows one line, lastProgressSeq is unchanged by the repeat."
+    },
+    {
+      "id": "EC-2",
+      "text": "Out-of-order progress (seq 3 then seq 2 for the same turnId) drops the lower seq; the rendered ticker order is strictly increasing and never rewrites already-rendered lines."
+    },
+    {
+      "id": "EC-3",
+      "text": "Gapped progress (seq 1 then seq 4) renders both lines, invents no filler line for 2 and 3, and does not stall or buffer waiting for the gap to close."
+    },
+    {
+      "id": "EC-4",
+      "text": "A chat.turn.progress arriving AFTER chat.turn.completed or chat.turn.error for the same turnId is ignored: the collapsed ticker is not reopened, the answer is not replaced, and status stays terminal."
+    },
+    {
+      "id": "EC-5",
+      "text": "Any chat.turn.* push whose conversationId is not the active conversation is ignored entirely — no turn is created, mutated, or reordered."
+    },
+    {
+      "id": "EC-6",
+      "text": "Any chat.turn.* push whose turnId is not already in the transcript is ignored — the client never fabricates a phantom turn from a push alone."
+    },
+    {
+      "id": "EC-7",
+      "text": "Terminal events carry NO seq per the pinned contract; if a terminal event nevertheless carries one, the client ignores that field, never advances lastProgressSeq from it, and a later progress event is still compared only against the progress-derived lastProgressSeq."
+    },
+    {
+      "id": "EC-8",
+      "text": "A second terminal event for the same turn (completed after error, error after completed, or completed twice) is ignored — the first terminal event wins and the rendered turn does not flip."
+    },
+    {
+      "id": "EC-9",
+      "text": "The gateway WebSocket is unavailable or never connects (browserRealtimeUrl returns null, construction throws, or the socket closes before open): the panel enters the REST-only degraded path, polls GET /api/core/chat/conversations/:id every CHAT_DEGRADED_POLL_INTERVAL_MS while any assistant turn is non-terminal, stops after CHAT_DEGRADED_POLL_MAX_ATTEMPTS, and shows a visible note that live progress is unavailable plus a 'Check again' button. Turns still complete."
+    },
+    {
+      "id": "EC-10",
+      "text": "Reconnect mid-turn: while the socket is down the turn completes server-side; on reconnect the REST reconcile adopts the completed row without duplicating the assistant turn, without losing it, and without re-appending the user turn."
+    },
+    {
+      "id": "EC-11",
+      "text": "chat.turn.completed with citations: [] renders the answer and the metrics footer and omits the citation row entirely (no empty container, no placeholder chip)."
+    },
+    {
+      "id": "EC-12",
+      "text": "A 'feature' or 'ticket' citation with resolvedNodeId: null renders as a non-interactive chip with the 'not on canvas' hint and dispatches no selection."
+    },
+    {
+      "id": "EC-13",
+      "text": "A citation whose kind is a value the client does not draw (anything outside file|folder|feature|ticket, including 'function' or 'class') is parsed to kind 'unknown', kept in the citation list so the evidence is not silently dropped, rendered non-interactive with the 'not on canvas' hint, and can never produce a selection."
+    },
+    {
+      "id": "EC-14",
+      "text": "metrics.baselineTokens is 0, or ratio is 0/negative/non-finite: the footer renders 'N context nodes · X tokens' and omits the 'R× less than full repo' clause. The client never divides baselineTokens by tokensUsed — it only formats the server-supplied ratio — so no divide-by-zero is reachable."
+    },
+    {
+      "id": "EC-15",
+      "text": "metrics is missing, not an object, or has a non-numeric/non-finite field: parseChatMetrics returns null, no footer renders, and the answer and citations still render."
+    },
+    {
+      "id": "EC-16",
+      "text": "chat.turn.error with code 'chat.mcp_unauthorized' — including the case of a turn that sat in queue backlog past the 300s ephemeral-credential TTL — renders the same inline error turn with a working 'Try again' affordance; no credential, provider, or queue detail is displayed."
+    },
+    {
+      "id": "EC-17",
+      "text": "Submitting while this conversation's own turn is pending or running: the input is disabled with a stated reason, and a programmatic submit performs no request and appends no turn."
+    },
+    {
+      "id": "EC-18",
+      "text": "An empty or whitespace-only question performs no request, appends no turn, leaves the field contents untouched, keeps the submit button disabled, and shows a role=\"status\" hint."
+    },
+    {
+      "id": "EC-19",
+      "text": "POST /chat/conversations or POST .../turns fails (400, 502, network, malformed JSON, contract violation): an inline composer error with a retry is shown, the question text is preserved for editing, and no phantom user or assistant turn is left in the transcript."
+    },
+    {
+      "id": "EC-20",
+      "text": "A malformed WebSocket frame (non-JSON, non-object, missing/wrongly-typed conversationId, turnId, seq, kind, ts, answer, code, or message) makes parseChatGatewayMessage return null; the frame is discarded without throwing and without touching transcript state."
+    },
+    {
+      "id": "EC-21",
+      "text": "The answer markdown contains raw HTML, a <script> tag, or a javascript: URL: it is rendered as literal text through React text nodes; no HTML is injected and no anchor is constructed from answer content."
+    },
+    {
+      "id": "EC-22",
+      "text": "The repository or ref scope changes mid-conversation: the transcript is cleared, the chat socket is unsubscribed and closed, degraded polling stops, and no turn from the previous scope remains rendered."
+    },
+    {
+      "id": "EC-23",
+      "text": "A question longer than CHAT_QUESTION_MAX_CHARACTERS (8000, CH-03's limit) is capped by the input's maxLength; if the server still rejects it, the 400 surfaces through EC-19's inline composer error rather than a thrown render."
+    },
+    {
+      "id": "EC-24",
+      "text": "Session expiry — a 401 from any chat REST call, or a gateway 'error' frame with code 'unauthenticated', or a socket close with code 4401 — stops polling and the socket and defers to the workspace's existing session-expired handling rather than showing a chat-specific message or retrying in a loop."
+    },
+    {
+      "id": "EC-25",
+      "text": "The active view changes while a turn is pending: the pending turn keeps the scope it was posted with (its stored turn.scope), while the composer's chip immediately reflects the new view for the next question."
+    },
+    {
+      "id": "EC-26",
+      "text": "A citation chip is activated while the current view is 'product' or 'onboarding' and resolves to select-node: the panel uses selection.openNodeInTechnicalView so the Technical Tree becomes active and the node is selected there, rather than selecting an id the current canvas cannot draw."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "9555e7a5681019bc33ed23c4058fad6b19cf8423c3b7eb867362a6ce1d3ad064",
+    "headSha": "1c62e52fc483d1d8ecfcaf4abd45a101fe3b9ee4",
+    "dirty": true,
+    "writtenAt": "2026-08-11T07:51:31.602Z"
+  }
+}
