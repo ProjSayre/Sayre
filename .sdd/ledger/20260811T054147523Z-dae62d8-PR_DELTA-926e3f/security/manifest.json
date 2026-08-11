@@ -1,0 +1,233 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T054147523Z-dae62d8-PR_DELTA-926e3f",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T05:41:47.523Z",
+  "completed_at": "2026-08-11T05:42:17Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "/Users/victoryu/.codex/.chatgpt-projects/g-p-6a7a108d1cac8191a379ce0abbc6a138/sayre-w0-07"
+  },
+  "target": {
+    "commit_sha": "dae62d8f517a2d980ef6c1b03ee1540583b2520b",
+    "branch": "codex/w0-07-gapfill-on-w0-05",
+    "dirty": true,
+    "environment": "Disposable local worktree; no external services",
+    "base_urls": [],
+    "changed_paths": [
+      "scripts/check-secret-access.mjs",
+      "scripts/check-secret-access.test.mjs"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No immutable run exists under .pipeline/security-history in this ticket worktree; committed ledger copies are not eligible baselines under the audit contract.",
+    "incompatible_dimensions": ["No eligible immutable local baseline"]
+  },
+  "product_progress": {
+    "milestone": "Wave 0 gapfill — W0-07 Secrets convention & loader",
+    "phase": "MVP historical acceptance re-audit",
+    "source_references": [
+      "docs/product/Ticket-Backlog-by-Feature-2.md#W0-07",
+      ".pipeline/gaps.json",
+      ".pipeline/spec.json"
+    ],
+    "documentation_code_drift": [
+      "GAP-3 identified that executable .mts and .cts files were outside the CI secret-access scanner; this diff closes that narrowed scope."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Repository owner request to complete W0-07 with guardrails, safety, and CI",
+    "resource_ceiling": "Disposable local git fixtures and repository test commands only; no shared or production infrastructure",
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-01 check; the delta contains no tenant read or write boundary.",
+      "rationale": "Server-side tenant context and RLS/graph isolation implementations exist, but are outside this two-file CI-checker delta.",
+      "code_references": ["services/core/src/security/tenantIsolation.penetration.test.ts", "services/core/src/db/rls.ts"]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-02 check; the delta contains no graph query or client authorization code.",
+      "rationale": "The server-side Graph Query Service boundary exists and is unaffected by the source-extension classifier.",
+      "code_references": ["services/core/src/graph-query", ".claude/rules/security-multitenancy.md"]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-03 check and the direct subject of W0-07 GAP-3.",
+      "rationale": "Central loaders, closed catalogs, CI guard, templates, ignore controls, and documentation are executable and tested.",
+      "code_references": ["packages/config/src/secrets.ts", "services/workers/sayre_workers/config/secrets.py", "scripts/check-secret-access.mjs", ".github/workflows/ci.yml"]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-04 check; no webhook receiver or queue handoff changed.",
+      "rationale": "GitHub signature verification exists but is not affected by extension classification.",
+      "code_references": ["services/core/src/webhooks/githubSignature.ts", "services/core/src/webhooks/githubSignature.test.ts"]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-05 check; no clone, parser, or persistence path changed.",
+      "rationale": "Ingestion cleanup code exists outside this CI-checker delta.",
+      "code_references": ["services/workers/sayre_workers/ingestion"]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory CORE-06 check; no query, shell, queue, or provider-input construction changed.",
+      "rationale": "The changed regex is a static file classifier and does not create an injection sink.",
+      "code_references": ["scripts/check-secret-access.mjs:29", "scripts/check-secret-access.mjs:85"]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path, ticket promise, or shared control routes this PR delta to the LLM/RAG brief.",
+      "rationale": "Executable enrichment and retrieval boundaries exist but are unrelated to the secret-checker extension list.",
+      "code_references": ["services/workers/sayre_workers/enrichment", "services/workers/sayre_workers/retrieval"]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No provider, endpoint, or egress path changed and the shared secret loader implementation is unchanged.",
+      "rationale": "Provider adapters and settings services exist but are outside GAP-3.",
+      "code_references": ["services/workers/sayre_workers/model_provider", "services/core/src/services/providerSettingsService.ts"]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No MCP transport, key, or lifecycle path changed.",
+      "rationale": "MCP gateway and key services are executable but not consumers of the changed classifier behavior in this delta.",
+      "code_references": ["services/core/src/mcp", "services/core/src/services/mcpKeyService.ts"]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No gateway, realtime, WebSocket, or Redis path changed.",
+      "rationale": "Realtime boundaries exist and are unrelated to the static secret-read gate.",
+      "code_references": ["services/gateway", "services/core/src/services/realtimeDeltaService.ts"]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No ingestion, queue, webhook, or integration implementation changed.",
+      "rationale": "Queue and webhook boundaries exist; CORE-04 covers the mandatory trust check without selecting the full brief.",
+      "code_references": ["services/core/src/queue", "services/core/src/webhooks", "services/core/src/integrations"]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No browser, API route, HTTP handler, or client bundle path changed.",
+      "rationale": "Web and Core API surfaces exist but are not affected by source-extension scanning.",
+      "code_references": ["apps/web/app/api", "services/core/src/http", "services/core/src/routes"]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Both changed paths are under scripts/** and implement the secret-loader bypass control.",
+      "rationale": "The W0-07 loader boundary and its CI enforcement are implemented; lifecycle sub-surfaces not implicated by this delta are recorded as NOT_APPLICABLE rather than omitted.",
+      "code_references": ["scripts/check-secret-access.mjs", "scripts/check-secret-access.test.mjs", "SECRETS.md", ".github/workflows/ci.yml"]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No workflow, manifest, lockfile, image, or infrastructure path changed.",
+      "rationale": "CI and pinned dependency infrastructure exist, but the unchanged workflow merely invokes the changed built-in-only checker.",
+      "code_references": [".github/workflows/ci.yml", "package-lock.json", "infra"]
+    }
+  ],
+  "agent_versions": [
+    {"agent_id": "audit-contract", "source": "security-attacker-agents/audit-contract.md", "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"},
+    {"agent_id": "agent-registry", "source": "security-attacker-agents/agent-registry.json", "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"},
+    {"agent_id": "progress-audit-orchestrator", "source": "security-attacker-agents/progress-audit-orchestrator.md", "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"},
+    {"agent_id": "security-stage", "source": ".sdd/stages/security.md", "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"},
+    {"agent_id": "security-checker-shim", "source": ".claude/agents/security-checker.md", "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"},
+    {"agent_id": "secrets-audit-data-lifecycle", "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md", "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"}
+  ],
+  "limitations": [
+    "No eligible immutable local security-history run exists, so every observation and readiness state is a first observation.",
+    "No dedicated history-aware secret scanner such as gitleaks is installed; current diff, tracked controls, and targeted credential patterns were checked, but SEC-02 historical breadth remains UNVERIFIED.",
+    "No live services, production credentials, or synthetic tenant fixtures were used; runtime boundaries unrelated to the changed CI checker are NOT_APPLICABLE to this PR delta rather than claimed clean."
+  ]
+}

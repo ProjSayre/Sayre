@@ -5116,6 +5116,17 @@
           "dev"
         ]
       }
+    },
+    {
+      "runId": "20260811T054147523Z-dae62d8-PR_DELTA-926e3f",
+      "ticket": "W0-07",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T054147523Z-dae62d8-PR_DELTA-926e3f/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "scripts/check-secret-access.test.mjs": [
@@ -5136,6 +5147,17 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260811T054147523Z-dae62d8-PR_DELTA-926e3f",
+      "ticket": "W0-07",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T054147523Z-dae62d8-PR_DELTA-926e3f/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "scripts/dependency-baseline.test.mjs": [
