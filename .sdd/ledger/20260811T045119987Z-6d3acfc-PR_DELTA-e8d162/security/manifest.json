@@ -1,0 +1,329 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T04:20:00.000Z",
+  "completed_at": "2026-08-11T05:05:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.claude\\worktrees\\agent-ad33aa9b19f768b81"
+  },
+  "target": {
+    "commit_sha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "branch": "ticket/ch-06-ask-sayre-panel",
+    "dirty": true,
+    "environment": "local git worktree, no live deployment (static analysis + local vitest/tsc/lint execution only; no server/gateway processes running)",
+    "base_urls": [],
+    "changed_paths": [
+      "apps/web/app/mock/README.md",
+      "apps/web/app/workspace/components/AskSayrePanel.tsx",
+      "apps/web/app/workspace/state/WorkspaceProvider.tsx",
+      "apps/web/app/workspace/views/LegacyWorkspaceView.tsx",
+      "apps/web/app/workspace/workspace.css",
+      "apps/web/app/workspace/askSayreRegistry.ts",
+      "apps/web/app/workspace/askSayreRegistry.test.ts",
+      "apps/web/app/workspace/chat/chatContract.ts",
+      "apps/web/app/workspace/chat/chatContract.test.ts",
+      "apps/web/app/workspace/chat/answerMarkdown.ts",
+      "apps/web/app/workspace/chat/answerMarkdown.test.ts",
+      "apps/web/app/workspace/chat/citationTarget.ts",
+      "apps/web/app/workspace/chat/citationTarget.test.ts",
+      "apps/web/app/workspace/chat/chatClient.ts",
+      "apps/web/app/workspace/chat/chatClient.test.ts",
+      "apps/web/app/workspace/chat/chatTranscript.ts",
+      "apps/web/app/workspace/chat/chatTranscript.test.ts",
+      "apps/web/app/workspace/chat/ChatProvider.tsx",
+      "apps/web/app/workspace/chat/AskSayrePanelBody.tsx",
+      "apps/web/app/workspace/chat/ChatTranscriptList.tsx",
+      "apps/web/app/workspace/chat/askSayreRenderers.tsx",
+      "apps/web/app/workspace/chat/AskSayrePanel.test.tsx",
+      "apps/web/app/workspace/chat/chatSafetyGuards.test.ts",
+      "apps/web/app/workspace/chat/chatDegradedRecovery.test.tsx"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No prior run exists under .pipeline/security-history/ in this worktree (directory did not exist before this run). Per audit-contract.md's baseline order, no human-specified run was given, no ancestor run exists, and no default-branch MILESTONE/FULL run exists to compare against. First observation for every selected check.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "Wave: CH (Ask Sayre chat) — CH-06 of CH-01..CH-06",
+    "phase": "MVP, pre-external-customer (secrets remain gitignored .env-based per PRD phase posture; KMS migration not yet triggered)",
+    "source_references": [
+      ".pipeline/spec.md",
+      "CLAUDE.md",
+      ".claude/rules/security-multitenancy.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE checks are mandatory in every mode.",
+      "rationale": "org_id is stamped server-side (services/core, W2-02 Graph Query Service); CH-06 never places org/tenant/user identity in any client-originated request body.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatClient.ts:45-49 (PostTurnBody has exactly question/scope/idempotencyKey)",
+        ".claude/rules/security-multitenancy.md"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE checks are mandatory in every mode.",
+      "rationale": "Node-level RBAC and traversal remain server-side; CH-06 adds no client-side authorization predicate.",
+      "code_references": [
+        "services/core/src/graph-query (W2-02 Graph Query Service RBAC, unchanged)",
+        "apps/web/app/workspace/chat/chatSafetyGuards.test.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE checks are mandatory in every mode.",
+      "rationale": "CH-06 introduces no hardcoded/logged credential. One inherited check:secret-access finding exists in a CH-01 file outside this lane (see CORE-03 observation notes).",
+      "code_references": [
+        "apps/web/app/lib/coreFetch.ts (getStoredSessionToken, unchanged, reused by CH-06)",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:39 (pre-existing CH-01 check:secret-access finding, outside CH-06 lane)"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE checks are mandatory in every mode.",
+      "rationale": "Webhook signature validation exists in the repo; CH-06 touches no webhook code (diff confined to apps/web/).",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts (unchanged, not touched by CH-06)"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE checks are mandatory in every mode.",
+      "rationale": "Scratch-clone destruction exists in the ingestion worker; CH-06 touches no ingestion code.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py, service.py (unchanged, not touched by CH-06)"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE checks are mandatory in every mode.",
+      "rationale": "CH-06 constructs no SQL/Cypher/shell/queue input; all requests are structured JSON via typed interfaces.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatClient.ts, chatContract.ts (typed/structural parsing only, no string-built queries)"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches services/workers/**, packages/graph-schema/**, *embedding*, *retriev*, *prompt*. CH-06 is confined to apps/web/ and does not touch retrieval/embedding code.",
+      "rationale": "No changed path matches services/workers/**, packages/graph-schema/**, *embedding*, *retriev*, *prompt*. CH-06 is confined to apps/web/ and does not touch retrieval/embedding code.",
+      "code_references": [
+        "services/workers/sayre_workers (W3-03 graph-guided RAG, unchanged, not in CH-06 diff)"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches services/workers/**, services/core/**, infra/**, *egress*. \"ChatProvider.tsx\" is a React context provider (naming coincidence with the *provider* trigger glob), not a model/AI-provider adapter or egress path; chatClient.ts calls only the already-allowlisted internal core-proxy route, never an external provider endpoint. Deliberately excluded after considering the filename collision, per the orchestrator's \"floor, not boundary\" guidance.",
+      "rationale": "No changed path matches services/workers/**, services/core/**, infra/**, *egress*. \"ChatProvider.tsx\" is a React context provider (naming coincidence with the *provider* trigger glob), not a model/AI-provider adapter or egress path; chatClient.ts calls only the already-allowlisted internal core-proxy route, never an external provider endpoint. Deliberately excluded after considering the filename collision, per the orchestrator's \"floor, not boundary\" guidance.",
+      "code_references": [
+        "services/workers/sayre_workers/enrichment/providers.py (W3-07/W3-08, unchanged, not in CH-06 diff)"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches services/core/src/mcp/**, **/*mcp*, **/*api-key*. CH-06 only renders a server-supplied error message for code chat.mcp_unauthorized (EC-16); it never touches MCP transport, session, or key-lifecycle code. That client-side rendering obligation is covered under WEB-11 instead (chosen because the actual finding — whether the rendered message leaks credential/queue detail — is a web-client error-surfacing property, not a transport/session/key-issuance property).",
+      "rationale": "No changed path matches services/core/src/mcp/**, **/*mcp*, **/*api-key*. CH-06 only renders a server-supplied error message for code chat.mcp_unauthorized (EC-16); it never touches MCP transport, session, or key-lifecycle code. That client-side rendering obligation is covered under WEB-11 instead (chosen because the actual finding — whether the rendered message leaks credential/queue detail — is a web-client error-surfacing property, not a transport/session/key-issuance property).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts, rateLimit.ts, toolExecution.ts (unchanged, not in CH-06 diff)"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Registry trigger path apps/web/** matches CH-06's changed paths directly.",
+      "rationale": "Selected: apps/web/** matches, and CH-06 adds a second, dedicated client WebSocket consuming untrusted chat.turn.* frames — a direct sibling of the existing realtime channel. The gateway/server half of this surface (CH-05: Origin policy, per-message re-authorization, Redis channel isolation) is a parallel lane pinned and mocked here, not present in this worktree's base commit, and was not exercised — see UNVERIFIED observations below for exactly which checklist IDs that affects. PARTIAL because the client-side contract and its structural-validation/ordering half are fully implemented and tested; the server-side half is out of this diff's reach.",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:203-272 (new dedicated chat WebSocket)",
+        "apps/web/app/workspace/realtime.ts (unchanged parseGatewayMessage/browserRealtimeUrl, reused)",
+        "services/gateway (CH-05 lane, not present in this worktree's base — 6d3acfc predates CH-05's merge)"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches services/workers/**, services/core/**/*queue*|*webhook*|*integration*, **/*sqs*, **/*bullmq*. CH-06 is confined to apps/web/.",
+      "rationale": "No changed path matches services/workers/**, services/core/**/*queue*|*webhook*|*integration*, **/*sqs*, **/*bullmq*. CH-06 is confined to apps/web/.",
+      "code_references": [
+        "services/core/src/webhooks/*, services/workers/messaging/* (unchanged, not in CH-06 diff)"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Registry trigger path apps/web/** matches CH-06's changed paths directly.",
+      "rationale": "Primary surface: apps/web/** trigger matches directly, and this is the ticket's entire diff.",
+      "code_references": [
+        "apps/web/app/workspace/chat/** (new)",
+        "apps/web/app/workspace/askSayreRegistry.ts (new)",
+        "apps/web/app/workspace/components/AskSayrePanel.tsx (modified)",
+        "apps/web/app/api/core/[...path]/route.ts (unchanged; already allowlists the four CH-03 chat routes CH-06 calls)"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches .github/**, infra/**, scripts/**, *secret*, *audit*, *backup*, *delet*. CH-06 is confined to apps/web/.",
+      "rationale": "No changed path matches .github/**, infra/**, scripts/**, *secret*, *audit*, *backup*, *delet*. CH-06 is confined to apps/web/.",
+      "code_references": [
+        "scripts/check-secret-access.mjs, scripts/check-org-secret-access.mjs (unchanged, not in CH-06 diff)"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches .github/**, infra/**, Dockerfile*, **/package.json, **/package-lock.json. CH-06 adds no dependency and touches no CI/infra file.",
+      "rationale": "No changed path matches .github/**, infra/**, Dockerfile*, **/package.json, **/package-lock.json. CH-06 adds no dependency and touches no CI/infra file.",
+      "code_references": [
+        ".github/workflows/ci.yml (unchanged, not in CH-06 diff)"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-attacker-agents/audit-contract.md",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "security-attacker-agents/agent-registry.json",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "security-attacker-agents/progress-audit-orchestrator.md",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "security-attacker-agents/schemas/audit-results.schema.json",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    },
+    {
+      "agent_id": ".sdd/stages/security.md",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": ".claude/agents/security-checker.md",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "security-attacker-agents/web-api-client-attacker.md",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "security-attacker-agents/websocket-realtime-attacker.md",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    }
+  ],
+  "limitations": [
+    "No live services/core, services/gateway, or database instance was running or authorized this run; every observation is STATIC (source read) or BOTH (source read + local vitest execution against mocked/in-memory backends), never DYNAMIC against a live networked target.",
+    "CH-05 (gateway WS fan-out) is a parallel lane; this worktree's base commit (6d3acfc) predates its merge, so the server/gateway half of the websocket-realtime surface (WS-01, WS-02, WS-04 (server half), WS-05 (server half), WS-07, WS-10, WS-12 (server half)) is UNVERIFIED, not tested.",
+    "CORE-04 (webhook-trust) and CORE-05 (ingestion-ephemerality) are UNVERIFIED for this run: their surfaces exist elsewhere in the pinned target but are untouched by CH-06's diff and were not re-examined.",
+    "The inherited check:secret-access finding at services/core/src/db/ephemeralMcpCredentials.rls.test.ts:39 (CH-01, commit 079ad62) is outside CH-06's apps/web/ lane; confirmed not to affect any CH-06-authored file (see CORE-03 observation). Ruled non-blocking for CH-06 specifically; the coordinator is fixing it upstream."
+  ]
+}

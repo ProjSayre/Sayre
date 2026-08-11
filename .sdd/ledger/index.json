@@ -2093,6 +2093,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
     }
   ],
   "apps/web/app/mock/components/ControlPanel.tsx": [
@@ -2183,6 +2189,22 @@
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
+  "apps/web/app/workspace/askSayreRegistry.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/askSayreRegistry.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
   "apps/web/app/workspace/canvas/OnboardingTreeCanvas.tsx": [
     {
       "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
@@ -2201,6 +2223,150 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/AskSayrePanel.test.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/AskSayrePanelBody.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/ChatProvider.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/ChatTranscriptList.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/answerMarkdown.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/answerMarkdown.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/askSayreRenderers.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatClient.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatClient.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatContract.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatContract.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatDegradedRecovery.test.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatSafetyGuards.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatTranscript.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/chatTranscript.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/citationTarget.test.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/chat/citationTarget.ts": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/AskSayrePanel.tsx": [
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
     }
   ],
   "apps/web/app/workspace/components/CanvasStates.tsx": [
@@ -3155,6 +3321,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
     }
   ],
   "apps/web/app/workspace/state/contracts.ts": [
@@ -3504,6 +3676,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
     }
   ],
   "apps/web/app/workspace/views/OnboardingWorkspaceView.tsx": [
@@ -3652,6 +3830,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+      "ticket": "CH-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T045119987Z-6d3acfc-PR_DELTA-e8d162/spec.md"
     }
   ],
   "apps/web/app/workspace/workspaceEditor.red.test.tsx": [
