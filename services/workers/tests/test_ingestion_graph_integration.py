@@ -379,7 +379,6 @@ async def test_delta_projection_prunes_removed_paths_and_leaves_others_against_r
         # Delta: src/b.py (and its Class) leaves the head; src/a.py is untouched.
         scope_2 = _scope(org_id, "b" * 40)
         folder_uid = f"folder::{org_id}"
-        file_a_uid = f"file-a::{org_id}"
         base_properties = {
             "org_id": scope_2.org_id,
             "repo_id": scope_2.repository_id,
