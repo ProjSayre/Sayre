@@ -1,0 +1,378 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T010720502Z-25988f3-PR_DELTA-3a73ea",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T01:07:20.502Z",
+  "completed_at": "2026-08-11T01:19:22.001Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:/Users/splat/OneDrive/Desktop/Sayre/.claude/worktrees/agent-a5212a58710c1e0d7"
+  },
+  "target": {
+    "commit_sha": "25988f3e048ff3fd58336b4d9869c6fa8f0249b1",
+    "branch": "ticket/ch-04-worker-agent-loop",
+    "dirty": true,
+    "environment": "Local worktree, static/read-only review. No live Postgres, Redis, Core MCP gateway, or ModelProvider runtime was authorized or exercised against a real network target in this run; the pytest/vitest executions performed were the existing unit suites against in-process fakes/fixtures only (no external network calls).",
+    "base_urls": [],
+    "changed_paths": [
+      "infra/.env.example",
+      "services/core/drizzle/meta/_journal.json",
+      "services/core/src/db/schema.ts",
+      "services/core/src/queue/sqs.ts",
+      "services/core/src/routes/chat.test.ts",
+      "services/core/src/services/chatService.test.ts",
+      "services/core/src/services/chatService.ts",
+      "services/workers/poetry.lock",
+      "services/workers/pyproject.toml",
+      "services/workers/sayre_workers/cli.py",
+      "services/workers/sayre_workers/config/config.py",
+      "services/workers/tests/test_worker_entrypoints.py",
+      "services/core/drizzle/0021_ch04_mcp_key_conversation_fk.sql",
+      "services/core/src/security/ch04ChatCredentialFkMigration.test.ts",
+      "services/workers/sayre_workers/chat/__init__.py",
+      "services/workers/sayre_workers/chat/agent.py",
+      "services/workers/sayre_workers/chat/consumers.py",
+      "services/workers/sayre_workers/chat/events.py",
+      "services/workers/sayre_workers/chat/mcp_client.py",
+      "services/workers/sayre_workers/chat/models.py",
+      "services/workers/sayre_workers/chat/prompt.py",
+      "services/workers/sayre_workers/chat/redis_publisher.py",
+      "services/workers/sayre_workers/chat/runtime.py",
+      "services/workers/sayre_workers/chat/service.py",
+      "services/workers/sayre_workers/chat/store.py",
+      "services/workers/tests/test_chat_agent_loop.py",
+      "services/workers/tests/test_chat_boundaries.py",
+      "services/workers/tests/test_chat_events.py",
+      "services/workers/tests/test_chat_mcp_client.py",
+      "services/workers/tests/test_chat_prompt.py",
+      "services/workers/tests/test_chat_turn_consumer.py"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No prior run exists under .pipeline/security-history/ for this repository (directory was empty before this run created its own subdirectory). This is the first security-checker run recorded for this codebase. Per audit-contract.md section 2, baseline order step 4: 'No baseline. Mark every observation FIRST_OBSERVATION; do not invent progress.'",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "MVP — Wave 4 'Ask Sayre' chat feature line (CH-01..CH-06)",
+    "phase": "pre-external-customer MVP posture: gitignored local .env secrets seeded from committed *.env.example placeholders, no KMS-backed secrets manager yet (per .claude/rules/security-multitenancy.md and CLAUDE.md's Secrets convention)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      "CLAUDE.md",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/async-messaging.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01), always executed regardless of mode; this diff adds a new org_id data-flow (SQS envelope -> Python worker -> Postgres/Redis) that must be independently traced.",
+      "rationale": "org_id is stamped server-side at every hop in the new chat-turn worker (envelope, job, store, event channel); verified by direct code trace, see results.json CORE-01.",
+      "code_references": [
+        "services/core/src/services/chatService.ts:355-369",
+        "services/workers/sayre_workers/chat/events.py:85-134"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02), always executed. This diff adds no new RBAC logic; it must be confirmed the new worker does not duplicate/bypass the existing Graph Query Service boundary.",
+      "rationale": "The worker never touches Neo4j; all graph reads are MCP tools/call through the unchanged, server-side-authorized gateway. See results.json CORE-02.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/agent.py:174-283",
+        "services/core/src/mcp/handlers"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03); this diff is the first consumer of the CH-01 ephemeral MCP credential and adds new secret-adjacent config (REDIS_PASSWORD reuse, CORE_MCP_URL).",
+      "rationale": "Credential is repr=False, never logged (static AST test + independent trace), never persisted; see results.json CORE-03/MCPT-09..11/SEC-01..08.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/models.py:77",
+        "services/workers/tests/test_chat_boundaries.py:104-168"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04), always executed; this diff touches no webhook receiver.",
+      "rationale": "chat-turns.fifo has no webhook producer; zero webhook files changed in this diff. Marked NOT_APPLICABLE to this delta in results.json CORE-04, with the pre-existing GitHub webhook signature-validation control spot-checked as unaffected.",
+      "code_references": [
+        "services/core/src/routes/githubWebhook.ts:1-3"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05), always executed; this diff touches no ingestion scratch-clone code.",
+      "rationale": "Zero files under services/workers/sayre_workers/ingestion/** changed; the new chat worker performs no filesystem/git operations. Marked NOT_APPLICABLE to this delta in results.json CORE-05.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py:573-616"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06); this diff adds new SQL, JSON-RPC, and Redis-publish construction sites that must be verified parameterized.",
+      "rationale": "All new SQL uses %s placeholders with a separate parameter tuple; JSON-RPC payloads are dict literals; no string concatenation of untrusted input found. See results.json CORE-06.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/store.py:51-107",
+        "services/workers/sayre_workers/chat/mcp_client.py:161-232"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/workers/**, **/*prompt*. This diff introduces a new LLM-agent decision/synthesis loop (sayre_workers/chat/agent.py, prompt.py) reading repository-derived content.",
+      "rationale": "Prompt-injection containment is instruction-based (JSON-data framing) plus a structural tool-name/argument allowlist; the decision-generation call count is NOT independently bounded from the tool-call budget (LLM-09 FAIL, MEDIUM, non-blocking). See results.json LLM-01..12.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/prompt.py:21-25,189-211",
+        "services/workers/sayre_workers/chat/agent.py:324-335,397-410"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/workers/**, services/core/**, infra/**. New CORE_MCP_URL config and new agent.py call sites into the existing, unchanged ModelProviderFactory/GenerationProviderFactory adapter.",
+      "rationale": "No new model-provider-credential or endpoint-construction code was added; the one new endpoint (CORE_MCP_URL) is a config-derived, first-party MCP gateway target, not a customer-configurable model-provider endpoint. Response-size bounding on the MCP transport client is UNVERIFIED (MP-09, LOW, non-blocking). See results.json MP-01..12.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/runtime.py:29-40",
+        "services/workers/sayre_workers/chat/agent.py:585-593"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: **/*mcp*. This diff adds a brand-new, hand-written MCP client (mcp_client.py) and is the first real consumer of the CH-01 ephemeral credential's issuance-scope guarantee.",
+      "rationale": "Origin omission, bearer-on-every-call, 401 handling, and privilege-ceiling binding to the issuing user's own getReadScope(ctx) are all confirmed by static trace plus 62 independently re-run pytest cases against in-process fixtures. See results.json MCPT-01..12.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/mcp_client.py",
+        "services/core/src/services/chatService.ts:249-254,393-397",
+        "services/core/src/services/ephemeralMcpCredentialService.ts:188-247"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: **/*redis*. This diff adds the PUBLISH side (Redis pub/sub) of a realtime channel; the SUBSCRIBE/gateway side (CH-05) does not exist yet, so the surface as a whole is PARTIAL, not IMPLEMENTED.",
+      "rationale": "The publish side is correctly org/conversation-scoped and hands a trustworthy top-level org_id to a future subscriber (WS-07 PASS); every check that depends on a WebSocket handshake/subscription (WS-01..06, WS-08..12) is NOT_APPLICABLE because that half of the surface is genuinely ABSENT in the pinned target (CH-05 has not been built). See results.json WS-01..12.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/events.py:37-41,141-219",
+        "services/workers/sayre_workers/chat/redis_publisher.py"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/workers/**, **/*sqs*. This diff adds a brand-new SQS FIFO consumer (chat-turns.fifo) built on the shared W0-04 delivery primitive.",
+      "rationale": "Envelope trust, idempotency, cross-queue isolation, and DLQ posture are all structurally inherited from the shared consume() primitive plus a second DB-level idempotency guard; see results.json ING-01..14.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/consumers.py",
+        "services/workers/sayre_workers/chat/service.py:69-145"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/core/src/routes/**. The route file itself (chat.ts) has zero diff, but its test (chat.test.ts) changed and the underlying postTurn service function it calls gained new behavior (minting).",
+      "rationale": "No new route/injection/mass-assignment surface introduced; dispatch-once semantics and a single shared error path hold. Pre-existing absence of rate-limiting on the turns route is noted as an inherited, non-regression limitation (WEB-08). See results.json WEB-01..12.",
+      "code_references": [
+        "services/core/src/routes/chat.ts:50-58",
+        "services/core/src/services/chatService.ts:362-409"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: infra/**. This diff adds a new tenant-deletion cascade (migration 0021) and new config/secret-loader touch-points.",
+      "rationale": "Secret-loader/logging/storage checks (SEC-01..08) are affirmatively verified static+dynamic PASS. The tenant-deletion cascade's live-database enforcement (SEC-11) is UNVERIFIED -- strong, correctly-scoped static DDL evidence exists, but no authorized live Postgres was available to exercise the FK/trigger dynamically in this run, so the surface is marked PARTIAL rather than IMPLEMENTED pending that follow-up. See results.json SEC-01..14.",
+      "code_references": [
+        "services/core/drizzle/0021_ch04_mcp_key_conversation_fk.sql",
+        "services/core/src/security/ch04ChatCredentialFkMigration.test.ts"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: infra/**, **/pyproject.toml, **/poetry.lock. One new dependency (redis 5.2.1) and a new, versioned migration (privilege-safety relevant).",
+      "rationale": "Dependency is hash-pinned and version-bounded; migration is versioned, non-route-triggerable, and its trigger function is SECURITY INVOKER (no privilege escalation). Live-apply verification of migration 0021 is UNVERIFIED for the same no-authorized-database reason as SEC-11 (SC-13). See results.json SC-01..14.",
+      "code_references": [
+        "services/workers/pyproject.toml",
+        "services/workers/poetry.lock",
+        "services/core/drizzle/0021_ch04_mcp_key_conversation_fk.sql"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "security-agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-security-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    },
+    {
+      "agent_id": "llm-rag-poisoning",
+      "source": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "sha256": "77394e754db53ffca3d1dd9b926cffc1491063d0f0198a4d7bd1d037e873da2b"
+    },
+    {
+      "agent_id": "model-provider-egress-ssrf",
+      "source": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "sha256": "49d99b911967a703dc696f5d5378aaa7746bcde28ecac21a46ed98ab69792a80"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "cc2ebf275c8826155e920664a02ef73fa51d4d79c8af167d051965dc37dcd90d"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "No live Postgres, Redis, or Core MCP gateway was available/authorized in this run; every runtime-dependent boundary (migration 0021's live FK/trigger enforcement -- SEC-11/SC-13; MCP transport response-size bounding -- MP-09/MCPT-08; production TLS posture -- MP-08/SC-11) is marked UNVERIFIED rather than PASS, per audit-contract.md section 6 ('Never convert UNVERIFIED... into PASS').",
+    "review.json's stamp was confirmed fresh (node scripts/check-stamp-freshness.mjs review.json => status: fresh) both before and after this run's own read-only pytest/vitest executions; spec.json and red.json were already reported stale by review.md itself (Warning 1) -- per this stage's own staleness rules those two are advisory only and do not affect this run.",
+    "This is the first security-checker run for this repository (no prior .pipeline/security-history/ entries exist); every observation is FIRST_OBSERVATION and every coverage_transition is NOT_COMPARABLE. No trend/regression claim is made anywhere in this report.",
+    "The CH-05 WebSocket gateway subscriber does not exist yet (spec.md explicitly excludes services/gateway/**); every WS-* check that depends on a WebSocket handshake/subscription is NOT_APPLICABLE because that half of the surface is genuinely ABSENT, not because it was skipped.",
+    "MCPT-09 (ephemeral-credential issuance: entropy/hashing/one-time disclosure) cites the unchanged ephemeralMcpCredentialService.ts for completeness of the mandatory-per-brief checklist; that file was not independently re-derived line-by-line in this pass since git diff confirms it is byte-identical to the pre-CH-04 tree.",
+    "SEC-09 (audit-log completeness for the mint action) and SC-02/SC-03 (install-script execution and vulnerability-scan visibility for the new redis dependency) were not independently verified against a live audit-log store or an automated scanning tool in this pass; marked UNVERIFIED with LOW confidence/severity rather than PASS.",
+    "One MEDIUM, non-blocking finding (LLM-09 / FND-477e4cbf5856): the decide<->act loop bounds tools/call invocations to 8 (CHAT_MAX_TOOL_CALLS) but does not independently bound decide_node's generate_structured call count, which can reach roughly half of LangGraph's recursion_limit=200 if a model keeps re-requesting already-cached (tool, arguments) pairs. Terminates safely (GraphRecursionError -> chat.internal, or the 240s deadline -> chat.timeout); no tenant crossing, no data leak, no retry/redelivery. Recommended as a follow-up ticket, consistent with review.md's independently-recorded Warning 2."
+  ]
+}

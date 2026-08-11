@@ -1,0 +1,40 @@
+{
+  "filesChanged": [
+    "services/workers/sayre_workers/chat/__init__.py",
+    "services/workers/sayre_workers/chat/models.py",
+    "services/workers/sayre_workers/chat/events.py",
+    "services/workers/sayre_workers/chat/redis_publisher.py",
+    "services/workers/sayre_workers/chat/mcp_client.py",
+    "services/workers/sayre_workers/chat/prompt.py",
+    "services/workers/sayre_workers/chat/agent.py",
+    "services/workers/sayre_workers/chat/store.py",
+    "services/workers/sayre_workers/chat/service.py",
+    "services/workers/sayre_workers/chat/consumers.py",
+    "services/workers/sayre_workers/chat/runtime.py",
+    "services/core/drizzle/0021_ch04_mcp_key_conversation_fk.sql",
+    "services/core/src/services/chatService.ts",
+    "services/core/src/queue/sqs.ts",
+    "services/core/src/db/schema.ts",
+    "services/core/drizzle/meta/_journal.json",
+    "services/workers/pyproject.toml",
+    "services/workers/poetry.lock",
+    "services/workers/sayre_workers/config/config.py",
+    "services/workers/sayre_workers/cli.py",
+    "services/workers/tests/test_worker_entrypoints.py",
+    "infra/.env.example",
+    "services/core/src/services/chatService.test.ts",
+    "services/core/src/routes/chat.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/services/chatService.test.ts",
+      "reason": "spec.md wires postTurn's new 6th `mint` parameter to a REAL default (defaultMintChatCredential -> mintEphemeralMcpCredential); every CH-03-authored test in this file that predates CH-04 calls postTurn with only 5 args (mint omitted) and so falls through to that real default, which hits live Postgres (unavailable in a unit-test environment) and turns into ChatEnqueueError. Verified empirically: without a fix, this file goes from 7 failing (the correct red state) to 12 failing -- 5 previously-passing, minting-unrelated CH-03 cases regress. Added one module-level vi.mock('./ephemeralMcpCredentialService', ...) block (mirrors the pre-existing convention in ephemeralMcpCredentialService.test.ts, where every call already passes injected fakes rather than the live default). The six CH-04 minting cases all pass an explicit mint stub as postTurn's 6th argument, which always takes precedence over this module-level mock, so this touches zero AC-7/AC-14/EC-24/EC-25/EC-26 assertions. No assertion in any pre-existing or new test was weakened, loosened, or removed -- confirmed via full-file run before (7 failing) and after (0 failing, 55/55) this change plus the real implementation."
+    }
+  ],
+  "stamp": {
+    "treeHash": "bcbac4d4010761de0dc6fdd3214c251074f0fa8ecf1b8a8f34c556bb395946c5",
+    "headSha": "25988f3e048ff3fd58336b4d9869c6fa8f0249b1",
+    "dirty": true,
+    "writtenAt": "2026-08-11T00:41:37.807Z"
+  }
+}
