@@ -51,6 +51,13 @@ interface SeededOrg {
   orgId: string;
   userId: string;
   repoId: string;
+  // CH-04 / drizzle/0022_ch04_mcp_key_conversation_fk.sql: mcp_client_keys now carries a
+  // composite FK (org_id, conversation_id) -> chat_conversations(org_id, id). A synthetic
+  // conversation id with no parent row -- legal when this suite was written under 0019 --
+  // is now rejected by that FK before any CHECK constraint is ever reached. Every org
+  // therefore seeds one real conversation, and tests that need their own use
+  // createConversation() below. No assertion in this file was changed or relaxed.
+  conversationId: string;
 }
 
 async function requireAdminUrl(): Promise<string> {
@@ -109,7 +116,25 @@ async function seedOrg(label: string): Promise<SeededOrg> {
     "INSERT INTO permissions (id, org_id, subject_type, subject_id, repo_id, path_prefix, action, effect) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
     [randomUUID(), orgId, "user", userId, repoId, "src/secret", "read", "deny"],
   );
-  return { orgId, userId, repoId };
+  // CH-04 / 0021: the parent row the composite FK now requires. Seeded per org so
+  // baseKeyRow() has a real, org-matched conversation to bind to by default.
+  const conversationId = await createConversation(orgId, userId);
+  return { orgId, userId, repoId, conversationId };
+}
+
+/**
+ * CH-04 / 0021: inserts a real `chat_conversations` row and returns its id, so a
+ * conversation-bound `mcp_client_keys` row satisfies the composite
+ * (org_id, conversation_id) FK. Tests that previously used a bare `randomUUID()` call
+ * this instead, preserving their original one-conversation-per-test isolation.
+ */
+async function createConversation(orgId: string, userId: string): Promise<string> {
+  const conversationId = randomUUID();
+  await pool.query(
+    "INSERT INTO chat_conversations (id, org_id, user_id, title) VALUES ($1, $2, $3, $4)",
+    [conversationId, orgId, userId, "Ask Sayre chat session"],
+  );
+  return conversationId;
 }
 
 /** Inserts a `mcp_client_keys` row as the admin (bypasses RLS), returning the DB error message if rejected. */
@@ -139,7 +164,9 @@ function baseKeyRow(org: SeededOrg, overrides: Record<string, unknown> = {}) {
     created_by: org.userId,
     created_by_label: "User A",
     kind: "chat_ephemeral",
-    conversation_id: randomUUID(),
+    // CH-04 / 0021: a real, org-matched conversation, so a row that is meant to be
+    // rejected is rejected by the CHECK constraint under test rather than by the FK.
+    conversation_id: org.conversationId,
     created_at: new Date().toISOString(),
     expires_at: new Date(Date.now() + 300_000).toISOString(),
     ...overrides,
@@ -207,7 +234,9 @@ test("0020 CHECK constraints reject every malformed credential shape", async () 
         expires_at: new Date(now.valueOf() - 1_000).toISOString(),
       },
     ],
-    ["agent row with a conversation_id", { kind: "agent", conversation_id: randomUUID() }],
+    // CH-04 / 0021: a REAL conversation id, so the FK is satisfied and the CHECK that
+    // bars kind='agent' from carrying a conversation is what actually rejects this row.
+    ["agent row with a conversation_id", { kind: "agent", conversation_id: orgA.conversationId }],
     ["an unknown kind", { kind: "root" }],
   ];
 
@@ -240,7 +269,8 @@ test("0020 CHECK constraints reject every malformed credential shape", async () 
 
 // @spec AC-5 AC-8 EC-24
 test("issue writes the key row and its ceiling permissions rows in one org-scoped transaction", async () => {
-  const conversationId = randomUUID();
+  // CH-04 / 0021: a real parent conversation, was randomUUID() under 0019.
+  const conversationId = await createConversation(orgA.orgId, orgA.userId);
   const issuedAt = new Date();
   const row = await store.issue(orgA.orgId, {
     keyPrefix: `mcp_chat_${randomUUID().replace(/-/g, "").slice(0, 16)}`,
@@ -290,7 +320,8 @@ test("issue writes the key row and its ceiling permissions rows in one org-scope
 
 // @spec AC-2 EC-14
 test("a resolved ephemeral credential reads exactly what its issuer currently reads", async () => {
-  const conversationId = randomUUID();
+  // CH-04 / 0021: a real parent conversation, was randomUUID() under 0019.
+  const conversationId = await createConversation(orgA.orgId, orgA.userId);
   const issuedAt = new Date();
   const keyPrefix = `mcp_chat_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   await store.issue(orgA.orgId, {
@@ -356,7 +387,8 @@ test("a resolved ephemeral credential reads exactly what its issuer currently re
 
 // @spec EC-15
 test("a ceiling row widened directly in the database grants nothing extra", async () => {
-  const conversationId = randomUUID();
+  // CH-04 / 0021: a real parent conversation, was randomUUID() under 0019.
+  const conversationId = await createConversation(orgA.orgId, orgA.userId);
   const issuedAt = new Date();
   const keyPrefix = `mcp_chat_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   await store.issue(orgA.orgId, {
@@ -398,13 +430,27 @@ test("a ceiling row widened directly in the database grants nothing extra", asyn
 // @spec EC-8
 test("deleting the issuing user nulls created_by and empties the credential scope", async () => {
   const victim = await seedOrg("C");
+  // CH-04 / 0021: this credential must stay conversation-bound (so the composite FK path
+  // is exercised), but its conversation is deliberately owned by a DIFFERENT member of the
+  // same org. 0020's chat_conversations_org_user_fk is ON DELETE cascade, so a conversation
+  // owned by the issuer would be deleted along with them and 0021's FK would then cascade
+  // the key row away too -- leaving nothing to assert created_by on. That combined cascade
+  // is real and intended (it is exactly the deletion route 0021's delete_ephemeral_ceiling
+  // trigger exists to clean up after); it is simply not what EC-8 measures. Separating the
+  // conversation's owner from the credential's issuer isolates the one variable this test is
+  // about. Every assertion below is unchanged.
+  const bystanderId = randomUUID();
+  await pool.query(
+    "INSERT INTO users (id, org_id, email, name, org_role) VALUES ($1, $2, $3, $4, $5)",
+    [bystanderId, victim.orgId, `bystander-${bystanderId.slice(0, 8)}@example.com`, "User C2", "member"],
+  );
   const issuedAt = new Date();
   const keyPrefix = `mcp_chat_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   await store.issue(victim.orgId, {
     keyPrefix,
     keyHmac: "e".repeat(64),
     pepperVersion: 1,
-    conversationId: randomUUID(),
+    conversationId: await createConversation(victim.orgId, bystanderId),
     issuedAt,
     expiresAt: new Date(issuedAt.valueOf() + 300_000),
     createdBy: victim.userId,
@@ -432,7 +478,14 @@ test("deleting the issuing user nulls created_by and empties the credential scop
 
 // @spec EC-21 AC-12
 test("deleteExpired removes only this org's expired ephemeral rows and their ceilings", async () => {
-  const conversationId = randomUUID();
+  // CH-04 / 0021: this test used ONE randomUUID() conversation id for both orgA's and
+  // orgB's rows. A conversation id is globally unique to exactly one org, so under the
+  // composite (org_id, conversation_id) FK a single id cannot be shared across tenants.
+  // Each org now gets its own real conversation. What this test measures -- that
+  // deleteExpired is scoped by ORG, not by conversation -- is unchanged, and the
+  // cross-tenant assertion below is if anything stricter for using distinct parents.
+  const conversationId = await createConversation(orgA.orgId, orgA.userId);
+  const otherOrgConversationId = await createConversation(orgB.orgId, orgB.userId);
   const past = new Date(Date.now() - 10 * 60_000);
   const expiredPrefix = `mcp_chat_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const livePrefix = `mcp_chat_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -466,7 +519,7 @@ test("deleteExpired removes only this org's expired ephemeral rows and their cei
     keyPrefix: otherOrgPrefix,
     keyHmac: "3".repeat(64),
     pepperVersion: 1,
-    conversationId,
+    conversationId: otherOrgConversationId,
     issuedAt: past,
     expiresAt: new Date(past.valueOf() + 300_000),
     createdBy: orgB.userId,
