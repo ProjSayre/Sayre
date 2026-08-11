@@ -1,0 +1,46 @@
+{
+  "runId": "20260811T062129813Z-4d9e89a-PR_DELTA-2966fa",
+  "date": "2026-08-11",
+  "ticket": "W1-06",
+  "ticketTitle": "W1-06 — GitHub App queued-sync revocation gapfill",
+  "goal": "Close GAP-4 by enforcing the GitHub installation's current tenant binding and active state when the BullMQ ownership-sync worker begins a queued job, before any provider call, token mint, repository resolution, or graph write.",
+  "filesTouched": [
+    "services/core/src/integrations/git/worker.ts",
+    "services/core/src/services/gitSyncService.test.ts",
+    "services/core/src/services/gitSyncService.ts"
+  ],
+  "verdicts": {
+    "review": "PASS",
+    "security": "PASS"
+  },
+  "overrides": [],
+  "bypass": false,
+  "regate": null,
+  "lite": null,
+  "inline": null,
+  "gapfill": {
+    "overlays": [
+      "base",
+      "spot-check"
+    ],
+    "note": "this run took the gapfill lane (`.sdd/pipeline.md`'s `/pipeline-gapfill`): `gap-scout` audited an already-shipped MVP ticket against its acceptance criteria, and `planner`/`red`/`dev` only addressed non-OK gaps. `tester`, `review`, and `security` all ran in full. Overlays came from `.sdd/mvp-overlays.yml` and the Audit-Rebuild cheat sheet. This is disclosure that the work was gap-scoped, not a skipped-gate bypass.",
+    "counts": {
+      "total": 6,
+      "ok": 5,
+      "nonOk": 1,
+      "byStatus": {
+        "OK": 5,
+        "NARROWED": 1
+      }
+    }
+  },
+  "redTestPaths": [
+    "services/core/src/services/gitSyncService.test.ts"
+  ],
+  "redAbsenceNote": null,
+  "securityRunId": "20260811T062129813Z-4d9e89a-PR_DELTA-2966fa",
+  "commit": {
+    "sha": "4d9e89a8dab9e1338a68ff023785d2631777f5fe",
+    "dirty": true
+  }
+}

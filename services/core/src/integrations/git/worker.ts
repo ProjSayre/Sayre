@@ -5,6 +5,7 @@ import { GitProviderRegistry } from './providerRegistry';
 import { GithubProviderAdapter } from './providers/github';
 import { PostgresGitRepositoryResolver } from './repositoryResolver';
 import { syncGitMetadata, type GitSyncDependencies } from '../../services/gitSyncService';
+import { getRuntimeDb, resolveInstallationOrg } from '../../db/installations';
 
 export interface GitSyncWorkerRuntime {
   worker: Worker;
@@ -14,6 +15,10 @@ export interface GitSyncWorkerRuntime {
 async function defaultDependencies(): Promise<GitSyncDependencies> {
   return {
     providers: new GitProviderRegistry([new GithubProviderAdapter()]),
+    installations: {
+      resolve: async (installationId) =>
+        resolveInstallationOrg(await getRuntimeDb(), installationId),
+    },
     repositories: new PostgresGitRepositoryResolver(),
     graph: await createOwnershipGraphStore(),
   };

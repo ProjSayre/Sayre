@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T062129813Z-4d9e89a-PR_DELTA-2966fa",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T06:21:29.813Z",
+  "completed_at": "2026-08-11T06:24:30Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "/Users/victoryu/.codex/.chatgpt-projects/g-p-6a7a108d1cac8191a379ce0abbc6a138/sayre-w1-06"
+  },
+  "target": {
+    "commit_sha": "4d9e89a8dab9e1338a68ff023785d2631777f5fe",
+    "branch": "codex/w1-06-gapfill-on-w0-07",
+    "dirty": true,
+    "environment": "Disposable local worktree; localhost-only HTTP tests; no external services",
+    "base_urls": ["http://127.0.0.1:ephemeral"],
+    "changed_paths": [
+      "services/core/src/integrations/git/worker.ts",
+      "services/core/src/services/gitSyncService.test.ts",
+      "services/core/src/services/gitSyncService.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No immutable run exists under this worktree's .pipeline/security-history; sibling worktree and committed ledger copies are not eligible baselines under the audit contract.",
+    "incompatible_dimensions": ["No eligible immutable local baseline"]
+  },
+  "product_progress": {
+    "milestone": "Wave 1 gapfill — W1-06 GitHub App install and initial-parse trigger",
+    "phase": "MVP historical acceptance re-audit",
+    "source_references": ["docs/product/Ticket-Backlog-by-Feature-2.md#W1-06", ".pipeline/gaps.json", ".pipeline/spec.json"],
+    "documentation_code_drift": ["GAP-4 identified that BullMQ ownership work admitted before revocation did not re-check current installation activity at execution time; this delta adds that gate before provider/token/graph work."]
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Repository owner request to complete W1-06 with guardrails, safety, and CI; access explicitly granted",
+    "resource_ceiling": "Repository-local unit tests, localhost ephemeral HTTP listeners, and read-only static scans only; no shared or production infrastructure",
+    "credential_references": [],
+    "tenant_fixtures": ["Injected synthetic server-org and other-org dependency fixtures"]
+  },
+  "surface_inventory": [
+    {"surface_id":"tenant-isolation","brief_path":".claude/agents/security-checker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":true,"selected":true,"selection_reason":"Mandatory CORE-01 and the delta compares server-derived installation org to envelope org before work.","rationale":"The existing narrow installation resolver and org-stamped graph store are executable; this delta adds a second execution-time tenant check.","code_references":["services/core/src/db/installations.ts","services/core/src/services/gitSyncService.ts:43-55","services/core/src/integrations/git/graphOwnershipStore.ts:22-70"]},
+    {"surface_id":"rbac-boundary","brief_path":".claude/agents/security-checker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"Mandatory CORE-02; no graph query or client authorization boundary changed.","rationale":"Server-side graph authorization exists and the ownership worker performs writes only.","code_references":["services/core/src/graph-query",".claude/rules/security-multitenancy.md"]},
+    {"surface_id":"secret-handling","brief_path":".claude/agents/security-checker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"Mandatory CORE-03 and W1-06 spot-check requires loader-only credentials.","rationale":"GitHub private key, client secret, webhook secret, and database URL resolve through the W0-07 loader; tokens remain in memory.","code_references":["packages/config/src/secrets.ts","services/core/src/github/appClient.ts","services/core/src/services/githubWebhookService.ts"]},
+    {"surface_id":"webhook-trust","brief_path":".claude/agents/security-checker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"Mandatory CORE-04 and explicit tampered X-Hub-Signature-256 spot-check.","rationale":"Raw-body HMAC verification precedes parse, tenant resolution, lifecycle changes, and queue publication.","code_references":["services/core/src/webhooks/githubSignature.ts:28-46","services/core/src/services/githubWebhookService.ts:105-130"]},
+    {"surface_id":"ingestion-ephemerality","brief_path":".claude/agents/security-checker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"Mandatory CORE-05; no clone or ingestion persistence path changed.","rationale":"The changed Node ownership worker does not clone source; Python ingestion cleanup remains outside the delta.","code_references":["services/workers/sayre_workers/ingestion/repository.py","services/core/src/integrations/git/worker.ts"]},
+    {"surface_id":"injection-boundaries","brief_path":".claude/agents/security-checker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":true,"selected":true,"selection_reason":"Mandatory CORE-06; queue identifiers and tenant/install inputs feed Postgres, GitHub, and Neo4j boundaries.","rationale":"IDs are structurally validated, SQL/Cypher use parameters, and provider path segments are encoded.","code_references":["services/core/src/services/gitSyncService.ts:25-70","services/core/src/db/installations.ts:32-43","services/core/src/integrations/git/graphOwnershipStore.ts:22-137"]},
+    {"surface_id":"llm-rag","brief_path":"security-attacker-agents/llm-rag-poisoning-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":false,"selection_reason":"No changed path, ticket promise, or shared control routes this delta to LLM/RAG.","rationale":"Executable enrichment/retrieval boundaries exist but are unrelated to GitHub installation activity.","code_references":["services/workers/sayre_workers/enrichment","services/workers/sayre_workers/retrieval"]},
+    {"surface_id":"model-provider","brief_path":"security-attacker-agents/model-provider-egress-ssrf-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"Registry trigger services/core/** matches the delta; selected fail-closed even though cold inventory finds no model-provider call path.","rationale":"The model-provider surface exists elsewhere; every MP check is evidenced NOT_APPLICABLE to the W1-06 GitHub ownership-sync target asset.","code_references":["services/workers/sayre_workers/model_provider","services/core/src/services/providerSettingsService.ts","services/core/src/services/gitSyncService.ts"]},
+    {"surface_id":"mcp","brief_path":"security-attacker-agents/mcp-transport-key-lifecycle-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":false,"selection_reason":"No MCP transport, key, or lifecycle path changed or is named by W1-06.","rationale":"MCP is executable but independent from GitHub ownership sync.","code_references":["services/core/src/mcp","services/core/src/services/mcpKeyService.ts"]},
+    {"surface_id":"websocket-realtime","brief_path":"security-attacker-agents/websocket-realtime-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":false,"selection_reason":"No gateway, realtime, WebSocket, or Redis path changed.","rationale":"Realtime fanout is independent from this BullMQ ownership worker gate.","code_references":["services/gateway","services/core/src/services/realtimeDeltaService.ts"]},
+    {"surface_id":"ingestion-queue-webhook","brief_path":"security-attacker-agents/ingestion-queue-webhook-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":true,"selected":true,"selection_reason":"Changed integration-worker path and W1-06's webhook/queue/revocation contract directly select this brief.","rationale":"GitHub webhook admission, BullMQ ownership work, SQS ingestion work, and installation authority are executable.","code_references":["services/core/src/services/githubWebhookService.ts","services/core/src/services/gitSyncService.ts","services/core/src/queue/bullmq.ts","services/workers/sayre_workers/ingestion/state.py"]},
+    {"surface_id":"web-api-client","brief_path":"security-attacker-agents/web-api-client-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"W1-06 explicitly names install/callback routes and the tampered-webhook spot-check; selected despite no route diff.","rationale":"The install start, callback, and webhook HTTP routes are executable and were attacked through localhost tests.","code_references":["services/core/src/routes/githubInstall.ts","services/core/src/routes/githubWebhook.ts","services/core/src/services/githubAppInstallService.ts"]},
+    {"surface_id":"secrets-audit-data-lifecycle","brief_path":"security-attacker-agents/secrets-audit-data-lifecycle-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":true,"selection_reason":"W1-06's explicit loader-only credential spot-check and installation-token lifecycle select this brief.","rationale":"Central loaders and in-memory GitHub credentials are implemented; unrelated lifecycle sub-surfaces remain limited or not applicable.","code_references":["packages/config/src/secrets.ts","services/core/src/github/appClient.ts","scripts/check-secret-access.mjs"]},
+    {"surface_id":"supply-chain-infrastructure","brief_path":"security-attacker-agents/supply-chain-infrastructure-attacker.md","readiness":"IMPLEMENTED","previous_readiness":null,"readiness_transition":"FIRST_OBSERVATION","changed":false,"selected":false,"selection_reason":"No workflow, manifest, lockfile, image, or infrastructure path changed.","rationale":"Supply-chain controls exist but are not shared by the execution-time installation gate.","code_references":[".github/workflows/ci.yml","package-lock.json","infra"]}
+  ],
+  "agent_versions": [
+    {"agent_id":"audit-contract","source":"security-attacker-agents/audit-contract.md","sha256":"083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"},
+    {"agent_id":"agent-registry","source":"security-attacker-agents/agent-registry.json","sha256":"a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"},
+    {"agent_id":"progress-audit-orchestrator","source":"security-attacker-agents/progress-audit-orchestrator.md","sha256":"2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"},
+    {"agent_id":"security-stage","source":".sdd/stages/security.md","sha256":"6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"},
+    {"agent_id":"security-checker-shim","source":".claude/agents/security-checker.md","sha256":"83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"},
+    {"agent_id":"model-provider-egress-ssrf","source":"security-attacker-agents/model-provider-egress-ssrf-attacker.md","sha256":"310b28e0975c02c5d699947f821863aa7cba669e1e571ec2706f527ec46939fe"},
+    {"agent_id":"ingestion-queue-webhook","source":"security-attacker-agents/ingestion-queue-webhook-attacker.md","sha256":"a6b52b93f7233cf685cd28e9c84902364723d181f10db6a094f02299c6759db8"},
+    {"agent_id":"web-api-client","source":"security-attacker-agents/web-api-client-attacker.md","sha256":"747aa40976763baa979397833be5b35a1c303613a50b48a4128197c9edc5d48c"},
+    {"agent_id":"secrets-audit-data-lifecycle","source":"security-attacker-agents/secrets-audit-data-lifecycle-attacker.md","sha256":"9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"}
+  ],
+  "limitations": [
+    "No eligible immutable local security-history run exists, so every observation and readiness state is a first observation.",
+    "No dedicated history-aware secret scanner such as gitleaks is installed; current diff and targeted credential patterns are clean, but SEC-02 historical breadth remains UNVERIFIED.",
+    "No Postgres, Redis, GitHub credential, production queue, or live external provider was used; queue retry/fairness, audit storage, backup, and long-lived token revocation checks remain explicitly UNVERIFIED where applicable.",
+    "Localhost HTTP tests used only ephemeral listeners and synthetic payloads; no tenant or external side effect was created."
+  ]
+}

@@ -5346,6 +5346,20 @@
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
     }
   ],
+  "services/core/src/integrations/git/worker.ts": [
+    {
+      "runId": "20260811T062129813Z-4d9e89a-PR_DELTA-2966fa",
+      "ticket": "W1-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T062129813Z-4d9e89a-PR_DELTA-2966fa/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
   "services/core/src/mcp/gateway.ts": [
     {
       "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
@@ -5454,6 +5468,34 @@
       "gapfill": {
         "overlays": [
           "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/services/gitSyncService.test.ts": [
+    {
+      "runId": "20260811T062129813Z-4d9e89a-PR_DELTA-2966fa",
+      "ticket": "W1-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T062129813Z-4d9e89a-PR_DELTA-2966fa/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/services/gitSyncService.ts": [
+    {
+      "runId": "20260811T062129813Z-4d9e89a-PR_DELTA-2966fa",
+      "ticket": "W1-06",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T062129813Z-4d9e89a-PR_DELTA-2966fa/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
         ]
       }
     }
