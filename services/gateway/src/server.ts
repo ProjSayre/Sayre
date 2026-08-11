@@ -12,11 +12,21 @@ import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { getGatewayHealth } from './health';
 import { getCoreInternalBaseUrl, getGatewayPort, getGatewayRedisChannel, getRealtimeQueueName } from './config';
-import { attachConnectionLifecycle, ConnectionRegistry, createPendingConnection, UNAUTHENTICATED_CLOSE_CODE } from './ws/connection';
+import {
+  attachConnectionLifecycle,
+  ConnectionRegistry,
+  createPendingConnection,
+  UNAUTHENTICATED_CLOSE_CODE,
+  type AttachConnectionDeps,
+  type GatewayConnection,
+} from './ws/connection';
 import { createGraphUpdatedBus } from './redis/pubsub';
+import { createChatEventBus } from './redis/chatPubsub';
+import { chatEventChannel } from './ws/chatEvents';
 import { createRealtimeSqsConsumer } from './sqs/consumer';
 import { fanOutGraphUpdated } from './fanout/fanout';
-import { fetchAuthorizedDelta } from './coreClient';
+import { relayChatEvent } from './fanout/chatFanout';
+import { fetchAuthorizedDelta, fetchChatPushAuthorization } from './coreClient';
 
 export interface GatewayHandle {
   port: number;
@@ -47,6 +57,36 @@ export async function startGateway(opts?: { port?: number }): Promise<GatewayHan
     }),
   );
 
+  const chatBus = await createChatEventBus();
+  const chatDeps: AttachConnectionDeps = {
+    authorizeChatSubscription: async (conn, conversationId) => {
+      try {
+        await fetchChatPushAuthorization({
+          baseUrl: coreBaseUrl,
+          token: conn.token,
+          conversationId,
+          nodeIds: [],
+        });
+        return true;
+      } catch {
+        return false; // fail closed on forbidden AND on unavailable
+      }
+    },
+    acquireChatChannel: (orgId, conversationId) => chatBus.subscribe(chatEventChannel(orgId, conversationId)),
+    releaseChatChannel: (orgId, conversationId) => chatBus.unsubscribe(chatEventChannel(orgId, conversationId)),
+  };
+  chatBus.onEvent((event) =>
+    relayChatEvent(event, registry, {
+      authorizePush: fetchChatPushAuthorization,
+      coreBaseUrl,
+      onUnauthorized: (conn) => conn.socket.close(UNAUTHENTICATED_CLOSE_CODE, 'core rejected token'),
+      onSubscriptionRevoked: async (conn: GatewayConnection, conversationId: string) => {
+        conn.chatSubscriptions.delete(conversationId);
+        await chatBus.unsubscribe(chatEventChannel(conn.orgId, conversationId));
+      },
+    }),
+  );
+
   const consumer = createRealtimeSqsConsumer({
     queueName: getRealtimeQueueName(),
     onEnvelope: (envelope) => bus.publish(envelope),
@@ -58,7 +98,7 @@ export async function startGateway(opts?: { port?: number }): Promise<GatewayHan
 
   wss.on('connection', (socket, req) => {
     const conn = createPendingConnection(randomUUID(), socket);
-    attachConnectionLifecycle(conn, req, registry);
+    attachConnectionLifecycle(conn, req, registry, chatDeps);
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -79,6 +119,7 @@ export async function startGateway(opts?: { port?: number }): Promise<GatewayHan
       }
       await new Promise<void>((resolve) => wss.close(() => resolve()));
       await bus.close();
+      await chatBus.close();
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       });

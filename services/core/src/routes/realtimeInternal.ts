@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getRealtimeGraphDelta } from '../services/realtimeDeltaService';
-import { parseRealtimeDeltaRequest } from '../http/realtimeDeltaRequest';
+import { authorizeRealtimeChatPush } from '../services/realtimeChatService';
+import { parseRealtimeChatAuthorizationRequest, parseRealtimeDeltaRequest } from '../http/realtimeDeltaRequest';
 import { requireAuthContext } from '../auth/context';
 import { authenticate } from '../http/authenticate';
 import { authorize } from '../http/authorize';
@@ -40,5 +41,20 @@ realtimeInternalRouter.post(
       requireAuthContext(req),
     );
     res.json(delta);
+  }),
+);
+
+// CH-05 — internal-only: the gateway calls this before EVERY chat push (not
+// just at subscribe time) to re-derive ownership and citation-node
+// authorization from the forwarded session token. Same internal-only posture
+// as the graph-delta route above.
+realtimeInternalRouter.post(
+  '/internal/realtime/chat-authorization',
+  authenticate(),
+  authorize('member'),
+  asyncHandler(async (req, res) => {
+    const input = parseRealtimeChatAuthorizationRequest(req.body);
+    const authorization = await authorizeRealtimeChatPush(input, requireAuthContext(req));
+    res.json(authorization);
   }),
 );

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseRealtimeDeltaRequest, RealtimeDeltaParseError } from './realtimeDeltaRequest';
+import {
+  parseRealtimeChatAuthorizationRequest,
+  parseRealtimeDeltaRequest,
+  RealtimeDeltaParseError,
+} from './realtimeDeltaRequest';
+
+const CONVERSATION_ID = '44444444-4444-4444-8444-444444444444';
 
 describe('parseRealtimeDeltaRequest', () => {
   it('parses a fully specified body', () => {
@@ -99,5 +105,97 @@ describe('parseRealtimeDeltaRequest', () => {
     });
     expect(Object.keys(parsed)).not.toContain('org_id');
     expect(Object.keys(parsed)).not.toContain('orgId');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CH-05 — the internal chat-authorization request body. Authored by `red` from
+// .pipeline/spec.md before any implementation exists. Every case above this
+// line predates CH-05 and must keep passing untouched (AC-10).
+// ---------------------------------------------------------------------------
+
+describe('parseRealtimeChatAuthorizationRequest', () => {
+  // @spec AC-11
+  it('AC-11: parses a fully specified body to exactly { conversationId, nodeIds }', () => {
+    const parsed = parseRealtimeChatAuthorizationRequest({
+      conversationId: CONVERSATION_ID,
+      nodeIds: ['file-login', 'canvas-login'],
+    });
+
+    expect(parsed).toEqual({
+      conversationId: CONVERSATION_ID,
+      nodeIds: ['file-login', 'canvas-login'],
+    });
+    expect(Object.keys(parsed).sort()).toEqual(['conversationId', 'nodeIds']);
+  });
+
+  // @spec EC-28
+  it('EC-28: accepts an empty nodeIds array (every progress/error push and every subscribe-time check)', () => {
+    expect(
+      parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID, nodeIds: [] }),
+    ).toEqual({ conversationId: CONVERSATION_ID, nodeIds: [] });
+  });
+
+  // @spec AC-11
+  it('AC-11: rejects a non-object body', () => {
+    expect(() => parseRealtimeChatAuthorizationRequest(null)).toThrow(RealtimeDeltaParseError);
+    expect(() => parseRealtimeChatAuthorizationRequest('nope')).toThrow(RealtimeDeltaParseError);
+    expect(() => parseRealtimeChatAuthorizationRequest([])).toThrow(RealtimeDeltaParseError);
+  });
+
+  // @spec AC-11
+  it('AC-11: rejects a missing or blank conversationId', () => {
+    expect(() => parseRealtimeChatAuthorizationRequest({ nodeIds: [] })).toThrow(
+      RealtimeDeltaParseError,
+    );
+    expect(() =>
+      parseRealtimeChatAuthorizationRequest({ conversationId: '   ', nodeIds: [] }),
+    ).toThrow(RealtimeDeltaParseError);
+    expect(() => parseRealtimeChatAuthorizationRequest({ conversationId: 42, nodeIds: [] })).toThrow(
+      RealtimeDeltaParseError,
+    );
+  });
+
+  // @spec AC-11
+  it('AC-11: rejects nodeIds that is missing, not an array, or not all non-blank strings', () => {
+    expect(() => parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID })).toThrow(
+      RealtimeDeltaParseError,
+    );
+    expect(() =>
+      parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID, nodeIds: 'n1' }),
+    ).toThrow(RealtimeDeltaParseError);
+    expect(() =>
+      parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID, nodeIds: ['ok', 5] }),
+    ).toThrow(RealtimeDeltaParseError);
+    expect(() =>
+      parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID, nodeIds: ['ok', ' '] }),
+    ).toThrow(RealtimeDeltaParseError);
+  });
+
+  // @spec AC-11
+  it('AC-11: rejects more than 64 nodeIds and accepts exactly 64', () => {
+    const ids = (count: number) => Array.from({ length: count }, (_unused, index) => `n-${index}`);
+
+    expect(
+      parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID, nodeIds: ids(64) })
+        .nodeIds,
+    ).toHaveLength(64);
+    expect(() =>
+      parseRealtimeChatAuthorizationRequest({ conversationId: CONVERSATION_ID, nodeIds: ids(65) }),
+    ).toThrow(RealtimeDeltaParseError);
+  });
+
+  // @spec AC-8 AC-11
+  it('AC-8/AC-11: a client-supplied org_id / orgId / userId in the body is never read into the parsed result', () => {
+    const parsed = parseRealtimeChatAuthorizationRequest({
+      conversationId: CONVERSATION_ID,
+      nodeIds: ['n1'],
+      org_id: 'attacker-org',
+      orgId: 'attacker-org',
+      userId: 'attacker-user',
+    });
+
+    expect(Object.keys(parsed).sort()).toEqual(['conversationId', 'nodeIds']);
+    expect(JSON.stringify(parsed)).not.toContain('attacker');
   });
 });
