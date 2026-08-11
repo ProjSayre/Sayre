@@ -1,0 +1,856 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-11T03:45:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 22,
+      "FAIL": 1,
+      "UNVERIFIED": 2,
+      "NOT_APPLICABLE": 5
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 30
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 30
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 13,
+      "PARTIAL": 1
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|gateway-chat-relay-and-core-realtime-chat-service|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gateway chat relay (chatEvents.ts/chatFanout.ts/connection.ts) + Core realtimeChatService.ts/graph-query/index.ts",
+      "attack_path_version": "v1",
+      "attempt": "Traced every possible source of org_id across the new chat path -- WS connection identity, Redis channel string, envelope validation, the internal HTTP request body, Core's AuthContext, and the new Cypher query -- attempting to find a point where a client-supplied value (subscribe frame, HTTP body field, worker payload) could substitute for the server-verified value.",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:80-86 -- conn.orgId is set only from applyIdentity(identity) after authenticateConnectionToken()/verifySessionToken(); never from a client message.",
+        "services/gateway/src/ws/protocol.ts:60-90 -- the chat subscribe/unsubscribe frame shape carries only { type, channel, conversationId }; no org field is parsed or accepted.",
+        "services/gateway/src/ws/chatEvents.ts:216-219 -- decodeChatEvent rejects (returns null) unless envelope.org_id === the channel's own org segment; DecodedChatEvent.orgId is always envelope.org_id, never a payload field.",
+        "services/gateway/src/coreClient.ts:104-121 -- fetchChatPushAuthorization's request body is exactly { conversationId, nodeIds }; no org_id/orgId/userId field is ever sent.",
+        "services/core/src/http/realtimeDeltaRequest.ts:74-102 -- parseRealtimeChatAuthorizationRequest reads only conversationId/nodeIds from req.body; org_id/orgId/userId are never read even if present.",
+        "services/core/src/services/realtimeChatService.ts:24-39 -- authorizeRealtimeChatPush's Postgres/graph lookups are scoped by ctx.orgId/ctx.userId, where ctx comes from requireAuthContext(req) (server-derived), never from input.",
+        "services/core/src/graph-query/index.ts:2688-2692 -- the Cypher call's org_id parameter is ctx.orgId, not any request field.",
+        "services/core/src/services/realtimeChatService.test.ts:84-110 (AC-11/AC-8 test) -- dynamically proves body-supplied org/user fields have no effect.",
+        "services/gateway/src/ws/chatEvents.test.ts:280-288 (AC-8 test) -- dynamically proves decoded orgId is always envelope.org_id, never a payload field, even when a payload carries a different org id."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read (git diff 6d3acfc, cited files/lines) plus this run's own execution of `npx vitest run` in services/gateway and services/core (193/193 and 1217/1217 passing respectively, independently confirming the cited AC-8/AC-11 tests pass). No fixture created; nothing to clean up.",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:80-86",
+        "services/gateway/src/ws/chatEvents.ts:216-219",
+        "services/gateway/src/coreClient.ts:104-121",
+        "services/core/src/http/realtimeDeltaRequest.ts:74-102",
+        "services/core/src/services/realtimeChatService.ts:24-39",
+        "services/core/src/graph-query/index.ts:2688-2692"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service-and-gateway-fanout|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/graph-query/index.ts (RbacGraphQueryService) + services/gateway/src/fanout/chatFanout.ts",
+      "attack_path_version": "v1",
+      "attempt": "Searched the gateway's new code (chatFanout.ts, chatEvents.ts, connection.ts) for any node-level authorization/traversal/scope logic re-implemented client-side, per .claude/rules/security-multitenancy.md's explicit prohibition; confirmed the only citation-authorization computation happens inside RbacGraphQueryService.",
+      "evidence": [
+        "services/gateway/src/fanout/chatFanout.ts:34-37,61 -- buildPush/filterCitations only intersects citation.nodeId against the Set Core already returned (authorizedNodeIds); no scope/rule evaluation exists in this file.",
+        "services/core/src/graph-query/index.ts:2676-2700 -- getAuthorizedNodeIds is the sole place PermissionStore.getReadScope + the Cypher traversal + the TS defense-in-depth mapper (mapAuthorizedCitationId, canReadResource) run.",
+        "services/core/src/routes/realtimeInternal.ts:51-60 -- the route is a 3-statement thin wrapper (parse -> service call -> res.json), no data access, matching .claude/rules/service-layer.md.",
+        "services/core/src/services/realtimeChatService.ts -- the only Core-side business logic; delegates all node-level authorization to `graph.getAuthorizedNodeIds`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only; no fixture created.",
+      "code_references": [
+        "services/gateway/src/fanout/chatFanout.ts:34-37",
+        "services/core/src/graph-query/index.ts:2676-2700",
+        "services/core/src/routes/realtimeInternal.ts:51-60"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|gateway-redis-connection-and-token-forwarding|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/redis/chatPubsub.ts, services/gateway/src/coreClient.ts, every new console.error call in the diff",
+      "attack_path_version": "v1",
+      "attempt": "Grepped every console.* call in the new/changed CH-05 files for the bearer token or other secret material; checked createChatEventBus's Redis connection setup for a hardcoded credential; ran a targeted network-error test that intentionally exercises the one code path that has both a secret (token) and a log call in the same function.",
+      "evidence": [
+        "grep of console.(log|error|warn|info) across ws/chatEvents.ts, fanout/chatFanout.ts, redis/chatPubsub.ts, ws/connection.ts, coreClient.ts, server.ts, realtimeChatService.ts, routes/realtimeInternal.ts -- every call logs only a channel name, a fixed reason string, a connectionId, or a caught non-token error object; none logs conn.token or a raw payload.",
+        "services/gateway/src/redis/chatPubsub.ts:32-38 -- createChatEventBus reuses redis/pubsub.ts's createRedisConnection verbatim (getSecret('env://REDIS_PASSWORD') via @sayre/config), no new/duplicated secret-loading path.",
+        "services/gateway/src/coreClient.test.ts:240-255 (EC-12 test, dynamically run this session) -- asserts neither the thrown error's message nor JSON.stringify(console.error's mock.calls) contains the literal token value 'tok-super-secret-value' after a simulated network failure."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/coreClient.test.ts` inside services/gateway (this session's full-suite run already covers it: 193/193 passing). No fixture created.",
+      "code_references": [
+        "services/gateway/src/redis/chatPubsub.ts:32-38",
+        "services/gateway/src/coreClient.test.ts:240-255"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|not-touched-by-this-diff|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "N/A -- no webhook receiver in this diff's changed_paths",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed via the full changed_paths inventory (26 files, listed in manifest.json) that none is a webhook route/service; services/core/src/routes/githubWebhook.ts is untouched by this diff.",
+      "evidence": [
+        "manifest.json target.changed_paths -- no path contains 'webhook'.",
+        "services/core/src/routes/githubWebhook.ts:7-19 -- the existing HMAC (x-hub-signature-256) validation this diff does not modify."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only; no fixture created.",
+      "code_references": [
+        "services/core/src/routes/githubWebhook.ts:7-19"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|not-touched-by-this-diff|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "N/A -- no ingestion-worker file in this diff's changed_paths",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed via the full changed_paths inventory that none is under services/workers/sayre_workers/ingestion or otherwise touches scratch-clone lifecycle code.",
+      "evidence": [
+        "manifest.json target.changed_paths -- no path under services/workers/.",
+        "services/workers/sayre_workers/ingestion (directory exists, unmodified by this diff)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only; no fixture created.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|graph-query-authorized-citation-cypher|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/graph-query/index.ts's GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER + getAuthorizedNodeIds",
+      "attack_path_version": "v1",
+      "attempt": "Read the full text of the one new Cypher query this diff introduces end to end, and its caller, tracing every value that reaches the query, looking for any place a citation nodeId (attacker/worker-controlled, arrives via the gateway relay) is concatenated into the query string rather than bound as a parameter.",
+      "evidence": [
+        "services/core/src/graph-query/index.ts:908-949 -- GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER uses only $org_id, $node_ids, $allow_rules, $deny_rules placeholders; the only literal template interpolations in the string are canonicalGraphPathPredicate('node') (a fixed helper, not request data) and CHAT_CITATION_NODE_ID_LIMIT (a numeric constant, 64).",
+        "services/core/src/graph-query/index.ts:2676-2692 -- getAuthorizedNodeIds builds `ids` via filter/Set-dedupe/slice on the caller-supplied nodeIds array and passes it as the `node_ids` parameter object value (graph.run(ctx.orgId, 'traversal', CYPHER, { org_id, node_ids: ids, ...scopeParameters(scope) })) -- never string-concatenated into the query text.",
+        "services/core/src/http/realtimeDeltaRequest.ts:84-96 -- nodeIds are validated as an array of non-blank strings capped at 64 entries before ever reaching the query layer."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only; no fixture created.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:908-949",
+        "services/core/src/graph-query/index.ts:2676-2692"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-01|websocket-realtime|gateway-ws-handshake|v1",
+      "check_id": "WS-01",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/auth.ts (unmodified by this diff, but now also gates the chat multiplex)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the gateway's WS handshake relies on any ambient/browser-attached credential (cookie) that a cross-site page could replay, since classic cross-site WebSocket hijacking depends on the browser automatically attaching such a credential to a cross-origin request.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts:1-32 -- authentication is via the `Authorization: Bearer` upgrade header (extractUpgradeToken) or a first `{type:'auth', token}` frame only; comment explicitly states the token is deliberately never read from a URL query string.",
+        "grep -rn cookie services/gateway/src (excluding tests) -- zero matches; no cookie-based session exists anywhere in the gateway.",
+        "A browser's native WebSocket API cannot set a custom Authorization header on the handshake request from cross-origin JS, and there is no cookie for the browser to attach automatically, so the classic ambient-credential CSWSH pattern this checklist item targets has no credential to replay."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read + grep only; no dynamic cross-origin browser reproduction was performed this run (would require a real browser/CDP session, not authorized/available in this sandbox). No explicit Origin allowlist exists in auth.ts either -- noted as a defense-in-depth Suggestion in report.md rather than a FAIL, since there is no ambient credential to hijack. No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/auth.ts:1-32"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-02|websocket-realtime|gateway-ws-handshake|v1",
+      "check_id": "WS-02",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/auth.ts + ws/connection.ts's attachConnectionLifecycle (unmodified auth path, now also gates chat)",
+      "attack_path_version": "v1",
+      "attempt": "Traced what happens for a missing/expired/malformed/revoked credential at connect time, and whether the dev/test auto-accept bypass (devConnectionIdentity) is reachable by an external client.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts:46-54 -- authenticateConnectionToken delegates signature verification entirely to Core's verifySessionToken; propagates on any failure, uniformly (no differentiated error).",
+        "services/gateway/src/ws/connection.ts:100-113,265-283 -- handleAuthFrame/attachConnectionLifecycle close the socket with the single generic UNAUTHENTICATED_CLOSE_CODE (4401) on any authenticate() failure or timeout; never a differentiated reason.",
+        "services/gateway/src/ws/auth.ts:34-37,65-75 -- isDevOrTestEnvironment()/devConnectionIdentity() read NODE_ENV from server-side config (@sayre/config), not from any client-supplied header/frame; devConnectionIdentity() itself throws outside dev/test."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only; this file is unmodified by CH-05. No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/auth.ts:34-37,46-54,65-75"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-03|websocket-realtime|gateway-token-handling|v1",
+      "check_id": "WS-03",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/coreClient.ts, ws/auth.ts, ws/connection.ts",
+      "attack_path_version": "v1",
+      "attempt": "Checked every place the connection's bearer token is read, stored, or forwarded for a URL/query-string/log leak.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts:27-32 -- extractUpgradeToken reads the Authorization header only, explicitly never a query string (comment states the invariant and the reason: query strings land in access logs/browser history).",
+        "services/gateway/src/coreClient.ts:104-121 -- fetchChatPushAuthorization forwards the token only as an Authorization header on the internal POST, never in the URL or body.",
+        "CORE-03's observation above (console.* grep + EC-12 dynamic test) directly covers the log-leak dimension of this same checklist item."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read + this session's coreClient.test.ts run (EC-12). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/auth.ts:27-32",
+        "services/gateway/src/coreClient.ts:104-121"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-04|websocket-realtime|chat-subscribe-idor|v1",
+      "check_id": "WS-04",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/connection.ts's handleChatSubscribe + services/core/src/services/realtimeChatService.ts",
+      "attack_path_version": "v1",
+      "attempt": "With a same-org non-owner's credentials, attempted to subscribe directly to another user's known conversationId (an IDOR against a guessable/known UUID); separately, attempted to subscribe to a random/nonexistent conversationId to check for an existence-disclosure oracle.",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:164-198 -- handleChatSubscribe always calls deps.authorizeChatSubscription(conn, conversationId) before adding to chatSubscriptions or acquiring a Redis channel; any false/thrown result -> the identical chat_forbidden frame, nothing recorded.",
+        "services/core/src/services/realtimeChatService.ts:26-33 -- store.getConversation is scoped by { orgId: ctx.orgId, userId: ctx.userId }; a conversation owned by a different user in the same org resolves to null -> ChatNotFoundError -> HTTP 404 -> gateway's CoreForbiddenError -> chat_forbidden.",
+        "services/gateway/src/chatE2e.test.ts:385-410 (AC-2/EC-8 test, dynamically re-run this session) -- a same-org non-owner is refused at subscribe, triggers zero Redis SUBSCRIBE calls (subscribeCalls only contains the owner's channel), and receives zero frames when the owner's conversation subsequently delivers an event.",
+        "services/core/src/services/realtimeChatService.test.ts:129-153 (AC-11/EC-8, dynamically re-run) -- a nonexistent conversation and one owned by another user raise the IDENTICAL ChatNotFoundError; no existence-disclosure oracle."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/chatE2e.test.ts -t AC-2` in services/gateway and `npx vitest run src/services/realtimeChatService.test.ts` in services/core, both re-run this session as part of the full suite (193/193, 1217/1217). No fixture created beyond the tests' own in-memory doubles.",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:164-198",
+        "services/core/src/services/realtimeChatService.ts:26-33",
+        "services/gateway/src/chatE2e.test.ts:385-410"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-05|websocket-realtime|chat-per-push-refilter|v1",
+      "check_id": "WS-05",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/fanout/chatFanout.ts's pushToConnection",
+      "attack_path_version": "v1",
+      "attempt": "Verified authorization is re-evaluated on every single push (not cached from subscribe time), by tracing pushToConnection's call graph and by re-running a test that narrows a connection's scope between two consecutive pushes on an already-subscribed connection.",
+      "evidence": [
+        "services/gateway/src/fanout/chatFanout.ts:39-51 -- pushToConnection calls deps.authorizePush(...) unconditionally at the top of every invocation, once per matching connection per event; no cache, memo, or subscribe-time snapshot is read anywhere in this file or in chatPubsub.ts/connection.ts.",
+        "services/gateway/src/chatE2e.test.ts:436-461 (AC-4/AC-9 test, dynamically re-run this session) -- with an authorization stub returning a full citation list on the first call and an empty one on the second, the FIRST delivered frame carries the citation and the SECOND does not, and `authorizePush` was called exactly twice for two events (once per event, not once at subscribe)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/chatE2e.test.ts -t AC-4` re-run this session as part of the full 193/193-passing gateway suite. No fixture created.",
+      "code_references": [
+        "services/gateway/src/fanout/chatFanout.ts:39-51",
+        "services/gateway/src/chatE2e.test.ts:436-461"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-06|websocket-realtime|chat-revocation-mid-turn|v1",
+      "check_id": "WS-06",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/fanout/chatFanout.ts's error handling (CoreUnauthorizedError/CoreForbiddenError branches)",
+      "attack_path_version": "v1",
+      "attempt": "Simulated a session revoked mid-turn (Core returns 401 on a later push) and ownership revoked mid-turn (Core returns 403/404 on a later push), verifying delivery and the subscription both stop promptly.",
+      "evidence": [
+        "services/gateway/src/fanout/chatFanout.ts:63-72 -- CoreUnauthorizedError -> deps.onUnauthorized(conn), zero frames sent; CoreForbiddenError -> exactly one chat_forbidden error frame, then deps.onSubscriptionRevoked(conn, conversationId) (which deletes the subscription and releases the Redis channel), zero event data.",
+        "services/gateway/src/fanout/chatFanout.test.ts:542-580 (EC-13/EC-14, dynamically re-run this session) -- confirms onUnauthorized is called with the connection and onSubscriptionRevoked is called with (conn, conversationId), with the correct frame contents."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/fanout/chatFanout.test.ts` re-run this session as part of the full 193/193-passing gateway suite. No fixture created.",
+      "code_references": [
+        "services/gateway/src/fanout/chatFanout.ts:63-72",
+        "services/gateway/src/fanout/chatFanout.test.ts:542-580"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-07|websocket-realtime|redis-chat-channel-tenant-confusion|v1",
+      "check_id": "WS-07",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/chatEvents.ts's decodeChatEvent + parseChatEventChannel",
+      "attack_path_version": "v1",
+      "attempt": "Attempted channel-name collision (a channel string not matching the strict 2-segment pattern), a forged publisher envelope (wrong source/org_id/type), and a payload/channel conversationId mismatch, to see whether any of these could cross tenant boundaries or reach a client.",
+      "evidence": [
+        "services/gateway/src/ws/chatEvents.ts:52-61 -- parseChatEventChannel uses an anchored regex (^sayre:chat\\.events:([^:]+):([^:]+)$) with no colon inside either segment; returns null (dropped) for anything else.",
+        "services/gateway/src/ws/chatEvents.ts:199-266 -- decodeChatEvent independently checks envelope.org_id === channel org segment, envelope.source === 'sayre-chat-worker', envelope.type in the 3 pinned types, and payload.conversationId === channel conversation segment; any mismatch -> null, logged with a fixed reason, never forwarded.",
+        "assertValidEnvelope (services/core/src/queue/envelope.ts:85-99) requires org_id to be a non-blank string before decodeChatEvent's own agreement check even runs.",
+        "services/gateway/src/ws/chatEvents.test.ts (EC-1..EC-6 tests, dynamically re-run this session) -- malformed envelope, org_id mismatch, conversationId mismatch, unrecognized type, wrong source, and unparsable channel are each independently asserted dropped."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/ws/chatEvents.test.ts` re-run this session as part of the full 193/193-passing gateway suite. No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/chatEvents.ts:52-61,199-266"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-08|websocket-realtime|chat-message-schema-validation|v1",
+      "check_id": "WS-08",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/protocol.ts + ws/chatEvents.ts decoders",
+      "attack_path_version": "v1",
+      "attempt": "Sent (via unit tests / static trace) client messages impersonating server events, malformed/oversized nested payloads, and prototype-key payloads, to look for schema/property confusion the hand-rolled guards might miss.",
+      "evidence": [
+        "services/gateway/src/ws/protocol.ts:47-91 -- decodeClientMessage rejects any type outside the fixed 'auth'/'subscribe'/'unsubscribe' set and any channel value other than 'chat'/undefined; no server-only message type ('chat.turn.*', 'graph.delta', etc.) can be constructed client-side since GatewayToClientMessage is never accepted as input.",
+        "services/gateway/src/ws/chatEvents.ts:88-188 -- every field of every payload type is checked with an explicit typeof/Number.isInteger/Set-membership guard (isNonBlankString/isNullableString/isFiniteNumber); a citation array over CHAT_MAX_CITATIONS (24) is rejected outright.",
+        "JSON.parse-based objects in modern V8 do not trigger the Object.prototype '__proto__' setter (a data property literally named '__proto__' is created instead), and every decoder here reads named fields off a plain Record<string, unknown> via destructuring/property access, never iterates or copies unknown keys onto a live object -- no prototype-pollution vector was found."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read; the maximum-frame-size dimension of this checklist item is covered instead under WS-11 below (no ws maxPayload configured -- a shared, pre-existing gap, not new to this diff). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/protocol.ts:47-91",
+        "services/gateway/src/ws/chatEvents.ts:88-188"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-09|websocket-realtime|chat-event-ordering-and-redis-reconnect|v1",
+      "check_id": "WS-09",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/redis/chatPubsub.ts's per-channel promise chain + EC-24's ioredis-reconnect reliance",
+      "attack_path_version": "v1",
+      "attempt": "Verified progress events cannot be reordered/overtaken by a slower earlier authorization call, that the gateway never re-buffers or replays a missed event, and probed the reconnect-resubscribe guarantee EC-24 relies on.",
+      "evidence": [
+        "services/gateway/src/redis/chatPubsub.ts:47-62 -- each channel's handler invocations are chained on a per-channel Promise so a slower first authorization call cannot let a faster second call's frame arrive first; a rejected handler is caught inside the chain and never breaks it.",
+        "services/gateway/src/redis/chatPubsub.test.ts:194-226 (AC-1 ordering test, dynamically re-run this session) -- uses inverted per-seq delays (40/20/5ms) and asserts the exact monotonic timeline; a fire-and-forget dispatch would fail this assertion.",
+        "services/gateway/src/ws/chatEvents.ts / EC-27 test -- progress events with a gap or repeat in seq are relayed verbatim, never reordered/renumbered/buffered/deduplicated by the gateway.",
+        "spec.md EC-24 / redis/chatPubsub.ts:1-13 comment -- the gateway deliberately adds no reconnect logic of its own, relying on ioredis's own documented behavior of re-issuing SUBSCRIBE for tracked channels after a reconnect; this specific guarantee (a live Redis connection actually drops and ioredis actually resubscribes) was not dynamically reproduced this run (no live Redis instance was started, consistent with red.md's and tester's own disclosed EC-24 gap)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/redis/chatPubsub.test.ts` re-run this session (part of the 193/193-passing suite). The ioredis-reconnect half of EC-24 remains UNVERIFIED-by-live-Redis (disclosed, pre-existing gap, not introduced by this run); recorded as a coverage limitation in report.md rather than silently marked PASS-by-default. No fixture created.",
+      "code_references": [
+        "services/gateway/src/redis/chatPubsub.ts:47-62",
+        "services/gateway/src/redis/chatPubsub.test.ts:194-226"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-10|websocket-realtime|chat-forbidden-existence-nondisclosure|v1",
+      "check_id": "WS-10",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/connection.ts's chatForbiddenReply + services/core ChatNotFoundError/ChatForbiddenError mapping",
+      "attack_path_version": "v1",
+      "attempt": "Compared the exact code/message/frame count returned for a nonexistent conversationId versus one owned by a different same-org user, looking for a content-based side channel; noted that a timing-based side channel was not independently measured.",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:148-151,160-162 -- CHAT_FORBIDDEN_CODE/CHAT_FORBIDDEN_MESSAGE are single constants; chatForbiddenReply() returns the identical frame for every rejection reason.",
+        "services/gateway/src/chatE2e.test.ts:396-398 -- the non-owner case asserts the exact frame `{type:'error', code:'chat_forbidden', message:'Conversation not found.'}`.",
+        "services/core/src/services/realtimeChatService.test.ts:129-153 -- nonexistent and unowned both raise the identical ChatNotFoundError, mapped to the identical HTTP 404."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Tests re-run this session as part of the full suites. A response-timing side-channel comparison (Postgres existence check vs. ownership mismatch) was not independently measured this run -- noted as a Limitation. No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:148-162",
+        "services/gateway/src/chatE2e.test.ts:396-398"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-11|websocket-realtime|gateway-ws-message-handler|v1",
+      "check_id": "WS-11",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/connection.ts's attachConnectionLifecycle message handler + handleChatSubscribe",
+      "attack_path_version": "v1",
+      "attempt": "Traced the cost of a single inbound WS frame on the new chat-subscribe path and searched the gateway for any per-connection rate limit, debounce, or in-flight-request cap on it. Found none: every `{type:'subscribe', channel:'chat', conversationId}` frame -- including a REPEAT subscribe to a conversation the connection already holds, and a subscribe to a conversation the caller does not own -- unconditionally triggers one full awaited round trip through deps.authorizeChatSubscription (an HTTP POST to Core's /internal/realtime/chat-authorization plus one scoped Postgres query in realtimeChatService's store.getConversation) BEFORE the isNew/already-subscribed check is ever consulted. Each inbound `socket.on('message', ...)` frame is also dispatched as its own independent `void (async () => {...})()` with no queueing, so a burst of frames on one connection fires that many authorization round trips concurrently, unbounded.",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:164-198 -- handleChatSubscribe calls `await deps.authorizeChatSubscription(conn, conversationId)` unconditionally as its first substantive step, and only AFTER that resolves does it check `isNew = !conn.chatSubscriptions.has(conversationId)` -- so a duplicate subscribe to an already-held, legitimately-owned conversation still pays the full Core+Postgres round trip every time, not just the first time.",
+        "services/gateway/src/ws/connection.ts:285-327 -- the socket 'message' handler wraps each frame's processing in its own `void (async () => {...})()` with no per-connection queue, semaphore, or rate limiter; N frames in flight on one connection produce up to N concurrent handleChatSubscribe/authorizeChatSubscription calls.",
+        "grep -rniE 'rate.?limit|throttle|maxPayload|debounce' services/gateway/src (excluding tests) -- zero matches anywhere in the gateway; no bound exists at any layer between an inbound WS frame and an outbound Core HTTP call.",
+        "This is a genuinely new amplification path introduced by CH-05: the pre-existing repo-scoped `handleSubscribe` (ws/connection.ts:115-125) is fully synchronous and makes zero network calls at subscribe time, so it could not be abused the same way; CH-05's chat-subscribe path is the first WS-inbound frame type in this codebase whose handling is gated on an awaited Core round trip on every occurrence, including repeats."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-2c0a6d36bdc4",
+        "status": "OPEN",
+        "first_seen_run_id": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+        "first_seen_commit": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+        "last_seen_run_id": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+        "last_seen_commit": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Add a per-connection rate limit / in-flight-request cap on chat subscribe frames (and ideally on inbound WS message processing generally) before EACH one is allowed to trigger a fresh authorizeChatSubscription round trip -- e.g. a short-lived per-(connectionId, conversationId) memo bounded to the in-flight acquire (already partially exists via the isNew/acquire ordering, but only for the Redis-acquire side, not the authorization-call side), or a per-connection token bucket on inbound message processing overall. Not a tenant-isolation or RBAC-boundary failure (no cross-org/cross-user data is ever exposed by this path) and does not require a fix before merge, but should be tracked as a fast-follow given it is reachable by any single authenticated connection with no additional privilege.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Static code read (cited line ranges) plus a targeted grep for rate-limiting keywords across services/gateway/src (excluding *.test.ts), which returned zero matches. No dynamic flood test was run against a live server (would require spinning up a real gateway process and is unnecessary to prove the absence of a code-level bound). No fixture created; nothing to clean up.",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:164-198,285-327"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-12|websocket-realtime|chat-citation-property-minimization|v1",
+      "check_id": "WS-12",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway/src/ws/chatEvents.ts's filterCitations",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the per-push filter checks BOTH identifiers a citation carries (nodeId and the optional resolvedNodeId 'jump to canvas' pointer), not only a top-level id, per the ticket's own strict-reading decision.",
+      "evidence": [
+        "services/gateway/src/ws/chatEvents.ts:294-304 -- filterCitations keeps a citation only when authorizedNodeIds.has(citation.nodeId) AND (resolvedNodeId === null OR authorizedNodeIds.has(citation.resolvedNodeId)) -- both identifiers, not just nodeId, gate delivery.",
+        "services/gateway/src/ws/chatEvents.test.ts (EC-15/EC-16/EC-17 tests, dynamically re-run this session) -- a citation whose nodeId is authorized but whose resolvedNodeId is not is fully dropped, not half-delivered with a nulled pointer."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/ws/chatEvents.test.ts` re-run this session (part of the 193/193-passing suite). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/chatEvents.ts:294-304"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|internal-realtime-chat-authorization-route|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/routes/realtimeInternal.ts",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the one new route this diff adds is inventoried and consistently protected, and checked its own documentation of the network-layer assumption it depends on.",
+      "evidence": [
+        "services/core/src/routes/realtimeInternal.ts:47-60 -- POST /internal/realtime/chat-authorization, gated by authenticate() + authorize('member'), consistent with the sibling /internal/realtime/graph-delta route above it.",
+        "services/core/src/routes/realtimeInternal.ts:10-25 -- the route's own comment explicitly discloses that the '/internal/' prefix is a naming convention, not an enforcement mechanism, and that production deployments must additionally firewall this route at the network layer; this repo cannot verify that network-layer control (infra/deployment config is out of this diff's scope)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only. The network-layer firewall assumption is recorded as a Limitation, not independently verified. No fixture created.",
+      "code_references": [
+        "services/core/src/routes/realtimeInternal.ts:10-25,47-60"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|chat-authorization-request-parsing|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/http/realtimeDeltaRequest.ts's parseRealtimeChatAuthorizationRequest",
+      "attack_path_version": "v1",
+      "attempt": "Attempted SQL/Cypher/OS/template/expression injection at the new route's one input boundary (conversationId, nodeIds).",
+      "evidence": [
+        "services/core/src/http/realtimeDeltaRequest.ts:74-102 -- conversationId/nodeIds are validated as plain strings (typeof checks) and passed straight through to requireConversationId (a UUID/format check, chatService.ts) and getAuthorizedNodeIds (parameterized Cypher, see CORE-06 observation above); no string ever reaches a query builder, shell, or template unescaped.",
+        "CORE-06's observation above directly covers the one query this input can reach."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only. No fixture created.",
+      "code_references": [
+        "services/core/src/http/realtimeDeltaRequest.ts:74-102"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|no-rendering-surface-in-this-diff|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "N/A -- apps/web untouched by this diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces any HTML/Markdown rendering path for the citation `label` field or the free-text `answer` field.",
+      "evidence": [
+        "`git diff 6d3acfc -- apps/web` and `git status apps/web` are both empty -- confirmed independently this session, matching review.md's own claim; CH-05's Scope -> Out section explicitly forbids touching apps/web.",
+        "This diff's own output is JSON over a WS frame / an internal HTTP response, not HTML; no rendering code exists in the changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`git diff 6d3acfc -- apps/web` re-run this session, empty. Flagged in report.md that CH-06 (the actual rendering surface, out of scope here) must apply its own output encoding to `answer`/citation `label` when it lands. No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|internal-realtime-chat-authorization-route|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/routes/realtimeInternal.ts + services/core/src/http/authenticate.ts",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new route relies on any cookie-based/ambient authentication a cross-origin page could ride, which is the precondition for classic CSRF against a state-changing POST.",
+      "evidence": [
+        "services/core/src/http/authenticate.ts:31-61 -- authentication is via the Authorization Bearer header only (extractBearerToken); no cookie is read anywhere in this file.",
+        "The route is also internal-only per its own comment (see WEB-01), called server-to-server from the gateway with a token it holds, not from a browser form/fetch with credentials:'include'."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only. No fixture created.",
+      "code_references": [
+        "services/core/src/http/authenticate.ts:31-61"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|no-browser-surface-in-this-diff|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "N/A -- no HTML page/frame in this diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff adds any HTML-serving surface subject to clickjacking/framing.",
+      "evidence": [
+        "The new route returns JSON only; no HTML template, iframe, or install-flow page is added by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only. No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|chat-authorization-mass-assignment|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/http/realtimeDeltaRequest.ts + services/core/src/services/realtimeChatService.ts",
+      "attack_path_version": "v1",
+      "attempt": "Sent (via test + static trace) a body with extra/hidden fields (org_id, orgId, userId, admin/role fields) alongside the legitimate conversationId/nodeIds to see whether any reach ctx resolution or the store query.",
+      "evidence": [
+        "services/core/src/http/realtimeDeltaRequest.ts:76-101 -- parseRealtimeChatAuthorizationRequest destructures only candidate.conversationId/candidate.nodeIds; any other body key is silently ignored (never copied through).",
+        "services/core/src/services/realtimeChatService.test.ts:84-110 (AC-11/AC-8 test, dynamically re-run this session) -- explicitly posts extra org/user fields in the body and asserts they have no effect; the store is scoped ONLY by ctx.orgId/ctx.userId."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/services/realtimeChatService.test.ts` re-run this session (part of the 1217/1217-passing core suite). No fixture created.",
+      "code_references": [
+        "services/core/src/http/realtimeDeltaRequest.ts:76-101",
+        "services/core/src/services/realtimeChatService.test.ts:84-110"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|chat-authorization-input-ambiguity|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/http/realtimeDeltaRequest.ts's parseRealtimeChatAuthorizationRequest",
+      "attack_path_version": "v1",
+      "attempt": "Checked handling of a non-array/non-object body, a non-string-array nodeIds, an oversized nodeIds array, and blank-string entries.",
+      "evidence": [
+        "services/core/src/http/realtimeDeltaRequest.ts:79-96 -- rejects a non-object or array body outright; isNonBlankStringArray rejects any non-string or blank-string array entry; nodeIds.length > CHAT_AUTHORIZATION_MAX_NODE_IDS (64) is rejected with a 400 (RealtimeDeltaParseError)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only; a dedicated fuzz pass (unicode normalization edge cases, numeric-extreme edge cases) was not run since this endpoint accepts only strings/arrays-of-strings, not numbers. No fixture created.",
+      "code_references": [
+        "services/core/src/http/realtimeDeltaRequest.ts:79-96"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|internal-realtime-chat-authorization-route|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/routes/realtimeInternal.ts",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new internal route itself has a request-rate bound, given the gateway-side amplification already found under WS-11.",
+      "evidence": [
+        "No per-route rate limiter/throttle exists in services/core/src/routes/realtimeInternal.ts or in the authenticate()/authorize() middleware chain it uses.",
+        "The route's own comment (realtimeInternal.ts:10-25) states production deployments must firewall it at the network layer so only the gateway's private subnet can reach it -- if that network control is correctly in place, the WS-11 finding is this route's only realistic amplification path (via the gateway itself, already an authenticated actor); if that network control is EVER missing, any authenticated org member could hit this route directly with the same unbounded-repeat pattern WS-11 describes. This repo cannot verify the deployed network topology."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only; infra/deployment network-policy verification is out of this repo's scope. Cross-references FND-2c0a6d36bdc4 (WS-11) rather than opening a duplicate finding for the same root cause. No fixture created.",
+      "code_references": [
+        "services/core/src/routes/realtimeInternal.ts:10-25"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|chat-ownership-revocation-race|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/services/realtimeChatService.ts + services/gateway/src/fanout/chatFanout.ts",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether ownership/authorization is re-verified server-side at delivery time rather than only at an earlier point that could be raced.",
+      "evidence": [
+        "Every chat push independently re-derives ctx server-side (requireAuthContext) and re-queries ownership (store.getConversation) at the moment of the push, not at subscribe time or any earlier cached point -- see WS-05's observation above for the direct dynamic proof (AC-4/AC-9)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Same evidence/reproduction as WS-05 above. No fixture created.",
+      "code_references": [
+        "services/core/src/services/realtimeChatService.ts:24-39"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|internal-realtime-chat-authorization-route|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/routes/realtimeInternal.ts",
+      "attack_path_version": "v1",
+      "attempt": "Checked for an explicit Cache-Control/Vary header on the new route's response, and whether the cache key (if any intermediary cached it) would omit org/user scope.",
+      "evidence": [
+        "services/core/src/routes/realtimeInternal.ts's handler calls res.json(authorization) with no explicit Cache-Control/Vary header; Express sets no cache header by default either. POST responses are not cached by standard HTTP semantics without explicit opt-in, and the route is internal-only (no browser/CDN sits in this path per its own documented deployment assumption)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "LOW",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only; response headers were not inspected against a live running instance this run. Low priority given the internal-only, POST-only, no-intermediary posture. No fixture created.",
+      "code_references": [
+        "services/core/src/routes/realtimeInternal.ts:51-59"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|chat-authorization-error-enumeration|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/http/express.ts's error mapping + realtimeChatService.ts",
+      "attack_path_version": "v1",
+      "attempt": "Compared status/body for a nonexistent vs. unowned conversation, and for an unexpected server error, checking for a stack-trace/internal-detail leak.",
+      "evidence": [
+        "services/core/src/http/express.ts:243-248 -- ChatForbiddenError -> 403, ChatNotFoundError -> 404, both pre-existing, reused unchanged mappings (from CH-03).",
+        "services/core/src/http/express.ts:260-261 -- the generic error handler's comment states 'Never leak err.stack or the raw internal message for unknown errors'; responds with a fixed { error: 'Internal server error' } body on any unmapped exception.",
+        "WS-10's observation above directly covers the identical-403-vs-404-content dimension with a dynamic test citation."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only. No fixture created.",
+      "code_references": [
+        "services/core/src/http/express.ts:243-261"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|no-redirect-surface-in-this-diff|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "N/A -- no redirect/URL-generation code in this diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new route or service generates any redirect, callback URL, or absolute link from tenant content.",
+      "evidence": [
+        "realtimeChatService.ts/realtimeInternal.ts return only JSON data (conversationId, authorizedNodeIds); no URL construction, redirect, or Location header anywhere in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code read only. No fixture created.",
+      "code_references": []
+    }
+  ]
+}

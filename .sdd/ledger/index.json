@@ -4766,6 +4766,12 @@
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
     },
     {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    },
+    {
       "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
       "ticket": "CH-01",
       "date": "2026-08-11",
@@ -6152,12 +6158,26 @@
       }
     }
   ],
+  "services/core/src/graph-query/index.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
   "services/core/src/graph-query/index.ts": [
     {
       "runId": "20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5",
       "ticket": "CH-02",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5/spec.md"
+    },
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
     }
   ],
   "services/core/src/graph-query/ticketReadiness.test.ts": [
@@ -6174,6 +6194,12 @@
       "ticket": "CH-02",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5/spec.md"
+    },
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
     }
   ],
   "services/core/src/http/express.gapfill.test.ts": [
@@ -6217,6 +6243,22 @@
       "regate": {
         "testerRan": true
       }
+    }
+  ],
+  "services/core/src/http/realtimeDeltaRequest.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/core/src/http/realtimeDeltaRequest.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
     }
   ],
   "services/core/src/mcp/ephemeralMcpGateway.test.ts": [
@@ -6652,6 +6694,22 @@
       }
     }
   ],
+  "services/core/src/routes/realtimeInternal.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/core/src/routes/realtimeInternal.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
   "services/core/src/security/ch01UnmodifiedSurfaces.test.ts": [
     {
       "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
@@ -6711,6 +6769,12 @@
       "ticket": "CH-04",
       "date": "2026-08-11",
       "spec": ".sdd/ledger/20260811T010720502Z-25988f3-PR_DELTA-3a73ea/spec.md"
+    },
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
     },
     {
       "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
@@ -6903,6 +6967,22 @@
       "regate": {
         "testerRan": true
       }
+    }
+  ],
+  "services/core/src/services/realtimeChatService.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/core/src/services/realtimeChatService.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
     }
   ],
   "services/core/src/services/ticketReadinessService.test.ts": [
@@ -7119,6 +7199,126 @@
           "base"
         ]
       }
+    }
+  ],
+  "services/gateway/src/chatE2e.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/coreClient.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/coreClient.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/fanout/chatFanout.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/fanout/chatFanout.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/redis/chatPubsub.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/redis/chatPubsub.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/redis/pubsub.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/server.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/ws/chatEvents.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/ws/chatEvents.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/ws/connection.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/ws/connection.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/ws/protocol.test.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
+    }
+  ],
+  "services/gateway/src/ws/protocol.ts": [
+    {
+      "runId": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T025958679Z-6d3acfc-PR_DELTA-091a39/spec.md"
     }
   ],
   "services/gateway/test/cross-runtime/consumeRealtime.ts": [
