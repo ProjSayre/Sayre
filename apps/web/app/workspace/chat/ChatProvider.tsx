@@ -16,6 +16,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import type { ClientToGatewayMessage } from '@sayre/shared-types';
 import { getStoredSessionToken } from '../../lib/coreFetch';
 import { browserRealtimeUrl, parseGatewayMessage } from '../realtime';
 import { useWorkspaceQueries } from '../state/queries';
@@ -229,7 +230,12 @@ export function WorkspaceChatProvider({ children }: { children: ReactNode }) {
       const generic = parseGatewayMessage(event.data);
       if (generic !== null) {
         if (generic.type === 'ready') {
-          socket.send(JSON.stringify({ type: 'chat.subscribe', conversationId }));
+          const subscribeFrame: ClientToGatewayMessage = {
+            type: 'subscribe',
+            channel: 'chat',
+            conversationId,
+          };
+          socket.send(JSON.stringify(subscribeFrame));
           void reconcileNow(conversationId);
           return;
         }
@@ -263,7 +269,12 @@ export function WorkspaceChatProvider({ children }: { children: ReactNode }) {
 
     return () => {
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'chat.unsubscribe', conversationId }));
+        const unsubscribeFrame: ClientToGatewayMessage = {
+          type: 'unsubscribe',
+          channel: 'chat',
+          conversationId,
+        };
+        socket.send(JSON.stringify(unsubscribeFrame));
       }
       socket.close();
       if (socketRef.current === socket) socketRef.current = null;

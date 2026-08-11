@@ -993,7 +993,7 @@ describe('scope chip', () => {
 
     expect(panelText(renderer)).not.toContain('The checkout folder owns the cart-to-confirmation flow.');
     expect(panelText(renderer)).not.toContain('What does this folder do?');
-    expect(socket.frames().some((frame) => frame.type === 'chat.unsubscribe' && frame.conversationId === 'conv_1')).toBe(true);
+    expect(socket.frames().some((frame) => frame.type === 'unsubscribe' && frame.channel === 'chat' && frame.conversationId === 'conv_1')).toBe(true);
     expect(socket.closeCodes.length).toBeGreaterThan(0);
   });
 });
@@ -1148,7 +1148,7 @@ describe('degraded, REST-only path', () => {
     const socket = await connectSocket();
 
     expect(socket.frames().some((frame) => frame.type === 'auth')).toBe(true);
-    expect(socket.frames().some((frame) => frame.type === 'chat.subscribe' && frame.conversationId === 'conv_1')).toBe(true);
+    expect(socket.frames().some((frame) => frame.type === 'subscribe' && frame.channel === 'chat' && frame.conversationId === 'conv_1')).toBe(true);
     expect(backend.gets).toContain('conv_1');
   });
 });
