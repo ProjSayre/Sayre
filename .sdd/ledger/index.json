@@ -5940,6 +5940,15 @@
       }
     },
     {
+      "runId": "20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b",
+      "ticket": "CH-04",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
       "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
       "ticket": "CH-01",
       "date": "2026-08-12",

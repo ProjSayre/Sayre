@@ -1,0 +1,133 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/workers/tests/test_chat_events.py",
+      "sha256": "eea1f4518850a29f846d6fd1aa9823807d294b4246f226899fd5f24074a4005b",
+      "specIds": [
+        "AC-2",
+        "AC-4",
+        "AC-5",
+        "AC-9",
+        "AC-12",
+        "AC-15",
+        "AC-16",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_chat_mcp_client.py",
+      "sha256": "802d23d0891a53d015d0907333a95335874af48c92a921644349786889942c46",
+      "specIds": [
+        "AC-5",
+        "AC-8",
+        "AC-16",
+        "EC-9"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_chat_prompt.py",
+      "sha256": "defe87e83d5b0400b83e0f7d60e5bd747b0bc82a40ccf57a009fe50e3e330b7f",
+      "specIds": [
+        "AC-11",
+        "EC-29",
+        "EC-30"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_chat_agent_loop.py",
+      "sha256": "ab890132f65d44d10f55a3a4f717c6498981e31a4f510ded88a41106dd71e7df",
+      "specIds": [
+        "AC-2",
+        "AC-6",
+        "AC-8",
+        "AC-11",
+        "AC-12",
+        "AC-17",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-20",
+        "EC-21",
+        "EC-22",
+        "EC-23",
+        "EC-30"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_chat_turn_consumer.py",
+      "sha256": "1f68861d4cddbe8d09ece4537eb741e77ded77e9392530339bd5b7308cc2d8b9",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-9",
+        "AC-10",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-11",
+        "EC-16",
+        "EC-17",
+        "EC-18",
+        "EC-19",
+        "EC-20"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_chat_boundaries.py",
+      "sha256": "9ee396849ccd857f31103e3d8586047560a53a7a5804227092ef21cabc77518e",
+      "specIds": [
+        "AC-15",
+        "AC-16"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/chatService.test.ts",
+      "sha256": "d4e0e9e3e3caf8613970f86c505d3b3804eb81e21c9b14a11b0b549d871b6686",
+      "specIds": [
+        "AC-7",
+        "AC-14",
+        "EC-24",
+        "EC-25",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/security/ch04ChatCredentialFkMigration.test.ts",
+      "sha256": "48dd02adf8753f56ea63849e3822071c7eecb107af4bdb9a94e748c3762db853",
+      "specIds": [
+        "AC-13",
+        "EC-27",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "b1ce66aa57c9d7688151da23658b789ae62c09195f202a7a5242ca2964c85d04",
+    "headSha": "25988f3e048ff3fd58336b4d9869c6fa8f0249b1",
+    "dirty": true,
+    "writtenAt": "2026-08-11T00:02:21.103Z"
+  }
+}
