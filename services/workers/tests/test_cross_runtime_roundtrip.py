@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -168,6 +169,19 @@ def _node_env(**overrides: str | None) -> dict[str, str]:
         else:
             env[name] = value
     return env
+
+
+def _kill_consumer_process_group(consumer: subprocess.Popen[str]) -> None:
+    """`npx` forks `tsx` as a grandchild; killing only `consumer.pid` leaves it running,
+    holding stdout/stderr open and hanging any later `communicate()`. `start_new_session=True`
+    at spawn time (below) puts the whole tree in its own process group, so `consumer.pid` IS
+    that group's id -- same pattern as sayre_workers.ingestion.repository's
+    `_UnixProcessGroup.terminate()` for the same reason (containing a subprocess that itself
+    forks helpers)."""
+    try:
+        os.killpg(consumer.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
 
 
 def _run_node(
@@ -330,6 +344,7 @@ def test_python_published_graph_updated_is_consumed_by_node_gateway():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=_node_env(),
+        start_new_session=True,
     )
     try:
         # Let the long-poll consumer attach before publishing, so the assertion is about
@@ -340,12 +355,12 @@ def test_python_published_graph_updated_is_consumed_by_node_gateway():
         try:
             stdout, stderr = consumer.communicate(timeout=90)
         except subprocess.TimeoutExpired:
-            consumer.kill()
+            _kill_consumer_process_group(consumer)
             stdout, stderr = consumer.communicate()
             pytest.fail(f"consumeRealtime.ts never returned; stdout={stdout!r} stderr={stderr!r}")
     finally:
         if consumer.poll() is None:
-            consumer.kill()
+            _kill_consumer_process_group(consumer)
             consumer.communicate()
         _drain(REALTIME_QUEUE)
 
@@ -496,13 +511,14 @@ def test_killed_gateway_harness_leaves_the_message_for_redelivery():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=_node_env(),
+        start_new_session=True,
     )
     try:
         time.sleep(3)
         assert consumer.poll() is None, "gateway harness exited before the message was published"
         assert publish_graph_updated(envelope)
         time.sleep(5)
-        consumer.kill()
+        _kill_consumer_process_group(consumer)
         consumer.communicate(timeout=30)
 
         deadline = time.monotonic() + 45
@@ -523,7 +539,7 @@ def test_killed_gateway_harness_leaves_the_message_for_redelivery():
         )
     finally:
         if consumer.poll() is None:
-            consumer.kill()
+            _kill_consumer_process_group(consumer)
             consumer.communicate()
         # EC-17: never leave an unconsumed marker on a queue other suites share.
         _drain(REALTIME_QUEUE)
