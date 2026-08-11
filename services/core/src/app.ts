@@ -3,7 +3,7 @@ import { healthRouter } from './routes/health';
 import { technicalTreeRouter } from './routes/technicalTree';
 import { productTreeRouter } from './routes/productTree';
 import { realtimeInternalRouter } from './routes/realtimeInternal';
-import { githubWebhookRouter } from './routes/githubWebhook';
+import { githubWebhookRouter, GITHUB_WEBHOOK_MAX_BODY_BYTES } from './routes/githubWebhook';
 import { githubInstallRouter } from './routes/githubInstall';
 import { githubInstallationReconcileRouter } from './routes/githubInstallationReconcile';
 import { jiraConnectRouter } from './routes/jiraConnect';
@@ -24,7 +24,21 @@ export function createApp(): Express {
   // signature-validated, not session-validated — no authenticate()/authorize()
   // here, and no user session to attach; org_id is resolved from the
   // installation id inside the service, not from a request-scoped auth context.
-  app.use('/webhooks/github', express.raw({ type: '*/*', limit: '5mb' }), githubWebhookRouter);
+  //
+  // GAP-9 (W1-02 gapfill, AC-6): body-size cap decision, recorded here where the
+  // limit lives. Kept at GITHUB_WEBHOOK_MAX_BODY_BYTES (5 MB), deliberately NOT
+  // raised to GitHub's 25 MB ceiling. This route is UNAUTHENTICATED — every byte is
+  // buffered in memory before the HMAC signature can even be checked — so a bigger
+  // cap is a bigger pre-authentication denial-of-service lever for an unverified
+  // caller, not just a compatibility knob. 5 MB is still >10x the largest payload
+  // the supported event types realistically produce. If a genuine oversized delivery
+  // is ever observed (see the warning wired into http/express.ts's entity.too.large
+  // branch), raising it is a one-line follow-up.
+  app.use(
+    '/webhooks/github',
+    express.raw({ type: '*/*', limit: GITHUB_WEBHOOK_MAX_BODY_BYTES }),
+    githubWebhookRouter,
+  );
   app.use(express.json());
   app.get('/', (_req, res) => res.json({ message: 'Sayre core API' }));
   app.use(healthRouter);

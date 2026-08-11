@@ -1,0 +1,26 @@
+{
+  "headers": {
+    "x-github-event": "push",
+    "x-github-delivery": "66666666-6666-4666-8666-666666666666"
+  },
+  "body": {
+    "ref": "refs/heads/main",
+    "before": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "after": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "forced": false,
+    "deleted": false,
+    "repository": {
+      "id": 583231,
+      "full_name": "../../evil",
+      "private": false
+    },
+    "pusher": {
+      "name": "octocat",
+      "email": "octocat@example.com"
+    },
+    "installation": {
+      "id": 555
+    },
+    "commits": []
+  }
+}

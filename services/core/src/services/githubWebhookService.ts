@@ -10,6 +10,7 @@
 import type { NormalizedRepoEvent, RepoEventType } from '@sayre/shared-types';
 import { getSecret } from '@sayre/config';
 import { verifyGithubSignature, WebhookSignatureError } from '../webhooks/githubSignature';
+import { githubWebhookIdempotencyKey } from '../webhooks/githubDeliveryIdentity';
 import {
   MalformedGithubPayloadError,
   normalizeGithubEvent,
@@ -139,7 +140,15 @@ export async function handleGithubWebhook(
   if (githubEvent === 'installation') {
     const body = parsed as Record<string, unknown>;
     const installation = isRecord(body.installation) ? body.installation : null;
-    const installationId = typeof installation?.id === 'number' ? installation.id : null;
+    // GAP-6: mirror normalizeGithubEvent's extractInstallationId guard here — a plain
+    // `typeof === 'number'` admits NaN straight through to applyInstallationLifecycle.
+    const rawInstallationId = installation?.id;
+    const installationId =
+      typeof rawInstallationId === 'number' &&
+      Number.isSafeInteger(rawInstallationId) &&
+      rawInstallationId > 0
+        ? rawInstallationId
+        : null;
     if (installationId === null) {
       return { status: 'ignored', reason: 'no_installation' };
     }
@@ -198,12 +207,18 @@ export async function handleGithubWebhook(
 
   // (h) Build the envelope. org_id is the resolved value only — never copied from the
   // payload, even if the payload carries a forged organization/org_id/owner claim.
+  //
+  // GAP-4: idempotency_key comes from the signed BYTES (githubWebhookIdempotencyKey),
+  // never from X-GitHub-Delivery. The delivery id is not covered by the HMAC — anyone
+  // who captures a valid (body, signature) pair could otherwise mint a fresh dedup
+  // identity just by editing that header. deliveryId stays as trace_id / the
+  // payload's own delivery_id for attribution only.
   const envelope = makeEnvelope<NormalizedRepoEvent>({
     org_id: resolved.orgId,
     type: `repo.${event.type}`,
     source: 'github-webhook',
     trace_id: deliveryId,
-    idempotency_key: deliveryId,
+    idempotency_key: githubWebhookIdempotencyKey(input.rawBody),
     payload: event,
   });
 

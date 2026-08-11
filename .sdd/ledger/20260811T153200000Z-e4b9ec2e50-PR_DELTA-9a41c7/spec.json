@@ -1,0 +1,131 @@
+{
+  "ticket": "W1-02 — GitHub webhook receiver (gapfill: GAP-4 … GAP-9)",
+  "goal": "Close the six real defects gap-scout narrowed on the already-shipped W1-02 receiver: bind replay/dedup identity to the signed bytes rather than an unsigned header, constrain `push` to branch refs, make a malformed `installation.id` a clean 2xx-ignore/400 instead of a 500 + GitHub retry storm, validate `repository.full_name` to a real `owner/name` shape before anything is published, actually assert the BullMQ half of \"replayed fixtures produce correct queue messages\", and resolve the 5 MB body-cap tradeoff explicitly and observably.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-4) The envelope's idempotency_key — and therefore the SQS MessageDeduplicationId and the BullMQ jobId — is `github:webhook:<sha256 hex of the raw signed body>`, computed only from bytes covered by X-Hub-Signature-256. Two deliveries carrying identical bytes but different X-GitHub-Delivery headers produce the same idempotency_key and the same BullMQ jobId; the delivery id remains visible as trace_id and payload.delivery_id for attribution only."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-5) A validly-signed `push` whose ref is not under refs/heads/ (e.g. refs/tags/v1.0.0, refs/pull/7/head, a bare `main`, or exactly `refs/heads/`) is classified { ignored: 'unsupported_ref_type' } → HTTP 200 { ok: true, ignored: 'unsupported_ref_type' }, with zero calls to publishIngestionEvent and zero calls to enqueue. A push under refs/heads/ (including nested names like refs/heads/feat/a/b) is unaffected."
+    },
+    {
+      "id": "AC-3",
+      "text": "(GAP-6) installation.id is accepted only when Number.isSafeInteger(id) && id > 0, in both extractInstallationId and githubWebhookService's `installation` branch. -1, 1.5, 0, Infinity, NaN, and a non-safe integer resolve to a 200 no_installation ignore with resolveOrg/applyInstallationLifecycle never called — never a 500. Independently, InstallationResolutionInputError is mapped in http/express.ts to 400 { error: 'bad request' }, so it cannot reach the generic 500 fallback from any route."
+    },
+    {
+      "id": "AC-4",
+      "text": "(GAP-7) repository.full_name is accepted only as a clean two-segment owner/name (each segment matching /^[A-Za-z0-9._-]{1,100}$/, neither '.' nor '..'). '../../evil', 'a/b/c', 'owner/', '/name', and 'owner//name' throw MalformedGithubPayloadError → HTTP 400 with no publish to either queue; ordinary names such as acme-corp/widgets are unaffected."
+    },
+    {
+      "id": "AC-5",
+      "text": "(GAP-8) The BullMQ half of \"replayed fixtures produce correct queue messages\" is measured: replaying push.json asserts enqueue was called with queue name exactly 'github-sync', the same envelope object handed to publishIngestionEvent, and options exactly { jobId: envelope.idempotency_key }. The inert githubWebhook.fixtures.test.ts:147-148 destructure (queue-name string mistyped as the envelope, asserting nothing) no longer exists."
+    },
+    {
+      "id": "AC-6",
+      "text": "(GAP-9) The raw-body cap decision is explicit: it stays at 5 MB, expressed as the exported constant GITHUB_WEBHOOK_MAX_BODY_BYTES used by app.ts, with the rationale recorded in code (unauthenticated endpoint, whole body buffered before the HMAC can run, >10x the largest plausible payload for the supported event types; GitHub's 25 MB ceiling is knowingly not matched). An over-cap request returns 413 { error: 'payload too large' } before the secret loader, signature check, or any queue call runs, and emits exactly one fixed-string warning containing no header, body, signature, or secret material."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "Same bytes, same X-GitHub-Delivery, replayed twice (GitHub's own retry) → two publishes with an identical idempotency_key; envelopes differ only in message_id/occurred_at."
+    },
+    {
+      "id": "EC-2",
+      "text": "Same bytes, different X-GitHub-Delivery (the GAP-4 attack) → identical idempotency_key and identical BullMQ jobId, while trace_id/payload.delivery_id still reflect each delivery's own header."
+    },
+    {
+      "id": "EC-3",
+      "text": "Different bytes, same X-GitHub-Delivery → different idempotency_keys (no accidental collapse of two real events)."
+    },
+    {
+      "id": "EC-4",
+      "text": "A body tampered after signing is still 401 with no digest published and no queue call — GAP-1 regression guard; AC-1 must not move any work ahead of the signature check."
+    },
+    {
+      "id": "EC-5",
+      "text": "push with ref 'refs/tags/v1.0.0' → 200 unsupported_ref_type, no publish to either queue (previously published as repo.push)."
+    },
+    {
+      "id": "EC-6",
+      "text": "push with ref exactly 'refs/heads/', or a near-miss like 'refs/headsfoo' / 'refs/head/main' → 200 unsupported_ref_type."
+    },
+    {
+      "id": "EC-7",
+      "text": "push with ref 'refs/heads/feat/a/b' → still normalized and published to both destinations (slashes inside a branch name are legal)."
+    },
+    {
+      "id": "EC-8",
+      "text": "push with a missing/blank ref → still 200 no_ref (unchanged classification, and ordered before the new refs/heads/ guard)."
+    },
+    {
+      "id": "EC-9",
+      "text": "create/delete are untouched: ref_type 'branch' still yields refs/heads/<name> to ownership only; ref_type 'tag' still yields unsupported_ref_type."
+    },
+    {
+      "id": "EC-10",
+      "text": "push with installation.id of -1, 1.5, 0, Infinity, NaN, '555' (string), or 2 ** 53 → 200 no_installation, resolveOrg never called, nothing published."
+    },
+    {
+      "id": "EC-11",
+      "text": "An installation event with those same malformed ids → 200 no_installation with applyInstallationLifecycle never called (today NaN slips through this branch)."
+    },
+    {
+      "id": "EC-12",
+      "text": "InstallationResolutionInputError raised on any route → 400 { error: 'bad request' }, never 500 and never leaking the error message beyond that fixed body."
+    },
+    {
+      "id": "EC-13",
+      "text": "installation.id === Number.MAX_SAFE_INTEGER → accepted; resolveOrg is called with it."
+    },
+    {
+      "id": "EC-14",
+      "text": "repository.full_name of '../../evil', 'a/b/c', 'owner/', '/name', 'owner//name', '..', 'owner/na me', or a 300-character segment → 400, no publish to either queue."
+    },
+    {
+      "id": "EC-15",
+      "text": "repository.full_name of 'acme-corp/widgets', 'a.b/c_d-e.f', 'A_1/x.y-z' → published normally (no false rejection of legal GitHub names)."
+    },
+    {
+      "id": "EC-16",
+      "text": "repository.full_name missing, empty, or a non-string → still 400 (unchanged)."
+    },
+    {
+      "id": "EC-17",
+      "text": "A push fixture's ownership publish binds exactly ('github-sync', envelope, { jobId: envelope.idempotency_key }) — queue name, envelope identity, and options all asserted."
+    },
+    {
+      "id": "EC-18",
+      "text": "pull_request → exactly one enqueue on 'github-sync' and zero publishIngestionEvent calls (destination routing unchanged by this work)."
+    },
+    {
+      "id": "EC-19",
+      "text": "enqueue rejecting while publishIngestionEvent succeeds (and vice versa) still produces a 500 with no partial 2xx — unchanged Promise.allSettled behavior under the new jobId."
+    },
+    {
+      "id": "EC-20",
+      "text": "A body just under GITHUB_WEBHOOK_MAX_BODY_BYTES with a valid signature is processed normally; a body over it returns 413 with getWebhookSecret never invoked and no queue call."
+    },
+    {
+      "id": "EC-21",
+      "text": "The 413 response body is exactly { error: 'payload too large' } — no echo of the submitted payload — and the accompanying warning line contains no header/body/secret material."
+    },
+    {
+      "id": "EC-22",
+      "text": "ping, unsupported.star, installation_repositories.added/removed, and the unknown/revoked-installation paths keep their existing statuses and ignore reasons after all six changes land."
+    },
+    {
+      "id": "EC-23",
+      "text": "Concurrent duplicate deliveries (same bytes, different delivery ids) arriving in parallel both return 2xx; the queue-side dedup, not the receiver, is what collapses them — the receiver makes no claim of exactly-once (see Open questions)."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "f8b40c762838d4f909e43f9ca7648e59065e9b88b0f3f98c5e24d1852ab9b2a3",
+    "headSha": "e4b9ec2e501fe17184e21e16599f528065bb0b7b",
+    "dirty": true,
+    "writtenAt": "2026-08-11T05:37:57.362Z"
+  }
+}

@@ -727,6 +727,18 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
     }
   ],
   "Documents/PRD/PRD V1.md": [
@@ -738,6 +750,18 @@
       "gapfill": {
         "overlays": [
           "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
         ]
       }
     }
@@ -753,6 +777,18 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
     }
   ],
   "Documents/PRD/Ticket-Backlog-by-Feature-2.md": [
@@ -764,6 +800,18 @@
       "gapfill": {
         "overlays": [
           "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
         ]
       }
     }
@@ -5212,12 +5260,306 @@
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
     }
   ],
+  "services/core/src/app.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/github/repoFullName.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/github/repoFullName.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/http/express.gapfill.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/http/express.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
   "services/core/src/mcp/gateway.ts": [
     {
       "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/queue/__fixtures__/repo_push.envelope.json": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/routes/githubWebhook.fixtures.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/routes/githubWebhook.gapfill.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/routes/githubWebhook.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/routes/githubWebhook.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/services/githubWebhookService.gapfill.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/services/githubWebhookService.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/services/githubWebhookService.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/webhooks/__fixtures__/push.malformed-full-name.json": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/webhooks/__fixtures__/push.tag.json": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/webhooks/githubDeliveryIdentity.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/webhooks/githubDeliveryIdentity.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/webhooks/normalizeGithubEvent.gapfill.test.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/webhooks/normalizeGithubEvent.ts": [
+    {
+      "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+      "ticket": "W1-02",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base",
+          "spot-check"
+        ]
+      }
     }
   ],
   "services/workers/poetry.lock": [

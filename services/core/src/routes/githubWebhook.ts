@@ -9,6 +9,14 @@ import { asyncHandler } from '../http/express';
 // authenticate()/authorize() (W1-03) or a session.
 export const githubWebhookRouter = Router();
 
+/**
+ * Raw-body cap for the UNAUTHENTICATED webhook ingress. Deliberately below GitHub's
+ * 25 MB ceiling (see spec AC-6 / app.ts comment): every byte is buffered before the
+ * HMAC can be checked, so the cap is a pre-authentication DoS bound first and a
+ * compatibility limit second.
+ */
+export const GITHUB_WEBHOOK_MAX_BODY_BYTES = 5 * 1024 * 1024;
+
 // Mounted at the '/webhooks/github' prefix in app.ts (so express.raw() is scoped to
 // this path only) — the route itself is relative to that mount point.
 githubWebhookRouter.post(

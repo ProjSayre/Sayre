@@ -1,7 +1,7 @@
 // Fully DI-mocked unit tests for handleGithubWebhook — no Redis/SQS/Postgres.
 // getWebhookSecret/resolveOrg/publishIngestion/publishOwnership are all injected.
 
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { NormalizedRepoEvent } from '@sayre/shared-types';
 import type { MessageEnvelope } from '../queue/envelope';
@@ -485,9 +485,14 @@ describe('handleGithubWebhook — installation_repositories (W2-09)', () => {
 });
 
 describe('handleGithubWebhook — queue/delivery semantics', () => {
-  it('AC9: replaying the same delivery id yields the same idempotency_key both times', async () => {
+  // W1-02 gapfill AC-1 / GAP-4: the same-delivery-replay intent is kept, but the
+  // identity is now the SHA-256 of the signed bytes rather than the (unsigned, freely
+  // rewritable) X-GitHub-Delivery header this assertion used to pin.
+  // @spec AC-1 EC-1
+  it('AC9: replaying the same delivery yields the same signed-body idempotency_key both times', async () => {
     const deps = makeDeps();
     const rawBody = pushBody();
+    const expectedKey = `github:webhook:${createHash('sha256').update(rawBody).digest('hex')}`;
     await handleGithubWebhook(
       { rawBody, signature: sign(rawBody), githubEvent: 'push', deliveryId: 'replay-1' },
       deps,
@@ -498,8 +503,10 @@ describe('handleGithubWebhook — queue/delivery semantics', () => {
     );
     const first = deps.publishIngestion.mock.calls[0][0] as MessageEnvelope<NormalizedRepoEvent>;
     const second = deps.publishIngestion.mock.calls[1][0] as MessageEnvelope<NormalizedRepoEvent>;
-    expect(first.idempotency_key).toBe('replay-1');
-    expect(second.idempotency_key).toBe('replay-1');
+    expect(first.idempotency_key).toBe(expectedKey);
+    expect(second.idempotency_key).toBe(expectedKey);
+    expect(first.idempotency_key).not.toBe('replay-1');
+    expect(first.trace_id).toBe('replay-1');
   });
 
   it('rethrows when publishIngestion fails even if publishOwnership succeeds — no partial 2xx', async () => {

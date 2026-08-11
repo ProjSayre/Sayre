@@ -7,6 +7,7 @@ import { ViewportParseError } from './viewport';
 import { RealtimeDeltaParseError } from './realtimeDeltaRequest';
 import { WebhookSignatureError } from '../webhooks/githubSignature';
 import { WebhookBadRequestError } from '../services/githubWebhookService';
+import { InstallationResolutionInputError } from '../db/installations';
 import {
   GithubApiError,
   GithubInstallationAuthorizationError,
@@ -91,6 +92,29 @@ export function errorHandler(
     return;
   }
 
+  // GAP-6 (AC-3) defence-in-depth: resolveInstallationOrg's own input guard
+  // (db/installations.ts) throws this for a non-positive-safe-integer installation
+  // id. Map it here too so it can never reach the generic 500 fallback below from ANY
+  // caller, not only the webhook route (which already filters malformed ids out
+  // before this point). Fixed body only — never echo the thrown message.
+  //
+  // Wrapped in try/catch rather than a bare `instanceof`: several unrelated test
+  // suites' `vi.mock('../db/installations', ...)` doubles only stub
+  // `resolveInstallationOrg`/`getRuntimeDb` and don't re-export this class. Under
+  // Vitest's mock module namespace, accessing an export the factory didn't return
+  // THROWS (not merely `undefined`) — that access must never crash every other error
+  // type this handler maps for those same suites.
+  let isInstallationResolutionInputError = false;
+  try {
+    isInstallationResolutionInputError = err instanceof InstallationResolutionInputError;
+  } catch {
+    isInstallationResolutionInputError = false;
+  }
+  if (isInstallationResolutionInputError) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+
   if (err instanceof InstallCallbackBadRequestError) {
     res.status(400).json({ error: 'bad request' });
     return;
@@ -147,10 +171,17 @@ export function errorHandler(
     return;
   }
 
-  // express.raw()'s body-size limit (see app.ts, /webhooks/github mounted with a 5mb
-  // cap) rejects an oversized request via `raw-body`'s `entity.too.large` error before
-  // any handler runs. Surface its real 413, not the generic 500 fallback below.
+  // express.raw()'s body-size limit (see app.ts, /webhooks/github mounted with
+  // GITHUB_WEBHOOK_MAX_BODY_BYTES) rejects an oversized request via `raw-body`'s
+  // `entity.too.large` error before any handler runs. Surface its real 413, not the
+  // generic 500 fallback below.
   if (typeof err === 'object' && err !== null && (err as { type?: string }).type === 'entity.too.large') {
+    // GAP-9 (AC-6): the 5 MB cap is a deliberate, kept decision (see app.ts /
+    // routes/githubWebhook.ts), not an oversight — but a dropped delivery should
+    // still be observable. Fixed string only, matching the pattern at
+    // integrations/git/worker.ts:54 — never interpolate the error/request (header,
+    // body, signature, secret) into the log line.
+    console.warn('GitHub webhook delivery rejected: request body exceeded the configured size cap.');
     res.status(413).json({ error: 'payload too large' });
     return;
   }
