@@ -200,7 +200,12 @@ export function normalizeGithubEvent(
       type = 'branch';
       ref = `refs/heads/${branchName}`;
       payload = normalizeBranch(githubEvent, parsed);
-      destinations = ['ingestion', 'ownership'];
+      // GAP-8: a branch create/delete carries no revision SHA — there is nothing for the
+      // ingestion worker to fetch or parse, and `repo.branch` has no handler on the Python
+      // fleet. Routing it to the FIFO ingestion queue produced a permanently-failing
+      // delivery that head-of-line blocked every later delta for the same
+      // (org, repo, ref) group. Real content always arrives as a separate `push`.
+      destinations = ['ownership'];
       break;
     }
 

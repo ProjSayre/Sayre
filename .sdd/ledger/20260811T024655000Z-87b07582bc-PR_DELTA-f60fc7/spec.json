@@ -1,0 +1,178 @@
+{
+  "ticket": "W1-05 — Ingestion/Delta Worker core (gap-fill)",
+  "goal": "Close the seven non-OK items in .pipeline/gaps.json for W1-05: eliminate the repo.branch / branch-deletion-push poison-message path that head-of-line blocks a tenant's ingestion FIFO group (GAP-8, GAP-9), pin the Core<->worker push wire contract with a committed envelope fixture (GAP-10), and replace the four fake-driven coverage holes with real-infra and real-git proofs of the ticket's literal Acceptance sentence (GAP-3, GAP-4, GAP-5, GAP-11, GAP-12).",
+  "lane": "gapfill",
+  "overlays": [
+    "base"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "gapMode": true,
+  "gapsCovered": [
+    "GAP-3",
+    "GAP-4",
+    "GAP-5",
+    "GAP-8",
+    "GAP-9",
+    "GAP-10",
+    "GAP-11",
+    "GAP-12"
+  ],
+  "gapsOutOfScope": [
+    "GAP-1",
+    "GAP-2",
+    "GAP-6",
+    "GAP-7",
+    "GAP-13"
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-8) normalizeGithubEvent returns destinations: ['ownership'] (ingestion excluded) for a GitHub create AND for a GitHub delete event with ref_type: 'branch'; the normalized event.type stays 'branch', event.ref stays refs/heads/<name>, and event.payload is unchanged ({ action, ref, ref_type }). Replaying branch.create.json / branch.delete.json through POST /webhooks/github returns 202, calls the ownership enqueue exactly once, and calls publishIngestionEvent zero times."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-8) classify_ingestion_envelope returns IgnoredIngestionMessage(message_type=\"repo.branch\", reason=\"branch_lifecycle_event\") for a repo.branch envelope (both action \"created\" and \"deleted\"), and IngestionService.handle returns IngestionResult(status=\"ignored\") without raising and without invoking RefStateStore.lock or RepositorySource.checkout. A returning handle is what makes the SQS consumer delete the message, so the delivery no longer redelivers into ingestion-dlq.fifo nor blocks its FIFO group."
+    },
+    {
+      "id": "AC-3",
+      "text": "(GAP-9) A repo.push envelope whose payload.payload.deleted is true OR whose payload.payload.after is an all-zero SHA classifies as RefDeletionCommand carrying the envelope's server-resolved org_id, the repository locator, ref_name, and previous_revision_sha from before; IngestionService.handle returns IngestionResult(status=\"ref_deleted\") without raising, without acquiring the ref lock, and without calling RepositorySource.checkout. Calling parse_ingestion_envelope directly on such an envelope raises InvalidIngestionJobError."
+    },
+    {
+      "id": "AC-4",
+      "text": "(GAP-10) Core commits services/core/src/queue/__fixtures__/repo_push.envelope.json and repo_push.branch-deletion.envelope.json; a Core test replays the corresponding raw fixture through the webhook route and asserts the envelope handed to publishIngestionEvent matches the committed file field-for-field (excluding only message_id and occurred_at); and services/workers/tests/test_push_wire_fixture.py loads both committed files via MessageEnvelope.from_body and asserts classify_ingestion_envelope yields an IngestionJob with kind == \"delta\" and the fixture's org_id/ref_name/revision_sha/installation_id for the first, and a RefDeletionCommand for the second. A change to Core's normalizer that drifts the wire shape fails on both sides."
+    },
+    {
+      "id": "AC-5",
+      "text": "(GAP-3) services/workers/tests/test_ingestion_graph_integration.py executes Neo4jGraphStore.apply against a real Cypher engine and proves, by reading the graph back, that: a full-rebuild projection lands every Folder/File/Function/Class/Test node with the expected org_id/repo_id/ref_name/revision_sha/path properties and every CONTAINS/IMPORTS/CALLS/INHERITS/COVERS edge; a subsequent delta projection prunes the nodes and edges whose paths left the head and leaves untouched files alone; and load_symbols returns the Function/Class symbols just written. The suite skips (never errors) when Neo4j is unreachable."
+    },
+    {
+      "id": "AC-6",
+      "text": "(GAP-4) services/workers/tests/test_chunk_store_integration.py executes PostgresChunkStore.replace_chunks and PostgresChunkStore.store_embedding against a real Postgres with pgvector and proves, by reading the rows back, that: chunks insert with the expected org_id/ref_id/graph_node_id/content_hash and the ON CONFLICT path updates rather than duplicates; a real 1024-element vector round-trips through the %s::vector cast with the format(value, \".17g\") literal preserving the values; and provider/model/dimension are persisted as supplied. The suite skips (never errors) when Postgres is unreachable."
+    },
+    {
+      "id": "AC-7",
+      "text": "(GAP-5) A test drives the real MessagingPublisher.graph_updated (monkeypatching only the transport, publish_graph_updated, exactly as test_onboarding_priority.py:80-108 does for publish) and asserts the emitted envelope has type == \"graph.updated\", source == \"ingestion-worker\", org_id == scope.org_id, graph_scope_key == graph_scope_key(scope), graph_version as supplied, idempotency_key == f\"{scope_key}:{scope.revision_sha}:graph.updated\", and a payload of exactly {repository_id, ref_name, revision_sha, full_rebuild, changed_paths, structural_duration_ms} with changed_paths a JSON-serializable list."
+    },
+    {
+      "id": "AC-8",
+      "text": "(GAP-11) services/workers/tests/test_ingestion_fixture_repo.py builds a real local git repository with commit A and commit B (B adds a file, modifies a file, and deletes a file), drives IngestionService with the real GitRepositorySource(allow_local_for_tests=True), the real parser, and the real build_projection, and asserts on the resulting GraphProjection that: the File nodes exactly match commit B's tracked source files, the Folder nodes match its directories, the Function/Class nodes match the symbols actually present at B, CONTAINS edges connect each file to its parent folder, and the removed file's node and its edges are absent. The push from A to B is a fast-forward, so result.full_rebuild is False, result.status == \"accepted\", result.changed_paths is the real git diff --name-status output for A->B, and result.deleted_paths contains the removed file — i.e. GitSnapshot.changed_paths and GitSnapshot.is_ancestor are executed against real git, not assumed."
+    },
+    {
+      "id": "AC-9",
+      "text": "(GAP-12) The same real-git harness asserts, on the push/delta path, that the publisher received exactly one graph.updated for the accepted revision, that its structural_duration_ms is a positive float strictly less than STRUCTURAL_SYNC_TARGET_MS (imported from services/workers/sayre_workers/ingestion/budgets.py, not a magic 15_000), that the independently measured wall-clock elapsed time from handle() entry to the publish call is also under that budget, and that the published structural_duration_ms is the pre-publish measurement (strictly less than result.structural_duration_ms). The equivalent assertion is also made on the initial-parse path, replacing the current vacuous inline < 15_000 literal at services/workers/tests/test_ingestion.py:495 with the named constant."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "(GAP-8) A repo.branch envelope with payload.action == \"created\" and one with \"deleted\" both classify as IgnoredIngestionMessage; neither reads any further payload field, so a repo.branch envelope with a completely empty or structurally junk payload still terminal-acks rather than raising. The type check must precede payload validation."
+    },
+    {
+      "id": "EC-2",
+      "text": "(GAP-8) An envelope type that is neither handled nor in TERMINAL_IGNORED_TYPES (e.g. repo.tag, repo.pull_request, graph.updated) still raises InvalidIngestionJobError(\"unsupported ingestion message type\"). Fail-loud on the genuinely unknown is preserved; this fix is not a blanket except: pass."
+    },
+    {
+      "id": "EC-3",
+      "text": "(GAP-9) deleted: false (or absent) with an all-zero after: still classified as a ref deletion, so the zero SHA can never reach git fetch/checkout. A payload cannot bypass the guard by lying about deleted."
+    },
+    {
+      "id": "EC-4",
+      "text": "(GAP-9) deleted: true with a real, non-zero after: the deleted flag is authoritative and the message classifies as a ref deletion (no fetch attempted)."
+    },
+    {
+      "id": "EC-5",
+      "text": "(GAP-9) payload.payload.deleted present but non-boolean (\"true\", 1, null) raises InvalidIngestionJobError, mirroring the existing forced type check."
+    },
+    {
+      "id": "EC-6",
+      "text": "(GAP-9) A branch-deletion push whose before is itself all-zero or absent yields previous_revision_sha is None rather than an invalid SHA."
+    },
+    {
+      "id": "EC-7",
+      "text": "(GAP-8/GAP-9) FIFO head-of-line recovery: after a repo.branch (or deletion-push) delivery is terminal-acked, a subsequent legitimate repo.push for the same (org_id, provider_repo_id, ref) group is processed normally. The regression this whole item exists to prevent is \"the second message never runs.\""
+    },
+    {
+      "id": "EC-8",
+      "text": "(GAP-9) A repo.push envelope whose payload is a ref deletion still ignores any forged payload.org_id; the RefDeletionCommand.org_id is envelope.org_id only (the same invariant test_job_parser_uses_only_server_resolved_envelope_org pins for IngestionJob)."
+    },
+    {
+      "id": "EC-9",
+      "text": "(GAP-10) The committed envelope fixtures are byte-parseable by MessageEnvelope.from_body and carry no secret material (no installation token, no clone URL with credentials, no real org identifier) — the fixture tenant id must be the same synthetic UUID the existing repo_initial_parse.envelope.json uses."
+    },
+    {
+      "id": "EC-10",
+      "text": "(GAP-11) Real-git rename: git mv between A and B. Because changed_paths runs with --no-renames, the projection must show the old path deleted and the new path added, not a rename."
+    },
+    {
+      "id": "EC-11",
+      "text": "(GAP-11) Real-git force-push/divergence: commit B is not a descendant of commit A (git commit --amend or a reset), so neither is_ancestor(A, B) nor is_ancestor(B, A) holds and result.full_rebuild is True."
+    },
+    {
+      "id": "EC-12",
+      "text": "(GAP-11) Real-git stale push: the incoming revision is an ancestor of the current ref state, so is_ancestor(job.revision_sha, current.revision_sha) holds and handle returns status == \"stale\" with no graph write and no graph.updated."
+    },
+    {
+      "id": "EC-13",
+      "text": "(GAP-11) Real-git replay: the incoming revision equals the current ref state, so status == \"replayed\" and the projection is a full re-derive, not a delta."
+    },
+    {
+      "id": "EC-14",
+      "text": "(GAP-11) A commit-B tree containing a file in a language the parser does not support, and an empty file: the projection still produces a File node and does not crash."
+    },
+    {
+      "id": "EC-15",
+      "text": "(GAP-3) Cross-org isolation on real Neo4j: two orgs whose projections carry identical node uids. Applying org A's projection (including its full-rebuild DETACH DELETE) must leave org B's nodes and edges untouched, and load_symbols for org B must return only B's symbols. This is the org_id-stamped-on-every-write rule proved against a real engine rather than against a string-recording fake."
+    },
+    {
+      "id": "EC-16",
+      "text": "(GAP-3) Empty projection (zero nodes, zero edges) against real Neo4j: apply must complete without error, and a full-rebuild empty projection must clear the ref's prior nodes."
+    },
+    {
+      "id": "EC-17",
+      "text": "(GAP-3) Double-apply of the same projection is idempotent: node/edge counts are identical after the second run (the MERGE shapes must not duplicate)."
+    },
+    {
+      "id": "EC-18",
+      "text": "(GAP-4) Cross-org isolation on real Postgres: store_embedding for a chunk_id/ref_id belonging to a different org returns False (the SELECT ... WHERE guard matches no row) and writes nothing, even though the connection is org-scoped."
+    },
+    {
+      "id": "EC-19",
+      "text": "(GAP-4) A vector whose length does not match the column's 1024 dimensions is rejected by Postgres (the statement raises rather than silently truncating)."
+    },
+    {
+      "id": "EC-20",
+      "text": "(GAP-4) Extreme float values in the vector (0.0, a very small denormal, a high-precision value that round-trips only at 17 significant digits) survive the format(value, \".17g\") literal path within float tolerance."
+    },
+    {
+      "id": "EC-21",
+      "text": "(GAP-4) replace_chunks with full_rebuild=True deletes the ref's prior chunks; with full_rebuild=False and a non-empty affected_node_ids it deletes only those nodes' chunks and leaves the rest, whose revision_sha is advanced to the new head."
+    },
+    {
+      "id": "EC-22",
+      "text": "(GAP-5) The graph.updated payload must contain no org_id key (tenant identity belongs on the envelope, not in the fanned-out payload), matching the assertion test_onboarding_priority.py already makes for onboarding.generate."
+    },
+    {
+      "id": "EC-23",
+      "text": "(GAP-5) The idempotency_key is stable for the same (scope, revision_sha) across two separate calls, so a redelivered ingestion job cannot produce two distinct downstream fanout identities."
+    },
+    {
+      "id": "EC-24",
+      "text": "(GAP-12) structural_duration_ms is measured from handle() entry (including checkout and parse), not from the graph write, and the value published on the wire is captured before publish_graph_updated is called."
+    },
+    {
+      "id": "EC-25",
+      "text": "(GAP-3/GAP-4) Infra unreachable: both integration suites must skip, never error or hang. Each reachability probe uses a short connect timeout (<=2s) so a machine with no Neo4j/Postgres does not stall poetry run pytest."
+    },
+    {
+      "id": "EC-26",
+      "text": "(GAP-8) No regression on the ownership lane: branch.create.json and branch.delete.json still enqueue exactly one ownership job with the unchanged payload, and no other event type's destinations changes (push stays ['ingestion','ownership'], pull_request stays ['ownership'], tag/ping/unsupported stay ignored)."
+    }
+  ],
+  "stamp": {
+    "treeHash": "9a46b4de027bd6b121e97b2b1eb215829578b47a9c6076edc5790e39afd833ce",
+    "headSha": "b63e14edd6d82f8bb1b853768b98e95e4f2759a7",
+    "dirty": true,
+    "writtenAt": "2026-08-10T05:01:36.832Z"
+  }
+}

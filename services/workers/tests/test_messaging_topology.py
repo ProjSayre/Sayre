@@ -424,6 +424,89 @@ def test_weighted_lane_schedule_and_empty_lane_fallback(monkeypatch, tmp_path: P
     assert calls == [ENRICHMENT_PRIORITY_QUEUE, ENRICHMENT_DEFAULT_QUEUE]
 
 
+# @spec AC-5 EC-8 EC-9 EC-15
+def test_priority_envelope_drains_ahead_of_default_backlog(tmp_path: Path):
+    """W0-04's canonical acceptance clause, measured against the live broker.
+
+    docs/product/Ticket-Backlog-by-Feature-2.md §W0-04: "a priority message demonstrably
+    drains ahead of a backlog of default messages". Unlike
+    test_weighted_lane_schedule_and_empty_lane_fallback above, this test NEVER
+    monkeypatches consume_once — the drain order is observed off real LocalStack queues
+    holding a real 20-message backlog, which is the whole point of the criterion.
+    """
+    _drain(ENRICHMENT_PRIORITY_QUEUE)
+    _drain(ENRICHMENT_DEFAULT_QUEUE)
+    run = time.time_ns()
+    backlog = [
+        _envelope(
+            idempotency_key=f"backlog-{run}-{index}",
+            payload={"lane": "default", "index": index},
+        )
+        for index in range(20)
+    ]
+    for envelope in backlog:
+        publish(ENRICHMENT_DEFAULT_QUEUE, envelope)
+    # EC-8: the priority message is published AFTER the entire default backlog, so a
+    # pass cannot be an artifact of publish order.
+    priority = _envelope(idempotency_key=f"priority-{run}", payload={"lane": "priority"})
+    publish(ENRICHMENT_PRIORITY_QUEUE, priority)
+
+    handled: list[str] = []
+    default_visible_when_priority_handled: list[int] = []
+    stop = threading.Event()
+    watchdog = threading.Timer(60, stop.set)
+
+    def handler(envelope: MessageEnvelope) -> None:
+        key = envelope.idempotency_key
+        assert key is not None
+        handled.append(key)
+        if key == priority.idempotency_key:
+            attributes = get_client().get_queue_attributes(
+                QueueUrl=get_queue_url(ENRICHMENT_DEFAULT_QUEUE),
+                AttributeNames=["ApproximateNumberOfMessages"],
+            )["Attributes"]
+            default_visible_when_priority_handled.append(
+                int(attributes["ApproximateNumberOfMessages"])
+            )
+        if len(handled) >= len(backlog) + 1:
+            stop.set()
+
+    watchdog.start()
+    try:
+        with SqliteDeliveryStore(tmp_path / "drain-ahead.sqlite3") as store:
+            consume_enrichment(
+                handler,
+                consumer_id="enrichment-drain-ahead",
+                mode="weighted",
+                priority_weight=3,
+                delivery_store=store,
+                stop_event=stop,
+                visibility_timeout_seconds=5,
+            )
+    finally:
+        watchdog.cancel()
+
+    assert priority.idempotency_key in handled, handled
+    priority_index = handled.index(priority.idempotency_key)
+    # AC-5: bounded by priority_weight (3) — O(1) in the size of the backlog, never
+    # O(backlog). This is what "drains ahead" means under bounded weighted fairness.
+    assert priority_index <= 3, handled[:5]
+    assert priority_index < len(backlog), handled
+    # ...and the backlog really was still there when the priority message was handled.
+    assert default_visible_when_priority_handled, "priority envelope was never handled"
+    assert default_visible_when_priority_handled[0] > 0
+    # EC-9: weighted fairness must not starve the default lane — the backlog still
+    # drains to zero within the same run.
+    assert set(handled) == {envelope.idempotency_key for envelope in backlog} | {
+        priority.idempotency_key
+    }
+    remaining = get_client().get_queue_attributes(
+        QueueUrl=get_queue_url(ENRICHMENT_DEFAULT_QUEUE),
+        AttributeNames=["ApproximateNumberOfMessages"],
+    )["Attributes"]
+    assert int(remaining["ApproximateNumberOfMessages"]) == 0
+
+
 def test_visibility_heartbeat_blocks_competing_receive(tmp_path: Path):
     _drain(EMBEDDING_UPSERTS_QUEUE)
     envelope = _envelope(idempotency_key=f"heartbeat-{time.time_ns()}")

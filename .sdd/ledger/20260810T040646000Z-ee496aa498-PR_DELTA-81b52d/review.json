@@ -1,0 +1,9 @@
+{
+  "verdict": "PASS",
+  "stamp": {
+    "treeHash": "f4b2c336c2a538bab4324ae12fbd3efdb4e35bc134d50538a61d1e016850fe82",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-10T04:01:30.356Z"
+  }
+}

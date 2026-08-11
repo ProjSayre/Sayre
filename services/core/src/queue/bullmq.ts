@@ -13,6 +13,28 @@
 // enforces the envelope shape (org_id required, checked by `assertValidEnvelope` on
 // both enqueue and consume); it does not implement webhook receivers (out of scope
 // for this ticket).
+//
+// Job LANES (W0-04, GAP-3a): `enqueue()` takes an optional `lane` ("priority" |
+// "default", see JOB_LANES/LANE_PRIORITY below), mirroring the SQS side's separate
+// physical `enrichment-onboarding-priority` / `enrichment-default` queues
+// (docs/wave0-foundation-contracts.md) with one native BullMQ mechanism instead of a
+// second physical queue per lane. BOTH lanes map to a NON-ZERO BullMQ `priority`
+// value on purpose: BullMQ 5.28 keeps every unprioritized job (priority 0/undefined)
+// in a separate `wait` list, and a worker's moveToActive drains `wait` COMPLETELY
+// before it ever looks at the `prioritized` zset a nonzero priority routes into. If
+// the default lane mapped to priority 0, a "default" job would sit in `wait` and
+// would always win over a "priority" job sitting in `prioritized` — exactly backwards
+// from the intent — so every job enqueue() adds lands in `prioritized`, and lane
+// ordering is real ZPOPMIN ordering (lower priority number first, then FIFO).
+// No job type is currently assigned the priority lane by policy — that is a
+// separate, more opinionated decision left to a follow-up (see W0-04 spec.md's
+// Open Questions); the three existing call sites are unchanged and stay on the
+// default lane.
+//
+// Rollout caveat (EC-4): this guarantee only holds for jobs enqueued AFTER this
+// change ships. Any job already sitting in `wait` from a pre-change deploy will
+// still drain ahead of a newly enqueued prioritized job until `wait` empties out on
+// its own — draining or migrating an in-flight queue on deploy is out of scope here.
 
 import { Queue, Worker, Job, JobsOptions, WorkerOptions } from 'bullmq';
 import IORedis, { type RedisOptions } from 'ioredis';
@@ -173,22 +195,67 @@ export async function getQueue<Q extends QueueName>(
   }
 }
 
+/** Named lanes, mirroring the SQS split (`enrichment-onboarding-priority` / `enrichment-default`). */
+export const JOB_LANES = ['priority', 'default'] as const;
+export type JobLane = (typeof JOB_LANES)[number];
+
+/**
+ * BullMQ native `priority`: LOWER number = higher priority; the value 0 / undefined means
+ * "unprioritized". Both lanes map to a NON-ZERO value on purpose — see the module header.
+ */
+export const LANE_PRIORITY: Readonly<Record<JobLane, number>> = { priority: 1, default: 2 };
+export const DEFAULT_JOB_LANE: JobLane = 'default';
+
+export type EnqueueOptions = Omit<JobsOptions, 'priority'> & { lane?: JobLane };
+
+function isJobLane(value: unknown): value is JobLane {
+  return typeof value === 'string' && (JOB_LANES as readonly string[]).includes(value);
+}
+
 /**
  * Validates the envelope (`assertValidEnvelope`) then adds it. `jobName` = `envelope.type`.
  * Returns the BullMQ job id.
+ *
+ * Lane resolution (W0-04, GAP-3a): `opts.lane` selects `JOB_LANES`, defaulting to
+ * `DEFAULT_JOB_LANE` when omitted. Uses `=== undefined` rather than `??` deliberately —
+ * an explicit `lane: null` (or any other non-`JobLane` value) must be REJECTED, not
+ * silently coerced to the default lane. A raw `priority` key on `opts` is rejected too:
+ * `EnqueueOptions`'s `Omit<JobsOptions, 'priority'>` is a compile-time guard only (erased
+ * at runtime), and a bare `priority: 0`/`undefined` from an unsafe caller would silently
+ * defeat the "every job lands in `prioritized`" guarantee this module's header describes.
  */
 export async function enqueue<Q extends QueueName>(
   name: Q,
   envelope: MessageEnvelope<QueuePayloads[Q]>,
-  opts?: JobsOptions,
+  opts?: EnqueueOptions,
 ): Promise<string> {
   assertValidEnvelope(envelope);
+
+  const rawOpts = (opts ?? {}) as Record<string, unknown>;
+  if ('priority' in rawOpts) {
+    throw new Error(
+      'enqueue() does not accept a raw `priority` option — pass `lane` ("priority" | "default") ' +
+        'instead; a bare priority can silently defeat the lane guarantee (see the module header).',
+    );
+  }
+
+  const rawLane = rawOpts.lane;
+  const lane = rawLane === undefined ? DEFAULT_JOB_LANE : rawLane;
+  if (!isJobLane(lane)) {
+    throw new Error(
+      `enqueue() received an unknown lane ${JSON.stringify(rawLane)}; supported lanes are ${JOB_LANES.join(', ')}.`,
+    );
+  }
+
+  const rest: Record<string, unknown> = { ...rawOpts };
+  delete rest.lane;
 
   const queue = await getQueue(name);
   const job = await queue.add(envelope.type, envelope, {
     attempts: 1,
     removeOnComplete: true,
-    ...opts,
+    ...(rest as JobsOptions),
+    priority: LANE_PRIORITY[lane],
   });
 
   return job.id ?? '';

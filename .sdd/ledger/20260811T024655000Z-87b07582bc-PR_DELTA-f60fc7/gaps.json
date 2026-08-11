@@ -1,0 +1,166 @@
+{
+  "ticket": "W1-05",
+  "overlays": [
+    "base"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "OK",
+      "source": "Clones/diffs a repo, runs Tree-sitter, writes node/edge upserts, ...",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/sayre_workers/ingestion/service.py",
+        "services/workers/tests/test_ingestion.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-2",
+      "status": "OK",
+      "source": "...runs Tree-sitter...",
+      "evidence": [
+        "services/workers/sayre_workers/parsing/parser.py",
+        "services/workers/tests/fixtures/parsing",
+        "services/workers/tests/test_parsing.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3",
+      "status": "UNTESTED",
+      "source": "...writes node/edge upserts...",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/graph.py",
+        "services/workers/tests/test_feature_clustering.py",
+        "services/workers/tests/test_ingestion.py"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-4",
+      "status": "UNTESTED",
+      "source": "...writes embeddings to pgvector...",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/chunks.py",
+        "services/workers/tests/test_embedding_work.py",
+        "services/core/src/db/schema.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-5",
+      "status": "UNTESTED",
+      "source": "...publishes `graph.updated`.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/events.py",
+        "services/workers/tests/test_ingestion.py",
+        "services/workers/tests/test_onboarding_priority.py",
+        "packages/shared-types/src/index.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-6",
+      "status": "OK",
+      "source": "Operates against a scratch clone destroyed after parsing.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/tests/test_ingestion.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-7",
+      "status": "OK",
+      "source": "Handles `repo.initial_parse` (cold start) and webhook-triggered delta jobs.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/sayre_workers/ingestion/service.py",
+        "services/workers/tests/test_initial_parse_wire_fixture.py",
+        "services/core/src/queue/__fixtures__/repo_initial_parse.envelope.json"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-8",
+      "status": "MISSING",
+      "source": "Handles `repo.initial_parse` (cold start) and webhook-triggered delta jobs.",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/core/src/services/githubWebhookService.ts",
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/messaging/sqs_client.py",
+        "services/core/src/queue/sqs.ts",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-9",
+      "status": "MISSING",
+      "source": "Handles `repo.initial_parse` (cold start) and webhook-triggered delta jobs.",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts",
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-10",
+      "status": "MISSING",
+      "source": "Handles `repo.initial_parse` (cold start) and webhook-triggered delta jobs.",
+      "evidence": [
+        "services/workers/tests/test_initial_parse_wire_fixture.py",
+        "services/core/src/webhooks/__fixtures__",
+        "services/workers/tests/test_ingestion.py"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-11",
+      "status": "UNTESTED",
+      "source": "Acceptance: pushing to a fixture repo produces correct nodes and a `graph.updated` event within the sync target",
+      "evidence": [
+        "services/workers/tests/test_ingestion.py",
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/sayre_workers/ingestion/service.py"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-12",
+      "status": "UNTESTED",
+      "source": "Acceptance: ... and a `graph.updated` event within the sync target",
+      "evidence": [
+        "services/workers/tests/test_ingestion.py",
+        "services/workers/sayre_workers/ingestion/service.py",
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "packages/shared-types/src/index.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-13",
+      "status": "OK",
+      "source": "Acceptance: ... a `repo.initial_parse` job triggers the full-parse path.",
+      "evidence": [
+        "services/workers/tests/test_ingestion.py",
+        "services/workers/tests/test_initial_parse_wire_fixture.py",
+        "services/workers/sayre_workers/ingestion/service.py"
+      ],
+      "needsTest": false
+    }
+  ],
+  "stamp": {
+    "treeHash": "9a46b4de027bd6b121e97b2b1eb215829578b47a9c6076edc5790e39afd833ce",
+    "headSha": "b63e14edd6d82f8bb1b853768b98e95e4f2759a7",
+    "dirty": true,
+    "writtenAt": "2026-08-10T04:50:43.404Z"
+  }
+}

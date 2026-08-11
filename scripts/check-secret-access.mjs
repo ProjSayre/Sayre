@@ -15,6 +15,15 @@ const ALLOWLIST = new Set([
   // secret-class values. Same precedent as jiraConnectionStore.rls.test.ts on
   // the org-secret-access gate (7981c21).
   'scripts/guard-checker-readonly.test.mjs',
+  // dict(os.environ): a cross-runtime test harness spawns a real Node subprocess and must
+  // hand it the parent's full environment (PATH, etc.) -- no per-name loader can express
+  // "inherit the parent environment". The three genuinely config-backed values
+  // (SQS_ENDPOINT_URL, SNS_ENDPOINT_URL, AWS_REGION) already route through get_config();
+  // the two AWS credential names left as direct os.environ reads are LocalStack-only dummy
+  // values ("localstack-test") the test fixture sets itself, never a real secret store, and
+  // have no synchronous secrets-loader accessor available in a test harness. Same precedent
+  // as scripts/guard-checker-readonly.test.mjs above.
+  'services/workers/tests/test_cross_runtime_roundtrip.py',
 ]);
 
 const SOURCE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|py)$/i;
