@@ -40,6 +40,7 @@ import pytest
 from botocore.config import Config
 
 from sayre_workers.config import (
+    ConfigName,
     MissingConfigError,
     get_bool_config,
     get_config,
@@ -68,10 +69,15 @@ CONSUME_HARNESS = "test/cross-runtime/consumeRealtime.ts"
 # EC-16: the harnesses resolve these through @sayre/config exactly like production. The
 # orchestrator must pass them through explicitly; a missing one must surface as a clear
 # failure, never as a silent fall-through to real AWS.
-NODE_BROKER_ENV = (
+# The first three are ConfigNames (resolved via get_config below); the AWS credential pair
+# are LocalStack-only dummy values the _localstack_config fixture sets directly into
+# os.environ (never a real secret store) and have no synchronous secrets-loader accessor.
+NODE_BROKER_CONFIG_NAMES: tuple[ConfigName, ...] = (
     "SQS_ENDPOINT_URL",
     "SNS_ENDPOINT_URL",
     "AWS_REGION",
+)
+NODE_BROKER_CREDENTIAL_ENV = (
     "AWS_ACCESS_KEY_ID",
     "AWS_SECRET_ACCESS_KEY",
 )
@@ -144,9 +150,15 @@ def _drain(queue_name: str) -> None:
 
 
 def _node_env(**overrides: str | None) -> dict[str, str]:
+    # dict(os.environ): a Node subprocess harness needs the parent's full environment
+    # (PATH, etc.) plus the broker settings below overlaid on top; no per-name config
+    # loader can express "inherit the parent environment" (see check-secret-access.mjs's
+    # ALLOWLIST entry for this file).
     env = dict(os.environ)
     env["NODE_ENV"] = "test"
-    for name in NODE_BROKER_ENV:
+    for config_name in NODE_BROKER_CONFIG_NAMES:
+        env[config_name] = get_config(config_name)
+    for name in NODE_BROKER_CREDENTIAL_ENV:
         value = os.environ.get(name)
         assert value, f"{name} must be exported to the Node harness (EC-16)"
         env[name] = value
