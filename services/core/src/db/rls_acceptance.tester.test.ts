@@ -1883,8 +1883,17 @@ test("[W0-05 GAP-1] repository ref, chunk, and embedding lineage is tenant- and 
     pool.query(
       `INSERT INTO code_embeddings
         (id, org_id, repository_id, ref_id, revision_sha, chunk_id, embedding, provider, model, dimension)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::vector, 'voyage', 'voyage-3', 1024)`,
-      [randomUUID(), orgA.orgId, orgA.repoId, orgA.repositoryRefId, shaLike("cross-org-embedding"), orgB.codeChunkId, vectorLiteral(1024)],
+       VALUES ($1, $2, $3, $4, $5, $6, $7::vector, 'w0-05-gap', $8, 1024)`,
+      [
+        randomUUID(),
+        orgA.orgId,
+        orgA.repoId,
+        orgA.repositoryRefId,
+        shaLike("cross-org-embedding"),
+        orgB.codeChunkId,
+        vectorLiteral(1024),
+        `foreign-lineage-${randomUUID()}`,
+      ],
     ),
     /code_embeddings_org_repository_ref_chunk_fk/,
   );
