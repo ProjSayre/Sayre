@@ -372,12 +372,12 @@ jobs:
       # Apply it here, against this job's own Postgres service, before pytest
       # runs, exactly the same migrate() call the Node RLS/pen-test suites
       # apply against theirs.
-      - name: Setup Node (for schema migration only)
+      - name: Setup Node (for schema migration and the cross-runtime gateway harness)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Node dependencies (root, for services/core's migrator)
+      - name: Install Node dependencies (root, for services/core's migrator and @sayre/core)
         working-directory: ${{ github.workspace }}
         run: npm ci
 
@@ -386,6 +386,18 @@ jobs:
         run: npm --prefix services/core run db:migrate:ci
         env:
           DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+
+      # The cross-runtime step below spawns services/gateway/test/cross-runtime/consumeRealtime.ts
+      # via `npx tsx`. Unlike services/core/test/cross-runtime/publishIngestion.ts (which imports
+      # its assertValidEnvelope via a same-workspace relative path), services/gateway/src/sqs/
+      # consumer.ts imports assertValidEnvelope from the @sayre/core PACKAGE surface, which
+      # resolves through package.json's "main": "dist/lib.js" -- a gitignored, unbuilt directory
+      # on a clean `npm ci` checkout. The "web + core" job never hits this because turbo's
+      # `typecheck`/`test` tasks declare `dependsOn: ["^build"]` and build it implicitly; this job
+      # calls tsx directly with no turbo task graph, so the build must be explicit here.
+      - name: Build @sayre/core (and its @sayre/shared-types / @sayre/config deps) for the gateway harness
+        working-directory: ${{ github.workspace }}
+        run: npx turbo run build --filter=@sayre/core
 
       - name: Lint (ruff)
         run: poetry run ruff check .
