@@ -214,17 +214,19 @@ test('the now-hashed neutral file actually contains the security procedure the g
 
 // --- PL-03c: the `red` stage exists, is registered, and retains its substantive guarantees -------
 
-test('.sdd/runtimes.yml declares a red stage pointing at stages/red.md, on the opus tier', () => {
+test('.sdd/runtimes.yml declares a red stage pointing at stages/red.md, on the sonnet tier', () => {
   const runtimes = read('.sdd/runtimes.yml');
   const redIndex = runtimes.indexOf('\n  red:');
   assert.ok(redIndex !== -1, 'expected a top-level "  red:" stage entry in runtimes.yml');
   // Isolate the red: block up to the next top-level (two-space-indented) stage key, so "model:
-  // opus" is checked against red's own block, not some other stage's.
+  // sonnet" is checked against red's own block, not some other stage's.
   const nextStageIndex = runtimes.indexOf('\n  dev:', redIndex);
   assert.ok(nextStageIndex > redIndex, 'expected "  dev:" to follow "  red:" in runtimes.yml');
   const redBlock = runtimes.slice(redIndex, nextStageIndex);
   assert.match(redBlock, /neutral: stages\/red\.md/, 'red stage must point at stages/red.md');
-  assert.match(redBlock, /model: opus/, 'red stage must run on the opus tier per spec.md');
+  // Cost follow-up (.sdd/stages/CHANGELOG.md's "/pipeline-gapfill + gap-scout stage" entry):
+  // red was deliberately demoted opus->sonnet alongside tester->haiku and review->sonnet.
+  assert.match(redBlock, /model: sonnet/, 'red stage must run on the sonnet tier per the cost-follow-up demotion');
 });
 
 test('.claude/agents/red.md is a generated shim pointing at .sdd/stages/red.md', () => {
