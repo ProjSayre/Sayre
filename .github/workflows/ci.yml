@@ -106,6 +106,14 @@ jobs:
       - name: Ledger append — tests
         run: npm run test:ledger-append
 
+      # /gap-scout-only + gap-mode cost follow-up: scripts/extract-ticket.mjs is the CLI helper
+      # planner/gap-scout invoke directly (node scripts/extract-ticket.mjs <id> --with-overlays)
+      # so agents load one ticket slice instead of the whole backlog/cheat sheet — same shape as
+      # scripts/ledger-append.mjs above (a CLI tool, not a check:* gate), so only its test suite
+      # needs a step here.
+      - name: Extract-ticket — tests
+        run: npm run test:extract-ticket
+
       # PL-03c review Critical 3: scripts/check-red-integrity.mjs is the mechanical half of
       # .sdd/stages/review.md's "Red-test integrity" and "Spec trace" checks (rehash red.md's
       # listed files, resolve every @spec marker). Like check:security-audit-run below, only the

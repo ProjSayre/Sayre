@@ -29,6 +29,7 @@
     "test:ledger-index": "node --test scripts/build-ledger-index.test.mjs",
     "ledger:append": "node scripts/ledger-append.mjs",
     "test:ledger-append": "node --test scripts/ledger-append.test.mjs",
+    "test:extract-ticket": "node --test scripts/extract-ticket.test.mjs",
     "check:red-integrity": "node scripts/check-red-integrity.mjs",
     "test:red-integrity": "node --test scripts/check-red-integrity.test.mjs",
     "test:product-workspace-ux": "node scripts/test-product-workspace-ux.mjs",
