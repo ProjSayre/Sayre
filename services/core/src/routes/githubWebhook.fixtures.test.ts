@@ -309,8 +309,8 @@ describe('POST /webhooks/github — committed ingestion envelope fixtures (GAP-1
   const FIXTURE_ORG_ID = '22222222-2222-4222-8222-222222222222';
 
   function omitVolatileFields(envelope: Record<string, unknown>): Record<string, unknown> {
-    const { message_id: _messageId, occurred_at: _occurredAt, ...rest } = envelope;
-    return rest;
+    const volatile = new Set(['message_id', 'occurred_at']);
+    return Object.fromEntries(Object.entries(envelope).filter(([key]) => !volatile.has(key)));
   }
 
   // @spec AC-4

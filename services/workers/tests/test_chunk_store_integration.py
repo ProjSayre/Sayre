@@ -21,6 +21,7 @@ import uuid
 
 import pytest
 import psycopg
+from pgvector.psycopg import register_vector_async
 from psycopg.rows import dict_row
 
 from sayre_workers.config import get_secret
@@ -116,6 +117,13 @@ class _Harness:
 
     async def __aenter__(self) -> "_Harness":
         self.admin = await psycopg.AsyncConnection.connect(self.admin_url, row_factory=dict_row)
+        # Without this, psycopg has no codec for the `vector` OID and SELECT ... embedding
+        # comes back as its raw text literal ("[0,0,...]"), so `list(row["embedding"])`
+        # silently iterates characters instead of the 1024 stored floats. Read-only on this
+        # harness's own verification connection -- PostgresChunkStore itself (chunks.py)
+        # never reads embedding back, only writes it via `%s::vector`, so production has no
+        # equivalent gap this mirrors.
+        await register_vector_async(self.admin)
         return self
 
     async def seed(self, label: str) -> _SeededRef:
