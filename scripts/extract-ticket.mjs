@@ -7,10 +7,9 @@
 //   node scripts/extract-ticket.mjs <TICKET-ID> --with-overlays
 //   node scripts/extract-ticket.mjs <TICKET-ID> --json
 //
-// Looks up ticket text in docs/product/Ticket-Backlog-by-Feature-2.md (preferred) or
-// Documents/PRD/Ticket-Backlog-by-Feature-2.md. Overlay framing comes from .sdd/mvp-overlays.yml
-// plus the named sections of docs/product/Audit-Rebuild-Cheat-Sheet.md (base template only —
-// never the whole cheat sheet).
+// Looks up ticket text in docs/product/Ticket-Backlog-by-Feature-2.md. Overlay framing comes
+// from .sdd/mvp-overlays.yml plus the named sections of docs/product/Audit-Rebuild-Cheat-Sheet.md
+// (base template only — never the whole cheat sheet).
 //
 // Exit 0 on success; 1 if the ticket id is missing / not found / overlays required but absent.
 
@@ -21,14 +20,8 @@ import yaml from 'js-yaml';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const BACKLOG_CANDIDATES = [
-  'docs/product/Ticket-Backlog-by-Feature-2.md',
-  'Documents/PRD/Ticket-Backlog-by-Feature-2.md',
-];
-const CHEAT_SHEET_CANDIDATES = [
-  'docs/product/Audit-Rebuild-Cheat-Sheet.md',
-  'Documents/PRD/Audit-Rebuild-Cheat-Sheet.md',
-];
+const BACKLOG_CANDIDATES = ['docs/product/Ticket-Backlog-by-Feature-2.md'];
+const CHEAT_SHEET_CANDIDATES = ['docs/product/Audit-Rebuild-Cheat-Sheet.md'];
 const OVERLAYS_PATH = join(repoRoot, '.sdd', 'mvp-overlays.yml');
 
 const KNOWN_FLAGS = new Set(['--with-overlays', '--json']);
