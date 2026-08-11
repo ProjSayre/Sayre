@@ -1,0 +1,43 @@
+{
+  "runId": "20260811T071754377Z-21d34a2-PR_DELTA-7029e6",
+  "date": "2026-08-11",
+  "ticket": "CH-05",
+  "ticketTitle": "CH-05 — Gateway realtime chat events",
+  "goal": "Relay CH-04's chat.turn.progress / chat.turn.completed / chat.turn.error Redis pub/sub events to the owning client's live WebSocket connection, under a per-push RBAC re-filter, using the pinned client-facing frame shapes that CH-06 builds against.",
+  "filesTouched": [
+    "apps/web/app/workspace/state/realtime.tsx"
+  ],
+  "verdicts": {
+    "review": "PASS",
+    "security": "PASS"
+  },
+  "overrides": [],
+  "bypass": false,
+  "regate": {
+    "testerRan": true,
+    "gatesOnly": false,
+    "note": "code was changed in the working tree outside the pipeline's dev stage before this run; changes.md/changes.json describe the tree as it stood before that edit"
+  },
+  "lite": null,
+  "inline": null,
+  "gapfill": null,
+  "redTestPaths": [
+    "services/gateway/src/ws/chatEvents.test.ts",
+    "services/gateway/src/redis/chatPubsub.test.ts",
+    "services/gateway/src/fanout/chatFanout.test.ts",
+    "services/gateway/src/chatE2e.test.ts",
+    "services/gateway/src/ws/protocol.test.ts",
+    "services/gateway/src/ws/connection.test.ts",
+    "services/gateway/src/coreClient.test.ts",
+    "services/core/src/services/realtimeChatService.test.ts",
+    "services/core/src/graph-query/index.test.ts",
+    "services/core/src/http/realtimeDeltaRequest.test.ts",
+    "services/core/src/routes/realtimeInternal.test.ts"
+  ],
+  "redAbsenceNote": null,
+  "securityRunId": "20260811T071754377Z-21d34a2-PR_DELTA-7029e6",
+  "commit": {
+    "sha": "21d34a26936ac2b14690ee83a2ab04b67454cda9",
+    "dirty": true
+  }
+}

@@ -3315,6 +3315,15 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260811T071754377Z-21d34a2-PR_DELTA-7029e6",
+      "ticket": "CH-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T071754377Z-21d34a2-PR_DELTA-7029e6/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "apps/web/app/workspace/state/selection.tsx": [

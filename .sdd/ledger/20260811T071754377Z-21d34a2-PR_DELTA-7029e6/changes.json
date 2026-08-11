@@ -1,0 +1,32 @@
+{
+  "filesChanged": [
+    "services/gateway/src/ws/chatEvents.ts",
+    "services/gateway/src/redis/chatPubsub.ts",
+    "services/gateway/src/fanout/chatFanout.ts",
+    "services/core/src/services/realtimeChatService.ts",
+    "packages/shared-types/src/index.ts",
+    "services/gateway/src/ws/protocol.ts",
+    "services/gateway/src/ws/connection.ts",
+    "services/gateway/src/coreClient.ts",
+    "services/gateway/src/redis/pubsub.ts",
+    "services/gateway/src/server.ts",
+    "services/core/src/graph-query/types.ts",
+    "services/core/src/graph-query/index.ts",
+    "services/core/src/services/chatService.ts",
+    "services/core/src/http/realtimeDeltaRequest.ts",
+    "services/core/src/routes/realtimeInternal.ts",
+    "services/gateway/src/chatE2e.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/gateway/src/chatE2e.test.ts",
+      "reason": "Fixed a resource-cleanup deadlock in the EC-20 test's own finally block, unrelated to any assertion or spec disagreement: `wss.close()`/`server.close()` (built directly by this one test, not via startHarness) never resolve because the client socket this test opens (`owner.socket`) was never closed anywhere before those two awaits, and ws's WebSocketServer.close() (constructed with an externally-owned `server`) only fires its callback once its tracked client count reaches zero rather than proactively terminating clients. Every other test in the file relies on the shared top-level afterEach to close `clients` BEFORE closing its harness's wss/server; this test uniquely closes its own wss/server inside its own try/finally, which completes before that afterEach ever runs. Added one line (`owner?.socket.close();`, first statement of the finally block) plus hoisting the `owner` declaration (`let owner: TestClient | undefined;`) above the try block so it is reachable from finally. No assertion, expectation, or behavioral check was touched. Reproduced and confirmed in isolation before touching the file (see changes.md's Red-test changes section for the full reproduction trace)."
+    }
+  ],
+  "stamp": {
+    "treeHash": "3bb2cb470b20859b5f8910c435a97a35cadafbdb424e2240128efcee8c57389c",
+    "headSha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "dirty": true,
+    "writtenAt": "2026-08-11T02:35:31.702Z"
+  }
+}
