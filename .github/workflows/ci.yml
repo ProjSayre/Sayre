@@ -106,6 +106,14 @@ jobs:
       - name: Ledger append — tests
         run: npm run test:ledger-append
 
+      # /gap-scout-only + gap-mode cost follow-up: scripts/extract-ticket.mjs is the CLI helper
+      # planner/gap-scout invoke directly (node scripts/extract-ticket.mjs <id> --with-overlays)
+      # so agents load one ticket slice instead of the whole backlog/cheat sheet — same shape as
+      # scripts/ledger-append.mjs above (a CLI tool, not a check:* gate), so only its test suite
+      # needs a step here.
+      - name: Extract-ticket — tests
+        run: npm run test:extract-ticket
+
       # PL-03c review Critical 3: scripts/check-red-integrity.mjs is the mechanical half of
       # .sdd/stages/review.md's "Red-test integrity" and "Spec trace" checks (rehash red.md's
       # listed files, resolve every @spec marker). Like check:security-audit-run below, only the
@@ -263,6 +271,11 @@ jobs:
         env:
           DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 
+      # W0-04 (GAP-3a/GAP-5): bullmq.priority.test.ts joins the existing round-trip file
+      # in this step's zero-skip gate. Both files assert exact live-queue counts on the
+      # shared `github-sync` BullMQ queue, so they must run in the same vitest
+      # invocation with vitest.config.ts's `fileParallelism: false` in effect — not as
+      # two separate `npm test` invocations racing each other for the broker.
       - name: core messaging — Redis required (zero broker skips)
         env:
           NODE_ENV: test
@@ -272,6 +285,7 @@ jobs:
         run: >-
           npm test --workspace @sayre/core --
           --run src/queue/__tests__/bullmq.roundtrip.test.ts
+          src/queue/__tests__/bullmq.priority.test.ts
 
       - name: core — RLS isolation tests (dev suite)
         run: npm --prefix services/core run test:rls:ci
@@ -366,12 +380,12 @@ jobs:
       # Apply it here, against this job's own Postgres service, before pytest
       # runs, exactly the same migrate() call the Node RLS/pen-test suites
       # apply against theirs.
-      - name: Setup Node (for schema migration only)
+      - name: Setup Node (for schema migration and the cross-runtime gateway harness)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Node dependencies (root, for services/core's migrator)
+      - name: Install Node dependencies (root, for services/core's migrator and @sayre/core)
         working-directory: ${{ github.workspace }}
         run: npm ci
 
@@ -380,6 +394,18 @@ jobs:
         run: npm --prefix services/core run db:migrate:ci
         env:
           DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+
+      # The cross-runtime step below spawns services/gateway/test/cross-runtime/consumeRealtime.ts
+      # via `npx tsx`. Unlike services/core/test/cross-runtime/publishIngestion.ts (which imports
+      # its assertValidEnvelope via a same-workspace relative path), services/gateway/src/sqs/
+      # consumer.ts imports assertValidEnvelope from the @sayre/core PACKAGE surface, which
+      # resolves through package.json's "main": "dist/lib.js" -- a gitignored, unbuilt directory
+      # on a clean `npm ci` checkout. The "web + core" job never hits this because turbo's
+      # `typecheck`/`test` tasks declare `dependsOn: ["^build"]` and build it implicitly; this job
+      # calls tsx directly with no turbo task graph, so the build must be explicit here.
+      - name: Build @sayre/core (and its @sayre/shared-types / @sayre/config deps) for the gateway harness
+        working-directory: ${{ github.workspace }}
+        run: npx turbo run build --filter=@sayre/core
 
       - name: Lint (ruff)
         run: poetry run ruff check .
@@ -476,6 +502,36 @@ jobs:
           skipped=sum(int(s.attrib.get('skipped', 0)) for s in
           ([root] if root.tag == 'testsuite' else root.findall('testsuite')));
           assert skipped == 0, f'{skipped} broker tests skipped'"
+
+      # W0-04 (GAP-4/GAP-4a): genuine cross-language, live-broker round-trip in both
+      # directions (Node -> Python over ingestion.fifo, Python -> Node over the
+      # graph-updated SNS topic / graph-updated-realtime SQS queue), driving the real
+      # production entry points on both sides via the two tsx harnesses under
+      # services/core/test/cross-runtime/ and services/gateway/test/cross-runtime/.
+      # LocalStack, Node 20, and a root `npm ci` are already set up earlier in this job
+      # (see the "Start LocalStack SQS/SNS topology" and "Install Node dependencies"
+      # steps above) — no new service or toolchain is added here.
+      - name: Cross-runtime round-trip — LocalStack + Node required (zero skips)
+        env:
+          SAYRE_ENV: test
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: localstack-test
+          AWS_SECRET_ACCESS_KEY: localstack-test
+          SQS_ENDPOINT_URL: http://localhost:4566
+          SNS_ENDPOINT_URL: http://localhost:4566
+          MESSAGING_INTEGRATION_REQUIRED: 'true'
+        run: >-
+          poetry run pytest
+          tests/test_cross_runtime_roundtrip.py
+          -q --junitxml=.cross-runtime-junit.xml
+
+      - name: Assert no cross-runtime tests skipped
+        run: >-
+          python -c "import xml.etree.ElementTree as E;
+          root=E.parse('.cross-runtime-junit.xml').getroot();
+          skipped=sum(int(s.attrib.get('skipped', 0)) for s in
+          ([root] if root.tag == 'testsuite' else root.findall('testsuite')));
+          assert skipped == 0, f'{skipped} cross-runtime tests skipped'"
 
       - name: LocalStack logs on failure
         if: failure()

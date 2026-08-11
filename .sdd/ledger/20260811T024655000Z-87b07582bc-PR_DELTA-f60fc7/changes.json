@@ -1,0 +1,28 @@
+{
+  "filesChanged": [
+    "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json",
+    "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+    "services/core/src/routes/githubWebhook.fixtures.test.ts",
+    "services/core/src/services/githubWebhookService.test.ts",
+    "services/core/src/webhooks/normalizeGithubEvent.test.ts",
+    "services/core/src/webhooks/normalizeGithubEvent.ts",
+    "services/workers/sayre_workers/ingestion/__init__.py",
+    "services/workers/sayre_workers/ingestion/budgets.py",
+    "services/workers/sayre_workers/ingestion/models.py",
+    "services/workers/sayre_workers/ingestion/service.py",
+    "services/workers/tests/test_chunk_store_integration.py",
+    "services/workers/tests/test_graph_updated_envelope.py",
+    "services/workers/tests/test_ingestion_fixture_repo.py",
+    "services/workers/tests/test_ingestion_graph_integration.py",
+    "services/workers/tests/test_ingestion_routing.py",
+    "services/workers/tests/test_ingestion.py",
+    "services/workers/tests/test_push_wire_fixture.py"
+  ],
+  "redTestChanges": [],
+  "stamp": {
+    "treeHash": "1f2daeecdb96d8117406c0d70180b197f3cfb355e76ff38ff76b5499f299a64b",
+    "headSha": "87b07582bca1f6db668fd80f3435c00f6eb82e50",
+    "dirty": true,
+    "writtenAt": "2026-08-11T02:43:32.512Z"
+  }
+}

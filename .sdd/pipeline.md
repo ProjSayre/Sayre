@@ -11,7 +11,8 @@ for a genuinely small, mechanically-eligible change (`/pipeline-lite` — PL-11,
 deliberately skips `red` and `security`; the MVP audit-and-gap-fill lane (`/pipeline-gapfill`, see
 below), which runs `gap-scout` then gap-scoped `planner`/`red`/`dev`/`tester`/`review`/`security`
 so already-shipped Wave 0–4 tickets are polished against acceptance criteria without a full
-rewrite; the sanctioned, spec-first front door for a direct, in-session edit (`/inline-edit` —
+rewrite; `/gap-scout-only` for triage without the rest of the lane; the sanctioned, spec-first
+front door for a direct, in-session edit (`/inline-edit` —
 PL-12, see below), which deliberately skips `red` and `dev` while running
 `tester`/`review`/`security` in full; and `/hotfix`, which deliberately runs none of the stages
 above (see `.sdd/hotfix.md`, and this file's own `/hotfix`
@@ -318,7 +319,8 @@ per-stage commands that each run exactly one stage alone (`/planner`, `/red`, `/
 check (`/pipeline-status`); the sanctioned re-verification path after a hand-edit (`/re-gate`); the
 proportionate lane for a genuinely small, mechanically-eligible change (`/pipeline-lite`), which
 skips `red` and `security` deliberately; the MVP audit-and-gap-fill lane (`/pipeline-gapfill`),
-which runs `gap-scout` then a gap-scoped full rear sequence; the sanctioned, spec-first front door
+which runs `gap-scout` then a gap-scoped full rear sequence; the triage-only `/gap-scout-only`
+command (scout one or more tickets and stop); the sanctioned, spec-first front door
 for a direct, in-session edit (`/inline-edit`), which skips `red` and `dev` deliberately while running
 `tester`/`review`/`security` in full; and `/hotfix`, which deliberately runs none of the stages
 at all (see this file's intro and `.sdd/hotfix.md`). Each is documented at the neutral level here;
@@ -451,10 +453,11 @@ read-only scout finds first.
 a hand-edit.
 **Not `/hotfix`:** production is not broken; a ratified gap-spec is required.
 
-1. **Resolve the ticket id** (`W[0-9]+-[0-9]+`). Look it up in `.sdd/mvp-overlays.yml`. Absent →
-   refuse and route to `/pipeline`. Present → load `overlays`, `security_required`, optional
-   `spot_checks` / `audit_first` / `note`. Always also load the cheat sheet base template.
-2. Invoke **gap-scout** (`.sdd/stages/gap-scout.md`) with the ticket text + overlays. It writes
+1. **Resolve the ticket id** (`W[0-9]+-[0-9]+`). Look it up in `.sdd/mvp-overlays.yml` via
+   `node scripts/extract-ticket.mjs <id> --with-overlays` (never open the full backlog or cheat
+   sheet). Absent from YAML → refuse and route to `/pipeline`. Present → use the printed ticket
+   slice + overlay framing only.
+2. Invoke **gap-scout** (`.sdd/stages/gap-scout.md`) with that extract output. It writes
    `.pipeline/gaps.md` and `.pipeline/gaps.json`.
 3. **Branch on `gaps.json.verdict`:**
    - `ALREADY_COMPLETE` — stop. Report the verification. Do **not** run planner/dev, and do **not**
@@ -496,6 +499,27 @@ work grows into a rewrite, stop and escalate to full `/pipeline` rather than str
   YAML wins for mechanical eligibility and the mismatch belongs in Open Questions.
 - This lane never skips `security`. It is not a back door for product-code polish without attacker
   briefs.
+
+### `/gap-scout-only <ticket-id> [ticket-id…]`
+
+Triage-only front door for MVP polish. Runs **only** `gap-scout` for one or more ticket ids, then
+stops. Purpose: classify a batch of Wave 0–4 tickets (`ALREADY_COMPLETE` / `GAPFILL` /
+`ESCALATE_FULL_PIPELINE`) without paying for planner/red/dev/tester/review/security.
+
+1. For each id, run `node scripts/extract-ticket.mjs <id> --with-overlays` (fail closed on missing
+   id / missing YAML entry — skip that id and report it, continue others).
+2. Invoke **gap-scout** once per id. Write `.pipeline/gaps.md` + `gaps.json` for the **last** id
+   processed (same paths as the gapfill lane). Also print a per-id summary table to the user:
+   ticket → verdict → non-OK count → recommended next command (`(none)` /
+   `/pipeline-gapfill <id>` / `/pipeline <id>`).
+3. **Do not** invoke planner, red, dev, tester, review, security, or ledger. There is nothing to
+   append: scout is verification/triage, not an implementation PASS.
+4. If the caller passed a single id and wants to continue immediately, tell them to run
+   `/pipeline-gapfill <id>` only when verdict is `GAPFILL` (reuse the gaps artifacts already on
+   disk — gapfill's step 2 may skip re-scouting if `gaps.json` is fresh for that ticket).
+
+**Honest limits.** A scout-only pass is not a merge gate. `ALREADY_COMPLETE` is an audit claim for
+this tree right now, not a ledger PASS.
 
 ### Per-stage entry points
 

@@ -44,7 +44,7 @@ stages:
         Turns a vague feature request or ticket into a highly detailed spec doc, using the PRD as
         context. Use at the start of any feature/ticket, before any code is written. Writes
         .pipeline/spec.md, which dev reads next.
-      tools: [Read, Grep, Glob, Write]
+      tools: [Read, Grep, Glob, Write, Bash]
       model: opus
 
   red:
@@ -57,7 +57,7 @@ stages:
         refuses to finish with any RED-BROKEN test. Use after planner writes .pipeline/spec.md and
         before dev starts implementing.
       tools: [Read, Write, Edit, Grep, Glob, Bash]
-      model: opus
+      model: sonnet
 
   dev:
     neutral: stages/dev.md
@@ -78,7 +78,7 @@ stages:
         Reads what dev built and writes/runs tests covering edge cases and the happy path. Use
         after dev writes .pipeline/changes.md.
       tools: [Read, Write, Edit, Grep, Glob, Bash]
-      model: sonnet
+      model: haiku
 
   review:
     neutral: stages/review.md
@@ -90,7 +90,7 @@ stages:
         aren't up to standard. Use after tester writes .pipeline/test-results.md.
       tools: [Read, Grep, Glob, Bash, Write]
       disallowedTools: [Edit]
-      model: inherit
+      model: sonnet
       # D-005's action item ("review/security-checker are documented read-only but carry Bash with
       # no matcher, so sed -i/tee/python -c could write past a Write-only guard") was NOT closed for
       # a long stretch of this repo's history, despite two rounds of guard patches — a diagnostic run

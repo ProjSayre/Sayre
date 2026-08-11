@@ -26,6 +26,8 @@ out of a stage file is about removing *dated narration*, never about removing a 
 - New stage `.sdd/stages/gap-scout.md` (read-only agent; writes `gaps.md`/`gaps.json`).
 - Planner/red gain gap-mode sections; review gains undeclared-scope check when `gaps.json` is present.
 - Ledger: `node scripts/ledger-append.mjs --gapfill` (disclosure marker; security still required).
+- Cost follow-up: demoted `red`→sonnet, `tester`→haiku, `review`→sonnet (no inherit); added
+  `/gap-scout-only` and `scripts/extract-ticket.mjs` so agents load one ticket slice, not whole MD files.
 
 ## Shared: read-only enforcement for `review` / `security-checker` / `pr-review`
 

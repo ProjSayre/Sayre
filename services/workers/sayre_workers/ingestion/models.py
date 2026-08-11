@@ -13,6 +13,7 @@ from messaging.envelope import MessageEnvelope
 
 _SHA = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _INSTALLATION_ID = re.compile(r"^[1-9][0-9]{0,15}$")
+_ZERO_SHA = re.compile(r"^0{40,64}$")
 
 
 class InvalidIngestionJobError(ValueError):
@@ -164,13 +165,43 @@ class EmbeddingWork:
 
 @dataclass(frozen=True)
 class IngestionResult:
-    status: Literal["accepted", "replayed", "stale"]
+    status: Literal["accepted", "replayed", "stale", "ref_deleted", "ignored"]
     revision_sha: str
     graph_version: int | None
     full_rebuild: bool
     changed_paths: tuple[str, ...] = field(default_factory=tuple)
     deleted_paths: tuple[str, ...] = field(default_factory=tuple)
     structural_duration_ms: float | None = None
+
+
+@dataclass(frozen=True)
+class RefDeletionCommand:
+    """A webhook signal that a ref no longer exists. Terminal: acknowledged, never parsed."""
+
+    org_id: str
+    repository: RepositoryLocator
+    ref_name: str
+    previous_revision_sha: str | None
+    occurred_at: datetime
+    trace_id: str | None
+    idempotency_key: str
+
+
+@dataclass(frozen=True)
+class IgnoredIngestionMessage:
+    """A message type known to be non-actionable for ingestion. Terminal: acknowledged."""
+
+    message_type: str
+    reason: Literal["branch_lifecycle_event", "ref_deleted"]
+
+
+IngestionCommand = IngestionJob | RefDeletionCommand | IgnoredIngestionMessage
+
+# Envelope types that may legitimately arrive on the ingestion FIFO queue but that this
+# worker deliberately does not parse. Anything OUTSIDE this set and outside the handled
+# set still raises InvalidIngestionJobError — an unknown type must fail loudly rather
+# than be silently swallowed.
+TERMINAL_IGNORED_TYPES: frozenset[str] = frozenset({"repo.branch"})
 
 
 def _record(value: object, name: str) -> dict[str, Any]:
@@ -200,11 +231,12 @@ def _installation_id(value: object, *, required: bool) -> int | None:
     return installation_id
 
 
-def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
-    """Translate the shared queue envelope without ever trusting a payload org_id."""
-    if envelope.type not in {"repo.initial_parse", "repo.push"}:
-        raise InvalidIngestionJobError("unsupported ingestion message type")
-    event = _record(envelope.payload, "payload")
+def _extract_repository_and_ref(
+    event: dict[str, Any],
+) -> tuple[RepositoryLocator, str, dict[str, Any]]:
+    """Shared repository-locator/ref-name/inner-payload extraction, used by both
+    `parse_ingestion_envelope` and `classify_ingestion_envelope`'s ref-deletion branch
+    so a malformed envelope raises `InvalidIngestionJobError` identically either way."""
     repository_data = _record(event.get("repo") or event.get("repository"), "payload.repo")
     provider = _required_string(event.get("provider"), "payload.provider")
     repository = RepositoryLocator(
@@ -225,8 +257,24 @@ def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
     )
     ref_name = _required_string(event.get("ref") or event.get("ref_name"), "payload.ref")
     detail = _record(event.get("payload", {}), "payload.payload")
+    return repository, ref_name, detail
+
+
+def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
+    """Translate the shared queue envelope without ever trusting a payload org_id."""
+    if envelope.type not in {"repo.initial_parse", "repo.push"}:
+        raise InvalidIngestionJobError("unsupported ingestion message type")
+    event = _record(envelope.payload, "payload")
+    repository, ref_name, detail = _extract_repository_and_ref(event)
     if envelope.type == "repo.push":
         revision = _required_string(detail.get("after"), "payload.payload.after")
+        if _ZERO_SHA.fullmatch(revision):
+            # Defence-in-depth: no caller can route an all-zero-SHA branch-deletion
+            # push into the checkout path. classify_ingestion_envelope is the only
+            # supported entry point for the consumer (see GAP-9).
+            raise InvalidIngestionJobError(
+                "branch-deletion push must be classified, not parsed"
+            )
         previous = _optional_string(detail.get("before"))
         forced = detail.get("forced", False)
         if not isinstance(forced, bool):
@@ -255,3 +303,60 @@ def parse_ingestion_envelope(envelope: MessageEnvelope) -> IngestionJob:
         trace_id=envelope.trace_id,
         idempotency_key=envelope.idempotency_key or envelope.message_id,
     )
+
+
+def classify_ingestion_envelope(envelope: MessageEnvelope) -> IngestionCommand:
+    """Terminal classification for every delivery on the ingestion queue.
+
+    Returns an IngestionJob for work to perform, a RefDeletionCommand for a ref that no
+    longer exists, or an IgnoredIngestionMessage for a known non-actionable type. Raises
+    InvalidIngestionJobError only for genuinely unknown or malformed input.
+    """
+    # Rule 1: an enumerated, known-non-actionable type is acknowledged without ever
+    # touching envelope.payload beyond this type check (EC-1: a junk/empty payload on
+    # a repo.branch envelope still terminal-acks rather than raising).
+    if envelope.type in TERMINAL_IGNORED_TYPES:
+        return IgnoredIngestionMessage(
+            message_type=envelope.type, reason="branch_lifecycle_event"
+        )
+
+    # Rule 2: a repo.push that is actually a branch deletion classifies as a terminal
+    # RefDeletionCommand instead of being parsed into a checkout-bound IngestionJob.
+    if envelope.type == "repo.push":
+        event = _record(envelope.payload, "payload")
+        detail = _record(event.get("payload", {}), "payload.payload")
+        deleted = detail.get("deleted", False)
+        if not isinstance(deleted, bool):
+            # Mirrors the existing `forced` type check at parse_ingestion_envelope.
+            raise InvalidIngestionJobError("payload.payload.deleted must be boolean")
+        after = detail.get("after")
+        is_zero_after = isinstance(after, str) and bool(_ZERO_SHA.fullmatch(after))
+        if deleted or is_zero_after:
+            # deleted=True is authoritative even with a real, non-zero `after`
+            # (EC-4); an all-zero `after` is a ref deletion even when a payload
+            # lies about `deleted` (EC-3) -- a payload cannot bypass this guard.
+            repository, ref_name, detail = _extract_repository_and_ref(event)
+            before = detail.get("before")
+            previous_revision_sha = (
+                before
+                if isinstance(before, str)
+                and _SHA.fullmatch(before)
+                and not _ZERO_SHA.fullmatch(before)
+                else None
+            )
+            return RefDeletionCommand(
+                org_id=envelope.org_id,
+                repository=repository,
+                ref_name=ref_name,
+                previous_revision_sha=previous_revision_sha,
+                occurred_at=envelope.occurred_at,
+                trace_id=envelope.trace_id,
+                idempotency_key=envelope.idempotency_key or envelope.message_id,
+            )
+
+    # Rule 3: everything else this worker actually handles delegates unchanged.
+    if envelope.type in {"repo.initial_parse", "repo.push"}:
+        return parse_ingestion_envelope(envelope)
+
+    # Rule 4: genuinely unknown/malformed input still fails loudly.
+    raise InvalidIngestionJobError("unsupported ingestion message type")

@@ -7,6 +7,7 @@ bounded chunks -> enqueue embeddings.
 
 from __future__ import annotations
 
+import logging
 import time
 
 from messaging.envelope import MessageEnvelope
@@ -15,10 +16,18 @@ from sayre_workers.parsing import SourceFile, parse_diff, parse_full
 from .chunks import ChunkStore, build_bounded_chunks
 from .events import IngestionPublisher, embedding_task
 from .graph import GraphStore
-from .models import GraphScope, IngestionResult, parse_ingestion_envelope
+from .models import (
+    GraphScope,
+    IgnoredIngestionMessage,
+    IngestionResult,
+    RefDeletionCommand,
+    classify_ingestion_envelope,
+)
 from .projection import build_projection, stable_uid
 from .repository import RepositorySource
 from .state import RefStateStore
+
+logger = logging.getLogger(__name__)
 
 
 class IngestionService:
@@ -57,7 +66,25 @@ class IngestionService:
             raise RuntimeError("one or more ingestion runtime resources failed to close")
 
     async def handle(self, envelope: MessageEnvelope) -> IngestionResult:
-        job = parse_ingestion_envelope(envelope)
+        command = classify_ingestion_envelope(envelope)
+        if isinstance(command, IgnoredIngestionMessage):
+            logger.info(
+                "Ingestion message acknowledged without work: type=%s reason=%s",
+                command.message_type,
+                command.reason,
+            )
+            return IngestionResult(
+                status="ignored", revision_sha="", graph_version=None, full_rebuild=False
+            )
+        if isinstance(command, RefDeletionCommand):
+            logger.info(
+                "Ref deletion acknowledged without projection teardown (see spec Q-1): ref=%s",
+                command.ref_name,
+            )
+            return IngestionResult(
+                status="ref_deleted", revision_sha="", graph_version=None, full_rebuild=False
+            )
+        job = command
         cold_start_started_at_ms = time.time_ns() // 1_000_000
         started = time.perf_counter()
         accepted_state = None

@@ -1,9 +1,16 @@
 """SQS publish -> consume integration round-trip against LocalStack.
 
-Acceptance criterion 1 (Python round-trip) plus the SQS edge cases from the spec:
-malformed / invalid-envelope messages are skipped (not passed to the handler, not
-deleted) while the loop survives and later valid messages still process; empty-queue
-consume; idempotent ensure_queue / get_queue_url-on-missing-queue.
+W0-04 (GAP-4a): this file is a same-language (Python -> Python) round-trip, NOT the
+W0-04 cross-language acceptance proof. W0-04's canonical acceptance line is
+docs/product/Ticket-Backlog-by-Feature-2.md §W0-04 ("cross-language test messages
+consumed correctly; a priority message demonstrably drains ahead of a backlog of
+default messages") — docs/backlog.md's shorter reword ("Python->Python SQS roundtrip
+and Node->Node BullMQ roundtrip") is superseded. The actual cross-language evidence is
+tests/test_cross_runtime_roundtrip.py. What remains here is real, valuable coverage in
+its own right: the SQS edge cases from the spec — malformed / invalid-envelope messages
+are skipped (not passed to the handler, not deleted) while the loop survives and later
+valid messages still process; empty-queue consume; idempotent ensure_queue /
+get_queue_url-on-missing-queue.
 
 These are INTEGRATION tests: they require LocalStack SQS to be reachable at
 SQS_ENDPOINT_URL. When the broker is unreachable the module skips during ordinary
@@ -155,7 +162,7 @@ def ephemeral_queue():
         sqs_client._queue_url_cache.pop(name, None)
 
 
-# --- Acceptance criterion 1: publish -> consume round-trip -------------------
+# --- Same-language publish -> consume round-trip (see module docstring) -----
 
 
 def test_selftest_queue_roundtrip():

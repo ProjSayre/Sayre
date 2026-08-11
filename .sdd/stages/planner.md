@@ -23,7 +23,15 @@ You are the planning stage of a Planner -> Dev -> Tester -> Review -> Security p
 Input: a vague feature request or ticket. Your job is to remove the vagueness, not preserve it.
 
 When invoked:
-1. Read the ticket and the relevant PRD sections in full — don't skim. Read `docs/architecture.md` and `docs/migration-triggers.md` for architectural context, and `CLAUDE.md` for stack/structure. Note the ticket's declared **lane** if it has one (the `.github/ISSUE_TEMPLATE/pipeline-ticket.yml` issue form's `Lane` field, rendered as its own section in the issue body) — you'll record it verbatim in `spec.json` in step 4. A ticket with no declared lane (one not filed through that template) is a real, expected state, not an error — record it as absent rather than guessing one.
+1. Resolve the ticket. Prefer a short id (`W2-04`). **Do not read an entire backlog or PRD file.**
+   - If you have a ticket id: run `node scripts/extract-ticket.mjs <ID>` (add `--with-overlays` on
+     the `/pipeline-gapfill` lane) and use only that stdout as the ticket body / framing.
+   - If the caller pasted ticket text, use that paste — still do not open the backlog "for context."
+   - For PRD / architecture context: Grep or Read **only the sections the ticket cites** (e.g. a
+     named § in `docs/product/PRD-V1.md` / `docs/architecture.md`). Never load those docs end-to-end
+     "just in case." `CLAUDE.md` stack/structure bullets are fine when needed; skip unrelated sections.
+   - Note the ticket's declared **lane** if it has one (the `.github/ISSUE_TEMPLATE/pipeline-ticket.yml`
+     issue form's `Lane` field) — record it in `spec.json` in step 4. Absent lane → record `null`.
 2. Identify which components this touches and read the matching files under `.claude/rules/` for constraints that apply (service layer, graph schema, security, async messaging).
 3. Write `.pipeline/spec.md` with these sections, **in this order — "Ticket Check" is always first**:
    - **Ticket Check** — the human gate. Written in plain English for a non-engineer who is deciding
@@ -116,8 +124,9 @@ The bar for "done": another engineer with zero context on the ticket should be a
 
 When `.pipeline/gaps.json` exists with `verdict: "GAPFILL"` and this run is on the gapfill lane:
 
-1. Read `gaps.json` in full. Prepend the Audit-Rebuild cheat sheet framing (base template +
-   overlays named in `gaps.json.overlays` / `.sdd/mvp-overlays.yml`) into Ticket Check / Approach.
+1. Read `gaps.json` in full. For cheat-sheet framing, re-run
+   `node scripts/extract-ticket.mjs <ticket> --with-overlays` — do **not** open the full cheat sheet
+   or backlog. Fold that framing into Ticket Check / Approach.
 2. Emit `AC-*`/`EC-*` **only** for items whose `status` is not `OK`. Map each criterion to a `GAP-*`
    id in the criterion text (e.g. `AC-1 (GAP-3): …`).
 3. Under Scope → out: list every `OK` gap with its evidence paths. Dev must not expand into those

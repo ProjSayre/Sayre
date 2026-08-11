@@ -58,6 +58,14 @@ records the shared decisions that foundation and downstream tickets must preserv
   checks; temporary FIFO/SNS deduplication is not the source of correctness.
 - SQS/SNS belong to the Python worker/event fleet. BullMQ on Redis remains the permanent Node
   integration-worker transport for GitHub, Jira, and Linear.
+- BullMQ (W0-04, GAP-3a) mirrors the SQS priority split above with two named job lanes,
+  `priority` and `default`, selected via `enqueue()`'s `lane` option
+  (`services/core/src/queue/bullmq.ts`). Both lanes map to a non-zero BullMQ `priority` value on
+  purpose: BullMQ routes an unprioritized job (priority `0`/`undefined`) to a separate list that
+  drains completely before any prioritized job is considered, so a zero-mapped default lane would
+  invert the intended guarantee. No job type is assigned the priority lane by policy yet — the
+  three existing `enqueue()` call sites (GitHub/Jira/Linear sync) stay on the default lane; which
+  jobs should use the priority lane is a separate, later decision.
 
 ## Persistence and tenant enforcement
 

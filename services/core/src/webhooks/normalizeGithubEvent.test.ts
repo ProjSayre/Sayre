@@ -32,6 +32,7 @@ describe('normalizeGithubEvent', () => {
     expect(result).toEqual({ ignored: 'no_installation' });
   });
 
+  // @spec EC-26
   it('normalizes a push event to ingestion+ownership', () => {
     const result = normalizeGithubEvent({
       githubEvent: 'push',
@@ -97,6 +98,7 @@ describe('normalizeGithubEvent', () => {
     expect(result.event.payload.deleted).toBe(true);
   });
 
+  // @spec EC-26
   it('normalizes a pull_request event to ownership only', () => {
     const result = normalizeGithubEvent({
       githubEvent: 'pull_request',
@@ -153,7 +155,12 @@ describe('normalizeGithubEvent', () => {
     expect(result.destinations).toEqual(['ownership']);
   });
 
-  it('normalizes a branch create event to ingestion+ownership', () => {
+  // GAP-8: a branch create/delete carries no revision SHA -- there is nothing for
+  // the ingestion worker to fetch or parse, and routing it to the FIFO ingestion
+  // queue produced a permanently-failing delivery that head-of-line blocked every
+  // later delta for the same (org, repo, ref) group (see normalizeGithubEvent.ts).
+  // @spec AC-1
+  it('normalizes a branch create event to ownership ONLY (not ingestion)', () => {
     const result = normalizeGithubEvent({
       githubEvent: 'create',
       deliveryId: 'delivery-5',
@@ -168,10 +175,11 @@ describe('normalizeGithubEvent', () => {
     expect(result.event.type).toBe('branch');
     expect(result.event.ref).toBe('refs/heads/feature-y');
     expect(result.event.payload).toEqual({ action: 'created', ref: 'feature-y', ref_type: 'branch' });
-    expect(result.destinations).toEqual(['ingestion', 'ownership']);
+    expect(result.destinations).toEqual(['ownership']);
   });
 
-  it('normalizes a branch delete event to ingestion+ownership', () => {
+  // @spec AC-1
+  it('normalizes a branch delete event to ownership ONLY (not ingestion)', () => {
     const result = normalizeGithubEvent({
       githubEvent: 'delete',
       deliveryId: 'delivery-6',
@@ -184,8 +192,10 @@ describe('normalizeGithubEvent', () => {
     });
     if ('ignored' in result) throw new Error('expected a normalized result');
     expect(result.event.payload).toEqual({ action: 'deleted', ref: 'feature-y', ref_type: 'branch' });
+    expect(result.destinations).toEqual(['ownership']);
   });
 
+  // @spec EC-26
   it('ignores create/delete for a tag ref_type', () => {
     const result = normalizeGithubEvent({
       githubEvent: 'create',

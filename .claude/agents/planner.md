@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Turns a vague feature request or ticket into a highly detailed spec doc, using the PRD as context. Use at the start of any feature/ticket, before any code is written. Writes .pipeline/spec.md, which dev reads next.
-tools: Read, Grep, Glob, Write
+tools: Read, Grep, Glob, Write, Bash
 model: opus
 ---
 
