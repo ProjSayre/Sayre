@@ -206,7 +206,10 @@ describe('handleGithubWebhook — routing / publishing', () => {
     expect(deps.publishOwnership).toHaveBeenCalledTimes(1);
   });
 
-  it('AC3: a valid branch create/delete publishes to both', async () => {
+  // GAP-8: a branch create/delete carries no revision SHA -- there is nothing for the
+  // ingestion worker to fetch or parse, so it is no longer routed to ingestion (see
+  // webhooks/normalizeGithubEvent.ts). @spec AC-1
+  it('AC3: a valid branch create/delete publishes to ownership ONLY (not ingestion)', async () => {
     const deps = makeDeps();
     const rawBody = Buffer.from(
       JSON.stringify({
@@ -220,8 +223,8 @@ describe('handleGithubWebhook — routing / publishing', () => {
       { rawBody, signature: sign(rawBody), githubEvent: 'create', deliveryId: 'd3' },
       deps,
     );
-    expect(outcome).toEqual({ status: 'published', type: 'branch', destinations: ['ingestion', 'ownership'] });
-    expect(deps.publishIngestion).toHaveBeenCalledTimes(1);
+    expect(outcome).toEqual({ status: 'published', type: 'branch', destinations: ['ownership'] });
+    expect(deps.publishIngestion).not.toHaveBeenCalled();
     expect(deps.publishOwnership).toHaveBeenCalledTimes(1);
   });
 

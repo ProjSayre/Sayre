@@ -1,0 +1,314 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T02:46:55Z",
+  "completed_at": "2026-08-11T03:20:00Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "87b07582bca1f6db668fd80f3435c00f6eb82e50",
+    "branch": "feat/w1-05-ingestion-delta-worker-core",
+    "dirty": true,
+    "environment": "local-dev checkout; no live CI run. Neo4j/Postgres/pgvector unreachable in this environment (independently re-confirmed this run: poetry run pytest on the seven touched/new Python test files -> 68 passed, 11 skipped -- 5 Neo4j-gated + 6 Postgres-gated -- 0 errors, 0 hangs). Docker not probed directly (not needed for any selected check). Working tree is dirty with exactly the W1-05 gap-fill file set: `git status --porcelain` shows 8 modified + 9 untracked files under services/core/** and services/workers/**, matching changes.md's file list exactly, plus one confirmed-unrelated pre-existing untracked `Documents/` directory (not part of `git diff`, not in changed_paths).",
+    "base_urls": [],
+    "changed_paths": [
+      "services/core/src/webhooks/normalizeGithubEvent.ts",
+      "services/core/src/webhooks/normalizeGithubEvent.test.ts",
+      "services/core/src/routes/githubWebhook.fixtures.test.ts",
+      "services/core/src/services/githubWebhookService.test.ts",
+      "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+      "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json",
+      "services/workers/sayre_workers/ingestion/budgets.py",
+      "services/workers/sayre_workers/ingestion/models.py",
+      "services/workers/sayre_workers/ingestion/service.py",
+      "services/workers/sayre_workers/ingestion/__init__.py",
+      "services/workers/tests/test_ingestion_routing.py",
+      "services/workers/tests/test_push_wire_fixture.py",
+      "services/workers/tests/test_ingestion_graph_integration.py",
+      "services/workers/tests/test_chunk_store_integration.py",
+      "services/workers/tests/test_graph_updated_envelope.py",
+      "services/workers/tests/test_ingestion_fixture_repo.py",
+      "services/workers/tests/test_ingestion.py"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No compatible baseline. Per audit-contract.md's baseline order: (1) no human-specified baseline was supplied for this run; (2) the newest complete run whose target commit is an ancestor of the current target -- checked every run under .pipeline/security-history/ with `git merge-base --is-ancestor <run-commit> 87b07582bca1f6db668fd80f3435c00f6eb82e50`. The only run whose observations overlap this diff's actual production surface (normalizeGithubEvent.ts's branch-routing arm, models.py's classify_ingestion_envelope/RefDeletionCommand/TERMINAL_IGNORED_TYPES, service.py's terminal-ack dispatch) is 20260810T144750000Z-b63e14edd6-PR_DELTA-59e9ce, and its target commit b63e14edd6d82f8bb1b853768b98e95e4f2759a7 is CONFIRMED NOT an ancestor of this run's HEAD (`git merge-base --is-ancestor` exits 1) -- it sits on a sibling branch, feat/pipeline-gapfill-cost-controls, whose own tip commit (b63e14e, 'cut gapfill pipeline cost with scout-only triage and ticket slices') is unrelated to W1-05. That run's dirty working tree happened to contain the same uncommitted W1-05 diff at the time it ran (confirmed: `git diff b63e14edd6d82f8bb1b853768b98e95e4f2759a7 87b07582bca1f6db668fd80f3435c00f6eb82e50 -- <the three touched production files>` is empty, i.e. the *committed* history differs but the working-tree diff content is byte-identical), but a shared working-tree diff on an unrelated, non-ancestor commit does not satisfy the contract's ancestor requirement, and per this run's own task framing it is explicitly not to be treated as this run's baseline/history. (3) The next-most-recent run with any topical overlap, 20260810T040646000Z-ee496aa498-PR_DELTA-81b52d, targets commit ee496aa4985fc4145afbadf34c54de9cf3e9910a, which IS an ancestor of this run's HEAD (confirmed), but its selected surfaces were W0-04 BullMQ lane/priority mechanism and cross-runtime harness config loading -- grepped its results.json/report.md for normalizeGithubEvent/repo.branch/classify_ingestion_envelope/RefDeletionCommand/branch-deletion: zero matches, so it has no comparable observation for any check this run selects. (4) No default-branch MILESTONE/FULL run exists in history. Per contract option 4: no baseline; every observation below is FIRST_OBSERVATION.",
+    "incompatible_dimensions": [
+      "No ancestor-eligible prior run in .pipeline/security-history/ selected or evaluated observations against services/core/src/webhooks/normalizeGithubEvent.ts's branch-routing arm, services/workers/sayre_workers/ingestion/models.py's classify_ingestion_envelope/RefDeletionCommand/TERMINAL_IGNORED_TYPES, or services/workers/sayre_workers/ingestion/service.py's terminal-ack dispatch.",
+      "The one run whose results.json textually matches those symbols (20260810T144750000Z-b63e14edd6-PR_DELTA-59e9ce) fails the contract's ancestor requirement for its target commit and is explicitly excluded from this run's baseline/history per this run's own task instructions, notwithstanding its coincidentally-identical working-tree diff content."
+    ]
+  },
+  "product_progress": {
+    "milestone": "Wave 1 gapfill -- W1-05 Ingestion/Delta Worker core (GAPFILL: GAP-3/4/5/8/9/10/11/12), closing the head-of-line-block availability defect in the ticket's webhook-triggered-delta-jobs acceptance line, plus the literal Acceptance sentence (\"pushing to a fixture repo produces correct nodes and a graph.updated event within the sync target\") against real infra where reachable.",
+    "phase": "pre-external-customer MVP (CLAUDE.md / security-multitenancy.md secrets-phase posture: gitignored local .env, no KMS store yet -- not implicated by this diff, which introduces no new secret and touches no secret-loading code path beyond the pre-existing, unmodified `get_secret` calls in the two skip-gated real-infra test suites).",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/gaps.json",
+      ".pipeline/gaps.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".pipeline/review.json",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/async-messaging.md",
+      "CLAUDE.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Pipeline convention (security stage may execute existing, non-destructive local test suites as read-only dynamic verification -- no production source file was modified by this stage).",
+    "resource_ceiling": "Local vitest/pytest execution of pre-existing, already-committed test files only (normalizeGithubEvent.test.ts, githubWebhook.fixtures.test.ts, githubWebhookService.test.ts, test_ingestion_routing.py, test_push_wire_fixture.py, test_ingestion_fixture_repo.py, test_graph_updated_envelope.py, test_ingestion_graph_integration.py, test_chunk_store_integration.py, test_ingestion.py). No new fixtures created, no network egress, no destructive operation, no state persisted beyond the process.",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "org-server-resolved (synthetic, test_ingestion_routing.py)",
+      "22222222-2222-4222-8222-222222222222 (synthetic, committed Core envelope fixtures)",
+      "forged-org (synthetic attacker-controlled value used inside test_ref_deletion_command_org_id_ignores_forged_payload_org_id)"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE-01 is mandatory every run; this diff adds a new tenant-scoped dataclass (RefDeletionCommand) whose org_id provenance must be verified.",
+      "rationale": "org_id is read from envelope.org_id only in both new classification branches; verified in code and by an existing forged-payload test.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/models.py:320-360"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-02 is mandatory every run.",
+      "rationale": "No client-side graphology, route, or resolver code is touched by this diff; the RBAC boundary is unaffected.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE-03 is mandatory every run; new committed envelope fixtures and new log statements must be checked for secret material.",
+      "rationale": "No credential is hardcoded, logged, or persisted by any new code path.",
+      "code_references": [
+        "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+        "services/workers/sayre_workers/ingestion/service.py:68-90"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-04 is mandatory every run; this diff's only Core production change is inside the already-signature-gated handleGithubWebhook flow.",
+      "rationale": "normalizeGithubEvent.ts's changed arm executes strictly after verifyGithubSignature; unchanged by this diff.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:109-171"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE-05 is mandatory every run; the two new terminal-ack branches must be confirmed to never reach checkout.",
+      "rationale": "Both new branches `return` before the state_store.lock/repository_source.checkout block; confirmed no diff to repository.py.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:68-97"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-06 is mandatory every run.",
+      "rationale": "No Cypher/SQL/shell/queue-message string construction in the diff; graph.py/chunks.py/repository.py untouched.",
+      "code_references": []
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "services/workers/** trigger-path glob technically matches several changed files, but none of them touch embedding, retrieval, or prompt construction -- examined and judged not materially implicated (path routing is a floor, not the decision).",
+      "rationale": "No embedding/retrieval/prompt code in the diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "services/workers/** and services/core/** trigger-path globs technically match, but no model-provider/egress code is touched.",
+      "rationale": "No provider/egress code in the diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No services/core/src/mcp/** or api-key files touched.",
+      "rationale": "Not implicated.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No services/gateway/**, realtime, websocket, or redis files touched.",
+      "rationale": "Not implicated. Note: the ignored/ref_deleted paths never publish graph.updated, so the realtime fan-out surface is not reachable from either new branch.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "This diff's entire purpose is ingestion-queue/webhook classification and DLQ/head-of-line-block behavior -- directly named surface.",
+      "rationale": "Full checklist executed; see ING-01..ING-14 observations.",
+      "code_references": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/sayre_workers/ingestion/service.py"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "services/core/src/routes/** trigger-path glob technically matches githubWebhook.fixtures.test.ts, but this is the same webhook route already covered by the ingestion-queue-webhook brief and CORE-04; no apps/web or generic HTTP client code is touched.",
+      "rationale": "Not separately implicated.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "**/*delet* trigger-path glob matches repo_push.branch-deletion.envelope.json and RefDeletionCommand/deletion-related test/production content; this diff's explicit deferral of ref-deletion data teardown is a data-retention question squarely in this brief's scope (SEC-11).",
+      "rationale": "PARTIAL: the worker acknowledges a ref deletion but performs no teardown of the ref's graph/chunk/embedding data -- a disclosed, deliberate, pre-existing gap this diff does not close. See SEC-11 finding.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:79-86"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No Dockerfile/package.json/package-lock.json/pyproject.toml/poetry.lock/.github/** touched.",
+      "rationale": "Not implicated.",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "fde0283ab0d6cc50a2a289eaad12ac485580bef5c67366bb10b460b8355d759e"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "c1a24a105aa49d8ae317a1b740e8ecf3076f326b0ff669c2d4916c8a39b4cd0e"
+    },
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-subagent",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "a6b52b93f7233cf685cd28e9c84902364723d181f10db6a094f02299c6759db8"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"
+    }
+  ],
+  "limitations": [
+    "Neo4j/Postgres/pgvector are unreachable in this environment; the two GAP-3/GAP-4 real-infra suites (test_ingestion_graph_integration.py, test_chunk_store_integration.py) are unrelated to this diff's actual production change (coverage-only, per changes.md) and this stage independently re-confirmed they skip cleanly (11 skipped, 0 errors) rather than error or hang -- a pre-existing environment constraint, not a limitation this stage introduces.",
+    "review.md's Judgment call 1 states Q-1's human sign-off was already obtained earlier in this pipeline run. This stage searched .pipeline/ for a formal risk-acceptance record (named approver, reason, ticket, expiry per audit-contract.md section 7) and found only narrative references (spec.md's Open Questions, gaps.md's flag, review.md's own restatement) -- no artifact with those four fields. Not used to convert any result to PASS: SEC-11 is recorded OPEN, not RISK_ACCEPTED.",
+    "The one prior run whose results.json textually overlaps this diff's symbols (20260810T144750000Z-b63e14edd6-PR_DELTA-59e9ce) was excluded from this run's baseline because its target commit is not an ancestor of this run's HEAD (confirmed with git merge-base --is-ancestor) and per this run's own task framing. Every observation below is therefore FIRST_OBSERVATION, not a comparison, even though this run's own independent static/dynamic verification produced conclusions consistent with that excluded run's -- confirmed by rederiving the evidence directly (own git diff, own test runs, own code reads), not by trusting its report.",
+    "The X-GitHub-Event header (which determines whether Core treats a delivery as push vs create/delete, and therefore whether classify_ingestion_envelope ultimately sees repo.push vs repo.branch) is not itself covered by GitHub's X-Hub-Signature-256 HMAC (GitHub signs only the raw body). This is a pre-existing characteristic of GitHub's webhook protocol, unrelated to and unchanged by this diff. Exploiting it requires an active network position between GitHub and Core, outside this diff's threat model. Recorded for completeness, not as a diff-attributable finding."
+  ]
+}

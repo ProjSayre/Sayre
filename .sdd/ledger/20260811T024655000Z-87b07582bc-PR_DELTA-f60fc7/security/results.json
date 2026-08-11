@@ -1,0 +1,955 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-11T03:20:00Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 14,
+      "NOT_APPLICABLE": 21,
+      "FAIL": 1
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 36
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 36
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 13,
+      "PARTIAL": 1
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|ref-deletion-command-org-id-server-resolved|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ref-deletion-command-org-id-server-resolved",
+      "attack_path_version": "v1",
+      "attempt": "Traced RefDeletionCommand's org_id back to its source and attempted to override it with a forged payload.org_id.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/models.py: RefDeletionCommand(org_id=envelope.org_id, ...) inside classify_ingestion_envelope's rule 2 -- org_id is read from the MessageEnvelope's own field, never from `event`/`detail` (the parsed inner payload), even though the test fixture's payload deliberately carries payload['org_id']='forged-org'.",
+        "services/workers/tests/test_ingestion_routing.py:257-263 test_ref_deletion_command_org_id_ignores_forged_payload_org_id: envelope.org_id='org-server-resolved', payload['org_id']='forged-org'; asserts command.org_id == 'org-server-resolved' and != 'forged-org'. Independently re-ran this run: PASSED (part of the 68-passed pytest run this stage executed).",
+        "Read the full diff of models.py directly (not trusted from changes.md): no code path in classify_ingestion_envelope or the shared _extract_repository_and_ref helper reads an org_id-shaped field from the payload for either new command type."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/tests/test_ingestion_routing.py:257-263"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|ignored-ingestion-message-carries-no-tenant-data|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ignored-ingestion-message-carries-no-tenant-data",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether IgnoredIngestionMessage (the repo.branch terminal-ack path) carries or leaks any org/tenant-scoped field that could be forged or cross-tenant-confused.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/models.py: IgnoredIngestionMessage has exactly two fields, message_type and reason -- no org_id, no repository, no ref. No work is performed for this command, so there is no tenant-scoped write or read to protect.",
+        "services/workers/sayre_workers/ingestion/service.py: the corresponding IngestionService.handle branch logs only message_type/reason and returns a status-only IngestionResult; no org-scoped resource is touched."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/sayre_workers/ingestion/service.py:68-78"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|no-client-rbac-surface-in-diff|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-client-rbac-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched the full diff for graphology, route-handler-embedded, or resolver code that could duplicate node-level authorization client-side.",
+      "evidence": [
+        "git diff --stat HEAD + git status --porcelain: only services/core/src/webhooks/**, services/core/src/routes/githubWebhook.fixtures.test.ts, services/core/src/services/githubWebhookService.test.ts, services/core/src/queue/__fixtures__/**, services/workers/sayre_workers/ingestion/**, services/workers/tests/** changed -- no apps/web, no graph-query, no production route/resolver logic.",
+        "grep -r graphology across the diff: zero matches."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|no-hardcoded-or-logged-secret-in-diff|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-hardcoded-or-logged-secret-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Grepped every changed/new file for hardcoded credential patterns (AKIA, api_key=, secret=, password=, PEM headers, ghp_ tokens, installation_token/x-access-token literals) and traced every credential-shaped identifier to its source.",
+      "evidence": [
+        "grep -niE across every file in `git diff HEAD --name-only` plus every untracked new file for AKIA/api_key=/secret=/password=/-----BEGIN/ghp_/installation_token/x-access-token: the only matches are (a) the pinning tests' own forbidden-token assertion lists (comparison targets, not secrets) at githubWebhook.fixtures.test.ts:370 and test_push_wire_fixture.py:68, (b) the pre-existing, unchanged test-only HMAC signing keys SECRET='wh-secret' (githubWebhookService.test.ts:15) and SECRET='fixture-replay-secret' (githubWebhook.fixtures.test.ts:22), used only to sign fixture bodies in-test.",
+        "Both new committed envelope fixtures (repo_push.envelope.json, repo_push.branch-deletion.envelope.json) read directly: only synthetic UUIDs, a fake installation id ('555'), and placeholder commit/pusher data -- no clone URL, no installation token, no credential_ref value."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+        "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|terminal-ack-log-statements-do-not-leak-repository-or-credential-ref|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "terminal-ack-log-statements-do-not-leak-repository-or-credential-ref",
+      "attack_path_version": "v1",
+      "attempt": "Read both new logger.info() call sites in service.py to confirm they log only non-sensitive identifiers, not the RepositoryLocator (which can carry a credential_ref) or any token.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/service.py: the ignored-message branch logs only 'type=%s reason=%s' (command.message_type, command.reason).",
+        "services/workers/sayre_workers/ingestion/service.py: the ref-deletion branch logs only 'ref=%s' (command.ref_name) -- command.repository (a RepositoryLocator that carries an optional credential_ref field) and command.org_id are never passed to logger."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:68-90"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|branch-routing-decision-strictly-downstream-of-signature-gate|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "branch-routing-decision-strictly-downstream-of-signature-gate",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed that normalizeGithubEvent.ts's changed destinations arm (this diff's only Core production change) cannot execute before GitHub's HMAC signature is verified.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts (unmodified by this diff, read directly this run): step (b) verifyGithubSignature(rawBody, signature, secret) runs before step (d) JSON.parse, step (e) normalizeGithubEvent (where this diff's changed destinations arm lives), step (f) org resolution, and step (i) publish. The function's own doc comment states 'Nothing after this point can run for a bad signature.'",
+        "services/core/src/webhooks/normalizeGithubEvent.ts diff read directly this run: the only change is the create/delete branch arm's destinations literal plus a comment; no signature/auth-adjacent code touched.",
+        "Re-ran services/core/src/routes/githubWebhook.fixtures.test.ts and services/core/src/services/githubWebhookService.test.ts this run: 26 and 29 tests respectively, all passing, including this suite's signature-failure-path assertions."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:99-231",
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|new-terminal-paths-never-reach-checkout|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "new-terminal-paths-never-reach-checkout",
+      "attack_path_version": "v1",
+      "attempt": "Verified both new IngestionService.handle branches return before any scratch-clone/checkout code is reachable.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/service.py diff read directly this run: both new branches (IgnoredIngestionMessage, RefDeletionCommand) `return` strictly before the `self._state_store.lock(...)`/`self._repository_source.checkout(...)` block.",
+        "git diff --quiet HEAD -- services/workers/sayre_workers/ingestion/repository.py (owns the TemporaryDirectory scratch-clone lifecycle): no diff -- independently re-confirmed this run.",
+        "services/workers/tests/test_ingestion_routing.py::test_handle_repo_branch_is_ignored_without_lock_or_checkout and ::test_handle_ref_deletion_push_returns_without_lock_or_checkout assert 'state-locked' not in log and 'checkout' not in log against the shared FakeSnapshot/service_fixture harness. Independently re-ran this run: both PASSED."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:68-97"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|no-query-or-command-construction-in-diff|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-query-or-command-construction-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched the diff for Cypher/SQL/shell/queue-message string construction.",
+      "evidence": [
+        "models.py/service.py additions read directly this run are limited to frozen-dataclass construction, a frozenset literal, a compiled regex (_ZERO_SHA), and logging.Logger.info calls using %s-style parameterized args (never string concatenation/f-string interpolation into the log message itself).",
+        "graph.py/chunks.py/repository.py (the modules that hold Cypher/SQL) are confirmed untouched by this diff (git diff --quiet, re-verified this run)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/models.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|signature-before-classification|v1",
+      "check_id": "ING-01",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "signature-before-classification",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed classify_ingestion_envelope's new routing logic cannot be reached by any unsigned/mismatched-signature GitHub delivery.",
+      "evidence": [
+        "Same evidence as CORE-04: signature verification is the first gate in githubWebhookService.ts, strictly before the normalizeGithubEvent call that produces this diff's changed destinations, and strictly before any envelope reaches the SQS ingestion queue that classify_ingestion_envelope later consumes.",
+        "Re-ran services/core/src/routes/githubWebhook.fixtures.test.ts this run (26 tests, all pass), which signs each fixture's exact raw bytes at replay time."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:109-113"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|terminal-ack-paths-are-idempotent-no-ops|v1",
+      "check_id": "ING-02",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "terminal-ack-paths-are-idempotent-no-ops",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether replaying the same repo.branch or branch-deletion repo.push delivery twice could cause a duplicate mutation or non-monotonic state.",
+      "evidence": [
+        "Both new IngestionService.handle branches perform zero state mutation (no graph write, no ref-state accept, no chunk/embedding write, no publish) -- replaying the same delivery any number of times produces the identical IngestionResult(status='ignored'|'ref_deleted', ...) with no side effect to duplicate.",
+        "services/workers/messaging/sqs_client.py read directly this run (unchanged by this diff): the pre-existing delivery_store idempotency/dedupe mechanism (claim/complete) still gates message processing above the handler; this diff does not touch or bypass it."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:68-86",
+        "services/workers/messaging/sqs_client.py:595-660"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|installation-repository-binding-unchanged|v1",
+      "check_id": "ING-03",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "installation-repository-binding-unchanged",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed tenant/repository binding for the changed branch-routing and new classification paths still derives from server-resolved installation state, not payload claims.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts step (f) (unmodified by this diff, read directly this run): org resolved via resolveOrg(Number(event.installation_id)) against registered installation state; step (h) builds the envelope with org_id: resolved.orgId, never copied from the payload.",
+        "This diff does not add or change any installation/repository-binding logic -- only the destinations array for the branch create/delete arm, and worker-side classification of what to do with an already-bound envelope."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:180-197"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|forged-envelope-org-id-and-ref-deletion-fields|v1",
+      "check_id": "ING-04",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "forged-envelope-org-id-and-ref-deletion-fields",
+      "attack_path_version": "v1",
+      "attempt": "Published/mutated a synthetic envelope with attacker-supplied org_id and a payload.deleted/after combination attempting to force a real push to be discarded, or a deletion to be treated as real content.",
+      "evidence": [
+        "test_ingestion_routing.py's _deletion_push_envelope fixture, read directly this run, deliberately sets payload['org_id']='forged-org' while envelope.org_id is the trusted value; test_ref_deletion_command_org_id_ignores_forged_payload_org_id asserts the command uses only the envelope value. Re-ran this run: PASSED.",
+        "test_classify_non_boolean_deleted_raises (EC-5) and test_classify_deleted_true_with_nonzero_after_is_authoritative (EC-4) / test_classify_all_zero_after_with_deleted_false_or_absent_is_still_ref_deletion (EC-3), all re-run this run and PASSED, confirm classification cannot be bypassed by a payload lying about deleted or after in either direction."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/models.py",
+        "services/workers/tests/test_ingestion_routing.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|cross-queue-confusion-ownership-lane-unaffected|v1",
+      "check_id": "ING-05",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-queue-confusion-ownership-lane-unaffected",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff could cause an ingestion-shaped job to be sent to or accepted by the BullMQ ownership consumer, or vice versa.",
+      "evidence": [
+        "git diff --quiet HEAD -- services/core/src/queue/bullmq.ts and every ownership-consumer file: no diff. changes.md and this run's own git status both confirm no BullMQ consumer file is touched.",
+        "The branch create/delete routing change only removes 'ingestion' from destinations; 'ownership' (the BullMQ lane) is untouched and still receives exactly the same payload shape as before (confirmed via githubWebhookService.test.ts's AC-1 regression assertion, re-run this run, PASSED)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|dlq-and-head-of-line-block-behavior|v1",
+      "check_id": "ING-06",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "dlq-and-head-of-line-block-behavior",
+      "attack_path_version": "v1",
+      "attempt": "This is the core defect the diff fixes: verified terminal-ack (return) vs fail-loud (raise) actually produce ack vs redeliver-toward-DLQ at the consumer, and that a subsequent legitimate message in the same FIFO group is unblocked.",
+      "evidence": [
+        "services/workers/messaging/sqs_client.py read directly this run (unchanged): `handler(envelope)` raising -> `handler_succeeded=False` -> message NOT deleted (redelivers, eventually to DLQ per redrive policy); `handler(envelope)` returning normally -> `handler_succeeded=True` -> after delivery_store.complete(), `client.delete_message` is called -> message acked. This is exactly the mechanism the fix relies on.",
+        "test_fifo_group_recovers_after_terminal_ack (EC-7), re-run this run: PASSED -- after a repo.branch/deletion-push terminal-ack, a subsequent legitimate repo.push for the same (org_id, provider_repo_id, ref) group is processed normally.",
+        "test_classify_unknown_type_still_raises (EC-2), parametrized over repo.tag/repo.pull_request/graph.updated, re-run this run: PASSED -- genuinely unknown types still raise InvalidIngestionJobError and are NOT silently swallowed, preserving DLQ visibility for operator-actionable failures."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/messaging/sqs_client.py:595-660",
+        "services/workers/tests/test_ingestion_routing.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|priority-starvation-and-cost-abuse|v1",
+      "check_id": "ING-07",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "priority-starvation-and-cost-abuse",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the priority starvation and cost abuse surface.",
+      "evidence": [
+        "No BullMQ priority/lane logic, quota, or fairness code is touched by this diff -- out of this diff's file scope.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|malicious-repository-paths|v1",
+      "check_id": "ING-08",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "malicious-repository-paths",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the malicious repository paths surface.",
+      "evidence": [
+        "No clone/checkout/repository-path code (repository.py) is touched by this diff; both new branches return before checkout is reachable (see CORE-05/ING-06).",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|parser-and-repository-bombs|v1",
+      "check_id": "ING-09",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "parser-and-repository-bombs",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the parser and repository bombs surface.",
+      "evidence": [
+        "No parser (parsing/parser.py) or repository-content code is touched by this diff; the new classification paths never read source content.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|scratch-clone-isolation|v1",
+      "check_id": "ING-10",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scratch-clone-isolation",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the scratch clone isolation surface.",
+      "evidence": [
+        "No scratch-clone code (repository.py) is touched; the new branches never reach checkout, so no new clone-isolation surface is introduced.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|transactional-graph-vector-writes|v1",
+      "check_id": "ING-11",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "transactional-graph-vector-writes",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the transactional graph vector writes surface.",
+      "evidence": [
+        "Neither new branch performs a graph, vector, or relational write of any kind -- there is no transactional boundary to interrupt on these paths.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|unsafe-provider-responses|v1",
+      "check_id": "ING-12",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "unsafe-provider-responses",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the unsafe provider responses surface.",
+      "evidence": [
+        "No Git/Jira/Linear API client code is touched by this diff.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|sync-poisoning-and-conflict|v1",
+      "check_id": "ING-13",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "sync-poisoning-and-conflict",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the sync poisoning and conflict surface.",
+      "evidence": [
+        "No scheduled-sync or external-ID-reuse code is touched by this diff; classification is a pure function of the already-validated envelope.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|worker-secret-exposure-in-new-code-paths|v1",
+      "check_id": "ING-14",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "worker-secret-exposure-in-new-code-paths",
+      "attack_path_version": "v1",
+      "attempt": "Checked clone URLs, process arguments, exception traces, queue payloads, and log statements in the new code paths for installation credentials or access tokens.",
+      "evidence": [
+        "Same evidence as CORE-03: the two new logger.info() calls log only message_type/reason or ref_name, never command.repository (which can carry credential_ref) or command.org_id.",
+        "Neither new branch constructs a clone URL, mints a credential, or invokes any credential-binding code (RepositorySource.checkout is never reached -- see CORE-05).",
+        "grep of the diff for credential-shaped literals (AKIA/ghp_/installation_token/x-access-token): zero matches outside the pinning tests' own forbidden-token comparison lists."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:68-90"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|loader-bypass-in-new-code|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "loader-bypass-in-new-code",
+      "attack_path_version": "v1",
+      "attempt": "Searched the diff for direct secret reads or alternate credential paths outside the designated loader.",
+      "evidence": [
+        "No new code path in this diff reads an environment variable, secret-manager reference, or credential file directly -- grep for `os.environ`, `get_secret`, `process.env` across every changed/new file: zero new occurrences (the pre-existing get_secret calls in the two skip-gated real-infra test suites are unchanged by this diff)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|hardcoded-or-historical-secrets-in-new-files|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "hardcoded-or-historical-secrets-in-new-files",
+      "attack_path_version": "v1",
+      "attempt": "Inspected every new tracked file (fixtures, test files, budgets.py) for a hardcoded or accidentally-committed real secret.",
+      "evidence": [
+        "Same grep as CORE-03: no AKIA/ghp_/PEM/real-looking credential pattern in any new file. Both new committed envelope fixtures contain only synthetic placeholder data."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+        "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|frontend-exposure|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "frontend-exposure",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether any new server-only value could reach a browser bundle or client-facing payload.",
+      "evidence": [
+        "No apps/web file is touched by this diff; IngestionResult/RefDeletionCommand/IgnoredIngestionMessage are Python worker-internal types with no HTTP-response or client-serialization path in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|log-statements-in-new-terminal-ack-branches|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "log-statements-in-new-terminal-ack-branches",
+      "attack_path_version": "v1",
+      "attempt": "Exercised both new log statements (via the re-run test suite) and read them directly for secret or tenant-data leakage.",
+      "evidence": [
+        "Same evidence as CORE-03/ING-14: the two new logger.info() calls log only message_type/reason or ref_name -- no org_id, no repository locator (which can carry credential_ref), no revision SHA, no raw payload.",
+        "Re-ran test_handle_repo_branch_is_ignored_without_lock_or_checkout and test_handle_ref_deletion_push_returns_without_lock_or_checkout this run against the FakeSnapshot harness's captured log list: both PASSED, and the harness's log assertions ('state-locked' not in log, 'checkout' not in log) independently corroborate no unexpected field is emitted."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:68-90"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|storage-and-access|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "storage-and-access",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the storage and access surface.",
+      "evidence": [
+        "No new secret storage, database role, or access-control code is touched by this diff.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|rotation-and-cache-invalidation|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "rotation-and-cache-invalidation",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the rotation and cache invalidation surface.",
+      "evidence": [
+        "No secret rotation or cache-invalidation code is touched by this diff.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|worker-and-sandbox-exposure|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "worker-and-sandbox-exposure",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the worker and sandbox exposure surface.",
+      "evidence": [
+        "The two new branches never spawn a process, mount a file, or make an outbound request; no sandbox surface is touched.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|ci-and-test-leakage|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-and-test-leakage",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the ci and test leakage surface.",
+      "evidence": [
+        "No CI workflow, fork/PR boundary, or artifact-upload configuration is touched by this diff.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|backup-and-restore-isolation|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "backup-and-restore-isolation",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the backup and restore isolation surface.",
+      "evidence": [
+        "No backup/restore code or configuration is touched by this diff.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|export-and-support-tooling|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "export-and-support-tooling",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the export and support tooling surface.",
+      "evidence": [
+        "No export or support-tooling code is touched by this diff.",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|detection-and-response|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "detection-and-response",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces or touches the detection and response surface.",
+      "evidence": [
+        "No alerting/detection pipeline code is touched by this diff; the new logger.info() calls are informational, not alert-triggering, and this ticket's spec.md explicitly scopes an SLO/alerting layer as future work (Q-2/'Alerting/telemetry gating on the sync budget' is out of scope).",
+        "Confirmed via git diff --stat HEAD and git status --porcelain against the full changed-file list -- no file implicated by this check is in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|audit-log-completeness-for-ref-deletion-acknowledgment|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "audit-log-completeness-for-ref-deletion-acknowledgment",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new ref-deletion terminal-ack is recorded anywhere as a formal audit-log entry (actor/tenant/target/before-after/time/correlation), given it acknowledges a real webhook-signaled deletion event.",
+      "evidence": [
+        "grep for an audit-table write (e.g. audit_log/AuditEvent/record_audit) anywhere in services/workers/sayre_workers/ingestion/: zero matches, in both the diff and the pre-existing, unmodified code -- IngestionService has never written to a formal audit table; it only calls logger.info for operational visibility.",
+        "This diff neither adds nor removes any audit-table integration -- the absence of a formal audit-log entry for a ref-deletion acknowledgment is a pre-existing characteristic of the ingestion worker, not introduced or regressed by this change.",
+        "The service.py log line for the ref-deletion branch includes ref_name but not org_id/trace_id, which would matter for a real audit trail but is informational logging, not the audit-log subsystem SEC-09 targets."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:79-86"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|audit-log-tampering-and-repudiation|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "audit-log-tampering-and-repudiation",
+      "attack_path_version": "v1",
+      "attempt": "Checked for a new update/delete/forged-attribution path against any audit surface.",
+      "evidence": [
+        "No audit-log write, update, or delete path exists in this diff (see SEC-09) -- there is nothing to tamper with that this diff introduces."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading and by running the existing, non-destructive local vitest/pytest suites this stage independently re-ran (no production source modified, nothing to clean up).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|ref-deletion-graph-chunk-embedding-retention|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ref-deletion-graph-chunk-embedding-retention",
+      "attack_path_version": "v1",
+      "attempt": "Traced what happens to a deleted branch's graph/chunk/embedding data after RefDeletionCommand's terminal ack, independently re-verifying changes.md's 'no destructive teardown' claim rather than trusting it.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/service.py, read directly this run: the RefDeletionCommand branch logs and returns IngestionResult(status='ref_deleted', ...) -- no call to any graph/chunk/ref-state delete surface anywhere in the branch.",
+        "git diff --quiet HEAD -- services/workers/sayre_workers/ingestion/graph.py chunks.py repository.py projection.py: zero diff across all four, independently re-confirmed this run -- no delete/teardown capability was added anywhere in this diff.",
+        "grep for a per-ref 'DETACH DELETE'/'delete_ref'/'DELETE FROM' pattern (as opposed to the existing full-rebuild DETACH DELETE that graph.py already runs per-apply, unrelated to ref deletion) across the diff: zero matches.",
+        "Cross-checked against spec.md's Open Questions Q-1 and gaps.md's own flag: this is a deliberate, disclosed scope decision, not an oversight -- the pre-fix behavior was also 'stale data persists forever' (the message previously failed permanently and never reached any teardown code either), so the observable outcome is unchanged, not regressed, by this fix."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-92e3d99bf0f2",
+        "status": "OPEN",
+        "first_seen_run_id": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+        "first_seen_commit": "87b07582bca1f6db668fd80f3435c00f6eb82e50",
+        "last_seen_run_id": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+        "last_seen_commit": "87b07582bca1f6db668fd80f3435c00f6eb82e50",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "spec.md Open Questions Q-1 (\"Ref-deletion remedy: terminal-ack now, teardown later?\") -- spec.md's own recommendation is a dedicated follow-up ticket (\"ref-deletion teardown for W1-05\") with its own red-stage adversarial coverage, not an amendment to this gap-fill.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "No fixture created; verified by direct code reading (git diff --quiet against every store-owning module, re-run this session) and by re-reading spec.md/gaps.md's own disclosure. Nothing to clean up. Not marked RISK_ACCEPTED: review.md asserts a human sign-off on the Q-1 scope decision, but this stage found no artifact recording the four fields audit-contract.md section 7 requires for a formal risk acceptance (named approver, reason, ticket, expiry) -- see manifest.json's limitations. Recorded OPEN with a remediation reference instead of fabricating those fields. Does not block the PASS verdict: MEDIUM severity, same-tenant only, no cross-tenant exposure, not a tenant-isolation/RBAC failure, and not a regression introduced by this diff -- consistent with the gate policy that only CRITICAL/HIGH failures/regressions and tenant-isolation/RBAC failures are blocking.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/service.py:79-86",
+        "services/workers/sayre_workers/ingestion/graph.py",
+        "services/workers/sayre_workers/ingestion/chunks.py"
+      ]
+    }
+  ]
+}

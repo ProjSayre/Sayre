@@ -1,0 +1,115 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/core/src/webhooks/normalizeGithubEvent.test.ts",
+      "sha256": "b56b12fad8b20ee556c1070ffad201f38fa1ac18d7c8c78c47cebca681022103",
+      "specIds": [
+        "AC-1",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/githubWebhook.fixtures.test.ts",
+      "sha256": "2ca4ba6448faaf8a752d1121c20daf76d54e171575e88883bf33644d02525a9f",
+      "specIds": [
+        "AC-1",
+        "AC-4",
+        "EC-9",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_ingestion_routing.py",
+      "sha256": "c255dec475ddfcc1bb5274b92156d1631fa7bfef6d4b9e66ffd2c2b04dda3de9",
+      "specIds": [
+        "AC-2",
+        "AC-3",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_push_wire_fixture.py",
+      "sha256": "128b2779cc40c603947feb6c6d0c133414423e3f50a987efb8f782544e37b591",
+      "specIds": [
+        "AC-4",
+        "EC-9"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_ingestion_graph_integration.py",
+      "sha256": "c9b3990a962732d8803169713cee6f19099176dd61487fc76f3ea4ad82b521f6",
+      "specIds": [
+        "AC-5",
+        "EC-15",
+        "EC-16",
+        "EC-17",
+        "EC-25"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/workers/tests/test_chunk_store_integration.py",
+      "sha256": "0931a7f9f5bd640de6480f1949df919b51c1f593af220f325a4cd35cd7319834",
+      "specIds": [
+        "AC-6",
+        "EC-18",
+        "EC-19",
+        "EC-20",
+        "EC-21",
+        "EC-25"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/workers/tests/test_graph_updated_envelope.py",
+      "sha256": "aa7cbba130ee600b58ff0f275409686edc805be6e24b45e0d44ecde3b6247df2",
+      "specIds": [
+        "AC-7",
+        "EC-22",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_ingestion_fixture_repo.py",
+      "sha256": "6e1542fbd1c0cf5c8d1d8cc4f6318525e344e50ced047099d17f4c16af6fca38",
+      "specIds": [
+        "AC-8",
+        "AC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-24"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_ingestion.py",
+      "sha256": "bae6c81022887ac0bac693d3354cd3639fb654d3fc321e9271750d93c4934594",
+      "specIds": [
+        "AC-9"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "b6703901b547ad79cf2bed219aa225e41be48d6e48b13103b2cfe74365900731",
+    "headSha": "b63e14edd6d82f8bb1b853768b98e95e4f2759a7",
+    "dirty": true,
+    "writtenAt": "2026-08-10T05:39:16.009Z"
+  }
+}

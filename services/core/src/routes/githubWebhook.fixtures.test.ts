@@ -12,6 +12,8 @@
 
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { resetSecretsForTests, setSecretBackendForTests } from '@sayre/config';
@@ -192,7 +194,12 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     expect(envelope.payload.ref).toBeNull();
   });
 
-  it('branch.create.json publishes to BOTH ingestion and ownership, returns 202', async () => {
+  // GAP-8: branch create/delete no longer routes to ingestion (see
+  // webhooks/normalizeGithubEvent.ts) -- a branch event carries no revision SHA,
+  // so publishing it to the FIFO ingestion queue produced a permanently-failing
+  // delivery that head-of-line blocked every later delta for the same ref group.
+  // @spec AC-1 EC-26
+  it('branch.create.json publishes to ownership ONLY (not ingestion), returns 202', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
     const fixture = loadFixture('branch.create.json');
@@ -200,9 +207,10 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     const res = await replay(baseUrl, fixture);
 
     expect(res.status).toBe(202);
-    expect(publishIngestionEvent).toHaveBeenCalledTimes(1);
+    expect(publishIngestionEvent).not.toHaveBeenCalled();
     expect(enqueue).toHaveBeenCalledTimes(1);
-    const [envelope] = publishIngestionEvent.mock.calls[0] as [
+    const [, envelope] = enqueue.mock.calls[0] as [
+      string,
       { payload: { type: string; ref: string; payload: Record<string, unknown> } },
     ];
     expect(envelope.payload.type).toBe('branch');
@@ -210,7 +218,8 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     expect(envelope.payload.payload).toEqual({ action: 'created', ref: 'feature-y', ref_type: 'branch' });
   });
 
-  it('branch.delete.json publishes to BOTH ingestion and ownership, returns 202', async () => {
+  // @spec AC-1 EC-26
+  it('branch.delete.json publishes to ownership ONLY (not ingestion), returns 202', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
     const fixture = loadFixture('branch.delete.json');
@@ -218,9 +227,10 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     const res = await replay(baseUrl, fixture);
 
     expect(res.status).toBe(202);
-    expect(publishIngestionEvent).toHaveBeenCalledTimes(1);
+    expect(publishIngestionEvent).not.toHaveBeenCalled();
     expect(enqueue).toHaveBeenCalledTimes(1);
-    const [envelope] = publishIngestionEvent.mock.calls[0] as [
+    const [, envelope] = enqueue.mock.calls[0] as [
+      string,
       { payload: { payload: Record<string, unknown> } },
     ];
     expect(envelope.payload.payload).toEqual({ action: 'deleted', ref: 'feature-y', ref_type: 'branch' });
@@ -275,6 +285,92 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     expect(res.status).toBe(400);
     expect(publishIngestionEvent).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /webhooks/github — committed ingestion envelope fixtures (GAP-10, AC-4)', () => {
+  // Deep-compares the LIVE envelope this route hands to publishIngestionEvent
+  // against the committed queue/__fixtures__ files
+  // (services/core/src/queue/__fixtures__/repo_push.envelope.json and
+  // repo_push.branch-deletion.envelope.json), which
+  // services/workers/tests/test_push_wire_fixture.py independently loads on the
+  // Python side. A drift in Core's normalizer's wire shape fails on both sides.
+  // Only message_id/occurred_at are excluded (volatile per-delivery fields);
+  // trace_id/idempotency_key are the fixture's own pinned delivery id, so those
+  // ARE compared.
+  //
+  // The committed fixtures pin org_id to the same synthetic tenant UUID
+  // repo_initial_parse.envelope.json already uses (EC-9) -- this file's default
+  // resolveInstallationOrg mock resolves installation 555 to "org-primary-555"
+  // (used by every other test in this file), so these two tests override it
+  // per-call to the synthetic id, exactly like the existing
+  // "an empty resolved org_id" / "a suspended/revoked installation" tests below
+  // already override it per-call for their own purposes.
+  const FIXTURE_ORG_ID = '22222222-2222-4222-8222-222222222222';
+
+  function omitVolatileFields(envelope: Record<string, unknown>): Record<string, unknown> {
+    const { message_id: _messageId, occurred_at: _occurredAt, ...rest } = envelope;
+    return rest;
+  }
+
+  // @spec AC-4
+  it('the envelope published for push.json matches the committed repo_push.envelope.json field-for-field', async () => {
+    resolveInstallationOrg.mockImplementationOnce(async () => ({ orgId: FIXTURE_ORG_ID, active: true }));
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('push.json');
+
+    const res = await replay(baseUrl, fixture);
+    expect(res.status).toBe(202);
+
+    const [publishedEnvelope] = publishIngestionEvent.mock.calls[0] as [Record<string, unknown>];
+    const committedPath = join(
+      __dirname,
+      '..',
+      'queue',
+      '__fixtures__',
+      'repo_push.envelope.json',
+    );
+    const committed = JSON.parse(readFileSync(committedPath, 'utf8')) as Record<string, unknown>;
+
+    expect(omitVolatileFields(publishedEnvelope)).toEqual(omitVolatileFields(committed));
+  });
+
+  // @spec AC-4
+  it('the envelope published for push.branch-deletion.json matches the committed repo_push.branch-deletion.envelope.json field-for-field', async () => {
+    resolveInstallationOrg.mockImplementationOnce(async () => ({ orgId: FIXTURE_ORG_ID, active: true }));
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('push.branch-deletion.json');
+
+    const res = await replay(baseUrl, fixture);
+    expect(res.status).toBe(202);
+
+    const [publishedEnvelope] = publishIngestionEvent.mock.calls[0] as [Record<string, unknown>];
+    const committedPath = join(
+      __dirname,
+      '..',
+      'queue',
+      '__fixtures__',
+      'repo_push.branch-deletion.envelope.json',
+    );
+    const committed = JSON.parse(readFileSync(committedPath, 'utf8')) as Record<string, unknown>;
+
+    expect(omitVolatileFields(publishedEnvelope)).toEqual(omitVolatileFields(committed));
+  });
+
+  // @spec EC-9
+  it('both committed fixtures carry the same synthetic tenant id as repo_initial_parse.envelope.json and no secret material', () => {
+    const fixturesDir = join(__dirname, '..', 'queue', '__fixtures__');
+    for (const name of ['repo_push.envelope.json', 'repo_push.branch-deletion.envelope.json']) {
+      const raw = readFileSync(join(fixturesDir, name), 'utf8');
+      const parsed = JSON.parse(raw) as { org_id: string };
+      expect(parsed.org_id).toBe('22222222-2222-4222-8222-222222222222');
+      const lowered = raw.toLowerCase();
+      for (const forbidden of ['installation_token', 'clone_url', 'credential', 'x-access-token', 'password']) {
+        expect(lowered).not.toContain(forbidden);
+      }
+    }
   });
 });
 
