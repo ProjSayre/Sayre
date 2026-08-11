@@ -287,7 +287,7 @@ export interface ChatTurnRequestPayload {
   question: string;
   scope: { view: 'technical' | 'product' | 'onboarding' | null; anchorNodeId: string | null };
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
-  mcpCredential: string | null; // always null until CH-04 wires minting
+  mcpCredential: string | null; // CH-04 populates this with the minted CH-01 token on every dispatch; the type stays nullable so a pre-CH-04 DLQ replay remains parseable
 }
 
 /**

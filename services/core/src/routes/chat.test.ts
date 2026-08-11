@@ -45,6 +45,28 @@ vi.mock('../queue/sqs', async (importOriginal) => {
   };
 });
 
+// CH-04: chatService.postTurn now mints a CH-01 ephemeral credential on every
+// real dispatch via the real default `defaultMintChatCredential`, which would
+// otherwise hit live Postgres (unavailable here) and turn every 202 in this
+// file into a 502. This suite is about the four thin routes, not credential
+// minting (that is chatService.test.ts's and ephemeralMcpCredentialService.
+// test.ts's job), so mint deterministically instead.
+vi.mock('../services/ephemeralMcpCredentialService', () => ({
+  mintEphemeralMcpCredential: vi.fn(async () => ({
+    token: 'mcp_eph_test0000.route-test-mock-token',
+    keyId: 'mock-key-id',
+    keyPrefix: 'mcp_eph_test0000',
+    kind: 'chat_ephemeral' as const,
+    // A literal, not the module-level CONVERSATION_ID const: vi.mock factories
+    // are hoisted above every other top-level statement (including consts), so
+    // closing over CONVERSATION_ID here would be a temporal-dead-zone access.
+    conversationId: '44444444-4444-4444-8444-444444444444',
+    issuedByUserId: 'mock-user',
+    issuedAt: '2026-08-01T00:00:00.000Z',
+    expiresAt: '2026-08-01T00:05:00.000Z',
+  })),
+}));
+
 import { createApp } from '../app';
 import { errorHandler } from '../http/express';
 import { ChatForbiddenError } from '../services/chatService';

@@ -484,8 +484,12 @@ export const mcpClientKeys = pgTable(
     // conversation-bound first-party chat credential. CHECK lives in drizzle/0020_*.
     kind: text("kind").notNull().default("agent"),
     // CH-01: the conversation an ephemeral credential is bound to. NULL for
-    // kind='agent'; NOT NULL for kind='chat_ephemeral' (CHECK in 0020). Deliberately
-    // NOT a foreign key — the conversations table does not exist until CH-03.
+    // kind='agent'; NOT NULL for kind='chat_ephemeral' (CHECK in 0020). The
+    // tenant-consistent composite FK -> chat_conversations(org_id, id) ON DELETE
+    // cascade, owed since chat_conversations didn't exist until CH-03, is added
+    // in drizzle/0022_ch04_mcp_key_conversation_fk.sql, along with the AFTER
+    // DELETE trigger that keeps that new cascade path from orphaning a deleted
+    // ephemeral key's `permissions` ceiling rows.
     conversationId: uuid("conversation_id"),
     ...timestamps,
   },

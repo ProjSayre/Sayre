@@ -10,6 +10,37 @@
 // src/db/chatStore.rls.test.ts.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// CH-04 gapfill (declared in .pipeline/changes.json's redTestChanges): spec.md
+// wires `postTurn`'s 6th `mint` parameter to a REAL default
+// (`defaultMintChatCredential` -> `mintEphemeralMcpCredential`), but every
+// CH-03-authored case below this point predates minting and calls `postTurn`
+// with only 5 args, so it falls through to that real default. Without this
+// mock, those calls hit live Postgres (via `PostgresPermissionStore`/
+// `ephemeralMcpCredentialStore`), which is unavailable in a unit-test
+// environment and makes every one of them fail with `ChatEnqueueError` before
+// ever reaching `publish`/`markTurnDispatched` -- a regression this file's own
+// spec.md never anticipated needing to guard against. This mirrors the
+// established convention already used by `mintEphemeralMcpCredential`'s own
+// suite (`ephemeralMcpCredentialService.test.ts`), which never exercises the
+// live-DB default either -- every call there passes injected fakes. The six
+// CH-04 minting cases below (the `describe('CH-04 — ...')` block) all pass an
+// EXPLICIT `mint` stub as `postTurn`'s 6th argument, which always takes
+// precedence over this module-level mock, so this has no effect on any AC-7 /
+// AC-14 / EC-24 / EC-25 / EC-26 assertion.
+vi.mock('./ephemeralMcpCredentialService', () => ({
+  mintEphemeralMcpCredential: vi.fn(async () => ({
+    token: 'mcp_eph_test0000.default-mock-token-for-non-mint-focused-tests',
+    keyId: 'mock-key-id',
+    keyPrefix: 'mcp_eph_test0000',
+    kind: 'chat_ephemeral' as const,
+    conversationId: 'mock-conversation',
+    issuedByUserId: 'mock-user',
+    issuedAt: '2026-08-01T00:00:00.000Z',
+    expiresAt: '2026-08-01T00:05:00.000Z',
+  })),
+}));
+
 import type { AuthContext } from '../auth/context';
 import type {
   AppendTurnPairInput,
@@ -21,6 +52,7 @@ import type {
 } from '../db/chatStore';
 import type { MessageEnvelope } from '../queue/envelope';
 import type { ChatTurnRequestPayload } from '../queue/sqs';
+import * as chatServiceModule from './chatService';
 import {
   CHAT_ANCHOR_NODE_ID_MAX_CHARACTERS,
   CHAT_CONVERSATION_LIST_DEFAULT_LIMIT,
@@ -38,6 +70,7 @@ import {
   listConversations,
   postTurn,
   type ChatTurnPublisher,
+  type PostTurnResult,
 } from './chatService';
 
 const ORG_A = '11111111-1111-4111-8111-111111111111';
@@ -149,6 +182,43 @@ function validTurnBody(overrides: Record<string, unknown> = {}): Record<string, 
     ...overrides,
   };
 }
+
+// ---------------------------------------------------------------------------
+// CH-04 — the CH-01 ephemeral-credential minter `postTurn` now takes as its
+// sixth (defaulted) parameter. Typed through an explicit alias rather than a
+// direct call so this suite type-checks against both the CH-03 signature it
+// was written for and the CH-04 signature it now specifies.
+// ---------------------------------------------------------------------------
+
+type ChatCredentialMinterStub = (conversationId: string, ctx: AuthContext) => Promise<string>;
+
+const MINTED_TOKEN = 'mcp_eph_abcd1234.ZZZ-one-time-secret-value';
+
+const postTurnWithMint = postTurn as unknown as (
+  conversationId: string,
+  input: unknown,
+  ctx: AuthContext,
+  store: ChatStore,
+  publish: ChatTurnPublisher,
+  mint: ChatCredentialMinterStub,
+) => Promise<PostTurnResult>;
+
+function minterStub(
+  token: (attempt: number) => string = () => MINTED_TOKEN,
+): ChatCredentialMinterStub & { calls: Array<[string, AuthContext]> } {
+  const calls: Array<[string, AuthContext]> = [];
+  const mint = vi.fn(async (conversationId: string, ctx: AuthContext) => {
+    calls.push([conversationId, ctx]);
+    return token(calls.length);
+  });
+  return Object.assign(mint as unknown as ChatCredentialMinterStub, { calls });
+}
+
+let mint: ReturnType<typeof minterStub>;
+
+beforeEach(() => {
+  mint = minterStub();
+});
 
 let store: StubbedStore;
 let publish: ReturnType<typeof publisherStub>;
@@ -333,14 +403,28 @@ describe('owner-only access and tenant scope', () => {
 });
 
 describe('the pinned chat.turn.request.v1 payload', () => {
-  // @spec AC-6
+  // CH-04 updates this CH-03 case: the key set and key ORDER are unchanged, but
+  // `mcpCredential` now carries the minted CH-01 token instead of the
+  // placeholder `null`. NOTE: every other `@spec` marker in this file predates
+  // CH-04 and cites CH-03's spec.md, not this ticket's — only the markers inside
+  // this comment block and the "CH-04 —" describe below refer to CH-04's IDs.
+  // @spec AC-7
   it('carries exactly the pinned keys, in the pinned order, with the pinned values', async () => {
-    await postTurn(
+    const stored = appendResult({
+      userTurn: turn({
+        content: 'How does login work?',
+        scope: { view: 'technical', anchorNodeId: 'file-42' },
+      }),
+    });
+    store = storeStub({ appendTurnPair: vi.fn(async () => stored) });
+
+    await postTurnWithMint(
       CONVERSATION_ID,
       validTurnBody({ scope: { view: 'technical', anchorNodeId: 'file-42' } }),
       userCtx,
       store,
       publish,
+      mint,
     );
 
     const payload = publish.calls[0]!.payload;
@@ -363,7 +447,8 @@ describe('the pinned chat.turn.request.v1 payload', () => {
     expect(payload.question).toBe('How does login work?');
     expect(Object.keys(payload.scope)).toEqual(['view', 'anchorNodeId']);
     expect(payload.scope).toEqual({ view: 'technical', anchorNodeId: 'file-42' });
-    expect(payload.mcpCredential).toBeNull();
+    expect(payload.mcpCredential).toBe(MINTED_TOKEN);
+    expect(payload.mcpCredential).not.toBeNull();
   });
 
   // @spec AC-8
@@ -682,6 +767,162 @@ describe('listConversations', () => {
       ChatValidationError,
     );
     expect(store.listConversations).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CH-04 — minting the CH-01 ephemeral MCP credential, and rebuilding a repair
+// republish from the STORED user turn (the CH-03 LOW finding, fixed here).
+// Authored by `red` from .pipeline/spec.md before any implementation exists.
+// ---------------------------------------------------------------------------
+
+describe('CH-04 — the ephemeral MCP credential postTurn hands the worker', () => {
+  // @spec AC-7
+  it('exports a wrapped default minter, so a whole-module mock never dereferences it at import time', () => {
+    const exported = (chatServiceModule as unknown as Record<string, unknown>)
+      .defaultMintChatCredential;
+
+    expect(typeof exported).toBe('function');
+  });
+
+  // @spec AC-7
+  it('mints exactly once per actual dispatch and publishes the minted token', async () => {
+    await postTurnWithMint(CONVERSATION_ID, validTurnBody(), userCtx, store, publish, mint);
+
+    expect(mint).toHaveBeenCalledTimes(1);
+    expect(mint.calls[0]![0]).toBe(CONVERSATION_ID);
+    expect(mint.calls[0]![1]).toEqual(userCtx);
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(publish.calls[0]!.payload.mcpCredential).toBe(MINTED_TOKEN);
+    expect(store.markTurnDispatched).toHaveBeenCalledTimes(1);
+  });
+
+  // @spec EC-26
+  it('never mints for a turn that was already dispatched', async () => {
+    const alreadyDispatched = storeStub({
+      appendTurnPair: vi.fn(async () =>
+        appendResult({
+          created: false,
+          assistantTurn: turn({
+            id: ASSISTANT_TURN_ID,
+            seq: 2,
+            role: 'assistant',
+            content: '',
+            status: 'pending',
+            requestTurnId: USER_TURN_ID,
+            dispatchedAt: '2026-08-01T00:05:01.000Z',
+          }),
+        }),
+      ),
+    });
+
+    await postTurnWithMint(
+      CONVERSATION_ID,
+      validTurnBody(),
+      userCtx,
+      alreadyDispatched,
+      publish,
+      mint,
+    );
+
+    expect(mint).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(alreadyDispatched.markTurnDispatched).not.toHaveBeenCalled();
+    // Precondition: "no credential is minted" only means anything once minting
+    // exists at all, so pin that here rather than passing vacuously.
+    expect(
+      typeof (chatServiceModule as unknown as Record<string, unknown>)
+        .defaultMintChatCredential,
+    ).toBe('function');
+  });
+
+  // @spec EC-24
+  it('raises ChatEnqueueError without leaking minter, permission-store or DB detail', async () => {
+    const failing = vi.fn(async () => {
+      throw new Error(
+        'permission_store: relation "permissions" does not exist at 10.0.0.5:5432',
+      );
+    }) as unknown as ChatCredentialMinterStub;
+
+    const error = await postTurnWithMint(
+      CONVERSATION_ID,
+      validTurnBody(),
+      userCtx,
+      store,
+      publish,
+      failing,
+    ).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ChatEnqueueError);
+    const rendered = `${(error as Error).name} ${(error as Error).message}`;
+    expect(rendered).not.toMatch(/permissions|relation|10\.0\.0\.5|mcp_eph|arn:aws/u);
+    expect(publish).not.toHaveBeenCalled();
+    // dispatched_at stays null, so a later retry can still re-dispatch.
+    expect(store.markTurnDispatched).not.toHaveBeenCalled();
+  });
+
+  // @spec AC-14 EC-25
+  it('republishes the STORED question and scope with a freshly minted credential', async () => {
+    const storedTurn = turn({
+      content: 'ORIGINAL stored question',
+      scope: { view: 'product', anchorNodeId: 'folder-9' },
+    });
+    const rotating = minterStub((attempt) => `${MINTED_TOKEN}-${attempt}`);
+    const first = storeStub({
+      appendTurnPair: vi.fn(async () => appendResult({ userTurn: storedTurn })),
+    });
+    const retry = storeStub({
+      appendTurnPair: vi.fn(async () =>
+        appendResult({ created: false, userTurn: storedTurn }),
+      ),
+    });
+
+    await postTurnWithMint(CONVERSATION_ID, validTurnBody(), userCtx, first, publish, rotating);
+    await postTurnWithMint(
+      CONVERSATION_ID,
+      validTurnBody({
+        question: 'MUTATED body question',
+        scope: { view: 'technical', anchorNodeId: 'file-42' },
+      }),
+      userCtx,
+      retry,
+      publish,
+      rotating,
+    );
+
+    expect(publish).toHaveBeenCalledTimes(2);
+    for (const envelope of publish.calls) {
+      expect(envelope.payload.question).toBe('ORIGINAL stored question');
+      expect(envelope.payload.scope).toEqual({ view: 'product', anchorNodeId: 'folder-9' });
+      expect(envelope.idempotency_key).toBe(`chat.turn:${ASSISTANT_TURN_ID}`);
+    }
+    expect(publish.calls[1]!.payload.question).not.toBe('MUTATED body question');
+    expect(rotating).toHaveBeenCalledTimes(2);
+    expect(publish.calls[0]!.payload.mcpCredential).toBe(`${MINTED_TOKEN}-1`);
+    expect(publish.calls[1]!.payload.mcpCredential).toBe(`${MINTED_TOKEN}-2`);
+  });
+
+  // @spec AC-14
+  it('falls back to an explicit null scope when the stored user turn has none', async () => {
+    const stored = storeStub({
+      appendTurnPair: vi.fn(async () =>
+        appendResult({ userTurn: turn({ content: 'stored question', scope: null }) }),
+      ),
+    });
+
+    await postTurnWithMint(
+      CONVERSATION_ID,
+      validTurnBody({ scope: { view: 'technical', anchorNodeId: 'file-42' } }),
+      userCtx,
+      stored,
+      publish,
+      mint,
+    );
+
+    const payload = publish.calls[0]!.payload;
+    expect(payload.question).toBe('stored question');
+    expect(payload.scope).toEqual({ view: null, anchorNodeId: null });
+    expect(Object.keys(payload.scope)).toEqual(['view', 'anchorNodeId']);
   });
 });
 
