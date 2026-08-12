@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T054147523Z-dae62d8-PR_DELTA-926e3f",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-11T05:42:17Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {"PASS": 5, "UNVERIFIED": 1, "NOT_APPLICABLE": 14},
+    "result_transitions": {"FIRST_OBSERVATION": 20},
+    "coverage_transitions": {"NOT_COMPARABLE": 20},
+    "finding_statuses": {},
+    "surface_readiness": {"IMPLEMENTED": 14},
+    "readiness_transitions": {"FIRST_OBSERVATION": 14}
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "CORE-01", "surface_id": "tenant-isolation", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the live diff for persistence writes, query boundaries, org identity inputs, and tenant-scoped data flow.",
+      "evidence": ["git diff names only scripts/check-secret-access.mjs and scripts/check-secret-access.test.mjs", "No database, graph, route, resolver, or org_id path changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no fixture or external side effect.", "code_references": ["scripts/check-secret-access.mjs:29", "scripts/check-secret-access.test.mjs:108"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "CORE-02", "surface_id": "rbac-boundary", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the diff for graph traversal, authorization filtering, API routes, resolvers, or client graph logic.",
+      "evidence": ["Changed paths are limited to a CI checker and its fixture suite", "No RBAC or graph-query boundary is imported or modified"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no fixture or external side effect.", "code_references": [".claude/rules/security-multitenancy.md", "scripts/check-secret-access.mjs:29"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|secret-access-ci-boundary|v2",
+      "check_id": "CORE-03", "surface_id": "secret-handling", "surface_readiness": "IMPLEMENTED", "target_asset": "secret-access-ci-boundary", "attack_path_version": "v2",
+      "attempt": "Attempted direct process.env reads in tracked .mts, .cts, mixed-case .MTS, and a lookalike secrets.mts path while checking diagnostic redaction and a non-source suffix control.",
+      "evidence": ["npm run check:secret-access PASS", "npm run test:secret-access PASS 40/40", "scripts/check-secret-access.mjs:29 scans .mts/.cts case-insensitively", "scripts/check-secret-access.test.mjs:108-129 asserts exact loader allowlisting and redacted output"],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "The committed test harness created uniquely named temporary git repositories and removed every recorded root in afterEach; no repository or external fixture remained.", "code_references": ["scripts/check-secret-access.mjs:6-29", "scripts/check-secret-access.mjs:1855-1869", "scripts/check-secret-access.test.mjs:108-129", ".github/workflows/ci.yml:47-52"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "CORE-04", "surface_id": "webhook-trust", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the live diff for webhook payload handling, signature verification, or queue publication changes.",
+      "evidence": ["No services/core/src/webhooks or queue path changed", "The delta only classifies tracked source extensions"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no webhook request or queue fixture was created.", "code_references": ["scripts/check-secret-access.mjs:29", "services/core/src/webhooks/githubSignature.ts"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "CORE-05", "surface_id": "ingestion-ephemerality", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the diff for scratch clones, temporary source trees, persisted chunks, or ingestion cleanup behavior.",
+      "evidence": ["No worker, parser, clone, storage, or ingestion path changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no ingestion fixture was created.", "code_references": ["scripts/check-secret-access.mjs:29", "services/workers/sayre_workers/ingestion"]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "CORE-06", "surface_id": "injection-boundaries", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for attacker-controlled SQL, Cypher, shell, queue, provider, or child-process construction.",
+      "evidence": ["The sole production change is a fixed regular-expression extension alternation", "The checker invokes git with execFileSync and a constant argument array"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only code inspection; no payload or fixture was created.", "code_references": ["scripts/check-secret-access.mjs:29", "scripts/check-secret-access.mjs:85-87"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|secret-loader-bypass-ci-guard|v2",
+      "check_id": "SEC-01", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "secret-loader-bypass-ci-guard", "attack_path_version": "v2",
+      "attempt": "Searched the live tracked tree with the production gate and exercised alternate direct environment-access forms, executable TypeScript extensions, case variants, fake loader paths, and ignored non-source suffixes.",
+      "evidence": ["npm run check:secret-access PASS", "npm run test:secret-access PASS 40/40", "New .mts/.cts fixture rejects all executable variants and does not widen the four production loader paths"],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "The test harness tracked each mkdtemp root in-memory and deleted the exact roots after each case; no retained fixture or external side effect.", "code_references": ["scripts/check-secret-access.mjs:6-29", "scripts/check-secret-access.mjs:1855-1869", "scripts/check-secret-access.test.mjs:108-129"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|tracked-and-historical-secret-material|v1",
+      "check_id": "SEC-02", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "tracked-and-historical-secret-material", "attack_path_version": "v1",
+      "attempt": "Checked the live diff for common private-key, cloud, GitHub, OpenAI, and Anthropic credential patterns and ran the repository's placeholder-only dependency/infra assertions; attempted to locate a dedicated history-aware scanner.",
+      "evidence": ["No credential pattern detected in git diff", "npm run test:dependency-baseline PASS 11/11 including placeholder-only infra assertion", "No gitleaks executable is available, so reachable-history breadth was not affirmatively scanned"],
+      "evidence_type": "BOTH", "result": "UNVERIFIED", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "MEDIUM", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only scans only; output was limited to pass/fail status and did not echo candidate secret values.", "code_references": ["scripts/dependency-baseline.test.mjs:361-386", "scripts/check-secret-access.test.mjs:108-129"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-03", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for browser imports, public runtime configuration, rendered output, API responses, and bundle/source-map paths.",
+      "evidence": ["No apps/web, client, route, or build configuration path changed", "The checker runs only as a Node CI command"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no bundle was generated for this non-client delta.", "code_references": ["package.json:12-13", ".github/workflows/ci.yml:47-52"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|secret-gate-diagnostics|v2",
+      "check_id": "SEC-04", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "secret-gate-diagnostics", "attack_path_version": "v2",
+      "attempt": "Injected synthetic secret-like environment keys into rejected .mts/.cts fixture source and inspected checker stderr assertions for key or source-line disclosure.",
+      "evidence": ["scripts/check-secret-access.test.mjs:127 rejects any PRIVATE_VALUE disclosure", "scripts/check-secret-access.test.mjs:128 rejects source-line disclosure", "scripts/check-secret-access.mjs:1861 emits only file:line"],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Synthetic values were source identifiers only, never credentials; temporary repositories were removed by the harness.", "code_references": ["scripts/check-secret-access.mjs:1855-1869", "scripts/check-secret-access.test.mjs:108-129"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-05", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for secret persistence, encryption, tenant references, roles, or plaintext support/admin access.",
+      "evidence": ["No loader backend, store, database, role, or tenant reference changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no storage touched.", "code_references": ["scripts/check-secret-access.mjs:29", "packages/config/src/secrets.ts"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-06", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for rotation, revocation, caching, long-lived connections, or credential lifetime changes.",
+      "evidence": ["No loader cache or secret backend changed; only scanner file extensions changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no credential rotated or revoked.", "code_references": ["scripts/check-secret-access.mjs:29", "packages/config/src/secrets.ts:107-142"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-07", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for worker environment forwarding, mounts, process arguments, temporary credential files, crash dumps, child processes, or outbound requests.",
+      "evidence": ["No worker or runtime process path changed", "The checker invokes only local git ls-files with constant arguments"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only inspection; no worker or child service launched.", "code_references": ["scripts/check-secret-access.mjs:3", "scripts/check-secret-access.mjs:85-87"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|pull-request-secret-boundary|v2",
+      "check_id": "SEC-08", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "pull-request-secret-boundary", "attack_path_version": "v2",
+      "attempt": "Verified the built-in-only gate runs before npm ci and exercised rejected fixture diagnostics for executable .mts/.cts files without exposing the synthetic key names.",
+      "evidence": [".github/workflows/ci.yml:47-52 runs checker and fixtures before dependency installation", "npm run test:secret-access PASS 40/40", "npm run check:agent-ignore PASS and test:agent-ignore PASS 15/15"],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Only disposable fixture repositories created by the test harness; all exact roots were removed by afterEach.", "code_references": [".github/workflows/ci.yml:47-58", "scripts/check-secret-access.test.mjs:108-129", ".agentignore"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-09", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for actor-attributed audit events or alternate security-sensitive mutation paths requiring new audit records.",
+      "evidence": ["The delta is a deterministic CI source scanner and performs no product mutation"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only inspection; no audit event or product mutation created.", "code_references": ["scripts/check-secret-access.mjs:85-87", "scripts/check-secret-access.mjs:1855-1869"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-10", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for audit-log update/delete, attribution, timestamp, commit-ordering, or alternate omission paths.",
+      "evidence": ["No product audit-log write or storage path changed or is invoked by the checker"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only inspection; no audit store touched.", "code_references": ["scripts/check-secret-access.mjs:29"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-11", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for tenant deletion, offboarding, caches, queues, stores, exports, sessions, or retention changes.",
+      "evidence": ["No tenant data or lifecycle path changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "No tenant fixture supplied or required for this static CI-checker delta.", "code_references": ["scripts/check-secret-access.mjs:29"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-12", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for backup encryption, restore behavior, retention, access control, or legal-hold policy changes.",
+      "evidence": ["No backup or restore path changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "No real backup accessed or modified.", "code_references": ["scripts/check-secret-access.mjs:29"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|w0-07-secret-access-ci-boundary|v1",
+      "check_id": "SEC-13", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "w0-07-secret-access-ci-boundary", "attack_path_version": "v1",
+      "attempt": "Inspected the delta for export, support tooling, signed URL, stale permission, guessed identifier, or asynchronous export behavior.",
+      "evidence": ["No export or support-tooling boundary changed"],
+      "evidence_type": "STATIC", "result": "NOT_APPLICABLE", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Read-only diff inspection; no export requested.", "code_references": ["scripts/check-secret-access.mjs:29"]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|secret-boundary-ci-detection|v2",
+      "check_id": "SEC-14", "surface_id": "secrets-audit-data-lifecycle", "surface_readiness": "IMPLEMENTED", "target_asset": "secret-boundary-ci-detection", "attack_path_version": "v2",
+      "attempt": "Triggered forbidden environment reads in executable TypeScript module fixtures and verified a non-zero check result with actionable path/line output but no key or source disclosure.",
+      "evidence": ["scripts/check-secret-access.mjs:1864-1869 emits a failing status and sanitized locations", "scripts/check-secret-access.test.mjs:121-128 proves detection and redaction", "npm run test:secret-access PASS 40/40"],
+      "evidence_type": "BOTH", "result": "PASS", "previous_result": null, "result_transition": "FIRST_OBSERVATION", "coverage_transition": "NOT_COMPARABLE", "severity": "NONE", "confidence": "HIGH", "single_point_of_failure": false, "finding": null,
+      "reproduction_and_cleanup": "Only synthetic fixture identifiers were used; harness cleanup removed temporary repositories.", "code_references": ["scripts/check-secret-access.mjs:1864-1869", "scripts/check-secret-access.test.mjs:108-129", ".github/workflows/ci.yml:47-52"]
+    }
+  ]
+}

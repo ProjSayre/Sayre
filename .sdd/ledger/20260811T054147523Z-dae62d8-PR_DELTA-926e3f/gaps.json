@@ -1,0 +1,62 @@
+{
+  "ticket": "W0-07",
+  "overlays": [
+    "base"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "OK",
+      "source": "A single getSecret(name) loader per language — the only code paths allowed to read a secret.",
+      "evidence": [
+        "packages/config/src/secrets.ts",
+        "services/workers/sayre_workers/config/secrets.py",
+        "packages/config/src/secrets.test.ts",
+        "services/workers/tests/test_secrets.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-2",
+      "status": "OK",
+      "source": "Committed .env.example, gitignored .env*.",
+      "evidence": [
+        "infra/.env.example",
+        ".gitignore",
+        ".agentignore"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3",
+      "status": "NARROWED",
+      "source": "CI grep failing on raw process.env./os.environ[ reads outside the loader; a PR reading a secret outside the loader fails CI.",
+      "evidence": [
+        "scripts/check-secret-access.mjs",
+        "scripts/check-secret-access.test.mjs",
+        ".github/workflows/ci.yml"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-4",
+      "status": "OK",
+      "source": "SECRETS.md names every secret Waves 1–3 will need.",
+      "evidence": [
+        "SECRETS.md",
+        "packages/config/src/secrets.ts",
+        "services/workers/sayre_workers/config/secrets.py"
+      ],
+      "needsTest": false
+    }
+  ],
+  "stamp": {
+    "treeHash": "df59146a778133ce4eb08148486c99af2ae21fbdded711393f9c4d40c177df94",
+    "headSha": "dae62d8f517a2d980ef6c1b03ee1540583b2520b",
+    "dirty": false,
+    "writtenAt": "2026-08-11T05:24:32.861Z"
+  }
+}

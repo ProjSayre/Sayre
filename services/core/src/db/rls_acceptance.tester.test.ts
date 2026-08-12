@@ -1800,41 +1800,134 @@ test("[AC-9] org-delete cascade specifically verified for the seven new/reshaped
 });
 
 // ---------------------------------------------------------------------------
-// Documented FK-RI-vs-RLS behavior (for plain FKs NOT covered by the
-// same-org-actor trigger -- mcp_client_keys.created_by/revoked_by are now
-// actively blocked, see the AC-8 tests above, not merely documented here).
+// W0-05 GAP-1: tenant-consistent repository/ref/chunk associations.
+// PostgreSQL referential-integrity checks bypass RLS, so every relationship
+// that carries org_id must include it in the foreign key itself.
 // ---------------------------------------------------------------------------
 
-test("[edge][documented] FK RI bypasses RLS: ticket_cache.repo_id may reference an RLS-hidden parent without leaking cross-tenant reads", async () => {
-  const crossId = randomUUID();
-  await withTenantSession(pool, orgA.orgId, async (c) => {
-    await c.query(
-      "INSERT INTO ticket_cache (id, org_id, repo_id, provider, external_ticket_id) VALUES ($1, $2, $3, $4, $5)",
-      [crossId, orgA.orgId, orgB.repoId, "jira", "FK-HIDDEN-PARENT"],
+// @spec AC-1 EC-1
+test("[W0-05 GAP-1] repo-scoped base tables reject a foreign-org repository while preserving nullable org-wide scope", async () => {
+  const attempts = [
+    {
+      table: "permissions",
+      sql: "INSERT INTO permissions (id, org_id, subject_type, subject_id, repo_id, action) VALUES ($1, $2, 'user', $3, $4, 'read')",
+      values: () => [randomUUID(), orgA.orgId, orgA.userId, orgB.repoId],
+    },
+    {
+      table: "ticket_cache",
+      sql: "INSERT INTO ticket_cache (id, org_id, repo_id, provider, external_ticket_id) VALUES ($1, $2, $3, 'jira', $4)",
+      values: () => [randomUUID(), orgA.orgId, orgB.repoId, `CROSS-${randomUUID()}`],
+    },
+    {
+      table: "style_rules",
+      sql: "INSERT INTO style_rules (id, org_id, repo_id, rule_type, content) VALUES ($1, $2, $3, 'coding_style', 'cross-org')",
+      values: () => [randomUUID(), orgA.orgId, orgB.repoId],
+    },
+    {
+      table: "onboarding_steps",
+      sql: "INSERT INTO onboarding_steps (id, org_id, repo_id, sequence, title) VALUES ($1, $2, $3, 99, 'cross-org')",
+      values: () => [randomUUID(), orgA.orgId, orgB.repoId],
+    },
+  ] as const;
+
+  for (const attempt of attempts) {
+    await assert.rejects(
+      pool.query(attempt.sql, attempt.values()),
+      new RegExp(`${attempt.table}_org_repository_fk`),
+      `${attempt.table} must reject a repository owned by another org`,
     );
-    const mine = await c.query("SELECT id FROM ticket_cache WHERE id = $1", [crossId]);
-    assert.equal(mine.rowCount, 1, "org A owns the row it just inserted");
-  });
-  await withTenantSession(pool, orgB.orgId, async (c) => {
-    const res = await c.query("SELECT id FROM ticket_cache WHERE id = $1", [crossId]);
-    assert.equal(res.rowCount, 0, "org B must not see org A's cross-referencing row");
-  });
+  }
+
+  const nullableIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+  await pool.query(
+    "INSERT INTO permissions (id, org_id, subject_type, subject_id, repo_id, action) VALUES ($1, $2, 'user', $3, NULL, 'read')",
+    [nullableIds[0], orgA.orgId, orgA.userId],
+  );
+  await pool.query(
+    "INSERT INTO ticket_cache (id, org_id, repo_id, provider, external_ticket_id) VALUES ($1, $2, NULL, 'jira', $3)",
+    [nullableIds[1], orgA.orgId, `ORG-WIDE-${randomUUID()}`],
+  );
+  await pool.query(
+    "INSERT INTO style_rules (id, org_id, repo_id, rule_type, content) VALUES ($1, $2, NULL, 'coding_style', 'org-wide')",
+    [nullableIds[2], orgA.orgId],
+  );
+  await pool.query(
+    "INSERT INTO onboarding_steps (id, org_id, repo_id, sequence, title) VALUES ($1, $2, NULL, 100, 'org-wide')",
+    [nullableIds[3], orgA.orgId],
+  );
+  await pool.query("DELETE FROM permissions WHERE id = $1", [nullableIds[0]]);
+  await pool.query("DELETE FROM ticket_cache WHERE id = $1", [nullableIds[1]]);
+  await pool.query("DELETE FROM style_rules WHERE id = $1", [nullableIds[2]]);
+  await pool.query("DELETE FROM onboarding_steps WHERE id = $1", [nullableIds[3]]);
 });
 
-test("[edge][documented] FK RI bypasses RLS: code_chunks.repository_id may reference an RLS-hidden parent without leaking cross-tenant reads", async () => {
-  const crossId = randomUUID();
-  await withTenantSession(pool, orgA.orgId, async (c) => {
-    await c.query(
+// @spec AC-2 EC-3
+test("[W0-05 GAP-1] repository ref, chunk, and embedding lineage is tenant- and repository-consistent", async () => {
+  await assert.rejects(
+    pool.query(
+      "INSERT INTO repository_refs (id, org_id, repository_id, ref_name, revision_sha) VALUES ($1, $2, $3, $4, $5)",
+      [randomUUID(), orgA.orgId, orgB.repoId, "refs/heads/cross-org", shaLike("cross-org-ref")],
+    ),
+    /repository_refs_org_repository_fk/,
+  );
+
+  await assert.rejects(
+    pool.query(
       "INSERT INTO code_chunks (id, org_id, repository_id, ref_id, revision_sha, chunk_index, content, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [crossId, orgA.orgId, orgB.repoId, orgA.repositoryRefId, shaLike("fkri"), 5, "fk-ri content", `hash-fkri-${crossId}`],
+      [randomUUID(), orgA.orgId, orgB.repoId, orgA.repositoryRefId, shaLike("cross-org-chunk"), 5, "cross-org", `hash-${randomUUID()}`],
+    ),
+    /code_chunks_org_repository_ref_fk/,
+  );
+
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO code_embeddings
+        (id, org_id, repository_id, ref_id, revision_sha, chunk_id, embedding, provider, model, dimension)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::vector, 'w0-05-gap', $8, 1024)`,
+      [
+        randomUUID(),
+        orgA.orgId,
+        orgA.repoId,
+        orgA.repositoryRefId,
+        shaLike("cross-org-embedding"),
+        orgB.codeChunkId,
+        vectorLiteral(1024),
+        `foreign-lineage-${randomUUID()}`,
+      ],
+    ),
+    /code_embeddings_org_repository_ref_chunk_fk/,
+  );
+});
+
+// @spec AC-3 EC-2 EC-4
+test("[W0-05 GAP-1] tenant-consistent constraints are installed without replacing RLS or cascade behavior", async () => {
+  const expected = new Set([
+    "permissions_org_repository_fk",
+    "ticket_cache_org_repository_fk",
+    "style_rules_org_repository_fk",
+    "onboarding_steps_org_repository_fk",
+    "repository_refs_org_repository_fk",
+    "code_chunks_org_repository_ref_fk",
+    "code_embeddings_org_repository_ref_chunk_fk",
+  ]);
+  const result = await pool.query<{ conname: string }>(
+    `SELECT conname
+       FROM pg_constraint
+      WHERE conname = ANY($1::text[])
+        AND contype = 'f'
+        AND confdeltype = 'c'`,
+    [[...expected]],
+  );
+  assert.deepEqual(new Set(result.rows.map((row) => row.conname)), expected);
+
+  for (const table of TABLE_NAMES) {
+    const rls = await pool.query<{ relrowsecurity: boolean; relforcerowsecurity: boolean }>(
+      "SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = $1::regclass",
+      [table],
     );
-    const mine = await c.query("SELECT id FROM code_chunks WHERE id = $1", [crossId]);
-    assert.equal(mine.rowCount, 1, "org A owns the row it just inserted, even though repository_id references org B's (RLS-hidden) repo");
-  });
-  await withTenantSession(pool, orgB.orgId, async (c) => {
-    const res = await c.query("SELECT id FROM code_chunks WHERE id = $1", [crossId]);
-    assert.equal(res.rowCount, 0, "org B must not see org A's row merely because repository_id references one of its repos");
-  });
+    assert.equal(rls.rows[0].relrowsecurity, true, `${table}: RLS must remain enabled`);
+    assert.equal(rls.rows[0].relforcerowsecurity, true, `${table}: RLS must remain forced`);
+  }
 });
 
 // ---------------------------------------------------------------------------

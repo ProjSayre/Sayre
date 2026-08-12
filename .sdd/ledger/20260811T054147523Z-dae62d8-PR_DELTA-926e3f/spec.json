@@ -1,0 +1,43 @@
+{
+  "ticket": "W0-07 — Secrets convention & loader (GAPFILL: GAP-3)",
+  "goal": "Close GAP-3 by extending the W0-07 CI secret-access boundary to executable .mts and .cts TypeScript modules while preserving the existing exact loader allowlist and sanitized diagnostics.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-3) A tracked .mts file containing direct process.env access outside the exact loader allowlist makes the checker exit non-zero and report the file and line without revealing the accessed secret name."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-3) A tracked .cts file containing direct process.env access outside the exact loader allowlist makes the checker exit non-zero and report the file and line without revealing the accessed secret name."
+    },
+    {
+      "id": "AC-3",
+      "text": "(GAP-3) The committed CI secret-access command and its complete regression suite pass after the classifier change, proving existing covered source types and allowlist behavior remain intact."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "(GAP-3) Extension matching is case-insensitive, consistent with the existing classifier contract."
+    },
+    {
+      "id": "EC-2",
+      "text": "(GAP-3) A similarly named non-source extension such as .mts.txt remains outside the executable-source scan."
+    },
+    {
+      "id": "EC-3",
+      "text": "(GAP-3) Adding .mts and .cts does not broaden the exact loader allowlist; a new file such as packages/config/src/secrets.mts is still treated as outside the loader."
+    },
+    {
+      "id": "EC-4",
+      "text": "(GAP-3) Failure output identifies only the offending path and line and does not echo the environment key or source line."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "df59146a778133ce4eb08148486c99af2ae21fbdded711393f9c4d40c177df94",
+    "headSha": "dae62d8f517a2d980ef6c1b03ee1540583b2520b",
+    "dirty": false,
+    "writtenAt": "2026-08-11T05:25:22.708Z"
+  }
+}

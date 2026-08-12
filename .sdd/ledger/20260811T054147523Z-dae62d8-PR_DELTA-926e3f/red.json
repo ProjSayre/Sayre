@@ -1,0 +1,25 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/check-secret-access.test.mjs",
+      "sha256": "45356515247fc65685cfcc4817ea14eaa7a6dc324b5a540550b1b87b604ff741",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "67271a16d753a9406bb0fe8ecae721e8d4641f2fcf8c1e692d63fb5c077999c6",
+    "headSha": "dae62d8f517a2d980ef6c1b03ee1540583b2520b",
+    "dirty": true,
+    "writtenAt": "2026-08-11T05:26:34.907Z"
+  }
+}

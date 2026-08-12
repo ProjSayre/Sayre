@@ -105,6 +105,29 @@ test('allows only the four exact loader paths', () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
+// @spec AC-1 AC-2 AC-3 EC-1 EC-2 EC-3 EC-4
+test('scans executable TypeScript module extensions without widening the loader allowlist', () => {
+  const root = fixtureRepo({
+    'src/direct.mts': `const value = ${nodeAccess}.MTS_PRIVATE_VALUE;`,
+    'src/direct.cts': `const value = ${nodeAccess}.CTS_PRIVATE_VALUE;`,
+    'src/case-insensitive.MTS': `const value = ${nodeAccess}.UPPERCASE_PRIVATE_VALUE;`,
+    'src/not-source.mts.txt': `const value = ${nodeAccess}.TEXT_PRIVATE_VALUE;`,
+    'packages/config/src/secrets.mts':
+      `const value = ${nodeAccess}.UNLISTED_LOADER_PRIVATE_VALUE;`,
+  });
+
+  const result = run(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /src\/direct\.mts:1/);
+  assert.match(result.stderr, /src\/direct\.cts:1/);
+  assert.match(result.stderr, /src\/case-insensitive\.MTS:1/);
+  assert.match(result.stderr, /packages\/config\/src\/secrets\.mts:1/);
+  assert.doesNotMatch(result.stderr, /src\/not-source\.mts\.txt/);
+  assert.doesNotMatch(result.stderr, /PRIVATE_VALUE/);
+  assert.doesNotMatch(result.stderr, /const value/);
+});
+
 test('reports every forbidden form with file and line and exits non-zero', () => {
   const root = fixtureRepo({
     'src/node.ts': `const ok = 1;\nconst bad = ${nodeSpacedAccess} . TOKEN;`,
