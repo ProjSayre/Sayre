@@ -186,6 +186,40 @@ const fixtureServices: McpToolServices = {
       lastChangedAt: '2026-07-22T00:00:00.000Z',
     };
   },
+  async getReadyTickets(ctx) {
+    if (!canSeePrivate(ctx)) {
+      return {
+        authorization: 'server-filtered',
+        totalReady: 0,
+        truncated: false,
+        groups: [],
+      };
+    }
+    return {
+      authorization: 'server-filtered',
+      totalReady: 1,
+      truncated: false,
+      groups: [
+        {
+          feature: { id: 'feature-private-billing', name: 'Private billing' },
+          tickets: [
+            {
+              id: 'ticket-private-billing',
+              externalId: 'SAY-1',
+              system: 'jira',
+              title: 'Harden private billing authorization',
+              status: 'Open',
+              url: null,
+              repositoryId: PRIVATE_NODE.repositoryId,
+              refName: PRIVATE_NODE.refName,
+              satisfiedPrerequisites: 0,
+              feature: { id: 'feature-private-billing', name: 'Private billing' },
+            },
+          ],
+        },
+      ],
+    };
+  },
 };
 
 function credentialFor(token: string): ResolvedMcpCredential {

@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import {
   McpKeyAuthenticationError,
   type ResolvedMcpCredential,
@@ -109,6 +109,8 @@ function fixtureServices(): McpToolServices {
     getRecentChanges: vi.fn((nodeId) =>
       result('get_recent_changes', nodeId),
     ),
+    checkLiveness: vi.fn((nodeId) => result('check_liveness', nodeId)),
+    getReadyTickets: vi.fn(() => result('get_ready_tickets', undefined)),
   };
 }
 
@@ -116,6 +118,80 @@ function responseData(result: Awaited<ReturnType<Client['callTool']>>): unknown 
   const content = result.content[0];
   if (!content || content.type !== 'text') throw new Error('missing text result');
   return JSON.parse(content.text) as unknown;
+}
+
+function responseText(result: Awaited<ReturnType<Client['callTool']>>): string {
+  const content = result.content[0];
+  if (!content || content.type !== 'text') throw new Error('missing text result');
+  return content.text;
+}
+
+// CH-02 (red stage): the ready-tickets result the fixture service returns, kept
+// verbatim so the envelope assertion below is a real round-trip comparison
+// rather than a shape check.
+const READY_TICKETS_RESULT = {
+  authorization: 'server-filtered',
+  totalReady: 2,
+  truncated: false,
+  groups: [
+    {
+      feature: { id: 'feature-billing', name: 'Billing' },
+      tickets: [
+        {
+          id: 'ticket-1',
+          externalId: 'SAY-1',
+          system: 'jira',
+          title: 'Harden billing authorization',
+          status: 'Open',
+          url: 'https://example.test/SAY-1',
+          repositoryId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          refName: 'refs/heads/main',
+          satisfiedPrerequisites: 1,
+          feature: { id: 'feature-billing', name: 'Billing' },
+        },
+      ],
+    },
+    {
+      feature: null,
+      tickets: [
+        {
+          id: 'ticket-2',
+          externalId: 'SAY-2',
+          system: 'linear',
+          title: null,
+          status: 'Backlog',
+          url: null,
+          repositoryId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          refName: 'refs/heads/main',
+          satisfiedPrerequisites: 0,
+          feature: null,
+        },
+      ],
+    },
+  ],
+};
+
+function readyTicketsServices(
+  implementation: () => Promise<unknown> = async () => READY_TICKETS_RESULT,
+): { services: McpToolServices; getReadyTickets: Mock } {
+  const getReadyTickets = vi.fn(implementation);
+  return {
+    services: {
+      ...fixtureServices(),
+      getReadyTickets,
+    } as unknown as McpToolServices,
+    getReadyTickets,
+  };
+}
+
+async function connectClient(url: URL, name: string): Promise<Client> {
+  const client = new Client({ name, version: '1.0.0' });
+  await client.connect(
+    new StreamableHTTPClientTransport(url, {
+      requestInit: { headers: { authorization: `Bearer ${TOKEN}` } },
+    }),
+  );
+  return client;
 }
 
 describe('read-only MCP Streamable HTTP gateway', () => {
@@ -140,6 +216,7 @@ describe('read-only MCP Streamable HTTP gateway', () => {
         'get_covering_tests',
         'get_feature_cluster',
         'get_node_context',
+        'get_ready_tickets',
         'get_recent_changes',
         'get_style_rules',
         'traverse_from',
@@ -158,6 +235,7 @@ describe('read-only MCP Streamable HTTP gateway', () => {
       ['get_covering_tests', { node_id: 'file-1' }],
       ['get_feature_cluster', { node_id: 'file-1' }],
       ['get_recent_changes', { node_id: 'file-1' }],
+      ['get_ready_tickets', {}],
     ] as const;
     for (const [name, args] of calls) {
       const result = await client.callTool({ name, arguments: args });
@@ -172,7 +250,7 @@ describe('read-only MCP Streamable HTTP gateway', () => {
       arguments: { node_id: 'hidden' },
     });
     expect(responseData(hidden)).toEqual({ data: null });
-    expect(measurements).toHaveLength(9);
+    expect(measurements).toHaveLength(10);
     expect(measurements.every((entry) => entry.outcome === 'ok')).toBe(true);
     expect(
       measurements.every(
@@ -244,5 +322,127 @@ describe('read-only MCP Streamable HTTP gateway', () => {
     const text = await response.text();
     expect(text).toContain('Unauthorized.');
     expect(text).not.toContain(TOKEN);
+  });
+});
+
+// CH-02 — authored by the `red` pipeline stage from .pipeline/spec.md before the
+// tool existed.
+describe('get_ready_tickets MCP tool', () => {
+  // @spec AC-7
+  it('advertises a zero-argument read-only tool and returns the service result verbatim', async () => {
+    const measurements: McpToolMeasurement[] = [];
+    const { services, getReadyTickets } = readyTicketsServices();
+    const url = await startGateway(services, { measurements });
+    const client = await connectClient(url, 'ready-tickets-test');
+
+    const listed = await client.listTools();
+    const tool = listed.tools.find((entry) => entry.name === 'get_ready_tickets');
+    expect(tool).toBeDefined();
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+    // No inputSchema is registered, so the SDK advertises its empty-object
+    // schema: the tool takes no arguments at all.
+    expect(tool?.inputSchema).toEqual({ type: 'object', properties: {} });
+
+    const result = await client.callTool({
+      name: 'get_ready_tickets',
+      arguments: {},
+    });
+
+    expect(result.isError).not.toBe(true);
+    expect(responseData(result)).toEqual({ data: READY_TICKETS_RESULT });
+    expect(getReadyTickets).toHaveBeenCalledTimes(1);
+    expect(getReadyTickets).toHaveBeenCalledWith(CREDENTIAL.context);
+    expect(measurements).toEqual([
+      expect.objectContaining({
+        tool: 'get_ready_tickets',
+        outcome: 'ok',
+        orgId: CREDENTIAL.context.orgId,
+        keyPrefix: CREDENTIAL.keyPrefix,
+      }),
+    ]);
+    await client.close();
+  });
+
+  // @spec EC-20 AC-4
+  it('ignores client-supplied arguments, including a foreign org id', async () => {
+    const { services, getReadyTickets } = readyTicketsServices();
+    const url = await startGateway(services);
+    const client = await connectClient(url, 'ready-tickets-args-test');
+
+    const withoutArguments = await client.callTool({
+      name: 'get_ready_tickets',
+      arguments: {},
+    });
+    const withForeignOrg = await client.callTool({
+      name: 'get_ready_tickets',
+      arguments: {
+        org_id: '99999999-9999-4999-8999-999999999999',
+        repo_id: 'someone-elses-repository',
+      },
+    });
+
+    expect(withForeignOrg.isError).not.toBe(true);
+    expect(responseText(withForeignOrg)).toBe(responseText(withoutArguments));
+    // The handler is invoked with the credential context and nothing else, so a
+    // client-supplied org id can never reach the query.
+    expect(getReadyTickets.mock.calls).toEqual([
+      [CREDENTIAL.context],
+      [CREDENTIAL.context],
+    ]);
+    await client.close();
+  });
+
+  // @spec EC-15
+  it('returns the fixed rate-limit text without tool or tenant detail', async () => {
+    const limiter: McpRateLimiter = {
+      consume: () => {
+        throw new McpRateLimitError();
+      },
+    };
+    const { services } = readyTicketsServices();
+    const url = await startGateway(services, { limiter });
+    const client = await connectClient(url, 'ready-tickets-rate-test');
+
+    const result = await client.callTool({
+      name: 'get_ready_tickets',
+      arguments: {},
+    });
+
+    expect(result.isError).toBe(true);
+    expect(responseText(result)).toBe('MCP rate limit exceeded.');
+    await client.close();
+  });
+
+  // @spec EC-15
+  it('returns the fixed failure text and reveals nothing when the service throws', async () => {
+    const { services } = readyTicketsServices(async () => {
+      throw new Error(
+        'Neo4j bolt://graph.internal:7687 refused query for org 11111111-1111-4111-8111-111111111111',
+      );
+    });
+    const measurements: McpToolMeasurement[] = [];
+    const url = await startGateway(services, { measurements });
+    const client = await connectClient(url, 'ready-tickets-failure-test');
+
+    const result = await client.callTool({
+      name: 'get_ready_tickets',
+      arguments: {},
+    });
+
+    expect(result.isError).toBe(true);
+    const text = responseText(result);
+    expect(text).toBe('MCP tool execution failed.');
+    expect(text).not.toContain('bolt');
+    expect(text).not.toContain('Neo4j');
+    expect(text).not.toContain('graph.internal');
+    expect(measurements).toEqual([
+      expect.objectContaining({ tool: 'get_ready_tickets', outcome: 'error' }),
+    ]);
+    await client.close();
   });
 });

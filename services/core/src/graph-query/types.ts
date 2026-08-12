@@ -300,3 +300,48 @@ export interface OnboardingGraphQueryService {
     ctx: AuthContext,
   ): Promise<GraphEdge[]>;
 }
+
+/**
+ * Ticket and Feature carry no `path`, so they are authorized exactly the way the
+ * Onboarding projection already authorizes pathless EnvStep nodes: by a
+ * repository-root-level grant (`path_prefix IS NULL`) for the ticket's own
+ * (repo_id, ref_name). A path-scoped grant therefore authorizes no Ticket at all —
+ * fail-closed by construction, not by convention.
+ */
+export interface TicketReadinessPrerequisite {
+  /** Prerequisite Ticket node uid. Present even when `visible` is false. */
+  id: string;
+  /** Raw provider status. ALWAYS null when `visible` is false. */
+  status: string | null;
+  /** False when the prerequisite exists but is outside the caller's read scope. */
+  visible: boolean;
+}
+
+export interface TicketReadinessFeature {
+  id: string;
+  name: string;
+}
+
+export interface TicketReadinessTicket {
+  id: string; // Ticket.uid
+  externalId: string; // Ticket.external_id, e.g. "SAY-142"
+  system: string; // Ticket.system, 'jira' | 'linear' as stored
+  title: string | null;
+  status: string | null; // raw provider status name, unclassified
+  url: string | null; // http/https only (safeWebUrl), else null
+  repositoryId: string; // Ticket.repo_id
+  refName: string; // Ticket.ref_name
+  /** De-duplicated by prerequisite id, ordered by id ascending. */
+  prerequisites: TicketReadinessPrerequisite[];
+  /** Lowest-ordered (name, id) PART_OF Feature, or null when the ticket has none. */
+  feature: TicketReadinessFeature | null;
+}
+
+/**
+ * Kept separate from GraphQueryService so existing canvas/realtime/retrieval test
+ * doubles do not need a ticket method. RbacGraphQueryService implements it, and
+ * services/ticketReadinessService depends only on this narrow contract.
+ */
+export interface TicketReadinessGraphQueryService {
+  getTicketReadiness(ctx: AuthContext): Promise<TicketReadinessTicket[]>;
+}

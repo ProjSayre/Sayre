@@ -135,9 +135,9 @@ Every relationship carries `org_id`. Direction below is canonical (source -> tar
 | `AUTHORED` | `Person->Commit` | `timestamp` (datetime) | |
 | `MODIFIED` | `Commit->File` | `timestamp` (datetime) | |
 | `REFERENCES` | `Ticket->File`, `Ticket->Feature` | — | Drives the Specific Tickets overlay for either structural or product nodes. |
-| `PART_OF` | `File->Feature` | — | Backs a Feature's "Files Included" list. |
-| `REQUIRES` | `EnvStep->EnvStep` | — | Onboarding prerequisite ordering. |
-| `DEPENDS_ON` | `Module->Module` | — | |
+| `PART_OF` | `File->Feature`, `Ticket->Feature` | — | Backs a Feature's "Files Included" list. `Ticket->Feature` groups a ticket under its owning feature for the ready-tickets read (CH-02); read-only, no writer yet. |
+| `REQUIRES` | `EnvStep->EnvStep`, `Ticket->Ticket` | — | Onboarding prerequisite ordering. `Ticket->Ticket` is dependent -> prerequisite, consumed read-only by the ready-tickets read (CH-02); no writer yet. |
+| `DEPENDS_ON` | `Module->Module`, `Ticket->Ticket` | — | `Ticket->Ticket` is dependent -> prerequisite, treated identically to `REQUIRES` by the ready-tickets read (CH-02); no writer yet. |
 | `COVERS` | `Test->File` | `status` (`'inferred'` \| `'measured'`), `last_run` (datetime, nullable), `repo_id`, `ref_name`, `revision_sha` | Static import inference writes `status='inferred'` with `last_run` unset; W4-03 may replace it with measured freshness. **Same-scope invariant (tested):** both endpoints must share authorized `(org_id, repo_id, ref_name, revision_sha)` scope — see "COVERS same-scope invariant" above. |
 
 **Direction note (non-blocking, flagged for awareness):** `AUTHORED`/`MODIFIED`/`OWNS`

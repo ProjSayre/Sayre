@@ -1,0 +1,84 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "services/core/src/services/ticketReadinessService.test.ts",
+      "sha256": "778772f6e174490d03dd2b1856f4faeefb34a5c8243bb4d854781bbe3e15adf3",
+      "specIds": [
+        "AC-1",
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "EC-1",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-7",
+        "EC-13",
+        "EC-18"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/graph-query/ticketReadiness.test.ts",
+      "sha256": "4d9038f4b4936c439c7922ae865c75965bc9477f4df6995770af2956177f77a9",
+      "specIds": [
+        "AC-2",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-9",
+        "AC-13",
+        "EC-2",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-14",
+        "EC-16",
+        "EC-17",
+        "EC-19"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/mcp/gateway.test.ts",
+      "sha256": "0b2ffb4a7f82368cc5be793b01f898ecdcef9315bc0d1497497b0011fdc80d3d",
+      "specIds": [
+        "AC-4",
+        "AC-7",
+        "EC-15",
+        "EC-20"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/mcp/handlerContract.test.ts",
+      "sha256": "4d986e25b618622d226390f4310007dc1570c2bb1bb45467363be9f6ae19a79f",
+      "specIds": [
+        "AC-8"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/test/mcp-interop/interop.test.ts",
+      "sha256": "dba54f3f8a0846c0da51a5cffee488f53aa2b9a44114dfb80d4ad2c402c4f80b",
+      "specIds": [
+        "AC-12"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "c812d7832cf6284f1aac5b67645ad7d481f25998ce3755ae30dfee87aea99095",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-10T20:50:25.992Z"
+  }
+}

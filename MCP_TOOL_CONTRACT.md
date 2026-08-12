@@ -57,6 +57,10 @@ properties.
   whitespace, and no NUL character.
 - `query` and `intent`: required string, 1–2,000 characters, at least one
   non-whitespace character, and no NUL character.
+- A tool with no listed input fields (currently `get_ready_tickets`) takes no
+  arguments at all. It advertises no `inputSchema`, so the SDK publishes its
+  empty-object schema and ignores any properties a client sends; scope always
+  comes from the bearer credential, never from caller input.
 
 Search processing uses at most 12 unique normalized terms. `find_relevant_nodes`
 returns at most 8 anchors. `traverse_from` is bounded to 2 graph hops and at most
@@ -347,6 +351,49 @@ computed at file granularity from `IMPORTS`; a dead export inside a live file is
 outside this contract. `inbound` carries true counts even when the importer
 arrays are truncated.
 
+### `get_ready_tickets`
+
+List the authorized tickets that are unblocked and ready to start: still open,
+with every prerequisite ticket already done. Results are grouped by the
+product feature each ticket belongs to, with an ungrouped bucket last for
+tickets that have none. Takes **no arguments** — scope comes entirely from the
+bearer credential.
+
+```json
+{}
+```
+
+`data` is the following object (never `null`):
+
+```ts
+{
+  authorization: "server-filtered";
+  totalReady: number;
+  truncated: boolean;
+  groups: Array<{
+    feature: Feature | null; // null is the ungrouped bucket, always last
+    tickets: Array<{
+      id: string;
+      externalId: string;
+      system: string;
+      title: string | null;
+      status: string | null;
+      url: string | null;
+      repositoryId: string;
+      refName: string;
+      satisfiedPrerequisites: number;
+      feature: Feature | null;
+    }>;
+  }>;
+}
+```
+
+`groups` carries at most 200 ready tickets; `totalReady` reports the true
+pre-cap count and `truncated` is `true` when more tickets were ready than
+`groups` carries. A ticket whose prerequisites are not all done, or whose
+own status is not open, is never returned. Two calls over the same
+authorized data return byte-identical results.
+
 ## Errors, rate limits, and retries
 
 Authentication failures return HTTP 401 with a JSON-RPC error whose public
@@ -453,7 +500,7 @@ npm run mcp-interop:local -w @sayre/core -- \
   --model-url http://127.0.0.1:11434/v1
 ```
 
-For each of the eight tools, the harness:
+For each of the ten tools, the harness:
 
 1. gives exactly the discovered MCP schema to the local model and requires one
    exact tool selection;
@@ -465,7 +512,7 @@ For each of the eight tools, the harness:
 6. asserts that limited-scope results contain none of the hidden fixture
    context.
 
-That is 16 local-model selections and 32 measured MCP calls. Client identity
+That is 20 local-model selections and 40 measured MCP calls. Client identity
 does not create a second authorization or metering path. W4-07 changes only the
 client harness, tests, scripts, and this contract; it requires no MCP Gateway
 code change.

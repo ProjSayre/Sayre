@@ -40,7 +40,12 @@ const UNMODIFIED: Record<string, string> = {
     '7f195dd8d7c905065a653b5f9569331158912ec0ccfa51d2455a4c5fdc37a6a0',
   'mcp/handlers/traverseFrom.ts':
     '3f851e3cd146fb93e3f7f755b8b93fc3757b3ff3e56206639a438c300139d2f1',
-  'mcp/gateway.ts': '651c6bdfd48e5d418f6c6437155a40c24fbe35704aa2b320d79ef35855cfe56b',
+  // Updated by CH-02, per this file's own header rule ("if a LATER ticket
+  // legitimately changes one of these files, update its digest here in that
+  // same commit — never silently"). CH-02 registers the `get_ready_tickets`
+  // read-only tool in the gateway; CH-01 itself still left this file
+  // byte-identical, which its own commit history remains the record of.
+  'mcp/gateway.ts': '345714cbab7ae1ac94bbfdd2f2fcd23fb370ad35b29a820d8840c4e2dd72bf92',
   'graph-query/permissions.ts':
     '9214393292ab24cb90eaf26278b19ba9cadc626d43590d07b3f3c33d9a86ce69',
   'auth/context.ts': 'c4d3003a7b4861b233a4e9a4c50886b20e67a14bf25583c2bf48720ef9063163',
@@ -64,6 +69,13 @@ describe('CH-01 deliberately unmodified surfaces', () => {
   });
 
   // @spec AC-11
+  //
+  // `getReadyTickets.ts` was added by CH-02, not CH-01, and is listed here for
+  // the same reason the gateway digest above was updated: this assertion pins
+  // the handler surface so no handler is ever added silently, and a later
+  // ticket that legitimately adds one records it here in that same commit.
+  // CH-01's own claim — that it added no handler — is unchanged and remains
+  // verifiable from its commit range.
   it('adds no new handler file to the read-only tool surface', () => {
     expect(
       readdirSync(HANDLERS_DIR)
@@ -76,6 +88,7 @@ describe('CH-01 deliberately unmodified surfaces', () => {
       'getCoveringTests.ts',
       'getFeatureCluster.ts',
       'getNodeContext.ts',
+      'getReadyTickets.ts',
       'getRecentChanges.ts',
       'getStyleRules.ts',
       'traverseFrom.ts',

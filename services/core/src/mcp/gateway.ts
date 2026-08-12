@@ -13,6 +13,7 @@ import { getAgentSkillMdHandler } from './handlers/getAgentSkillMd';
 import { getCoveringTestsHandler } from './handlers/getCoveringTests';
 import { getFeatureClusterHandler } from './handlers/getFeatureCluster';
 import { getNodeContextHandler } from './handlers/getNodeContext';
+import { getReadyTicketsHandler } from './handlers/getReadyTickets';
 import { getRecentChangesHandler } from './handlers/getRecentChanges';
 import { getStyleRulesHandler } from './handlers/getStyleRules';
 import { findRelevantNodesHandler } from './handlers/findRelevantNodes';
@@ -261,6 +262,21 @@ function createServer(
     ({ node_id }) =>
       execute('check_liveness', () =>
         checkLivenessHandler(node_id, credential.context, deps.services),
+      ),
+  );
+  server.registerTool(
+    'get_ready_tickets',
+    {
+      description:
+        'List the authorized tickets that are unblocked and ready to start — ' +
+        'every prerequisite ticket is already done — grouped by the feature each ' +
+        'belongs to, with an ungrouped bucket for tickets that have none. Takes ' +
+        'no arguments; scope comes from the credential, never from the caller.',
+      annotations: READ_ONLY,
+    },
+    () =>
+      execute('get_ready_tickets', () =>
+        getReadyTicketsHandler(credential.context, deps.services),
       ),
   );
   return server;

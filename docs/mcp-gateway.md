@@ -57,6 +57,7 @@ The tool set is:
 - `get_feature_cluster(node_id)`
 - `get_recent_changes(node_id)`
 - `check_liveness(node_id)`
+- `get_ready_tickets()`
 
 ## `check_liveness`
 
@@ -88,6 +89,22 @@ identifiers that must be kept for backward compatibility, where acting on a
 **Granularity is the file, not the symbol.** Only `CONTAINS`/`IMPORTS` leave the
 Graph Query Service, so a dead export inside a live file is out of scope. Sample
 importer arrays are capped at five entries; `inbound` carries the true counts.
+
+## `get_ready_tickets`
+
+Answers "which tickets are unblocked and ready to start right now?" straight
+from the graph: open tickets whose `REQUIRES`/`DEPENDS_ON` prerequisites are
+all done, grouped by the `PART_OF` feature each belongs to (an ungrouped
+bucket, always last, for tickets with none). It takes **no arguments** — the
+tool advertises no `inputSchema`, so a client-supplied argument (including an
+`org_id`) is ignored and can never influence the query; scope comes only from
+the bearer credential. Node-level RBAC and org isolation are enforced the same
+way as every other tool, entirely inside the Graph Query Service
+(`TicketReadinessGraphQueryService.getTicketReadiness`) — see
+`.claude/rules/security-multitenancy.md`.
+
+Full schema and result shape are documented in
+[`MCP_TOOL_CONTRACT.md`](../MCP_TOOL_CONTRACT.md#get_ready_tickets).
 
 Every successful tool response is one text content block containing JSON shaped
 as `{"data": ...}`. A hidden or absent node returns `{"data":null}`; it is not

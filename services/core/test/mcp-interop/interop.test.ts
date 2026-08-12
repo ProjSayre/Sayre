@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 import express from 'express';
 import { afterEach, describe, expect, it } from 'vitest';
-import { V1_TOOL_NAMES } from './contract';
+import { V1_TOOL_CASES, V1_TOOL_NAMES } from './contract';
 import { startInteropFixtureGateway } from './fixtureGateway';
 import { OpenAiCompatibleLocalModel } from './openAiCompatibleModel';
 import { runInteropAgainstFixture } from './runInterop';
@@ -138,5 +138,23 @@ describe('local-model MCP interoperability harness', () => {
     );
     expect(contract).toContain('`{"data":null}`');
     expect(contract).toContain('MCP rate limit exceeded.');
+  });
+
+  // CH-02 — authored by the `red` pipeline stage from .pipeline/spec.md before
+  // the tool existed.
+  // @spec AC-12
+  it('carries get_ready_tickets as a zero-argument case in the published v1 contract', () => {
+    const readyCase = V1_TOOL_CASES.find(
+      (entry) => (entry.name as string) === 'get_ready_tickets',
+    );
+    expect(readyCase).toBeDefined();
+    expect(readyCase?.arguments).toEqual({});
+    expect(V1_TOOL_NAMES as readonly string[]).toContain('get_ready_tickets');
+
+    const contract = readFileSync(
+      resolve(process.cwd(), '../../MCP_TOOL_CONTRACT.md'),
+      'utf8',
+    );
+    expect(contract).toContain('### `get_ready_tickets`');
   });
 });

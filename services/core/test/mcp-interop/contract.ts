@@ -10,7 +10,8 @@ export interface InteropToolCase {
     | 'get_covering_tests'
     | 'get_feature_cluster'
     | 'get_recent_changes'
-    | 'check_liveness';
+    | 'check_liveness'
+    | 'get_ready_tickets';
   arguments: Record<string, string>;
 }
 
@@ -53,6 +54,10 @@ export const V1_TOOL_CASES: readonly InteropToolCase[] = [
   {
     name: 'check_liveness',
     arguments: { node_id: 'file-private' },
+  },
+  {
+    name: 'get_ready_tickets',
+    arguments: {},
   },
 ] as const;
 

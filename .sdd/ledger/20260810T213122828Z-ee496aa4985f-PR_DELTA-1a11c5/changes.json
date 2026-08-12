@@ -1,0 +1,28 @@
+{
+  "filesChanged": [
+    "services/core/src/services/ticketReadinessService.ts",
+    "services/core/src/mcp/handlers/getReadyTickets.ts",
+    "services/core/src/graph-query/types.ts",
+    "services/core/src/graph-query/index.ts",
+    "services/core/src/mcp/toolServices.ts",
+    "services/core/src/mcp/gateway.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "services/core/test/mcp-interop/contract.ts",
+    "services/core/test/mcp-interop/fixtureGateway.ts",
+    "MCP_TOOL_CONTRACT.md",
+    "docs/mcp-gateway.md",
+    "packages/graph-schema/schema.md"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/mcp/gateway.test.ts",
+      "reason": "Mechanical tenth-tool fallout that red.md's 'Note for dev' section explicitly left to dev: added 'get_ready_tickets' to the listTools inventory array and to the calls table, added the missing checkLiveness entry (declared bounded incidental fix) and a new getReadyTickets entry to fixtureServices(), and bumped the measurement-count assertion from 9 to 10. Red's own four get_ready_tickets-specific tests and its readyTicketsServices() helper are untouched."
+    }
+  ],
+  "stamp": {
+    "treeHash": "f46da971eaf34bceecef8a56919c5ef759b4d8725c4b315ceff23d1981e6b6bf",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-10T21:02:38.084Z"
+  }
+}

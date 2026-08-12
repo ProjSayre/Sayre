@@ -1,0 +1,569 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T224227430Z-1c7c264abea5-PR_DELTA-6da97f",
+  "baseline_run_id": "20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5",
+  "generated_at": "2026-08-10T23:05:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": { "PASS": 11, "NOT_APPLICABLE": 6, "UNVERIFIED": 3 },
+    "result_transitions": { "UNCHANGED": 18, "FIRST_OBSERVATION": 2 },
+    "coverage_transitions": { "UNCHANGED": 18, "NOT_COMPARABLE": 2 },
+    "finding_statuses": {},
+    "surface_readiness": { "IMPLEMENTED": 14 },
+    "readiness_transitions": { "UNCHANGED": 14 }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|graph-query-service.getTicketReadiness|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified against the current tree (re-gate): re-read GET_READY_TICKETS_CYPHER/mapTicketReadiness/getTicketReadiness for a literal or client-suppliable org id; confirmed the only production diff since baseline is the byte-exact NUL-to-\\u0000-escape substitution in a private, non-authorization helper (featureGroupKey), independently reconstructed byte-for-byte this run; re-ran ticketReadiness.test.ts's org-isolation test and cypherOrgIdScan.test.ts.",
+      "evidence": [
+        "services/core/src/graph-query/index.ts:194-246 (GET_READY_TICKETS_CYPHER binds org_id = $org_id on ticket/prerequisite/prerequisite_edge/feature/membership; unchanged since baseline)",
+        "services/core/src/services/ticketReadinessService.ts:131-134 (getReadyTickets(ctx, graph) -- no org/repo/ref parameter; unchanged since baseline)",
+        "independent byte-level reconstruction this run: HEAD blob (6291 bytes, 1 NUL at offset 5030) with the NUL replaced by the 6-byte literal `\\u0000` reproduces the working-tree file (6296 bytes) exactly (Buffer.compare === 0); prefix/suffix outside that single substitution are byte-identical -- confirms the only hand-edit in this diff cannot affect org binding",
+        "test run: npx vitest run src/graph-query/ticketReadiness.test.ts -> 22 passed",
+        "test run: npx vitest run src/security/cypherOrgIdScan.test.ts (implicit in full-suite run) -- 107 files / 1100 passed / 7 skipped / 0 failed, independently re-run this stage, matching review.md's numbers exactly",
+        "NEW this run: dynamic probe (createMcpGatewayRouter + real resolveMcpCredential + real mintEphemeralMcpCredential, faked store/permissions/graph-query doubles) minted a chat_ephemeral credential for org 11111111-1111-4111-8111-111111111111 and called get_ready_tickets: the fake graph double's ctx.orgId was exactly that org on every call (2/2), including a call carrying a smuggled `org_id`/`orgId` argument for org 99999999-9999-4999-8999-999999999999 -- ctx.orgId was unaffected (still the credential's org) both times. This is the first time org-binding has been dynamically proven for get_ready_tickets under CH-01's ephemeral credential kind specifically, closing the one combination the baseline run (which predates CH-01 in this worktree) could not have exercised."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created for the static/byte-reconstruction checks. For the dynamic probe: a throwaway tsx script was written under .pipeline/security-scratch-msnt92jn-o5mzun/ (a security-checker-writable location per scripts/guard-checker-readonly.mjs), run via `npx tsx <path>`, and deleted immediately after (rm -rf), together with an earlier resolution-probe script under the OS temp scratchpad dir. `git status --porcelain` before and after is identical (only the one pre-existing hand-edited path remains dirty); no repository file was created, modified, or left behind.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:186-246",
+        "services/core/src/services/ticketReadinessService.ts:127-134",
+        "services/core/src/security/graphOrgGuard.ts:assertOrgScopedCypher",
+        "services/core/src/services/ephemeralMcpCredentialService.ts:mintEphemeralMcpCredential"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|graph-query-service.getTicketReadiness|v2",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v2",
+      "attempt": "New this run, not present in the baseline (which predates the rebase onto CH-01 in this worktree): does an org id smuggled through the (schema-less) get_ready_tickets tool arguments, presented alongside a real chat_ephemeral credential minted for a DIFFERENT org, ever reach the query's org binding? Built a full dynamic reproduction: mintEphemeralMcpCredential (real) -> resolveMcpCredential (real) -> createMcpGatewayRouter (real, unmodified) -> get_ready_tickets, with the store/permissions/graph-query boundary faked. Called the tool twice: once with no arguments, once with `{ org_id: <other org>, orgId: <other org>, __proto__: { polluted: true } }`.",
+      "evidence": [
+        "dynamic: both calls succeeded (isError !== true) and returned identical, byte-for-byte-equal JSON bodies (JSON.stringify equality)",
+        "dynamic: the fake graph-query double recorded ctx.orgId === the credential's own org (11111111-1111-4111-8111-111111111111) on both calls; the smuggled org id (99999999-9999-4999-8999-999999999999) never appeared as ctx.orgId",
+        "dynamic: Object.prototype.polluted was undefined after the __proto__-keyed call -- no prototype pollution",
+        "static corroboration: get_ready_tickets registers no inputSchema (services/core/src/mcp/gateway.ts:267-281), so the MCP SDK's own EMPTY_OBJECT_JSON_SCHEMA / argument-stripping applies identically regardless of which credential kind authenticated -- there is no code path from `arguments` to `ctx.orgId` for any credential kind"
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Throwaway tsx script under .pipeline/security-scratch-msnt92jn-o5mzun/probe-ephemeral-get-ready-tickets.mts, run via `npx tsx`, deleted immediately after (`rm -rf`). git status --porcelain confirmed identical before/after (only the pre-existing hand-edited path dirty).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:267-281",
+        "services/core/src/services/ephemeralMcpCredentialService.ts:mintEphemeralMcpCredential",
+        "services/core/src/services/mcpKeyService.ts:resolveMcpCredential",
+        "services/core/src/services/ticketReadinessService.ts:getReadyTickets"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service.getTicketReadiness|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified against the current tree (re-gate): re-read permissions.ts's ruleMatches/canReadResource and GET_READY_TICKETS_CYPHER's allow/deny/path_prefix predicate block (unchanged since baseline); re-ran the RBAC-boundary test suites; independently re-audited services/core/src/security/ch01UnmodifiedSurfaces.test.ts's change (a security-assertion file itself) for honesty and non-weakening.",
+      "evidence": [
+        "services/core/src/graph-query/permissions.ts:235-260 (ruleMatches/canReadResource: unchanged since baseline)",
+        "test run: npx vitest run src/graph-query/ticketReadiness.test.ts -> 22 passed, including the repository-root-vs-path-scoped and invisible-prerequisite tests",
+        "test run: npx vitest run src/services/ticketReadinessService.test.ts -> 17 passed",
+        "independently recomputed (this run, not taken from review.md): LF-normalized SHA-256 of services/core/src/mcp/gateway.ts is 345714cbab7ae1ac94bbfdd2f2fcd23fb370ad35b29a820d8840c4e2dd72bf92 -- exact match to the pin ch01UnmodifiedSurfaces.test.ts now records; LF-normalized SHA-256 of graph-query/permissions.ts (9214393292ab24cb90eaf26278b19ba9cadc626d43590d07b3f3c33d9a86ce69) and auth/context.ts (c4d3003a7b4861b233a4e9a4c50886b20e67a14bf25583c2bf48720ef9063163) both match their UNCHANGED pins exactly -- the two most security-load-bearing files in this test are provably still byte-identical to CH-01's original commit",
+        "`git diff 7ba3067 -- services/core/src/security/ch01UnmodifiedSurfaces.test.ts` shows only the gateway.ts digest+comment and the getReadyTickets.ts handler-list entry+comment changed; both assertions remain exact `toEqual` calls -- no `.toContain`, no `.skip`, no conditional; no entry removed",
+        "NEW this run: dynamic probe confirms the RBAC/dispatch path (gateway.ts's per-tool `execute(tool, () => handler(credential.context, deps.services))` wrapper) is credential-kind-agnostic by direct source read (all 10 registerTool calls use the identical pattern; toolExecution.ts's only credential-kind-sensitive field is `meteringSubject`, used solely for rate-limit/metrics bucketing, never for authorization) -- and confirmed dynamically: a chat_ephemeral credential minted with a deliberately narrow ceiling (repo-root allow for one repo only) reached get_ready_tickets and the handler received exactly `{ subjectType: 'agent_key', agentKeyId: <keyPrefix>, orgId, roles: ['member'] }`, the identical shape CH-01's own ephemeralMcpGateway.test.ts already proved for get_node_context/find_relevant_nodes"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created for the static/hash checks. Dynamic probe: same throwaway tsx script as CORE-01 v2 (deleted after use, no repository artifact left behind).",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts:229-260",
+        "services/core/src/graph-query/index.ts:194-246",
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+        "services/core/src/mcp/gateway.ts:createServer"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service.getTicketReadiness|v2",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v2",
+      "attempt": "New this run: does the RBAC scope actually enforced for get_ready_tickets differ, widen, or bypass anything when the calling credential is CH-01's new chat_ephemeral kind rather than a long-lived agent key? Minted a chat_ephemeral credential whose mint-time ceiling (via a faked PermissionStore) was deliberately narrow (a single repository-root allow rule), drove it through the real gateway to call get_ready_tickets, and confirmed both the metering isolation (CH-01's AC-9, extended to this new tool) and that no tool-specific branch exists anywhere that could special-case a credential kind.",
+      "evidence": [
+        "dynamic: the resolved context reaching getReadyTicketsHandler was `{ subjectType: 'agent_key', agentKeyId: <mc_chat_... prefix>, orgId, roles: ['member'] }` -- identical shape/field set to an agent-key credential, so every existing RBAC check downstream (canReadResource, getReadScope) runs unmodified",
+        "dynamic: the metering/rate-limit bucket recorded for the get_ready_tickets call was `chat:<issuing user id>`, matching CH-01's AC-9 semantics -- confirms that guarantee, previously proven only for pre-existing tools, extends to the new tenth tool with no code change required (by construction, not by coincidence: toolExecution.ts's bucket-key logic has no tool-name branch)",
+        "static: read gateway.ts's createServer end to end (all 10 registerTool calls) and toolExecution.ts's executeMcpTool -- zero occurrences of `credential.kind` or any kind-based conditional anywhere in the dispatch path; the only kind-sensitive code in the entire MCP surface is resolveMcpCredential's own pre-dispatch rejection disjunction (services/core/src/services/mcpKeyService.ts), which runs identically before any tool, including get_ready_tickets, is even selected",
+        "this generalizes CH-01's own already-passing ephemeralMcpGateway.test.ts finding (proven there for get_node_context/find_relevant_nodes) to the specific tool this ticket adds, which CH-01's own test suite does not exercise (its McpToolServices fixture omits getReadyTickets entirely -- a pre-existing CH-01 test-fixture gap, out of CH-02's scope to fix, noted in Limitations, not a production gap since the real mcpToolServices singleton does include getReadyTickets)"
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Same throwaway tsx script as CORE-01 v2 (deleted after use, no repository artifact left behind).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:127-141",
+        "services/core/src/mcp/toolExecution.ts:executeMcpTool",
+        "services/core/src/services/mcpKeyService.ts:resolveMcpCredential",
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|services-core-diff|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services-core-diff (CH-02 changed files)",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: read the hand-edit and the ch01UnmodifiedSurfaces.test.ts diff for any credential, token, key, or connection-string material.",
+      "evidence": [
+        "the hand-edit changes only a private grouping-key separator's spelling (NUL byte -> \\u0000 escape); no secret material of any kind",
+        "ch01UnmodifiedSurfaces.test.ts's diff is a SHA-256 digest value plus explanatory comments -- no credential material",
+        "services/core/src/db/client.ts:createPoolFromSecret remains unmodified"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Static diff review only.",
+      "code_references": [
+        "services/core/src/db/client.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|services-core-diff|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services-core-diff (CH-02 changed files)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked the current changed-path list for any webhook receiver or SQS/BullMQ producer path.",
+      "evidence": [
+        "manifest.json target.changed_paths (17 files, including the newly-added ch01UnmodifiedSurfaces.test.ts) contains no path under services/core/src/webhooks/**, services/core/src/queue/**, or services/workers/**"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Diff inspection only.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|services-core-diff|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services-core-diff (CH-02 changed files)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked the current changed-path list for any ingestion/scratch-clone path.",
+      "evidence": [
+        "manifest.json target.changed_paths contains no path under services/workers/**; this ticket remains a read of already-synced graph nodes"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Diff inspection only.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|graph-query-service.getTicketReadiness|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified GET_READY_TICKETS_CYPHER/GET_READY_TICKETS_ROW_LIMIT are unchanged since baseline; independently confirmed the hand-edit's substitution never touches any query/shell/queue-bound string (featureGroupKey's output is only ever compared as a JS Map/string key, never interpolated into Cypher, SQL, or a shell command); dynamically re-confirmed a hostile-argument payload against get_ready_tickets remains inert, now also under a chat_ephemeral credential.",
+      "evidence": [
+        "services/core/src/graph-query/index.ts:194-246, 843-847 (unchanged since baseline)",
+        "services/core/src/services/ticketReadinessService.ts:127-129 (featureGroupKey; grep-confirmed its return value is used only as a Map key inside this same file, never passed to any query/exec/shell/queue API)",
+        "dynamic (this run, under a chat_ephemeral credential): a __proto__/constructor-keyed + smuggled-org_id payload against get_ready_tickets succeeded harmlessly, returned data byte-identical to the clean call, and left Object.prototype unpolluted (see CORE-01 v2's evidence, same probe)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Dynamic evidence reused from the same throwaway tsx script as CORE-01 v2 (deleted after use).",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:194-246",
+        "services/core/src/services/ticketReadinessService.ts:127-129",
+        "services/core/src/mcp/gateway.ts:267-281"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-01|mcp|mcp-gateway.transport|v1",
+      "check_id": "MCPT-01",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.transport",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: createMcpGatewayRouter/originAllowed remain unmodified by this diff (confirmed by `git diff 7ba3067` showing zero changes to the origin-check code path).",
+      "evidence": [
+        "services/core/src/mcp/gateway.ts:127-131, 291-296 unchanged since baseline",
+        "`git diff 7ba3067 -- services/core/src/mcp/gateway.ts` shows only the new get_ready_tickets registerTool block (an addition, not a modification to originAllowed/createMcpGatewayRouter)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created this run; re-verified by source diff only (baseline's own dynamic evidence for this control is unaffected).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:127-131",
+        "services/core/src/mcp/gateway.ts:291-296"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-02|mcp|mcp-gateway.get_ready_tickets|v1",
+      "check_id": "MCPT-02",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.get_ready_tickets",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: re-ran gateway.test.ts's auth-failure-path assertions for get_ready_tickets (missing/wrong bearer).",
+      "evidence": [
+        "test run: npx vitest run src/mcp/gateway.test.ts -> 7 passed",
+        "resolveMcpCredential's rejection logic (bearer validation) is unmodified by CH-02's own diff"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran the existing test file via `npx vitest run src/mcp/gateway.test.ts` from services/core (no state left behind). See MCPT-02/CORE-01/CORE-02's v2 rows and this run's mcp-transport limitations for the chat_ephemeral-credential extension of this check.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:298-308",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-03|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-03",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: sessionIdGenerator remains undefined; this code path is untouched by CH-02's diff.",
+      "evidence": [
+        "services/core/src/mcp/gateway.ts:311 unchanged since baseline"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created this run; source read only.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-335"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-04|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-04",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: same no-session-concept finding as MCPT-03.",
+      "evidence": [
+        "services/core/src/mcp/gateway.ts:310-335 unchanged since baseline"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created this run; source read only.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-335"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-05|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-05",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: no persistent stream/cursor exists to replay; unchanged since baseline.",
+      "evidence": [
+        "services/core/src/mcp/gateway.ts:310-335 unchanged since baseline"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created this run; source read only.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-335"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-06|mcp|mcp-gateway.lifecycle|v1",
+      "check_id": "MCPT-06",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.lifecycle",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: createServer(credential, deps) still resolves and closes over `credential` before any tool callback runs, for all 10 tools including get_ready_tickets; the vendored SDK's lack of server-side initialize-gating is unchanged and remains shared/pre-existing behavior, not a CH-02 regression.",
+      "evidence": [
+        "services/core/src/mcp/gateway.ts:139-141, 298-330 unchanged since baseline",
+        "node_modules/@modelcontextprotocol/sdk source unchanged (no dependency version changed in this diff)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created this run (baseline's own dynamic evidence for this control is unaffected by the diff). single_point_of_failure remains true for the same reason recorded in baseline.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:139-141",
+        "services/core/src/mcp/gateway.ts:298-330"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-07|mcp|mcp-gateway.get_ready_tickets|v1",
+      "check_id": "MCPT-07",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.get_ready_tickets",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified and extended: re-confirmed a __proto__/constructor-keyed and smuggled-argument payload against get_ready_tickets is inert, now additionally reproduced under a chat_ephemeral credential (this run's dynamic probe, see CORE-01 v2).",
+      "evidence": [
+        "dynamic (this run, chat_ephemeral credential): __proto__-keyed + smuggled org_id/orgId payload -> tool call succeeds harmlessly, response byte-identical to the clean call, Object.prototype.polluted remains undefined",
+        "services/core/src/mcp/gateway.ts:267-281 (get_ready_tickets registration) unchanged since baseline"
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Same throwaway tsx script as CORE-01 v2 (deleted after use, no repository artifact left behind).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:266-281",
+        "services/core/src/http/express.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-08|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-08",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: no long-lived SSE stream exists; unchanged since baseline.",
+      "evidence": [
+        "services/core/src/mcp/gateway.ts:310-330 unchanged since baseline"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created this run; source read only.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-330"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|mcp-key-service|v1",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked: `git diff 7ba3067` confirms CH-02's own diff makes zero changes to services/core/src/services/mcpKeyService.ts or ephemeralMcpCredentialService.ts (both are CH-01-owned, already CH-01-security-reviewed). No live Postgres available in this environment.",
+      "evidence": [
+        "`git diff 7ba3067 --name-only` does not list services/core/src/services/mcpKeyService.ts or ephemeralMcpCredentialService.ts",
+        "no live Postgres is available in this environment to dynamically exercise hashing/entropy/enumeration behavior",
+        "CH-01's own already-PASSed security run (.sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/) independently exercised this surface against real Postgres and reported PASS for digest-only storage/entropy, with one unrelated MEDIUM timing finding on a different check (MCPT-02, not MCPT-09) -- cited for completeness, not treated as this run's own evidence"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; environment/scope limitation only.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts",
+        "services/core/src/services/ephemeralMcpCredentialService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-10|mcp|mcp-key-service|v1",
+      "check_id": "MCPT-10",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked: zero changes to key-issuance code in CH-02's own diff; no live Postgres available.",
+      "evidence": [
+        "`git diff 7ba3067 --name-only` does not list any key-issuance file",
+        "no live Postgres is available in this environment",
+        "CH-01's own security run independently exercised issuance-scope narrowing against real Postgres (PASS) -- cited for completeness"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; environment/scope limitation only.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-11|mcp|mcp-key-service|v1",
+      "check_id": "MCPT-11",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked: zero changes to rotation/expiry/revocation code in CH-02's own diff; no live Postgres available.",
+      "evidence": [
+        "`git diff 7ba3067 --name-only` does not list any rotation/revocation file",
+        "no live Postgres is available in this environment",
+        "CH-01's own security run independently exercised TTL/SECURITY DEFINER grant state against real Postgres (PASS) -- cited for completeness"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; environment/scope limitation only.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-12|mcp|mcp-gateway.get_ready_tickets|v1",
+      "check_id": "MCPT-12",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.get_ready_tickets",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified: re-ran gateway.test.ts's metadata-minimization assertions; this run's dynamic probe additionally confirmed no key prefix/org id leaked in the get_ready_tickets response under a chat_ephemeral credential.",
+      "evidence": [
+        "test run: npx vitest run src/mcp/gateway.test.ts -> 7 passed",
+        "dynamic (this run): the get_ready_tickets response body under the chat_ephemeral probe contained no key prefix, org id, or internal identifier beyond the fixture ticket data itself",
+        "services/core/src/mcp/toolExecution.ts:49-52 unchanged since baseline"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran the existing test file via `npx vitest run src/mcp/gateway.test.ts`; dynamic evidence reused from the same throwaway tsx script as CORE-01 v2 (deleted after use).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:448-463",
+        "services/core/src/mcp/toolExecution.ts:43-52"
+      ]
+    }
+  ]
+}

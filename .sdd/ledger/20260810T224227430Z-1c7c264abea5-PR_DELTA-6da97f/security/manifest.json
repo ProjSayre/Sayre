@@ -1,0 +1,343 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T224227430Z-1c7c264abea5-PR_DELTA-6da97f",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-10T22:27:00.000Z",
+  "completed_at": "2026-08-10T23:05:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.claude\\worktrees\\agent-adeaa049fb5ae5378"
+  },
+  "target": {
+    "commit_sha": "1c7c264abea51d7ab8de447c5442dc3dd1942551",
+    "branch": "ticket/ch-02-get-ready-tickets",
+    "dirty": true,
+    "environment": "local-dev-worktree, no live Neo4j/Postgres; node_modules installed",
+    "base_urls": [],
+    "changed_paths": [
+      "MCP_TOOL_CONTRACT.md",
+      "docs/mcp-gateway.md",
+      "packages/graph-schema/schema.md",
+      "services/core/src/graph-query/index.ts",
+      "services/core/src/graph-query/types.ts",
+      "services/core/src/mcp/gateway.test.ts",
+      "services/core/src/mcp/gateway.ts",
+      "services/core/src/mcp/handlerContract.test.ts",
+      "services/core/src/mcp/toolServices.ts",
+      "services/core/test/mcp-interop/contract.ts",
+      "services/core/test/mcp-interop/fixtureGateway.ts",
+      "services/core/test/mcp-interop/interop.test.ts",
+      "services/core/src/graph-query/ticketReadiness.test.ts",
+      "services/core/src/mcp/handlers/getReadyTickets.ts",
+      "services/core/src/services/ticketReadinessService.test.ts",
+      "services/core/src/services/ticketReadinessService.ts",
+      "services/core/src/security/ch01UnmodifiedSurfaces.test.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5",
+    "commit_sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "comparable": true,
+    "selection_reason": "Re-gate run (step 4 of /re-gate), not a fresh pipeline run: this is a re-verification of the same CH-02 ticket after (a) a rebase onto origin/ticket/ch-01-ephemeral-mcp-credentials @ 7ba3067 and (b) one uncommitted hand-edit. Per audit-contract.md's baseline order, item 1/2 applies: the newest complete run for this exact ticket, `20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5`, is used. Ancestry verified mechanically: `git merge-base --is-ancestor ee496aa4985fc4145afbadf34c54de9cf3e9910a HEAD` exits 0 (the baseline's target commit ee496aa is a genuine ancestor of the current HEAD 1c7c264, four commits back: ee496aa -> 079ad62 (CH-01 feat) -> 7ba3067 (CH-01 ledger) -> c6b9616 (CH-02 feat) -> 1c7c264 (CH-02 ledger)). Environment and tenant fixtures are identical strings to the baseline manifest (see target.environment / authorization.tenant_fixtures below), so comparable=true and incompatible_dimensions is empty.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "MVP / Wave 0-4 (CH-02: getReadyTickets service function + get_ready_tickets MCP tool), re-gated on top of CH-01 (ephemeral scoped MCP credentials for first-party chat, now merged underneath on this branch)",
+    "phase": "pre-external-customer (local .env-file secrets phase per .claude/rules/security-multitenancy.md; KMS-backed secrets manager not yet required)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/review.md",
+      "CLAUDE.md",
+      ".claude/rules/security-multitenancy.md",
+      "docs/product/Ticket-Backlog-by-Feature-2.md",
+      ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/ (CH-01's own terminal-PASS ledger entry, cited for the ephemeral-credential design this run's new evidence builds on)"
+    ],
+    "documentation_code_drift": [
+      "services/core/src/security/ch01UnmodifiedSurfaces.test.ts's two `it(...)` titles ('leaves every tool handler, the gateway, permissions, and the auth context byte-identical' / 'adds no new handler file to the read-only tool surface') now describe something no longer literally true of this tree post-CH-02: the gateway digest was legitimately updated and a new handler file was legitimately added, per this same file's own header rule. The updated digest/list and their attached comments are correct and honest; only the two test *titles* are now stale prose (review.md's Warning W4, independently confirmed here). Non-blocking -- flagged as documentation drift per this manifest's own instruction to record drift and use the code-observed (i.e. the assertion body's, not the title's) state."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "coordinator dispatch instructions for this /re-gate security stage run (local worktree, non-production, non-shared target; synthetic fixtures only)",
+    "resource_ceiling": "single local Express+MCP-SDK process per probe, one HTTP request at a time, no sustained/concurrent load, no destructive payloads; this run's dynamic probe made 2 tool calls against one throwaway in-process server, closed immediately after",
+    "credential_references": [
+      "synthetic in-process fixture bearer token, agent-key style (services/core/src/mcp/gateway.test.ts-style harness); no real MCP key, no real database credential used",
+      "synthetic in-process fixture bearer token, chat_ephemeral style, minted via the real mintEphemeralMcpCredential with a fully-faked store/permissions boundary (services/core/src/mcp/ephemeralMcpGateway.test.ts-style harness); no real MCP key, no real database credential used"
+    ],
+    "tenant_fixtures": [
+      "synthetic org 11111111-1111-4111-8111-111111111111 (repository-root-scoped fixture credential)",
+      "synthetic org 99999999-9999-4999-8999-999999999999 (referenced only as a rejected client-supplied org id, never a real second tenant fixture, per graph-query/ticketReadiness.test.ts's existing OTHER_ORG_ID convention)"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01), every mode. Re-verified against the current tree: the org-scoped Cypher/mapper are unchanged since baseline; new evidence this run additionally proves org binding holds when the caller authenticates with CH-01's new chat_ephemeral credential kind, not only an agent key.",
+      "rationale": "org_id is bound from ctx.orgId only (never client input) in GET_READY_TICKETS_CYPHER and mapTicketReadiness, unchanged since baseline. New this run: a real end-to-end probe (mintEphemeralMcpCredential -> resolveMcpCredential -> createMcpGatewayRouter -> get_ready_tickets) proves ctx.orgId still resolves from the credential (now potentially a chat_ephemeral one) and never from a client-supplied argument, closing the one combination the pre-CH-01 baseline could not have exercised.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_CYPHER",
+        "services/core/src/graph-query/index.ts:mapTicketReadiness",
+        "services/core/src/graph-query/index.ts:RbacGraphQueryService.getTicketReadiness",
+        "services/core/src/security/graphOrgGuard.ts:assertOrgScopedCypher",
+        "services/core/src/security/cypherOrgIdScan.test.ts",
+        "services/core/src/services/mcpKeyService.ts:resolveMcpCredential",
+        "services/core/src/services/ephemeralMcpCredentialService.ts:mintEphemeralMcpCredential"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02), every mode. Re-verified against the current tree, including the hand-edited featureGroupKey helper (encoding-only, no RBAC surface) and the ch01UnmodifiedSurfaces.test.ts pin update (a security-assertion file itself, independently re-verified this run -- see report.md).",
+      "rationale": "Allow/deny/path_prefix predicates live only in GET_READY_TICKETS_CYPHER, mirrored in TypeScript via canReadResource, unchanged since baseline (confirmed: the only production diff since baseline is the byte-exact NUL-to-\\u0000-escape substitution in featureGroupKey, a display-grouping helper with zero RBAC/authorization role). New this run: gateway.ts/toolExecution.ts dispatch every one of the 10 tools, including get_ready_tickets, through one credential-kind-agnostic path (`execute(tool, () => handler(credential.context, deps.services))`) -- confirmed by direct source read (zero conditional branching on credential.kind anywhere in the dispatch path) and by a real dynamic probe: a chat_ephemeral credential minted with a deliberately narrow ceiling reaches get_ready_tickets and receives exactly the agent_key-shaped context CH-01 already proved every other tool receives, with RBAC scope intact.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_CYPHER",
+        "services/core/src/graph-query/permissions.ts:canReadResource",
+        "services/core/src/graph-query/permissions.ts:PostgresPermissionStore.getReadScope",
+        "services/core/src/mcp/handlers/getReadyTickets.ts",
+        "services/core/src/mcp/gateway.ts:createServer (10 registerTool calls, identical execute() wrapper)",
+        "services/core/src/mcp/toolExecution.ts:executeMcpTool",
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03), run every mode.",
+      "rationale": "The hand-edit and the ch01UnmodifiedSurfaces.test.ts pin update introduce no credential, token, or key handling of any kind. The existing phase-appropriate loader is untouched.",
+      "code_references": [
+        "services/core/src/db/client.ts",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04), run every mode.",
+      "rationale": "No webhook receiver, queue producer, or BullMQ job type is touched by this diff.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05), run every mode.",
+      "rationale": "No ingestion worker, scratch-clone, or source-tree persistence code is touched by this diff.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06), every mode. Re-verified against the current tree including the hand-edit.",
+      "rationale": "GET_READY_TICKETS_CYPHER/GET_READY_TICKETS_ROW_LIMIT unchanged since baseline. The hand-edit only changes a JS string-literal escape spelling inside featureGroupKey (never concatenated into Cypher/SQL/shell) -- confirmed by independent byte-level reconstruction this run (see report.md). This run's dynamic probe additionally re-confirmed a __proto__-keyed / smuggled-argument payload against get_ready_tickets under a chat_ephemeral credential is fully inert, matching baseline's agent-key-credential finding.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:GET_READY_TICKETS_CYPHER",
+        "services/core/src/services/ticketReadinessService.ts:featureGroupKey",
+        "services/core/src/mcp/gateway.ts:get_ready_tickets registration"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "packages/graph-schema/schema.md is unchanged since baseline (still doc-only). No embedding/retrieval/prompt/enrichment code is touched anywhere in this run's diff.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "packages/graph-schema/schema.md"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": false,
+      "selection_reason": "services/core/** files changed (including the newly-in-scope ch01UnmodifiedSurfaces.test.ts), but none perform egress, call a ModelProvider/EmbeddingProvider, or construct an outbound request.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/workers/sayre_workers/enrichment/providers.py"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "services/core/src/mcp/** is a direct registry trigger path, unchanged from baseline's selection. Selected in full again this run.",
+      "rationale": "Same tool registration/dispatch pipeline as baseline, now additionally re-verified end-to-end under CH-01's new chat_ephemeral credential kind for the new tool specifically (see CORE-01/CORE-02 v2 observations).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts",
+        "services/core/src/mcp/handlers/getReadyTickets.ts",
+        "services/core/src/mcp/toolExecution.ts",
+        "services/core/src/mcp/toolServices.ts",
+        "services/core/src/services/mcpKeyService.ts",
+        "services/core/src/services/ephemeralMcpCredentialService.ts",
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/gateway/src"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched; spec.md's Scope explicitly excludes any new REST route.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        "services/core/src/routes"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched: the newly-touched services/core/src/security/ch01UnmodifiedSurfaces.test.ts does not match *secret*/*audit*/*backup*/*delet* by filename substring, and no .github/**, infra/**, or scripts/** path changed.",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        ".env.example"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (no dependency manifest changed).",
+      "rationale": "Inventory only; not audited by this run.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-stage-procedure",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle-attacker",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    }
+  ],
+  "limitations": [
+    "No live Neo4j or Postgres in this environment -- unchanged from baseline. Org-scoping, RBAC allow/deny/path_prefix predicates, and single-hop prerequisite traversal are proven against the exported Cypher text plus the TypeScript mapper exercised with real row fixtures, not against a running database.",
+    "MCPT-09/10/11 (API-key generation/storage, issuance scope, rotation/expiry/revocation) remain UNVERIFIED in this run's own scope: mcpKeyService.ts/ephemeralMcpCredentialService.ts are unmodified by CH-02's own diff (git diff 7ba3067), and no live Postgres is available here. These ARE independently covered by CH-01's own already-PASSed security run (.sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/security/report.md), which found one MEDIUM, non-blocking, pre-existing timing side-channel finding (FND for MCPT-02, unrelated to CH-02) -- cited here for completeness, not re-litigated by this CH-02-scoped run.",
+    "check-red-integrity.mjs reports 2 violations (ticketReadinessService.test.ts, ticketReadiness.test.ts) that this run independently re-confirmed are Windows autocrlf checkout artifacts, not genuine undeclared red-test changes: the raw `git show HEAD:<path>` blob SHA-256 for both files matches red.json's recorded value exactly, byte for byte, with no CRLF in either committed blob (independently recomputed this run, not taken from review.md's account).",
+    "spec.json/red.json/changes.json all report 'stale' per check-stamp-freshness.mjs -- expected for a re-gate (the rebase and the hand-edit moved the tree past every one of those stamps); per this stage's own Staleness-of-required-inputs section all three are advisory/re-derived, never trusted-fresh, so this is a Limitations note rather than a refusal. review.json (the one trusted-fresh input) was independently re-verified fresh (`node scripts/check-stamp-freshness.mjs review.json` -> status 'fresh') before this run began.",
+    "Surfaces llm-rag, model-provider, websocket-realtime, ingestion-queue-webhook, web-api-client, secrets-audit-data-lifecycle, and supply-chain-infrastructure are inventoried but not selected/audited this run; unchanged from baseline.",
+    "The dynamic ephemeral-credential probe this run built (see report.md) used fully-faked store/permissions/graph-query doubles, consistent with baseline's and CH-01's own established convention for this no-live-database environment; it demonstrates the dispatch/authorization plumbing is credential-kind-agnostic, not a live-Postgres-backed proof of the ceiling-intersection arithmetic itself (that arithmetic is CH-01's own AC-2/AC-5, already independently proven against real Postgres in CH-01's own security run)."
+  ]
+}

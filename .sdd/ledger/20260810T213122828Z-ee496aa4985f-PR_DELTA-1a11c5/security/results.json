@@ -1,0 +1,516 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T213122828Z-ee496aa4985f-PR_DELTA-1a11c5",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-10T21:45:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": { "PASS": 9, "NOT_APPLICABLE": 6, "UNVERIFIED": 3 },
+    "result_transitions": { "FIRST_OBSERVATION": 18 },
+    "coverage_transitions": { "NOT_COMPARABLE": 18 },
+    "finding_statuses": {},
+    "surface_readiness": { "IMPLEMENTED": 14 },
+    "readiness_transitions": { "FIRST_OBSERVATION": 14 }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|graph-query-service.getTicketReadiness|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v1",
+      "attempt": "Attempted to make GET_READY_TICKETS_CYPHER / mapTicketReadiness surface another org's ticket, prerequisite, edge, or feature data: (1) read the Cypher for any literal org id or client-suppliable org parameter; (2) confirmed getTicketReadiness(ctx) and getReadyTickets(ctx) accept no org/repo/ref argument anywhere in their signatures (types.ts, ticketReadinessService.ts); (3) ran ticketReadiness.test.ts's 'drops any record whose ticket, prerequisite, edge, feature, or membership org differs' test, which feeds the mapper rows carrying OTHER_ORG_ID on each of the five independent org-bearing fields and asserts none leak into the result or even the identifier string of the result; (4) ran the shared static scan (cypherOrgIdScan.test.ts) that enumerates every *_CYPHER export automatically and confirms GET_READY_TICKETS_CYPHER references org_id = $org_id as a real predicate outside any comment/string literal; (5) confirmed both Neo4j executors (graph-query/neo4j.ts) call assertOrgScopedCypher(orgId, cypher, params) as the first statement of run(), which additionally requires params.org_id to be a UUID that strictly equals ctx.orgId server-side.",
+      "evidence": [
+        "services/core/src/graph-query/index.ts:194-246 (GET_READY_TICKETS_CYPHER binds ticket.org_id = $org_id, prerequisite.org_id = $org_id, prerequisite_edge.org_id = $org_id, feature.org_id = $org_id, membership.org_id = $org_id; no literal org id anywhere)",
+        "services/core/src/graph-query/index.ts:2567-2583 (getTicketReadiness(ctx) — sole identity input is ctx.orgId via this.permissions.getReadScope(ctx))",
+        "services/core/src/services/ticketReadinessService.ts:131-134 (getReadyTickets(ctx, graph) — no org/repo/ref parameter)",
+        "test run: npx vitest run src/graph-query/ticketReadiness.test.ts -> 22 passed, including 'drops any record whose ticket, prerequisite, edge, feature, or membership org differs'",
+        "test run: npx vitest run src/security/cypherOrgIdScan.test.ts -> 16 passed (includes GET_READY_TICKETS_CYPHER in its dynamic *_CYPHER export enumeration)",
+        "services/core/src/security/graphOrgGuard.ts:241-269 (assertOrgScopedCypher; called by both Neo4j executors before every query, unmodified by this diff)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Verified by reading services/core/src/graph-query/index.ts, services/core/src/services/ticketReadinessService.ts, services/core/src/security/graphOrgGuard.ts, and re-running the two named existing test files via `npx vitest run <path>` from services/core (no state created or left behind).",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:186-246",
+        "services/core/src/graph-query/index.ts:2567-2583",
+        "services/core/src/security/graphOrgGuard.ts:241-269",
+        "services/core/src/security/cypherOrgIdScan.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service.getTicketReadiness|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v1",
+      "attempt": "Attacked the ticket named in the dispatch instructions hardest: whether a path-scoped key (no repository-root-level allow rule) truly sees zero tickets, whether a path-scoped DENY behaves correctly, and whether an invisible prerequisite can leak status or block/unblock a visible ticket. Read permissions.ts's canReadResource/ruleMatches to confirm a ticket's resource.path is always '' (tickets are pathless), so a path-scoped allow rule (non-null pathPrefix) can never match ('' !== canonicalPrefix and '' does not start with canonicalPrefix + '/'), and the Cypher's allow arm requires rule.path_prefix IS NULL identically — both layers agree. Ran the full ticketReadiness.test.ts RBAC suite: repository-root grant sees its tickets / path-scoped grant sees none (same test, both arms); a matching (root-level) deny removes a ticket; zero allow rules short-circuits to [] with zero graph.run() calls; an out-of-scope prerequisite is returned with visible:false, status:null and never counted as satisfied. Ran ticketReadinessService.test.ts's AC-6 test confirming the SERVICE-LAYER result (what the MCP tool actually returns) never contains the invisible prerequisite's id even via JSON.stringify, and that such a ticket is excluded from 'ready' entirely (fail-closed: an invisible prerequisite always blocks, it can never silently unblock). Independently confirmed via grep-level reading of permissions.ts that a path-scoped DENY rule also requires rule.path_prefix IS NULL to match a pathless ticket resource, so it structurally cannot remove a ticket a root-level allow already granted -- symmetric with the allow arm, and the character-for-character-identical predicate block to the existing GET_ONBOARDING_STEPS_CYPHER (confirmed via direct diff of both query strings) shows this is the established, reviewed precedent for pathless nodes, not a new gap this ticket introduces.",
+      "evidence": [
+        "services/core/src/graph-query/permissions.ts:235-260 (ruleMatches / canReadResource: a non-null rule.pathPrefix can never match resource.path === '')",
+        "services/core/src/graph-query/index.ts:194-246 vs index.ts:665-710 (GET_READY_TICKETS_CYPHER's allow/deny/path_prefix predicate block is character-for-character identical to GET_ONBOARDING_STEPS_CYPHER's, confirmed by direct comparison)",
+        "test run: npx vitest run src/graph-query/ticketReadiness.test.ts -> 22 passed, including 'returns a repository-root-granted caller its tickets and a path-scoped caller none', 'removes a ticket covered by a matching deny rule', 'returns [] without a graph round trip when the caller has zero allow rules', 'marks an out-of-scope prerequisite invisible and withholds its status'",
+        "test run: npx vitest run src/services/ticketReadinessService.test.ts -> 17 passed, including 'never counts an invisible prerequisite as satisfied and never leaks its identifiers' (asserts JSON.stringify(result) excludes the hidden prerequisite id even when its (hypothetical, graph-boundary-nulled) status is 'Done')",
+        "no route handler or client code duplicates this filtering: services/core/src/mcp/handlers/getReadyTickets.ts is a 9-line delegation with no data-access import (enforced by handlerContract.test.ts)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Verified by reading services/core/src/graph-query/permissions.ts and services/core/src/graph-query/index.ts (both GET_READY_TICKETS_CYPHER and GET_ONBOARDING_STEPS_CYPHER), and re-running the two named existing test files via `npx vitest run <path>` from services/core (no state created or left behind).",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts:229-260",
+        "services/core/src/graph-query/index.ts:194-246",
+        "services/core/src/graph-query/index.ts:665-710",
+        "services/core/src/services/ticketReadinessService.ts:101-108"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|services-core-diff|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services-core-diff (CH-02 changed files)",
+      "attack_path_version": "v1",
+      "attempt": "Read every changed/added file in the diff for credential, token, key, or connection-string material, hardcoded or logged. Grepped the diff for common secret-shaped tokens.",
+      "evidence": [
+        "git diff ee496aa4985fc4145afbadf34c54de9cf3e9910a across all 16 changed paths contains no credential, token, connection string, or console.log/logger call touching any such value",
+        "the new code (Cypher constant, mapper, service function, MCP handler/wiring) carries only ctx (AuthContext) and RBAC scope objects, never a raw secret",
+        "services/core/src/db/client.ts:createPoolFromSecret (the existing phase-appropriate loader, per .claude/rules/security-multitenancy.md) is unmodified by this diff"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Static diff/grep review only.",
+      "code_references": [
+        "services/core/src/db/client.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|services-core-diff|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services-core-diff (CH-02 changed files)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes or affects any webhook receiver or code that feeds SQS/BullMQ.",
+      "evidence": [
+        "manifest.json target.changed_paths contains no path under services/core/src/webhooks/**, services/core/src/queue/**, or services/workers/**",
+        "spec.md Scope explicitly excludes any writer/mutation and any new queue system"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Diff inspection only.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts (untouched)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|services-core-diff|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services-core-diff (CH-02 changed files)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff changes or affects the ingestion worker's scratch-clone lifecycle or persists any raw source tree.",
+      "evidence": [
+        "manifest.json target.changed_paths contains no path under services/workers/**",
+        "This ticket is a read of already-synced Ticket/Feature graph nodes; it performs no clone, checkout, or file-tree persistence of any kind"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created. Diff inspection only.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py (untouched)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|graph-query-service.getTicketReadiness|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service.getTicketReadiness",
+      "attack_path_version": "v1",
+      "attempt": "Read GET_READY_TICKETS_CYPHER end to end for any string concatenation of request/caller-controlled input; confirmed the MCP tool takes zero arguments (no inputSchema) so no client-controlled string can even reach the query; confirmed GET_READY_TICKETS_ROW_LIMIT is a compile-time numeric constant, not derived from input; dynamically sent a payload with __proto__/constructor-shaped keys and a foreign org_id/repo_id at the MCP transport layer and confirmed neither reaches the query (rejected by SDK schema validation / ignored entirely — see MCPT-07).",
+      "evidence": [
+        "services/core/src/graph-query/index.ts:194-246 (GET_READY_TICKETS_CYPHER is a static template; only $org_id, $allow_rules, $deny_rules are bound parameters, all server-derived)",
+        "services/core/src/graph-query/index.ts:843 (GET_READY_TICKETS_ROW_LIMIT = 4096, a literal numeric constant interpolated into LIMIT at build time)",
+        "services/core/src/mcp/gateway.ts:266-281 (get_ready_tickets registered with no inputSchema, zero-parameter callback)",
+        "dynamic probe (see MCPT-07 evidence): a __proto__/constructor/foreign-org_id-bearing arguments payload never reaches GET_READY_TICKETS_CYPHER — either rejected by SDK schema validation or silently ignored by the zero-arg handler"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Dynamic evidence reproduced via a throwaway tsx script created under the session scratchpad directory (outside the repository), started a real Express app mounting the real createMcpGatewayRouter, sent tools/call requests for get_ready_tickets with hostile arguments over real HTTP via the official MCP SDK client, then deleted the script and closed all listeners. No repository file was created, modified, or left behind.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:194-246",
+        "services/core/src/graph-query/index.ts:843-847",
+        "services/core/src/mcp/gateway.ts:266-281"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-01|mcp|mcp-gateway.transport|v1",
+      "check_id": "MCPT-01",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.transport",
+      "attack_path_version": "v1",
+      "attempt": "Sent a tools/call get_ready_tickets POST /mcp request with a valid bearer token but a disallowed Origin header (https://evil.example.test) against an allowedOrigins allow-list that does not include it, over real HTTP against the real, unmodified createMcpGatewayRouter/originAllowed code path.",
+      "evidence": [
+        "dynamic: POST with Origin: https://evil.example.test -> HTTP 403, body {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Origin not allowed.\"},\"id\":null}; no ticket data in the response",
+        "static: services/core/src/mcp/gateway.ts:291-296 (originAllowed check runs before bearerToken/resolveCredential/createServer, i.e. before any tool including get_ready_tickets can execute); StreamableHTTPServerTransport constructed with enableDnsRebindingProtection: true and allowedOrigins",
+        "this code path (createMcpGatewayRouter) is entirely unmodified by this diff -- git diff shows zero changes to it"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via a throwaway tsx script under the session scratchpad directory (outside the repository): real Express app + real createMcpGatewayRouter + real HTTP fetch(). Script deleted and all listeners closed after the run; no repository file touched.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:127-131",
+        "services/core/src/mcp/gateway.ts:291-296"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-02|mcp|mcp-gateway.get_ready_tickets|v1",
+      "check_id": "MCPT-02",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.get_ready_tickets",
+      "attack_path_version": "v1",
+      "attempt": "Sent tools/call get_ready_tickets with no Authorization header, and separately with an incorrect bearer token, over real HTTP.",
+      "evidence": [
+        "dynamic: no Authorization header -> HTTP 401, {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Unauthorized.\"},\"id\":null}; no ticket data",
+        "dynamic: Authorization: Bearer not-the-real-token -> HTTP 401, identical generic body; no ticket data",
+        "existing gateway.test.ts already exercises the equally-relevant 'rate limit' and 'service throw' failure paths for get_ready_tickets specifically (EC-15 tests), both re-run clean by this stage: npx vitest run src/mcp/gateway.test.ts -> 7 passed"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via the same throwaway tsx script (deleted after use); also re-ran the existing gateway.test.ts suite via `npx vitest run src/mcp/gateway.test.ts` from services/core (no state left behind).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:298-308",
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-03|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-03",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether a persistent, guessable, or fixatable session ID exists to hijack.",
+      "evidence": [
+        "static: services/core/src/mcp/gateway.ts:311 constructs StreamableHTTPServerTransport with sessionIdGenerator: undefined -- the SDK's documented stateless mode: a brand-new McpServer + transport pair is created and torn down (res.on('close', ...)) per single POST request, with no session ID issued or accepted at all",
+        "dynamic: GET /mcp (the only method a session-oriented client could use to open a stream against an existing session) -> HTTP 405 'Method not allowed'",
+        "this code path is entirely unmodified by this diff"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced GET 405 via the same throwaway tsx script (deleted after use); sessionIdGenerator: undefined confirmed by direct source read.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-335"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-04|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-04",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether a cross-session event/request/stream-ID injection surface exists.",
+      "evidence": [
+        "same as MCPT-03: no session concept exists at all (sessionIdGenerator: undefined, one server+transport per POST, no Last-Event-ID/resumption endpoint since GET returns 405)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No separate fixture; relies on the MCPT-03 dynamic evidence (GET 405) plus the same source read.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-335"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-05|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-05",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether replaying a POST body, JSON-RPC id, or SSE cursor could cross streams/users/orgs/expired sessions.",
+      "evidence": [
+        "no persistent stream or cursor exists to replay (sessionIdGenerator: undefined, GET returns 405); every POST is independently authenticated and independently org-scoped via credential -> ctx.orgId, so a replayed body at most re-executes the SAME already-authorized call, it cannot cross into another org/session because there is no session state to land in"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No separate fixture; relies on the MCPT-03 dynamic evidence (GET 405) plus the same source read.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-335"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-06|mcp|mcp-gateway.lifecycle|v1",
+      "check_id": "MCPT-06",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.lifecycle",
+      "attack_path_version": "v1",
+      "attempt": "Sent tools/call get_ready_tickets directly, WITHOUT a prior initialize JSON-RPC call, with a valid bearer token; repeated the identical request against a sibling pre-existing tool (check_liveness) to determine whether any lifecycle laxity is unique to the new tool; then repeated the skip-initialize request with NO bearer token as a control. Did not additionally test repeated-initialize, altered capability claims, or protocol-version-header downgrade variants dynamically -- those rely on static evidence only (see Limitations).",
+      "evidence": [
+        "dynamic: tools/call get_ready_tickets with no prior initialize + valid token -> HTTP 200, full ticket data returned",
+        "dynamic (control): the identical skip-initialize request against check_liveness (a pre-existing, unmodified-by-this-diff tool) -> HTTP 200, full tool data returned -- confirmed behaviorally identical, i.e. this is shared SDK/transport behavior, not something get_ready_tickets uniquely introduces",
+        "dynamic (control): the same skip-initialize get_ready_tickets request with NO bearer token -> HTTP 401 -- authentication is still fully enforced regardless of lifecycle state",
+        "static: node_modules/@modelcontextprotocol/sdk/dist/cjs/server/index.js and shared/protocol.js -- the vendored SDK's Server/Protocol classes do not gate other request handling behind a server-side '_initialized' flag; this is third-party SDK behavior, not Sayre code, and is identical for all 10 registered tools",
+        "static: createServer(credential, deps) resolves and closes over `credential` BEFORE any tool's callback can run, for every tool including get_ready_tickets, so no capability-claim or lifecycle state gates authorization -- the only gate is the bearer token, confirmed enforced above"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via the same throwaway tsx script (deleted after use). single_point_of_failure is true: the 'no auth/RBAC bypass despite skipped initialize' conclusion rests on one mechanism (bearer-token resolution happening earlier in the pipeline than tool dispatch, for every tool) -- flagged per audit-contract.md section 8 rather than treated as multi-layered. Confidence MEDIUM rather than HIGH because repeated-initialize, altered capability-claim, and protocol-downgrade sub-variants of this checklist item were not dynamically exercised (see Limitations); only the skip-initialize-entirely variant and its auth control were.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:139-141",
+        "services/core/src/mcp/gateway.ts:298-330",
+        "node_modules/@modelcontextprotocol/sdk/dist/cjs/server/index.js"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-07|mcp|mcp-gateway.get_ready_tickets|v1",
+      "check_id": "MCPT-07",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.get_ready_tickets",
+      "attack_path_version": "v1",
+      "attempt": "Sent three hostile tools/call get_ready_tickets payloads via the official MCP SDK client: (a) arguments containing literal __proto__/constructor keys plus a foreign org_id, (b) arguments containing arbitrary non-reserved extra keys (foreign org_id, a 1000-char string), and (c) a single argument value ~500KB long, oversized enough to exceed Express's default JSON body limit, sent against the real production errorHandler.",
+      "evidence": [
+        "dynamic (a): __proto__/constructor-keyed payload -> MCP error -32603, 'expected: record, received object' (the SDK's own z.record() argument-schema validation rejects it outright, before any Sayre handler code runs); confirmed Object.prototype was NOT polluted ({}.polluted === false after the call); no internal detail (no 'bolt'/'neo4j'/stack frame) in the error text",
+        "dynamic (b): benign-shaped extra keys (org_id, anything) -> HTTP 200, full ready-tickets data returned UNCHANGED (does not echo the injected org_id or 'anything' value) -- matches spec EC-20's already-tested behavior, independently reconfirmed",
+        "dynamic (c): ~500KB single-field payload against the real production app.ts error handler (services/core/src/http/express.ts:errorHandler) -> HTTP 413, body exactly {\"error\":\"payload too large\"} -- no stack trace, no file path, no raw-body/body-parser internals leaked",
+        "control: the identical oversized payload WITHOUT errorHandler mounted (matching gateway.test.ts's own test-harness gap, which also omits it) DOES leak a raw Express/raw-body stack trace with local file paths -- but app.ts DOES mount errorHandler last in the real app (unmodified by this diff), so this is a pre-existing test-harness convention gap, not a production gap; recorded under Limitations, not as a finding, since production behavior was independently verified safe"
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via the same throwaway tsx script (deleted after use): real Express app, real createMcpGatewayRouter, real services/core/src/http/express.ts errorHandler, real @modelcontextprotocol/sdk client. No repository file created, modified, or left behind.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:266-281",
+        "services/core/src/http/express.ts:errorHandler (entity.too.large branch)",
+        "services/core/src/app.ts:28,68 (express.json() then errorHandler mounted last)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-08|mcp|mcp-gateway.session|v1",
+      "check_id": "MCPT-08",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.session",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether a long-lived/concurrent SSE stream, slow-read connection, or reconnect storm surface exists to exhaust.",
+      "evidence": [
+        "StreamableHTTPServerTransport is constructed with enableJsonResponse: true and sessionIdGenerator: undefined; GET /mcp (the SSE stream endpoint) returns 405 'Method not allowed' -- there is no long-lived stream to open at all, only a single request/response cycle per POST that server.close()/transport.close() tear down on res 'close'"
+      ],
+      "evidence_type": "BOTH",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No separate fixture; relies on the MCPT-03 dynamic evidence (GET 405) plus the same source read.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:310-330"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|mcp-key-service|v1",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Intended to verify key entropy, one-time disclosure, hashing at rest, constant-time comparison, and enumeration resistance for MCP client keys.",
+      "evidence": [
+        "git diff shows zero changes to services/core/src/services/mcpKeyService.ts or the permissions/DB schema this diff relies on -- this ticket adds no new key-issuance or key-verification code",
+        "no live Postgres is available in this environment to dynamically exercise hashing/entropy/enumeration behavior"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; environment/scope limitation only.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-10|mcp|mcp-key-service|v1",
+      "check_id": "MCPT-10",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Intended to verify an admin cannot mint a key wider than their own effective scope.",
+      "evidence": [
+        "git diff shows zero changes to key-issuance code (services/core/src/services/mcpKeyService.ts) or services/core/src/graph-query/permissions.ts's isRuleWithinScope",
+        "no live Postgres is available in this environment to dynamically exercise issuance"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; environment/scope limitation only.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts:216-227 (isRuleWithinScope, unmodified)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-11|mcp|mcp-key-service|v1",
+      "check_id": "MCPT-11",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Intended to verify concurrent-use-during-rotation and immediate-next-call failure after revocation.",
+      "evidence": [
+        "git diff shows zero changes to key rotation/expiry/revocation code",
+        "no live Postgres is available in this environment to dynamically exercise revocation timing"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; environment/scope limitation only.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts:309-333 (revokedAt/expiresAt checks, unmodified)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-12|mcp|mcp-gateway.get_ready_tickets|v1",
+      "check_id": "MCPT-12",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mcp-gateway.get_ready_tickets",
+      "attack_path_version": "v1",
+      "attempt": "Listed tools via the official MCP SDK client and dumped get_ready_tickets's full advertised metadata (description, inputSchema, annotations); scanned it for the fixture credential's key prefix, org id, or any internal identifier. Cross-checked the existing gateway.test.ts EC-15 assertions that a service-throw error containing a fake internal string ('Neo4j bolt://graph.internal:7687 ...') never reaches the client.",
+      "evidence": [
+        "dynamic tool-listing dump: {\"name\":\"get_ready_tickets\",\"description\":...,\"inputSchema\":{\"type\":\"object\",\"properties\":{}},\"annotations\":{\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},...} -- contains none of key-1 / 11111111-1111-4111-8111-111111111111 / sayre_pk_test / any 'org_id' substring",
+        "existing test (re-run clean): src/mcp/gateway.test.ts 'returns the fixed failure text and reveals nothing when the service throws' asserts the response text is exactly 'MCP tool execution failed.' and excludes 'bolt'/'Neo4j'/'graph.internal'",
+        "services/core/src/mcp/toolExecution.ts:49-52 (shared, unmodified: 'Do not reflect database, graph, provider, or validation details to an external agent')"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via the same throwaway tsx script (deleted after use); also re-ran src/mcp/gateway.test.ts via `npx vitest run` from services/core.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:448-463",
+        "services/core/src/mcp/toolExecution.ts:43-52"
+      ]
+    }
+  ]
+}
