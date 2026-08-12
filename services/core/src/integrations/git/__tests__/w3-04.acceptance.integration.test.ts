@@ -116,9 +116,16 @@ describe.skipIf(!bothUp)('W3-04 acceptance: merged PR -> configured-provider -> 
   const orgId = `org-${randomUUID()}`;
   const repositoryId = `repo-${randomUUID()}`;
   let session: Session;
+  // A Neo4j Session is not safe for concurrent use: the worker's own writes (running
+  // async, driven by the BullMQ job) and this test's polling reads happen concurrently
+  // once the event is enqueued below, so they need separate sessions on the same driver
+  // — sharing one `Session` between them threw a genuine Neo4jError under real
+  // concurrency, reproduced locally before this fix.
+  let graphSession: Session;
 
   beforeAll(async () => {
     session = neo4jDriver!.session();
+    graphSession = neo4jDriver!.session();
   });
 
   afterAll(async () => {
@@ -126,6 +133,7 @@ describe.skipIf(!bothUp)('W3-04 acceptance: merged PR -> configured-provider -> 
       tx.run('MATCH (n) WHERE n.org_id = $org_id DETACH DELETE n', { org_id: orgId }),
     );
     await session.close();
+    await graphSession.close();
     await neo4jDriver!.close();
     setConfigOverrideForTests('GIT_PROVIDER_CATALOG' as never, undefined);
     resetConfigForTests();
@@ -177,7 +185,7 @@ describe.skipIf(!bothUp)('W3-04 acceptance: merged PR -> configured-provider -> 
 
     const graph = new Neo4jOwnershipGraphStore({
       run: async (_orgId, cypher, parameters) => {
-        const result = await session.executeWrite((tx) => tx.run(cypher, parameters));
+        const result = await graphSession.executeWrite((tx) => tx.run(cypher, parameters));
         return { records: result.records };
       },
       close: async () => undefined,

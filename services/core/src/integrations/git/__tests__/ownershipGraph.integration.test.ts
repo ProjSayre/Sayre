@@ -220,10 +220,10 @@ describe.skipIf(!driver)('Neo4jOwnershipGraphStore against a real Neo4j (GAP-1)'
       );
       expect(result.records[0].get('f').properties.primary_owner_login).toBeUndefined();
     } finally {
-      await otherOrgSession.close();
-      await otherOrgSession.executeWrite?.((tx) =>
+      await otherOrgSession.executeWrite((tx) =>
         tx.run('MATCH (n) WHERE n.org_id = $org_id DETACH DELETE n', { org_id: otherOrgId }),
       );
+      await otherOrgSession.close();
     }
   });
 

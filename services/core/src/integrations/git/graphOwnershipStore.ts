@@ -33,6 +33,25 @@ export interface OwnershipGraphStore {
   close(): Promise<void>;
 }
 
+/**
+ * Two independent UNWIND passes, deliberately not one. The first (`$edits`, one row per
+ * edit) writes only append-only historical facts — Person/Commit nodes and AUTHORED/
+ * MODIFIED edges — which MERGE makes order-independent across rows, so no two rows ever
+ * conflict.
+ *
+ * The second (`$owner_edits`, at most one row per distinct file path — see
+ * `latestEditPerPath` below) owns the OWNS edge and the file's primary_owner_ and
+ * recent_pr_ properties, which are current-state (delete-the-old-edge, create-the-new-one), not
+ * append-only. An earlier version ran that delete-then-recreate dance inside the
+ * per-edit pass: when $edits carried two rows for the same path (two authors editing one
+ * file in one batch), Neo4j did not guarantee row 2's OPTIONAL MATCH would see row 1's
+ * just-created OWNS edge, so both rows found "no previous owner" and both MERGEd one —
+ * reproduced locally against a real Neo4j as a genuine duplicate-edge bug, not a test
+ * artifact. Deduplicating to one row per path in JS before this pass removes the
+ * conflict structurally (no two rows in `$owner_edits` ever touch the same file's OWNS
+ * edge), which is more robust than trying to out-eager Cypher's per-row pipelining for a
+ * pattern it re-reads and rewrites on every row.
+ */
 const APPLY_OWNERSHIP_CYPHER = `
 UNWIND $edits AS edit
 MATCH (file:File {
@@ -66,21 +85,30 @@ SET authored.org_id = $org_id,
 MERGE (commit)-[modified:MODIFIED]->(file)
 SET modified.org_id = $org_id,
     modified.timestamp = edit.edited_at
-WITH file, person, edit
+WITH DISTINCT 1 AS _bridge
+UNWIND $owner_edits AS owner_edit
+MATCH (file:File {
+  org_id: $org_id,
+  repo_id: $repo_id,
+  ref_name: $ref_name,
+  path: owner_edit.path
+})
+MERGE (person:Person {org_id: $org_id, uid: owner_edit.person_uid})
+WITH file, person, owner_edit
 OPTIONAL MATCH (previous:Person)-[old_owns:OWNS]->(file)
 WHERE old_owns.org_id = $org_id AND previous.uid <> person.uid
 DELETE old_owns
 MERGE (person)-[owns:OWNS]->(file)
 SET owns.org_id = $org_id,
-    file.primary_owner_name = coalesce(edit.author_name, file.primary_owner_name),
-    file.primary_owner_email = coalesce(edit.author_email, file.primary_owner_email),
+    file.primary_owner_name = coalesce(owner_edit.author_name, file.primary_owner_name),
+    file.primary_owner_email = coalesce(owner_edit.author_email, file.primary_owner_email),
     file.primary_owner_provider = $provider,
-    file.primary_owner_login = coalesce(edit.author_login, file.primary_owner_login),
-    file.last_edited_at = edit.edited_at,
-    file.recent_pr_number = coalesce(edit.pr_number, file.recent_pr_number),
-    file.recent_pr_title = coalesce(edit.pr_title, file.recent_pr_title),
-    file.recent_pr_url = coalesce(edit.pr_url, file.recent_pr_url),
-    file.recent_pr_merged_at = coalesce(edit.pr_merged_at, file.recent_pr_merged_at)
+    file.primary_owner_login = coalesce(owner_edit.author_login, file.primary_owner_login),
+    file.last_edited_at = owner_edit.edited_at,
+    file.recent_pr_number = coalesce(owner_edit.pr_number, file.recent_pr_number),
+    file.recent_pr_title = coalesce(owner_edit.pr_title, file.recent_pr_title),
+    file.recent_pr_url = coalesce(owner_edit.pr_url, file.recent_pr_url),
+    file.recent_pr_merged_at = coalesce(owner_edit.pr_merged_at, file.recent_pr_merged_at)
 RETURN count(DISTINCT file) AS updated_files, collect(DISTINCT file.path) AS matched_paths
 `;
 
@@ -130,6 +158,19 @@ function graphEdits(input: OwnershipGraphWrite): Array<Record<string, unknown>> 
   return result;
 }
 
+/**
+ * One row per distinct `path`, keeping the LAST edit in array order for that path —
+ * matches the "last edit wins" semantics the original per-edit `coalesce()` writes
+ * already implied, but computed deterministically in JS instead of relying on Cypher's
+ * per-row execution order for a delete-then-recreate write (see the doc comment on
+ * APPLY_OWNERSHIP_CYPHER above for why that was unsafe).
+ */
+function latestEditPerPath(edits: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  const byPath = new Map<string, Record<string, unknown>>();
+  for (const edit of edits) byPath.set(edit.path as string, edit);
+  return [...byPath.values()];
+}
+
 export class Neo4jOwnershipGraphStore implements OwnershipGraphStore {
   constructor(private readonly executor: GraphWriteExecutor) {}
 
@@ -146,6 +187,7 @@ export class Neo4jOwnershipGraphStore implements OwnershipGraphStore {
         repository_id: input.repositoryId,
         ref_name: input.refName,
         edits,
+        owner_edits: latestEditPerPath(edits),
       },
       'updated_files',
     );
