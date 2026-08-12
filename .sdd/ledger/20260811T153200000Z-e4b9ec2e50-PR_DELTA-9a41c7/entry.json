@@ -1,0 +1,78 @@
+{
+  "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+  "date": "2026-08-11",
+  "ticket": "W1-02",
+  "ticketTitle": "W1-02 — GitHub webhook receiver (gapfill: GAP-4 … GAP-9)",
+  "goal": "Close the six real defects gap-scout narrowed on the already-shipped W1-02 receiver: bind replay/dedup identity to the signed bytes rather than an unsigned header, constrain `push` to branch refs, make a malformed `installation.id` a clean 2xx-ignore/400 instead of a 500 + GitHub retry storm, validate `repository.full_name` to a real `owner/name` shape before anything is published, actually assert the BullMQ half of \"replayed fixtures produce correct queue messages\", and resolve the 5 MB body-cap tradeoff explicitly and observably.",
+  "filesTouched": [
+    "Documents/PRD/Audit-Rebuild-Cheat-Sheet.md",
+    "Documents/PRD/PRD V1.md",
+    "Documents/PRD/Ticket-Backlog-Flat.md",
+    "Documents/PRD/Ticket-Backlog-by-Feature-2.md",
+    "services/core/src/app.ts",
+    "services/core/src/github/repoFullName.test.ts",
+    "services/core/src/github/repoFullName.ts",
+    "services/core/src/http/express.gapfill.test.ts",
+    "services/core/src/http/express.ts",
+    "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json",
+    "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+    "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts",
+    "services/core/src/routes/githubWebhook.fixtures.test.ts",
+    "services/core/src/routes/githubWebhook.gapfill.test.ts",
+    "services/core/src/routes/githubWebhook.test.ts",
+    "services/core/src/routes/githubWebhook.ts",
+    "services/core/src/services/githubWebhookService.gapfill.test.ts",
+    "services/core/src/services/githubWebhookService.test.ts",
+    "services/core/src/services/githubWebhookService.ts",
+    "services/core/src/webhooks/__fixtures__/push.malformed-full-name.json",
+    "services/core/src/webhooks/__fixtures__/push.tag.json",
+    "services/core/src/webhooks/githubDeliveryIdentity.test.ts",
+    "services/core/src/webhooks/githubDeliveryIdentity.ts",
+    "services/core/src/webhooks/normalizeGithubEvent.gapfill.test.ts",
+    "services/core/src/webhooks/normalizeGithubEvent.ts"
+  ],
+  "verdicts": {
+    "review": "PASS",
+    "security": "PASS"
+  },
+  "overrides": [],
+  "bypass": false,
+  "regate": null,
+  "lite": null,
+  "inline": null,
+  "gapfill": {
+    "overlays": [
+      "base",
+      "spot-check"
+    ],
+    "note": "this run took the gapfill lane (`.sdd/pipeline.md`'s `/pipeline-gapfill`): `gap-scout` audited an already-shipped MVP ticket against its acceptance criteria, and `planner`/`red`/`dev` only addressed non-OK gaps. `tester`, `review`, and `security` all ran in full. Overlays came from `.sdd/mvp-overlays.yml` and the Audit-Rebuild cheat sheet. This is disclosure that the work was gap-scoped, not a skipped-gate bypass.",
+    "counts": {
+      "total": 9,
+      "ok": 3,
+      "nonOk": 6,
+      "byStatus": {
+        "OK": 3,
+        "NARROWED": 5,
+        "UNTESTED": 1
+      }
+    }
+  },
+  "redTestPaths": [
+    "services/core/src/webhooks/githubDeliveryIdentity.test.ts",
+    "services/core/src/github/repoFullName.test.ts",
+    "services/core/src/webhooks/normalizeGithubEvent.gapfill.test.ts",
+    "services/core/src/services/githubWebhookService.gapfill.test.ts",
+    "services/core/src/routes/githubWebhook.gapfill.test.ts",
+    "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts",
+    "services/core/src/http/express.gapfill.test.ts",
+    "services/core/src/routes/githubWebhook.fixtures.test.ts",
+    "services/core/src/routes/githubWebhook.test.ts",
+    "services/core/src/services/githubWebhookService.test.ts"
+  ],
+  "redAbsenceNote": null,
+  "securityRunId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+  "commit": {
+    "sha": "e4b9ec2e501fe17184e21e16599f528065bb0b7b",
+    "dirty": true
+  }
+}

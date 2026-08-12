@@ -1,0 +1,41 @@
+{
+  "headers": {
+    "x-github-event": "push",
+    "x-github-delivery": "55555555-5555-4555-8555-555555555555"
+  },
+  "body": {
+    "ref": "refs/tags/v1.0.0",
+    "before": "0000000000000000000000000000000000000000",
+    "after": "cccccccccccccccccccccccccccccccccccccccc",
+    "forced": false,
+    "deleted": false,
+    "created": true,
+    "repository": {
+      "id": 583231,
+      "full_name": "acme-corp/widgets",
+      "private": false
+    },
+    "pusher": {
+      "name": "octocat",
+      "email": "octocat@example.com"
+    },
+    "installation": {
+      "id": 555
+    },
+    "commits": [
+      {
+        "id": "cccccccccccccccccccccccccccccccccccccccc",
+        "message": "Release v1.0.0",
+        "timestamp": "2026-07-21T10:00:00-07:00",
+        "author": {
+          "name": "The Octocat",
+          "email": "octocat@example.com",
+          "username": "octocat"
+        },
+        "added": [],
+        "modified": [],
+        "removed": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,839 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-11T15:29:36.866Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 14,
+      "NOT_APPLICABLE": 17,
+      "FAIL": 1
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 32
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 32
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 13,
+      "PARTIAL": 1
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|github-webhook-envelope-org-id-resolution|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-webhook-envelope-org-id-resolution",
+      "attack_path_version": "v1",
+      "attempt": "Inspected handleGithubWebhook end-to-end for any path where org_id could originate from the webhook body rather than server-side installation resolution. Confirmed the diff does not touch step (f) resolveOrg or step (h) envelope construction's org_id field; normalizeGithubEvent.ts never reads an org_id/organization/owner claim from `parsed`. Verified the GAP-4 idempotency-key change only replaces the `idempotency_key` field value and leaves `org_id: resolved.orgId` untouched.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:196-223 (org_id: resolved.orgId, sourced only from resolveOrg(Number(event.installation_id)))",
+        "services/core/src/webhooks/normalizeGithubEvent.ts — no org_id/organization/owner field read anywhere in the module"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection; no fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:196-223"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|webhook-diff-touches-no-graph-query-service-or-client-graphology-code|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "webhook-diff-touches-no-graph-query-service-or-client-graphology-code",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed via `git diff` file list that this diff touches only services/core/src/{app.ts,http/express.ts,routes/githubWebhook.ts,services/githubWebhookService.ts,webhooks/normalizeGithubEvent.ts,webhooks/githubDeliveryIdentity.ts,github/repoFullName.ts} and test/fixture files. None of these are Graph Query Service, route-level RBAC, or client graphology code.",
+      "evidence": [
+        "git diff --stat (9 changed + 11 new files, all under services/core/src/{app,http,routes,services,webhooks,github,queue/__fixtures__}, none under graph-query/ or apps/web/**graphology**)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|github-webhook-secret-loader-and-body-cap-warning-log|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-webhook-secret-loader-and-body-cap-warning-log",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed getWebhookSecret still resolves exclusively via getSecret('env://GITHUB_WEBHOOK_SECRET') (unchanged by this diff — githubSignature.ts and the getSecret call site are untouched). Inspected the one new log line this diff adds (http/express.ts entity.too.large branch) for any interpolation of header/body/signature/secret material: it is a fixed string literal with zero template interpolation. Ran the full red+affected suite (10 files / 261 tests) which includes an explicit assertion in express.gapfill.test.ts that two entity.too.large errors with different attacker-controlled `.type`/extra fields still produce a byte-identical warning.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:76-77 (getWebhookSecret: () => getSecret('env://GITHUB_WEBHOOK_SECRET'), unchanged)",
+        "services/core/src/http/express.ts:184 (console.warn('GitHub webhook delivery rejected: request body exceeded the configured size cap.') — fixed string, no interpolation)",
+        "services/core/src/http/express.gapfill.test.ts — \"emits exactly one warning\" and fixed-string-regardless-of-input assertions, re-run this session: 6/6 passing"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran `npx vitest run src/http/express.gapfill.test.ts` from services/core/ (pre-existing, non-destructive, no fixture created).",
+      "code_references": [
+        "services/core/src/http/express.ts:174-187"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|signature-verification-precedes-idempotency-key-derivation-and-publish|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "signature-verification-precedes-idempotency-key-derivation-and-publish",
+      "attack_path_version": "v1",
+      "attempt": "Read handleGithubWebhook top-to-bottom: (a) getWebhookSecret, (b) verifyGithubSignature — throws WebhookSignatureError before ANY further work — (c) required headers, (d) JSON.parse, (d.5)/(d.6) installation/installation_repositories branches, (e) normalizeGithubEvent, (f) resolveOrg, (h) envelope construction incl. the new githubWebhookIdempotencyKey(input.rawBody) call, (i) publish. Confirmed the GAP-4 idempotency-key derivation sits at step (h), strictly after the signature gate at step (b) — a tampered body still fails verifyGithubSignature and throws before githubWebhookIdempotencyKey is ever called, matching EC-4. Confirmed against the fixtures/tests: tampered-payload test asserts 401 and zero calls to publishIngestionEvent/enqueue.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:108-114 (signature gate) vs :211-222 (idempotency key derivation) — physically and control-flow-sequenced after",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts — tampered-signature case asserts 401 and zero publish calls (re-run this session, passing)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran the full red+affected suite from services/core/ (261 tests, no fixture created beyond the two new committed fixtures push.tag.json/push.malformed-full-name.json, which are intentionally retained per spec.md).",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:108-114",
+        "services/core/src/services/githubWebhookService.ts:211-222"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|diff-does-not-touch-scratch-clone-or-repository-checkout-code|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "diff-does-not-touch-scratch-clone-or-repository-checkout-code",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed via file inventory that this diff touches zero files under services/workers/** (the ingestion worker's scratch-clone/repository checkout code). spec.md's own Scope explicitly excludes this (\"Not touching the separate installation lifecycle handling...\"; the ticket is Core-only).",
+      "evidence": [
+        "git diff --stat — zero services/workers/** paths in this diff's file list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|repo-full-name-validator-and-installation-id-guard-structural-constraints|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "repo-full-name-validator-and-installation-id-guard-structural-constraints",
+      "attack_path_version": "v1",
+      "attempt": "Read repoFullName.ts's isValidRepoFullName end-to-end: a two-segment split on exactly one '/', each segment checked against a bounded, non-catastrophic-backtracking regex (`/^[A-Za-z0-9._-]{1,100}$/` — a single bounded character class, no nested quantifiers, no ReDoS potential) plus explicit '.'/'..' rejection. Confirmed the validated full_name is never concatenated into a shell command, SQL/Cypher query, or filesystem path within this diff's scope (it flows into `NormalizedRepoEvent.repo.full_name`, a plain data field on the published envelope — no string-building call site in this diff). Confirmed extractInstallationId's tightened Number.isSafeInteger(id) && id > 0 guard is a structural type/range constraint, not a parsed/concatenated value. Ran repoFullName.test.ts's dedicated ReDoS/malicious-input cases (long segments, percent-escapes, path traversal, null-adjacent whitespace) — all rejected as expected.",
+      "evidence": [
+        "services/core/src/github/repoFullName.ts:9,17-27 (REPO_FULL_NAME_SEGMENT_RE, isValidRepoFullName)",
+        "services/core/src/github/repoFullName.test.ts — 41/41 tests passing, including ../../evil, 300-char segment, percent-escape, and whitespace rejection cases (re-run this session)",
+        "services/core/src/webhooks/normalizeGithubEvent.ts:51-61 (extractInstallationId — Number.isSafeInteger guard)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran `npx vitest run src/github/repoFullName.test.ts` (pre-existing, non-destructive).",
+      "code_references": [
+        "services/core/src/github/repoFullName.ts",
+        "services/core/src/webhooks/normalizeGithubEvent.ts:51-61"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|handleGithubWebhook-signature-gate-order|v1",
+      "check_id": "ING-01",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "handleGithubWebhook-signature-gate-order",
+      "attack_path_version": "v1",
+      "attempt": "Traced missing-signature, malformed-signature, and mismatched-signature paths through handleGithubWebhook and confirmed verifyGithubSignature runs against the raw Buffer (input.rawBody) before JSON.parse, before any DB lookup, and before any queue publish call. This ordering and the underlying signature algorithm are unchanged by this diff (spec.md's explicit \"not changing how signature checking works\"); this diff only adds work strictly downstream of an already-passed signature check.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:108-114",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts tampered/missing-signature cases (re-run, passing)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran the affected-test suite (no fixture created).",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:108-114"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|idempotency-key-derivation-signed-bytes-vs-unsigned-header|v1",
+      "check_id": "ING-02",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "idempotency-key-derivation-signed-bytes-vs-unsigned-header",
+      "attack_path_version": "v1",
+      "attempt": "This is the diff's central security-relevant change (GAP-4). Cold-modeled the attack: (1) capture a genuine (rawBody, X-Hub-Signature-256) pair; (2) resubmit it with a freshly-generated X-GitHub-Delivery header, hoping the receiver treats it as a new, undeduped event. Read githubDeliveryIdentity.ts: githubWebhookIdempotencyKey(rawBody) is a pure, single-argument function of the raw body bytes only — it has no access to any header, and its arity (verified structurally by a dedicated test asserting `.length === 1`) makes it impossible to smuggle X-GitHub-Delivery into the digest without changing the function's signature. Confirmed githubWebhookService.ts step (h) passes `input.rawBody` (not deliveryId) into this function, and deliveryId is used only for `trace_id`/`payload.delivery_id`. Verified: (a) SHA-256 preimage/second-preimage resistance makes forcing a chosen collision computationally infeasible; (b) the signature gate (ING-01) runs strictly before idempotency-key derivation, so an attacker without the shared secret cannot even reach this code path with an attacker-chosen body; (c) tested EC-2's exact scenario via githubWebhookService.gapfill.test.ts and the fixtures replay test — same bytes + different delivery headers -> identical idempotency_key and identical BullMQ jobId; (d) tested EC-3 — single-byte-different bodies -> different keys (no accidental collapse of two distinct real events); (e) checked downstream consumers: SQS's messageDeduplicationId() re-hashes the already-79-char key with its own SHA-256 (queue/bullmq.ts:155-160) — no truncation-induced collision risk since the transport ID is itself a fixed-width digest of the full semantic key; BullMQ's jobId is the raw idempotency_key string passed through enqueue() with no truncation (queue/bullmq.ts:227+). No forcible collision, no predictability, no pre-signature-verification exposure found.",
+      "evidence": [
+        "services/core/src/webhooks/githubDeliveryIdentity.ts (full file — pure fn(rawBody) -> `github:webhook:<sha256hex>`, no header input)",
+        "services/core/src/webhooks/githubDeliveryIdentity.test.ts — 9/9 passing, incl. arity assertion (line 49), EC-2/EC-3 collision tests (re-run this session)",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts:597-654 — \"replay under a FRESH X-GitHub-Delivery header still produces the same idempotency_key and BullMQ jobId\" (re-run this session, passing)",
+        "services/core/src/queue/sqs.ts:148-160, services/core/src/queue/bullmq.ts:155-160,227-250 — no truncation/collision risk in either downstream transport ID"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran githubDeliveryIdentity.test.ts and the fixtures replay test (pre-existing, non-destructive, no fixture created).",
+      "code_references": [
+        "services/core/src/webhooks/githubDeliveryIdentity.ts",
+        "services/core/src/services/githubWebhookService.ts:211-222"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|installation-id-positive-safe-integer-guard-extractInstallationId-and-service-branch|v1",
+      "check_id": "ING-03",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "installation-id-positive-safe-integer-guard-extractInstallationId-and-service-branch",
+      "attack_path_version": "v1",
+      "attempt": "Sent (statically modeled, then confirmed against the red/gapfill test suites) a validly-signed push/installation event with installation.id of -1, 1.5, 0, Infinity, NaN, \"555\" (string), and 2**53. Confirmed both extractInstallationId (normalizeGithubEvent.ts) and githubWebhookService.ts's inline `installation` branch guard now require `Number.isSafeInteger(id) && id > 0`, so every malformed id resolves to a 200 `no_installation` ignore (or `no_installation` in the installation-lifecycle branch) with resolveOrg/applyInstallationLifecycle never called — never a 500. Also confirmed Number.MAX_SAFE_INTEGER (EC-13) is still accepted and resolveOrg is called with it (positive path unaffected).",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts:51-61",
+        "services/core/src/services/githubWebhookService.ts:143-154",
+        "services/core/src/webhooks/normalizeGithubEvent.gapfill.test.ts, services/core/src/services/githubWebhookService.gapfill.test.ts — malformed-id matrix tests (re-run this session, all passing)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran the two gapfill suites (pre-existing, non-destructive).",
+      "code_references": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts:51-61",
+        "services/core/src/services/githubWebhookService.ts:143-154"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|envelope-org-id-and-idempotency-key-provenance-under-forged-payload-fields|v1",
+      "check_id": "ING-04",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "envelope-org-id-and-idempotency-key-provenance-under-forged-payload-fields",
+      "attack_path_version": "v1",
+      "attempt": "Modeled a payload carrying forged org_id/organization/owner/idempotency_key/installation-lookalike claims in the body. Confirmed makeEnvelope's org_id argument is always `resolved.orgId` (server-resolved, never read from `parsed`) and idempotency_key is always the SHA-256-derived value from raw bytes (never read from the body or from any client-supplied field) — a payload cannot inject its own idempotency_key or org_id into the outgoing envelope through any code path this diff touches.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:216-223",
+        "services/core/src/webhooks/normalizeGithubEvent.ts (no org_id/idempotency_key field ever read from `parsed`)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:216-223"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|cross-queue-confusion-not-implicated-by-this-diff|v1",
+      "check_id": "ING-05",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-queue-confusion-not-implicated-by-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff does not alter the SQS/BullMQ queue selection logic (`destinations` array), the queue message shape, or either consumer's deserializer — only the idempotency_key VALUE and the push/installation-id/full_name gating logic change. No new job-shape or generic-handler surface introduced.",
+      "evidence": [
+        "git diff — no change to publishIngestionEvent/enqueue call shape, destinations logic, or queue consumer code (services/workers/** untouched)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|sqs-fifo-dedup-window-and-bullmq-removeoncomplete-erasure|v1",
+      "check_id": "ING-06",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "sqs-fifo-dedup-window-and-bullmq-removeoncomplete-erasure",
+      "attack_path_version": "v1",
+      "attempt": "Modeled an attacker (or GitHub itself, on a slow retry) replaying a captured, validly-signed (body, signature) pair AFTER the SQS FIFO 5-minute dedup window has expired, or after the original BullMQ job has completed and its record was erased by `removeOnComplete: true`. Confirmed GAP-4's fix makes the dedup IDENTITY itself untamperable (ING-02, PASS) but does not extend the WINDOW during which that identity is enforced: SQS FIFO natively bounds MessageDeduplicationId enforcement to 5 minutes, and queue/bullmq.ts:256 still sets `removeOnComplete: true`, which erases BullMQ's own jobId record once the job completes — a replay after either point is not rejected by Core and would re-publish/re-enqueue as if it were new work. This is a genuine, currently-exploitable duplicate-processing window, not merely theoretical. It is explicitly disclosed and deliberately out of this gapfill's scope: spec.md's Open Questions #1 names it directly (\"SQS FIFO dedup is 5 minutes... BullMQ's jobId record is erased by enqueue's removeOnComplete: true... A persisted delivery log plus removeOnComplete:{age} is the audit's recommended fix... but was NOT filed as a gap; it needs a migration and a queue-wide behavior change\"), citing docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md's own MEDIUM rating for the same finding. Not a regression: this window existed identically before this diff (the old delivery-id-derived key had the same window, plus was additionally forgeable — GAP-4 strictly improves the identity while leaving the window unchanged). No formal risk-acceptance record (named approver, reason, ticket, expiry per audit-contract.md section 7) exists anywhere in .pipeline/ — only narrative disclosure in spec.md's Open Questions — so this cannot be marked RISK_ACCEPTED; recorded OPEN.",
+      "evidence": [
+        "services/core/src/queue/bullmq.ts:256 (removeOnComplete: true, unchanged by this diff)",
+        "services/workers/messaging/idempotency.py referenced in spec.md as the Python-fleet-side durable extension — Core/BullMQ side has no equivalent persistent store",
+        ".pipeline/spec.md \"Open questions\" #1 (self-disclosed, MEDIUM per docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-fa14278279d8",
+        "status": "OPEN",
+        "first_seen_run_id": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+        "first_seen_commit": "e4b9ec2e501fe17184e21e16599f528065bb0b7b",
+        "last_seen_run_id": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
+        "last_seen_commit": "e4b9ec2e501fe17184e21e16599f528065bb0b7b",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md (MEDIUM); .pipeline/spec.md Open Questions #1 — requires a persisted (consumer_id, idempotency_key) delivery log on the Core/BullMQ side plus removeOnComplete:{age}, tracked as a separate ticket per spec.md, not this gapfill's scope (GAP-4..GAP-9).",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Static read-only inspection plus cross-reference against spec.md's own disclosure and the cited deep-audit report; no fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts:256",
+        ".pipeline/spec.md (Open questions #1)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|priority-starvation-not-implicated-by-this-diff|v1",
+      "check_id": "ING-07",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "priority-starvation-not-implicated-by-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no lane/priority logic is touched by this diff (queue/bullmq.ts's lane mechanism is unchanged; only the jobId VALUE passed into enqueue() changes).",
+      "evidence": [
+        "git diff — no change to lane/priority selection code"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|malicious-repository-paths-not-implicated-scratch-clone-untouched|v1",
+      "check_id": "ING-08",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "malicious-repository-paths-not-implicated-scratch-clone-untouched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff never reaches scratch-clone/checkout code (services/workers/** untouched); repository.full_name is validated but only ever used as a data field on the published envelope within this diff's scope, never as a filesystem/clone path.",
+      "evidence": [
+        "git diff --stat — zero services/workers/** paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|parser-repository-bombs-not-implicated|v1",
+      "check_id": "ING-09",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "parser-repository-bombs-not-implicated",
+      "attack_path_version": "v1",
+      "attempt": "No Tree-sitter/parsing code touched by this diff.",
+      "evidence": [
+        "git diff --stat — zero services/workers/sayre_workers/parsing/** paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|scratch-clone-isolation-not-implicated|v1",
+      "check_id": "ING-10",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scratch-clone-isolation-not-implicated",
+      "attack_path_version": "v1",
+      "attempt": "No scratch-clone code touched by this diff.",
+      "evidence": [
+        "git diff --stat — zero services/workers/** paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|transactional-graph-vector-writes-not-implicated|v1",
+      "check_id": "ING-11",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "transactional-graph-vector-writes-not-implicated",
+      "attack_path_version": "v1",
+      "attempt": "No graph/vector write code touched by this diff (Core-only change; this ticket does not reach Neo4j/pgvector).",
+      "evidence": [
+        "git diff --stat — zero graph-write/graph-query paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|unsafe-provider-responses-not-implicated-inbound-webhook-only|v1",
+      "check_id": "ING-12",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "unsafe-provider-responses-not-implicated-inbound-webhook-only",
+      "attack_path_version": "v1",
+      "attempt": "This diff concerns an INBOUND webhook receiver, not an outbound Git/Jira/Linear API client; no provider-response-consuming code (github/appClient.ts, integrations/git/providers/github.ts) is touched.",
+      "evidence": [
+        "git diff --stat — appClient.ts and integrations/git/providers/github.ts both absent from this diff, confirmed also by spec.md's \"Also out\" list"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|sync-poisoning-and-conflict-not-implicated|v1",
+      "check_id": "ING-13",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "sync-poisoning-and-conflict-not-implicated",
+      "attack_path_version": "v1",
+      "attempt": "No scheduled-sync/reconciliation code touched by this diff (githubInstallationReconcileService.ts etc. are untouched).",
+      "evidence": [
+        "git diff --stat — zero githubInstallationReconcile*/githubInstallationRepositories* paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|no-installation-credential-or-access-token-material-in-new-code-paths|v1",
+      "check_id": "ING-14",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-installation-credential-or-access-token-material-in-new-code-paths",
+      "attack_path_version": "v1",
+      "attempt": "Inspected every new/changed line for accidental credential exposure: githubDeliveryIdentity.ts and repoFullName.ts touch no credential/token material at all (pure hashing/regex functions); the one new log line (http/express.ts) is a fixed string with zero interpolation; the new InstallationResolutionInputError mapping returns a fixed `{ error: \"bad request\" }` body, never `err.message` or a stack trace (confirmed by express.gapfill.test.ts's explicit \"never leaks the error message beyond the fixed body\" assertion).",
+      "evidence": [
+        "services/core/src/webhooks/githubDeliveryIdentity.ts, services/core/src/github/repoFullName.ts — no credential/token handling",
+        "services/core/src/http/express.ts:107-116,184 — fixed bodies/strings only",
+        "services/core/src/http/express.gapfill.test.ts — \"never leaks the error message beyond the fixed body\" (re-run this session, passing)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran express.gapfill.test.ts (pre-existing, non-destructive).",
+      "code_references": [
+        "services/core/src/http/express.ts:95-116,174-187"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|webhooks-github-route-mount-inventory-unchanged|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "webhooks-github-route-mount-inventory-unchanged",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff adds zero new HTTP routes/methods — the only route-file change is a new named export (GITHUB_WEBHOOK_MAX_BODY_BYTES) alongside the existing unchanged POST /webhooks/github registration. No new health/debug/admin/static path introduced.",
+      "evidence": [
+        "services/core/src/routes/githubWebhook.ts — same single POST route, router shape unchanged"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": [
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|repo-full-name-and-installation-id-parsing-no-injection-sink|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "repo-full-name-and-installation-id-parsing-no-injection-sink",
+      "attack_path_version": "v1",
+      "attempt": "Traced every new validated field (repository.full_name, installation.id) forward from normalizeGithubEvent/extractRepo to confirm neither reaches a SQL/Cypher/shell/template construction site within this diff's scope — both flow only into NormalizedRepoEvent's plain data fields on the published envelope. Confirmed isValidRepoFullName's regex is bounded (no ReDoS) per CORE-06 above.",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts:63-80 (extractRepo — data field only, no string-building sink)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection (duplicate of CORE-06's deeper pass, recorded here per this brief's own checklist).",
+      "code_references": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts:63-80"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|xss-not-implicated-no-html-markdown-rendering-in-diff|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "xss-not-implicated-no-html-markdown-rendering-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "This diff touches no rendering/serialization code (no canvas, overlay, Agent/Skill MD, or Markdown path) — the webhook receiver only produces a machine-consumed queue envelope, never HTML.",
+      "evidence": [
+        "git diff --stat — no apps/web/** paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|csrf-not-implicated-unauthenticated-signature-only-endpoint-unchanged|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "csrf-not-implicated-unauthenticated-signature-only-endpoint-unchanged",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed /webhooks/github remains signature-validated, not session/cookie-authenticated (per app.ts's own comment, unchanged by this diff) — CSRF requires an ambient credential (cookie/session) the browser attaches automatically, which this route never uses.",
+      "evidence": [
+        "services/core/src/app.ts:20-24 (comment: \"signature-validated, not session-validated — no authenticate()/authorize()\")"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": [
+        "services/core/src/app.ts:20-24"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|clickjacking-not-implicated-json-api-endpoint|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "clickjacking-not-implicated-json-api-endpoint",
+      "attack_path_version": "v1",
+      "attempt": "This is a JSON API endpoint with no browser-rendered surface; framing/CSP is out of scope for this diff and unchanged.",
+      "evidence": [
+        "services/core/src/routes/githubWebhook.ts — JSON-only responses"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|mass-assignment-not-implicated-read-classify-publish-only-no-update-endpoint|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "mass-assignment-not-implicated-read-classify-publish-only-no-update-endpoint",
+      "attack_path_version": "v1",
+      "attempt": "The webhook receiver only reads and classifies an inbound payload; it never accepts a create/update request body that writes user-controlled fields into a persisted record. No mass-assignment surface exists.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts — read/classify/publish only, no DB write of body-controlled fields"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|installation-id-type-coercion-and-full-name-edge-value-matrix|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "installation-id-type-coercion-and-full-name-edge-value-matrix",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed and re-ran the gapfill test matrices covering Unicode/whitespace-adjacent full_name values (owner/na me, owner/name\\n, \" owner/name\"), numeric-extreme installation ids (Infinity, NaN, 2**53, -1, 1.5, \"555\" as string), and duplicate/ambiguous ref values (refs/heads/, refs/headsfoo, nested refs/heads/feat/a/b) — all resolve to the documented safe outcome (ignore or correct classification), none to a crash or type-confusion bypass.",
+      "evidence": [
+        "services/core/src/github/repoFullName.test.ts — whitespace/Unicode-adjacent rejection cases (re-run this session, 41/41 passing)",
+        "services/core/src/webhooks/normalizeGithubEvent.gapfill.test.ts — installation-id and ref-value matrices (re-run this session, passing)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran both gapfill suites (pre-existing, non-destructive).",
+      "code_references": [
+        "services/core/src/github/repoFullName.ts",
+        "services/core/src/webhooks/normalizeGithubEvent.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|raw-body-size-cap-GITHUB_WEBHOOK_MAX_BODY_BYTES-enforced-pre-hmac|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "raw-body-size-cap-GITHUB_WEBHOOK_MAX_BODY_BYTES-enforced-pre-hmac",
+      "attack_path_version": "v1",
+      "attempt": "Verified the GAP-9 decision: GITHUB_WEBHOOK_MAX_BODY_BYTES (5 MB, unchanged numeric value, now named/exported/documented) is wired into express.raw()'s limit at the SAME middleware mount point as before, so an oversized body is rejected by raw-body's own entity.too.large path before githubWebhookRouter (and therefore before getWebhookSecret/verifyGithubSignature) ever runs. Confirmed via the bodyCap gapfill suite: a body just under the cap with a valid signature processes normally; a body over the cap returns 413 with getWebhookSecret never invoked and no queue call (EC-20), and the 413 body is exactly `{ error: \"payload too large\" }` with no payload echo (EC-21).",
+      "evidence": [
+        "services/core/src/app.ts:24-40 (express.raw({ ..., limit: GITHUB_WEBHOOK_MAX_BODY_BYTES }))",
+        "services/core/src/routes/githubWebhook.ts:12-18 (exported constant, unchanged 5 MB value)",
+        "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts — 5/5 passing, incl. \"getWebhookSecret never invoked\" assertion (re-run this session)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran githubWebhook.bodyCap.gapfill.test.ts (pre-existing, non-destructive; starts/stops an ephemeral local http server on port 0, standard for this suite).",
+      "code_references": [
+        "services/core/src/app.ts:24-40",
+        "services/core/src/routes/githubWebhook.ts:12-18"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|business-flow-abuse-not-implicated-no-new-state-changing-user-flow|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "business-flow-abuse-not-implicated-no-new-state-changing-user-flow",
+      "attack_path_version": "v1",
+      "attempt": "This diff changes classification/validation/idempotency logic on an existing webhook receiver; it introduces no new invitation/role-change/key-creation/export/destructive user-facing flow.",
+      "evidence": [
+        "git diff --stat — no routes/{apiKey,mcpKey,agentSkillMd,providerSettings}* paths touched"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|cache-leakage-not-implicated-no-response-caching-on-webhook-receiver|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cache-leakage-not-implicated-no-response-caching-on-webhook-receiver",
+      "attack_path_version": "v1",
+      "attempt": "The webhook receiver has no caching middleware or Vary/ETag logic, unchanged by this diff; responses are per-delivery, not cached.",
+      "evidence": [
+        "services/core/src/routes/githubWebhook.ts — no cache-control/ETag logic present or added"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|errorHandler-InstallationResolutionInputError-and-entity-too-large-fixed-response-bodies|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "errorHandler-InstallationResolutionInputError-and-entity-too-large-fixed-response-bodies",
+      "attack_path_version": "v1",
+      "attempt": "Directly targeted this brief's enumeration/error-leak checklist item against the two new errorHandler branches this diff adds. Confirmed both return a hardcoded, generic JSON body (`{ error: \"bad request\" }` / `{ error: \"payload too large\" }`) regardless of the underlying error's own `.message` — verified by express.gapfill.test.ts's explicit assertion that the serialized response never contains `err.message` or the substring \"Installation id\". Confirmed the try/catch-guarded `instanceof` check (added to tolerate Vitest's mock-namespace throw behavior, per changes.md's \"Decisions made\") does not leak the caught error either — its catch block only flips a boolean, never logs or serializes the caught value.",
+      "evidence": [
+        "services/core/src/http/express.ts:107-116 (try/catch-guarded instanceof, fixed 400 body), :174-187 (fixed 413 body + fixed-string warning)",
+        "services/core/src/http/express.gapfill.test.ts:41-48 (\"never leaks the error message beyond the fixed body\" — re-run this session, passing)"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Re-ran express.gapfill.test.ts (pre-existing, non-destructive).",
+      "code_references": [
+        "services/core/src/http/express.ts:95-116,174-187"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|redirect-url-handling-not-implicated-no-redirect-logic-in-diff|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "redirect-url-handling-not-implicated-no-redirect-logic-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "No redirect/Location-header/callback-URL logic exists anywhere in the webhook receiver; unchanged by this diff.",
+      "evidence": [
+        "services/core/src/routes/githubWebhook.ts, services/core/src/services/githubWebhookService.ts — no res.redirect/Location header logic"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection.",
+      "code_references": []
+    }
+  ]
+}

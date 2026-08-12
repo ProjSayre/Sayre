@@ -7,6 +7,7 @@
 // webhook body input.
 
 import type { NormalizedRepoEvent, RepoEventType } from '@sayre/shared-types';
+import { isValidRepoFullName } from '../github/repoFullName';
 
 export type IgnoreReason =
   | 'ping'
@@ -51,7 +52,12 @@ function extractInstallationId(parsed: Record<string, unknown>): number | null {
   const installation = parsed.installation;
   if (!isRecord(installation)) return null;
   const id = installation.id;
-  return typeof id === 'number' && Number.isFinite(id) ? id : null;
+  // GAP-6: a plain `typeof === 'number'` (or the former `Number.isFinite`) admits
+  // NaN/Infinity/negative/non-integer values, which downstream code (resolveOrg,
+  // the DB lookup) treats as "not a valid installation" only by accident. Require a
+  // positive safe integer explicitly so a malformed id is always a clean
+  // `no_installation` ignore, never a 500.
+  return typeof id === 'number' && Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 function extractRepo(parsed: Record<string, unknown>): NormalizedRepoEvent['repo'] {
@@ -61,7 +67,10 @@ function extractRepo(parsed: Record<string, unknown>): NormalizedRepoEvent['repo
   const id = repository.id;
   const fullName = repository.full_name;
   if (typeof id !== 'number' && typeof id !== 'string') throw new MalformedGithubPayloadError();
-  if (typeof fullName !== 'string' || fullName.length === 0) throw new MalformedGithubPayloadError();
+  // GAP-7: full_name must be a real two-segment `owner/name`, not merely non-empty —
+  // an unauthenticated webhook body is otherwise free to smuggle a value like
+  // '../../evil' into whatever later constructs a path/URL from it.
+  if (!isValidRepoFullName(fullName)) throw new MalformedGithubPayloadError();
 
   return {
     provider_repo_id: String(id),
@@ -174,6 +183,12 @@ export function normalizeGithubEvent(
     case 'push': {
       const pushRef = nonEmptyString(parsed.ref);
       if (!pushRef) return { ignored: 'no_ref' };
+      // GAP-5: constrain push, like create/delete already are, to real branch refs.
+      // A tag push (refs/tags/*), a PR ref, or a bare branch name (no refs/heads/
+      // prefix) is otherwise normalized and published as if it were a branch update.
+      if (!pushRef.startsWith('refs/heads/') || pushRef.length <= 'refs/heads/'.length) {
+        return { ignored: 'unsupported_ref_type' };
+      }
       type = 'push';
       ref = pushRef;
       payload = normalizePush(parsed);

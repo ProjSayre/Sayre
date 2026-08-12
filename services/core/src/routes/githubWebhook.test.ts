@@ -8,7 +8,7 @@
 
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetSecretsForTests, setSecretBackendForTests } from '@sayre/config';
 
@@ -392,7 +392,10 @@ describe('POST /webhooks/github', () => {
     );
   });
 
-  it('AC9: replaying the identical signed delivery reaches the handler with the same X-GitHub-Delivery-derived idempotency key', async () => {
+  // W1-02 gapfill AC-1 / GAP-4: the idempotency key is derived from the SIGNED BODY
+  // BYTES, not from the unsigned X-GitHub-Delivery header this assertion used to pin.
+  // @spec AC-1 EC-1
+  it('AC9: replaying the identical signed delivery reaches the handler with the same signed-body idempotency key', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
     const rawBody = pushBody();
@@ -401,15 +404,20 @@ describe('POST /webhooks/github', () => {
       'x-github-event': 'push',
       'x-github-delivery': 'delivery-replay',
     };
+    const expectedKey = `github:webhook:${createHash('sha256').update(rawBody).digest('hex')}`;
 
     await post(baseUrl, rawBody, headers);
     await post(baseUrl, rawBody, headers);
 
     expect(publishIngestionEvent).toHaveBeenCalledTimes(2);
-    const [first] = publishIngestionEvent.mock.calls[0] as [{ idempotency_key: string }];
+    const [first] = publishIngestionEvent.mock.calls[0] as [
+      { idempotency_key: string; trace_id: string },
+    ];
     const [second] = publishIngestionEvent.mock.calls[1] as [{ idempotency_key: string }];
-    expect(first.idempotency_key).toBe('delivery-replay');
-    expect(second.idempotency_key).toBe('delivery-replay');
+    expect(first.idempotency_key).toBe(expectedKey);
+    expect(second.idempotency_key).toBe(expectedKey);
+    expect(first.idempotency_key).not.toBe('delivery-replay');
+    expect(first.trace_id).toBe('delivery-replay');
   });
 
   it('oversized body (> 5mb) returns 413 and publishes nothing', async () => {

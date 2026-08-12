@@ -1,0 +1,148 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/core/src/webhooks/githubDeliveryIdentity.test.ts",
+      "sha256": "b2c29bbd73909d318d50bd4f4861e000b16db0c99df426af3d1eea7565349729",
+      "specIds": [
+        "AC-1",
+        "EC-2",
+        "EC-3"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/github/repoFullName.test.ts",
+      "sha256": "6fd9d490cf11757c2dfe94a24932f054ef9a0ba50f8a3bc53442509560414067",
+      "specIds": [
+        "AC-4",
+        "EC-14",
+        "EC-15",
+        "EC-16"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/webhooks/normalizeGithubEvent.gapfill.test.ts",
+      "sha256": "1de9328ec890cae0de7020c5f175fc45956e1f87baa1f05c5231daa74510b2f9",
+      "specIds": [
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubWebhookService.gapfill.test.ts",
+      "sha256": "0b05f3cdc8cf7da709446284a89ec42a7219115dba4e6bcfa4e5f058f33eae47",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-7",
+        "EC-8",
+        "EC-10",
+        "EC-11",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-19",
+        "EC-22",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/githubWebhook.gapfill.test.ts",
+      "sha256": "1f06db88622602e569e448f46e288c1bce7e2129fc6b73e98b542b8549996ad7",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-4",
+        "AC-5",
+        "EC-2",
+        "EC-5",
+        "EC-7",
+        "EC-14",
+        "EC-15",
+        "EC-17",
+        "EC-18"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts",
+      "sha256": "dcd2bce97463fac7054f59dff737b0ee04d273afdae8b29c41b13e8ee2a9e450",
+      "specIds": [
+        "AC-6",
+        "EC-20",
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/http/express.gapfill.test.ts",
+      "sha256": "bb71ccf85608efa6799fbd5d7aebe96eb82e44fc0ee73e33ca19cde0b4b94da4",
+      "specIds": [
+        "AC-3",
+        "AC-6",
+        "EC-12",
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/githubWebhook.fixtures.test.ts",
+      "sha256": "08c7b649e787d56967c595f3c15f75c4db9960a129bd71b8bdf6f6262c54b461",
+      "specIds": [
+        "AC-1",
+        "AC-5",
+        "EC-1",
+        "EC-2",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/githubWebhook.test.ts",
+      "sha256": "ea296e16d488d43870ca35f818bc8e26160177e87f624f83c7120a989cdfab28",
+      "specIds": [
+        "AC-1",
+        "EC-1"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubWebhookService.test.ts",
+      "sha256": "673243168051694456f7f083ab8bce80928cca6d28f3491cadba9a88c1f693a1",
+      "specIds": [
+        "AC-1",
+        "EC-1"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "9c02a6e4cea45ff98d48889f7ba4dd63cd7e1fd8db96bdf14a0bc11ab74ee475",
+    "headSha": "e4b9ec2e501fe17184e21e16599f528065bb0b7b",
+    "dirty": true,
+    "writtenAt": "2026-08-11T05:57:40.797Z"
+  }
+}

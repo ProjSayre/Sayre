@@ -1,0 +1,137 @@
+{
+  "ticket": "W1-02",
+  "overlays": [
+    "base",
+    "spot-check"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "OK",
+      "source": "a tampered payload is rejected (401) and never reaches a queue / Signature-validated (X-Hub-Signature-256) webhook endpoint",
+      "evidence": [
+        "services/core/src/webhooks/githubSignature.ts",
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/app.ts",
+        "services/core/src/http/express.ts",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts",
+        "services/core/src/routes/githubWebhook.test.ts"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-2",
+      "status": "OK",
+      "source": "Webhook secrets read exclusively via the W0-07 loader.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/webhooks/githubSignature.ts",
+        "packages/config/src/secrets.ts",
+        "services/core/src/routes/githubWebhook.test.ts",
+        "infra/.env.example"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3",
+      "status": "OK",
+      "source": "replayed fixtures produce correct queue messages",
+      "evidence": [
+        "services/core/src/routes/githubWebhook.fixtures.test.ts",
+        "services/core/src/webhooks/__fixtures__",
+        "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+        "services/workers/tests/test_push_wire_fixture.py",
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/workers/sayre_workers/ingestion/models.py"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-4",
+      "status": "NARROWED",
+      "source": "a tampered payload is rejected (401) and never reaches a queue",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/queue/sqs.ts",
+        "services/core/src/routes/githubWebhook.test.ts",
+        "services/core/src/routes/githubWebhook.fixtures.test.ts",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-5",
+      "status": "NARROWED",
+      "source": "normalizing GitHub events onto SQS/BullMQ as a {provider, type, repo, ref, payload} envelope",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/core/src/webhooks/__fixtures__",
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "services/workers/sayre_workers/ingestion/models.py",
+        "infra/github-app/manifest.json",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-6",
+      "status": "NARROWED",
+      "source": "normalizing GitHub events onto SQS/BullMQ as a {provider, type, repo, ref, payload} envelope",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/db/installations.ts",
+        "services/core/src/http/express.ts",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-7",
+      "status": "NARROWED",
+      "source": "normalizing GitHub events onto SQS/BullMQ as a {provider, type, repo, ref, payload} envelope, shared with the provider-generic sync worker",
+      "evidence": [
+        "services/core/src/webhooks/normalizeGithubEvent.ts",
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/github/appClient.ts",
+        "services/workers/sayre_workers/ingestion/repository.py",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-8",
+      "status": "UNTESTED",
+      "source": "replayed fixtures produce correct queue messages",
+      "evidence": [
+        "services/core/src/routes/githubWebhook.fixtures.test.ts",
+        "services/core/src/routes/githubWebhook.test.ts",
+        "services/core/src/services/githubWebhookService.test.ts",
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/queue/__fixtures__/repo_push.envelope.json"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-9",
+      "status": "NARROWED",
+      "source": "Signature-validated (X-Hub-Signature-256) webhook endpoint normalizing GitHub events onto SQS/BullMQ",
+      "evidence": [
+        "services/core/src/app.ts",
+        "services/core/src/http/express.ts",
+        "services/core/src/routes/githubWebhook.test.ts",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md"
+      ],
+      "needsTest": true
+    }
+  ],
+  "stamp": {
+    "treeHash": "f8b40c762838d4f909e43f9ca7648e59065e9b88b0f3f98c5e24d1852ab9b2a3",
+    "headSha": "e4b9ec2e501fe17184e21e16599f528065bb0b7b",
+    "dirty": true,
+    "writtenAt": "2026-08-11T05:27:10.401Z"
+  }
+}

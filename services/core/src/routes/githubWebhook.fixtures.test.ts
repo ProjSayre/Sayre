@@ -12,6 +12,7 @@
 
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -144,8 +145,20 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
       repo: { provider_repo_id: '583231', full_name: 'acme-corp/widgets' },
     });
 
-    const [ownershipEnvelope] = enqueue.mock.calls[0] as [string, { org_id: string }];
-    void ownershipEnvelope;
+    // W1-02 gapfill AC-5 / GAP-8: this used to destructure enqueue's FIRST argument (the
+    // queue-name string) while typing it as the envelope and then `void`-ing it, so the
+    // BullMQ half of "replayed fixtures produce correct queue messages" was asserted by
+    // nothing at all. Bind the queue name, the envelope, and the job options for real.
+    // @spec AC-5 EC-17
+    const [queueName, ownershipEnvelope, options] = enqueue.mock.calls[0] as [
+      string,
+      { org_id: string; idempotency_key: string },
+      Record<string, unknown>,
+    ];
+    expect(queueName).toBe('github-sync');
+    expect(ownershipEnvelope).toBe(ingestionEnvelope);
+    expect(ownershipEnvelope.org_id).toBe('org-primary-555');
+    expect(options).toEqual({ jobId: ownershipEnvelope.idempotency_key });
   });
 
   it('push.branch-deletion.json (deleted:true, all-zero after) still normalizes and publishes to both, payload.deleted reflected', async () => {
@@ -573,19 +586,66 @@ describe('POST /webhooks/github — tenant isolation across replayed fixtures (A
 });
 
 describe('POST /webhooks/github — replay/idempotency (AC9)', () => {
-  it('replaying the identical push.json delivery twice yields two publishes with the same idempotency_key', async () => {
+  // W1-02 gapfill AC-1 / GAP-4: the dedup identity is now derived from the bytes
+  // X-Hub-Signature-256 covers, NOT from the unsigned X-GitHub-Delivery header (which
+  // an attacker replaying a captured body+signature pair can freely rewrite).
+  // @spec AC-1 EC-1
+  it('replaying the identical push.json delivery twice yields two publishes with the same signed-body idempotency_key', async () => {
     const { server, baseUrl } = await startServer();
     activeServer = server;
     const fixture = loadFixture('push.json');
+    const expectedKey = `github:webhook:${createHash('sha256').update(fixture.rawBody).digest('hex')}`;
 
     await replay(baseUrl, fixture);
     await replay(baseUrl, fixture);
 
     expect(publishIngestionEvent).toHaveBeenCalledTimes(2);
+    const [first] = publishIngestionEvent.mock.calls[0] as [
+      { idempotency_key: string; trace_id: string },
+    ];
+    const [second] = publishIngestionEvent.mock.calls[1] as [
+      { idempotency_key: string; trace_id: string },
+    ];
+    expect(first.idempotency_key).toBe(expectedKey);
+    expect(second.idempotency_key).toBe(expectedKey);
+    expect(first.idempotency_key).not.toBe(fixture.headers['x-github-delivery']);
+    // The delivery id survives as attribution only.
+    expect(first.trace_id).toBe(fixture.headers['x-github-delivery']);
+    expect(second.trace_id).toBe(fixture.headers['x-github-delivery']);
+  });
+
+  // @spec AC-1 EC-2
+  it('a replay under a FRESH X-GitHub-Delivery header still produces the same idempotency_key and BullMQ jobId', async () => {
+    const { server, baseUrl } = await startServer();
+    activeServer = server;
+    const fixture = loadFixture('push.json');
+    const expectedKey = `github:webhook:${createHash('sha256').update(fixture.rawBody).digest('hex')}`;
+
+    await replay(baseUrl, fixture);
+    // Same bytes, same (still valid) signature — only the unsigned delivery header moves.
+    await fetch(`${baseUrl}/webhooks/github`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-hub-signature-256': signFixture(fixture.rawBody, SECRET),
+        ...fixture.headers,
+        'x-github-delivery': 'attacker-minted-delivery-id',
+      },
+      body: fixture.rawBody,
+    });
+
+    expect(publishIngestionEvent).toHaveBeenCalledTimes(2);
     const [first] = publishIngestionEvent.mock.calls[0] as [{ idempotency_key: string }];
-    const [second] = publishIngestionEvent.mock.calls[1] as [{ idempotency_key: string }];
-    expect(first.idempotency_key).toBe(fixture.headers['x-github-delivery']);
-    expect(second.idempotency_key).toBe(fixture.headers['x-github-delivery']);
-    expect(first.idempotency_key).toBe(second.idempotency_key);
+    const [second] = publishIngestionEvent.mock.calls[1] as [
+      { idempotency_key: string; trace_id: string },
+    ];
+    expect(first.idempotency_key).toBe(expectedKey);
+    expect(second.idempotency_key).toBe(expectedKey);
+    expect(second.trace_id).toBe('attacker-minted-delivery-id');
+
+    const [, , firstOptions] = enqueue.mock.calls[0] as [string, unknown, { jobId: string }];
+    const [, , secondOptions] = enqueue.mock.calls[1] as [string, unknown, { jobId: string }];
+    expect(firstOptions.jobId).toBe(expectedKey);
+    expect(secondOptions.jobId).toBe(expectedKey);
   });
 });
