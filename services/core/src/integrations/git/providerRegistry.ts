@@ -28,4 +28,10 @@ export class GitProviderRegistry {
     if (adapter === undefined) throw new UnknownGitProviderError(provider);
     return adapter;
   }
+
+  /** W3-04 gapfill (GAP-6): every registered provider id, for the config loader
+   *  (providerCatalog.ts) to verify a catalog entry against. */
+  providers(): string[] {
+    return [...this.adapters.keys()];
+  }
 }

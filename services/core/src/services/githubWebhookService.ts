@@ -24,6 +24,7 @@ import {
 import { makeEnvelope, type MessageEnvelope } from '../queue/envelope';
 import { publishIngestionEvent } from '../queue/sqs';
 import { enqueue } from '../queue/bullmq';
+import { GIT_SYNC_JOB_OPTIONS } from '../integrations/git/jobPolicy';
 import { getRuntimeDb, resolveInstallationOrg } from '../db/installations';
 import {
   applyInstallationLifecycleEvent,
@@ -81,7 +82,12 @@ const defaultDeps: WebhookDeps = {
     await publishIngestionEvent(envelope);
   },
   publishOwnership: async (envelope) => {
-    await enqueue('github-sync', envelope, { jobId: envelope.idempotency_key });
+    // W3-04 gapfill (GAP-4): retry/backoff + durable failed-job retention for this
+    // enqueue call site only — see jobPolicy.ts's own header for why.
+    await enqueue('github-sync', envelope, {
+      jobId: envelope.idempotency_key,
+      ...GIT_SYNC_JOB_OPTIONS,
+    });
   },
   applyInstallationLifecycle: (input) => applyInstallationLifecycleEvent(input),
   applyInstallationRepositories: (input) => applyInstallationRepositoriesEvent(input),

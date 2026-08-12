@@ -20,9 +20,46 @@ const edit = {
 };
 
 describe('Neo4jOwnershipGraphStore', () => {
-  it('writes tenant/repository/ref-scoped Person, Commit and File metadata', async () => {
+  // @spec AC-4 EC-7
+  it('returns matchedPaths alongside updatedFiles, reflecting the Cypher collect(DISTINCT file.path)', async () => {
     const run = vi.fn(async () => ({
-      records: [{ get: (key: string) => (key === 'updated_files' ? 1 : null) }],
+      records: [
+        {
+          get: (key: string) =>
+            key === 'updated_files' ? 1 : key === 'matched_paths' ? ['src/a.ts'] : null,
+        },
+      ],
+    }));
+    const executor: GraphWriteExecutor = { run, close: vi.fn(async () => undefined) };
+    const store = new Neo4jOwnershipGraphStore(executor);
+
+    await expect(
+      store.apply({
+        orgId: 'org-server-derived',
+        provider: 'github',
+        repositoryId: 'repo-server-derived',
+        refName: 'refs/heads/main',
+        edits: [edit],
+      }),
+    ).resolves.toEqual({ updatedFiles: 1, matchedPaths: ['src/a.ts'] });
+
+    expect(APPLY_OWNERSHIP_CYPHER).toMatch(
+      /RETURN count\(DISTINCT file\) AS updated_files, collect\(DISTINCT file\.path\) AS matched_paths/,
+    );
+  });
+
+  it('writes tenant/repository/ref-scoped Person, Commit and File metadata', async () => {
+    // W3-04 gapfill (GAP-1b): adapted to the always-present matchedPaths field —
+    // Neo4jOwnershipGraphStore.apply now returns matchedPaths alongside updatedFiles
+    // (see graphOwnershipStore.ts's OwnershipApplyResult), so this mock and its strict
+    // toEqual must account for it too, per spec.md's Modified-files table.
+    const run = vi.fn(async () => ({
+      records: [
+        {
+          get: (key: string) =>
+            key === 'updated_files' ? 1 : key === 'matched_paths' ? ['src/a.ts'] : null,
+        },
+      ],
     }));
     const executor: GraphWriteExecutor = { run, close: vi.fn(async () => undefined) };
     const store = new Neo4jOwnershipGraphStore(executor);
@@ -33,7 +70,7 @@ describe('Neo4jOwnershipGraphStore', () => {
       repositoryId: 'repo-server-derived',
       refName: 'refs/heads/main',
       edits: [edit],
-    })).resolves.toEqual({ updatedFiles: 1 });
+    })).resolves.toEqual({ updatedFiles: 1, matchedPaths: ['src/a.ts'] });
 
     expect(run).toHaveBeenCalledWith(
       'org-server-derived',
@@ -74,7 +111,7 @@ describe('Neo4jOwnershipGraphStore', () => {
       repositoryId: 'repo',
       refName: 'refs/heads/main',
       edits: [anonymous],
-    })).resolves.toEqual({ updatedFiles: 0 });
+    })).resolves.toEqual({ updatedFiles: 0, matchedPaths: [] });
     expect(executor.run).not.toHaveBeenCalled();
   });
 });

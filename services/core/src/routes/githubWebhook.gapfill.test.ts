@@ -1,8 +1,9 @@
 // Red-stage (W1-02 gapfill) HTTP-level coverage through a real createApp() + real HTTP
 // server, with only the DB installation lookup and the two queue clients mocked at the
 // module boundary — so the BullMQ call this suite asserts is the real
-// `enqueue('github-sync', envelope, { jobId: envelope.idempotency_key })` binding from
-// githubWebhookService's defaultDeps, not an injected fake.
+// `enqueue('github-sync', envelope, { jobId: envelope.idempotency_key, ...GIT_SYNC_JOB_OPTIONS })`
+// binding from githubWebhookService's defaultDeps, not an injected fake. GIT_SYNC_JOB_OPTIONS
+// (W3-04 gapfill, GAP-4) is asserted alongside jobId below.
 //
 // Covers AC-5/EC-17 (the BullMQ half of "replayed fixtures produce correct queue
 // messages", previously asserted by nothing), AC-1/EC-2 at the wire level, AC-2/EC-5,
@@ -14,6 +15,7 @@ import { createHash, createHmac } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetSecretsForTests, setSecretBackendForTests } from '@sayre/config';
 import { loadFixture, signFixture } from '../webhooks/__fixtures__/loadFixture';
+import { GIT_SYNC_JOB_OPTIONS } from '../integrations/git/jobPolicy';
 
 const SECRET = 'gapfill-route-secret';
 
@@ -142,7 +144,9 @@ describe('POST /webhooks/github — the BullMQ ownership binding is measured (AC
     expect(queueName).toBe('github-sync');
     // Same object identity, not merely a structural twin.
     expect(ownershipEnvelope).toBe(ingestionEnvelope);
-    expect(options).toEqual({ jobId: ownershipEnvelope.idempotency_key });
+    // W3-04 gapfill (GAP-4): publishOwnership's default now also passes
+    // GIT_SYNC_JOB_OPTIONS (retry/backoff/failed-retention), not jobId alone.
+    expect(options).toEqual({ jobId: ownershipEnvelope.idempotency_key, ...GIT_SYNC_JOB_OPTIONS });
     expect(ownershipEnvelope.idempotency_key).toBe(expectedKey(fixture.rawBody));
   });
 
@@ -207,7 +211,8 @@ describe('POST /webhooks/github — the BullMQ ownership binding is measured (AC
       Record<string, unknown>,
     ];
     expect(queueName).toBe('github-sync');
-    expect(options).toEqual({ jobId: envelope.idempotency_key });
+    // W3-04 gapfill (GAP-4): see the equivalent note above.
+    expect(options).toEqual({ jobId: envelope.idempotency_key, ...GIT_SYNC_JOB_OPTIONS });
     expect(envelope.idempotency_key).toBe(expectedKey(fixture.rawBody));
   });
 });

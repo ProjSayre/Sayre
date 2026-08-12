@@ -14,8 +14,22 @@ export interface OwnershipGraphWrite {
   edits: ProviderFileEdit[];
 }
 
+/**
+ * W3-04 gapfill (GAP-1, AC-2). The exact property set APPLY_OWNERSHIP_CYPHER matches a
+ * File node on. Must stay identical to the keys the Python ingestion writer sets — see
+ * __tests__/crossServiceFileKey.test.ts. A rename on either side must fail that test.
+ */
+export const OWNERSHIP_FILE_MATCH_KEYS = ['org_id', 'repo_id', 'ref_name', 'path'] as const;
+
+export interface OwnershipApplyResult {
+  updatedFiles: number;
+  /** W3-04 gapfill (GAP-1b). Distinct paths the write actually matched. Lets the caller
+   *  name the paths that did NOT match, instead of only knowing a count. */
+  matchedPaths: string[];
+}
+
 export interface OwnershipGraphStore {
-  apply(input: OwnershipGraphWrite): Promise<{ updatedFiles: number }>;
+  apply(input: OwnershipGraphWrite): Promise<OwnershipApplyResult>;
   close(): Promise<void>;
 }
 
@@ -67,7 +81,7 @@ SET owns.org_id = $org_id,
     file.recent_pr_title = coalesce(edit.pr_title, file.recent_pr_title),
     file.recent_pr_url = coalesce(edit.pr_url, file.recent_pr_url),
     file.recent_pr_merged_at = coalesce(edit.pr_merged_at, file.recent_pr_merged_at)
-RETURN count(DISTINCT file) AS updated_files
+RETURN count(DISTINCT file) AS updated_files, collect(DISTINCT file.path) AS matched_paths
 `;
 
 function stableUid(parts: readonly string[]): string {
@@ -119,9 +133,9 @@ function graphEdits(input: OwnershipGraphWrite): Array<Record<string, unknown>> 
 export class Neo4jOwnershipGraphStore implements OwnershipGraphStore {
   constructor(private readonly executor: GraphWriteExecutor) {}
 
-  async apply(input: OwnershipGraphWrite): Promise<{ updatedFiles: number }> {
+  async apply(input: OwnershipGraphWrite): Promise<OwnershipApplyResult> {
     const edits = graphEdits(input);
-    if (edits.length === 0) return { updatedFiles: 0 };
+    if (edits.length === 0) return { updatedFiles: 0, matchedPaths: [] };
     const result = await this.executor.run(
       input.orgId,
       APPLY_OWNERSHIP_CYPHER,
@@ -136,8 +150,13 @@ export class Neo4jOwnershipGraphStore implements OwnershipGraphStore {
       'updated_files',
     );
     const record = result.records[0];
+    if (record === undefined) return { updatedFiles: 0, matchedPaths: [] };
+    const rawMatchedPaths = record.get('matched_paths');
     return {
-      updatedFiles: record === undefined ? 0 : graphIntegerToNumber(record.get('updated_files')),
+      updatedFiles: graphIntegerToNumber(record.get('updated_files')),
+      matchedPaths: Array.isArray(rawMatchedPaths)
+        ? rawMatchedPaths.filter((path): path is string => typeof path === 'string')
+        : [],
     };
   }
 
