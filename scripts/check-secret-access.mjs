@@ -26,7 +26,7 @@ const ALLOWLIST = new Set([
   'services/workers/tests/test_cross_runtime_roundtrip.py',
 ]);
 
-const SOURCE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|py)$/i;
+const SOURCE_EXTENSION = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs|py)$/i;
 const EXCLUDED_SEGMENT = /(?:^|\/)(?:node_modules|\.venv|venv|__pycache__|dist|build|coverage|generated|vendor)(?:\/|$)/i;
 const JS_IDENTIFIER_START_PATTERN = '[$_\\p{ID_Start}]';
 const JS_IDENTIFIER_PART_PATTERN = '[$\\u200c\\u200d\\p{ID_Continue}]';
