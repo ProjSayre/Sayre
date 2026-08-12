@@ -1,0 +1,33 @@
+{
+  "verdict": "PASS",
+  "ticket": "CH-04",
+  "branch": "ticket/ch-04-worker-agent-loop",
+  "headSha": "f7dbd87",
+  "reGateBasis": {
+    "oldBase": "25f60fa081a28960c1213863ac93517f5ddfdde6",
+    "oldHead": "0e3caab96849e916f10522ead6e0e6b887ddefbe",
+    "newBase": "4e14d8c4a137a61ec111ede9079a8013f4ca0226",
+    "newHead": "f7dbd87"
+  },
+  "criteria": {
+    "migrationByteIdentical": "PASS",
+    "rlsAcceptanceTesterUnaffected": "PASS",
+    "zeroStaleRenumberRefsOutsideLedger": "PASS",
+    "journalCorrectAndUnique": "PASS",
+    "redTestRenumberValuesOnly": "PASS",
+    "liveDbFallbackRulingApplied": "PASS",
+    "crlfFalsePositivesConfirmed": "PASS"
+  },
+  "criticalFindings": [],
+  "warningFindings": [],
+  "suggestionFindings": [
+    "changes.json.redTestChanges does not cross-declare the mechanical renumber touch to CH-01's ephemeralMcpCredentials.rls.test.ts (comment + one test-title string), even though it is verified values-only. Consider extending check-red-integrity tooling to track cross-ticket red-test touches during ripple rebases."
+  ],
+  "fixList": [],
+  "stamp": {
+    "treeHash": "de52f5650d39eb7513050d3ba87fde077b505cb266da82903c34ea91070be643",
+    "headSha": "f7dbd87e88a404342e1091fa8e9e3f1f8dadf647",
+    "dirty": false,
+    "writtenAt": "2026-08-12T04:48:09.399Z"
+  }
+}
