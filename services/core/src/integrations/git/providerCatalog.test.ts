@@ -135,28 +135,18 @@ describe('loadGitProviderRegistry (GAP-6)', () => {
   // @spec AC-10 EC-20
   it('refuses a mockOnly provider (fakehub) when NODE_ENV is production', async () => {
     setConfigOverrideForTests('GIT_PROVIDER_CATALOG', '[{"provider":"fakehub"}]');
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
-    try {
-      const { loadGitProviderRegistry } = await import('./providerCatalog');
-      expect(() => loadGitProviderRegistry(REGISTRATIONS)).toThrow(/fakehub/);
-    } finally {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
+    setConfigOverrideForTests('NODE_ENV', 'production');
+    const { loadGitProviderRegistry } = await import('./providerCatalog');
+    expect(() => loadGitProviderRegistry(REGISTRATIONS)).toThrow(/fakehub/);
   });
 
   // @spec AC-10 EC-20
   it('registers a mockOnly provider (fakehub) normally outside production', async () => {
     setConfigOverrideForTests('GIT_PROVIDER_CATALOG', '[{"provider":"fakehub"}]');
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'test';
-    try {
-      const { loadGitProviderRegistry } = await import('./providerCatalog');
-      const registry = loadGitProviderRegistry(REGISTRATIONS);
-      expect(registry.get('fakehub').provider).toBe('fakehub');
-    } finally {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
+    setConfigOverrideForTests('NODE_ENV', 'test');
+    const { loadGitProviderRegistry } = await import('./providerCatalog');
+    const registry = loadGitProviderRegistry(REGISTRATIONS);
+    expect(registry.get('fakehub').provider).toBe('fakehub');
   });
 
   // @spec AC-12
