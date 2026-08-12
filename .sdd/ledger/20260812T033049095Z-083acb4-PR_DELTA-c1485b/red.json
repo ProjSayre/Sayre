@@ -1,0 +1,139 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "services/core/src/db/chatMigration.test.ts",
+      "sha256": "594e22c7732684ffdf205d933522d35471bdd8b2f2c9fbbffb8739692c9318e0",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-5",
+        "EC-17",
+        "EC-20"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/db/chatStore.rls.test.ts",
+      "sha256": "cb1e2ec2b411569a44f17a9fcf4c83ffb164582207472176ed949a8ab1e21c36",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-7",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-16",
+        "EC-17",
+        "EC-20"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/core/src/services/chatService.test.ts",
+      "sha256": "c3e96418c2e6cde36e6e42841d269b671e823c1089361cc1ecf4812f3056da2c",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-12",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-17",
+        "EC-19",
+        "EC-21",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/chat.test.ts",
+      "sha256": "f8b333325464615e9d04fff8b78d093f8acd3b8323450d6628c26b91d77661f9",
+      "specIds": [
+        "AC-1",
+        "AC-4",
+        "AC-5",
+        "AC-11",
+        "AC-12",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-17",
+        "EC-18",
+        "EC-19",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/queue/sqs.test.ts",
+      "sha256": "1072effce0d0522b81bccaf43793d75df64ac0dc1e61abbc303eb7bfb003b3b3",
+      "specIds": [
+        "AC-6",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/api/core/[...path]/route.test.ts",
+      "sha256": "fa6ab43183477d6c122aefe0019c705140d7d936e0528db6d62b27e1c3a6ad3f",
+      "specIds": [
+        "AC-13",
+        "EC-22"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/workers/tests/test_messaging_topology.py",
+      "sha256": "4170eed123de848d9141d62954fb1891379ec10788382fb177a480a5165a8654",
+      "specIds": [
+        "AC-9"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/workers/tests/test_sqs_delivery.py",
+      "sha256": "0137e94715f2ee15d55eaed3ac131bd216f236ae833a3c3cde3ad81851db1d6d",
+      "specIds": [
+        "AC-9"
+      ],
+      "classification": "RED-DEFERRED"
+    }
+  ],
+  "stamp": {
+    "treeHash": "442d1d4ee698e4813f633d8a66e27504e93aefe8c81064780b4f673deac21763",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-10T20:47:47.402Z"
+  }
+}

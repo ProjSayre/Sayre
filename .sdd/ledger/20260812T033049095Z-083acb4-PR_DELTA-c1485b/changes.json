@@ -1,0 +1,39 @@
+{
+  "filesChanged": [
+    "services/core/drizzle/0021_ch03_chat_conversations_and_turns.sql",
+    "services/core/src/db/chatStore.ts",
+    "services/core/src/services/chatService.ts",
+    "services/core/src/routes/chat.ts",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/src/db/schema.ts",
+    "services/core/src/queue/sqs.ts",
+    "services/core/src/http/express.ts",
+    "services/core/src/app.ts",
+    "services/core/package.json",
+    "infra/localstack/init/ready.d/01-create-sqs-queues.sh",
+    "infra/.env.example",
+    "services/workers/messaging/sqs_client.py",
+    "docs/wave0-foundation-contracts.md",
+    "apps/web/app/api/core/[...path]/route.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/db/chatMigration.test.ts",
+      "reason": "Restack onto CH-01 (stack order main <- ch-01 <- ch-02 <- ch-03). CH-01 also landed a migration numbered 0019 (0019_ch01_ephemeral_mcp_credentials), so CH-03's migration was renumbered 0019_ch03_chat_conversations_and_turns.sql -> 0020_ch03_chat_conversations_and_turns.sql and its journal entry moved from idx 19 to idx 20. This test hard-codes the migration filename, the journal tag, and the idx, so all three references were updated mechanically. No assertion was added, removed, weakened, or otherwise changed in meaning: the file still asserts the same structural guarantees against the same migration, which now simply has a different number. Verified by re-running the file green after the rename. EXTENDED in the CH-03 ripple rebase onto the new ch-02 head (e04d7cb, 2026-08-11): main took its own migration 0019, CH-01's moved 0019->0020 (idx 20, when 1785384400000), so CH-03's migration was renumbered again, 0020_ch03_chat_conversations_and_turns.sql -> 0021_ch03_chat_conversations_and_turns.sql, journal entry idx 20 -> idx 21, when 1785384400000 -> 1785384500000 (strictly greater than CH-01's, so journal order and drizzle apply order agree). This file's filename/tag references, its describe title ('migration 0020' -> 'migration 0021'), and the idx assertion (.toBe(20) -> .toBe(21)) were updated mechanically; assertion SHAPE is unchanged — same some(tag) presence check, same find(tag).idx equality, no assertion added, removed, or weakened. The migration SQL itself is byte-identical across the rename (verified: git diff of the old blob against the new blob is empty). Suite re-run green post-renumber inside the full core run (120 files)."
+    },
+    {
+      "path": "services/workers/tests/test_messaging_topology.py",
+      "reason": "NOT a CH-03 edit — the hash moved because the BASELINE moved. The ripple rebase onto the new ch-02 head brought main's W0-04 gapfill underneath this branch, and that gapfill rewrote parts of this file (notably adding DYNAMIC_COVERAGE_QUEUE to the pairs dict and reformatting the fanout-exclusion all(...) expression). Git auto-merged it with no conflict. CH-03's own delta against the new base is unchanged and intact: the CHAT_TURNS_QUEUE import, the CHAT_TURNS_QUEUE -> chat-turns-dlq.fifo pair entry, and the CHAT_TURNS_QUEUE fanout exclusion, plus the @spec AC-9 marker. Declared here because the recorded red hash no longer matches and that fact should be visible rather than silent. Verified dynamically: this file now RUNS for the first time in this lane (it was RED-DEFERRED throughout) via uv against the live LocalStack container, 12/12 passing, so main's rewrite and CH-03's additions are compatible in fact, not just in merge. STATUS UPDATE at the 0020->0021 ripple hop (2026-08-11): this hop did NOT touch this file — git shows it byte-identical between the pre-rebase head (25f60fa) and the new head (083acb4); the on-disk copy differs from the committed blob only by CRLF checkout normalization (LF-normalized hashes equal). The declaration above therefore still describes the only real divergence from the recorded red hash. On this hop's verification run the file passed 11/12: test_sns_fanout_processes_same_event_once_per_subscription failed, and the failure was proven environmental, not code — a raw awslocal publish/receive probe inside the sayre-localstack container (no repo code in the loop) also fails to deliver from the graph-updated topic to graph-updated-realtime; re-running the idempotent init topology script and recreating subscriptions did not restore delivery, and container restart was not permitted in this session. No messaging code changed between the old and new base (git diff 8d34307..e04d7cb over services/workers/messaging and infra/localstack is empty)."
+    },
+    {
+      "path": "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+      "reason": "Informational — this is CH-01's red-authored file, not listed in CH-03's own red.json (CH-03's checker does not watch it), declared here anyway so the re-gate reviewer sees every red-authored file this hop touched. Two value-only edits during the 0020->0021 renumber, made while resolving the rebase's auto-merge of CH-01's renumbered version with CH-03's earlier tip-relaxation hunk: (1) CH-03's own relaxation comment updated its stale citations ('0020_ch03_chat_conversations_and_turns' -> '0021_...', 'so 0019 is necessarily no longer the tip' -> 'so 0020 is...'); (2) the auto-merge had produced a contradiction — CH-01's base-side comment still claimed 'This stays a strict tip assertion ... the at(-1) equality below is what proves 0020 is the newest entry' while the at(-1) assertion it referenced was (correctly, per CH-03's earlier declared relaxation) no longer present in the merged file — so that one sentence was replaced with a pointer to the relaxation note. No assertion, fixture, or test body changed: the entry toEqual (idx 20 / when 1785384400000 / tag 0020_ch01_ephemeral_mcp_credentials) and the journal-wide unique-idx assertion are exactly CH-01's rebased versions from the new base. Comments only."
+    }
+  ],
+  "stamp": {
+    "treeHash": "6c087b18474f8ab0b5d27b81ab1e9febda3d5d4798bbe699645bcca72a467aeb",
+    "headSha": "083acb4cb4e69fa2e6eb5423f9ea3157c22bc376",
+    "dirty": false,
+    "writtenAt": "2026-08-12T02:57:45.739Z"
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-10T20:40:00.000Z",
+  "completed_at": "2026-08-10T21:46:02.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.claude\\worktrees\\agent-af3570cda57ec7fad"
+  },
+  "target": {
+    "commit_sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "branch": "ticket/ch-03-chat-persistence-turn-api",
+    "dirty": true,
+    "environment": "local development worktree; dynamic checks run against the repo's own docker-compose local dev stack (sayre-postgres, sayre-localstack) — not shared, staging, or production infrastructure",
+    "base_urls": [],
+    "changed_paths": [
+      "apps/web/app/api/core/[...path]/route.test.ts",
+      "apps/web/app/api/core/[...path]/route.ts",
+      "docs/wave0-foundation-contracts.md",
+      "infra/.env.example",
+      "infra/localstack/init/ready.d/01-create-sqs-queues.sh",
+      "packages/workspace-packs/src/bin.mjs",
+      "services/core/drizzle/meta/_journal.json",
+      "services/core/package.json",
+      "services/core/src/app.ts",
+      "services/core/src/db/schema.ts",
+      "services/core/src/http/express.ts",
+      "services/core/src/queue/sqs.test.ts",
+      "services/core/src/queue/sqs.ts",
+      "services/workers/messaging/sqs_client.py",
+      "services/workers/tests/test_messaging_topology.py",
+      "services/workers/tests/test_sqs_delivery.py",
+      "services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql",
+      "services/core/src/db/chatMigration.test.ts",
+      "services/core/src/db/chatStore.rls.test.ts",
+      "services/core/src/db/chatStore.ts",
+      "services/core/src/routes/chat.test.ts",
+      "services/core/src/routes/chat.ts",
+      "services/core/src/services/chatService.test.ts",
+      "services/core/src/services/chatService.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No `.pipeline/security-history/` directory exists in this worktree and no prior CH-03 security run exists anywhere (first `security-checker` invocation for this ticket; `.pipeline/security-report.md`/`security.json` were both absent before this run). Per audit-contract.md section 2, baseline order options 1-3 all fail (no human-specified run, no prior complete run whose commit is an ancestor with a comparable surface set, no compatible default-branch MILESTONE/FULL run) so option 4 applies: no baseline.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "MVP Wave 1 — Ask Sayre chat persistence spine (CH-03)",
+    "phase": "MVP (pre-external-customer secrets posture per .claude/rules/security-multitenancy.md and CLAUDE.md Conventions)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      "docs/wave0-foundation-contracts.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "implicit — target environment is the repo's own local docker-compose dev stack (infra/docker-compose.yml: sayre-postgres, sayre-localstack, sayre-redis), not shared/staging/production; audit-contract.md section 1's read-only default applies only to shared/production-like targets",
+    "resource_ceiling": "single local Postgres container + single local LocalStack container; no load beyond the repo's own EC-9/EC-10 two-way concurrency scenarios and one synthetic message publish/receive/delete cycle",
+    "credential_references": [
+      "local docker-compose sayre-postgres dev-only password read via `docker inspect` (container-local, non-production, matches the `sayre-local-only` convention already visible in infra/.env.example's placeholder pattern)",
+      "dummy LocalStack AWS credentials (test/test) — LocalStack does not validate these"
+    ],
+    "tenant_fixtures": [
+      "synthetic Org A / Org B rows created by services/core/src/db/chatStore.rls.test.ts's seedOrg() helper against a throwaway `ch03_chat_rls_test` database, dropped after the run"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff adds two new tenant-scoped tables with RLS/composite-FK org stamping; dynamically verified against a real Postgres.",
+      "code_references": [
+        "services/core/src/db/chatStore.ts",
+        "services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff introduces no graph/Cypher/Graph-Query-Service code; not applicable to this diff, but the mandatory check still runs and is recorded as such.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json.",
+      "rationale": "mcpCredential is pinned null and AWS credentials resolve via the existing getSecret() loader; dynamically confirmed on the wire.",
+      "code_references": [
+        "services/core/src/services/chatService.ts",
+        "services/core/src/queue/sqs.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff touches no webhook receiver; not applicable to this diff, but the mandatory check still runs and is recorded as such.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff touches no ingestion/scratch-clone code; not applicable to this diff, but the mandatory check still runs and is recorded as such.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check — always selected in every audit mode per agent-registry.json.",
+      "rationale": "All new SQL is parameterized via drizzle’s query builder or bound sql tags; dynamically exercised against a real Postgres with no injection-related failures.",
+      "code_references": [
+        "services/core/src/db/chatStore.ts",
+        "services/core/src/db/client.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Trigger paths `services/core/**/*queue*`, `**/*sqs*`, `services/workers/**` matched: this diff adds the `chat-turns.fifo` producer, its DLQ, and the Python-side queue constant.",
+      "rationale": "New produce-only SQS lane (services/core -> CH-04's future Python consumer). FIFO/DLQ/redrive/non-fan-out dynamically verified against the repo's own LocalStack container.",
+      "code_references": [
+        "services/core/src/queue/sqs.ts:268-311",
+        "infra/localstack/init/ready.d/01-create-sqs-queues.sh:64-97",
+        "services/workers/messaging/sqs_client.py:48-54,67"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Trigger paths `apps/web/**`, `services/core/src/routes/**`, `services/core/src/http/**` matched: four new REST routes plus a web-proxy allowlist/body-forwarding change.",
+      "rationale": "New tenant-scoped, owner-scoped REST surface (`/chat/conversations*`) reachable through the Next.js proxy for the first time.",
+      "code_references": [
+        "services/core/src/routes/chat.ts",
+        "services/core/src/services/chatService.ts",
+        "apps/web/app/api/core/[...path]/route.ts:234-267,363-376"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Trigger path `infra/**` matched (`infra/.env.example`); the ticket's own routing brief explicitly calls out `mcpCredential` null-pinning and error/log surfaces.",
+      "rationale": "No new credential is introduced; `mcpCredential` is pinned `null` (dynamically confirmed on the wire); one observability gap found on the publish-failure path (SEC-14).",
+      "code_references": [
+        "services/core/src/services/chatService.ts:374-392",
+        "infra/.env.example:63-68",
+        "services/core/src/queue/sqs.ts"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Trigger paths `services/core/**`, `services/workers/**`, `infra/**` matched only incidentally via broad globs; zero files in this diff fall within the model-provider adapter/egress code inventory.",
+      "rationale": "CH-03 touches no `providerSettingsService.ts`, adapter client, or outbound model-call code. Not selected for full checklist execution.",
+      "code_references": [
+        "services/core/src/services/providerSettingsService.ts (unchanged by this diff)"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Trigger path `services/workers/**` matched only incidentally (a queue-name constant addition, no consumer); zero retrieval/embedding/prompt code touched.",
+      "rationale": "CH-03 hands a work order to a not-yet-implemented consumer (CH-04); no prompt construction, retrieval, or embedding code exists in this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Trigger paths `infra/**`, `**/package.json` matched only incidentally; no dependency, lockfile, Dockerfile, or CI-workflow change is present in this diff.",
+      "rationale": "`services/core/package.json`'s diff is two added npm script strings (`test:rls:chat`, `test:rls:chat:ci`) mirroring an existing sibling pair; `package-lock.json` is untouched; `.github/workflows/**` is untouched.",
+      "code_references": [
+        "services/core/package.json:24-29"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (`services/core/src/mcp/**` untouched, no `*mcp*`/`*api-key*` filename in this diff).",
+      "rationale": "The ticket's `agent_key`-subject and `mcpCredential`-null-pinning asks are covered instead under CORE-03/SEC-14/ING-14/WEB-06 against the code this diff actually touches (chatService's subject-type gate and the pinned wire payload), since no MCP transport/session/key-issuance code changed here.",
+      "code_references": [
+        "services/core/src/auth/context.ts (AgentKeyAuthContext type, unconstructed anywhere — pre-existing, unchanged)",
+        "services/core/src/services/chatService.ts:113-116"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (`services/gateway/**`, `*realtime*`, `*websocket*`, `*redis*` all absent from this diff).",
+      "rationale": "spec.md's Scope explicitly excludes realtime/WebSocket publication for chat (CH-05 is a separate future ticket).",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "core-mandatory-checks",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker-subagent-definition",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "cc2ebf275c8826155e920664a02ef73fa51d4d79c8af167d051965dc37dcd90d"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "model-provider-egress-ssrf",
+      "source": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "sha256": "49d99b911967a703dc696f5d5378aaa7746bcde28ecac21a46ed98ab69792a80"
+    },
+    {
+      "agent_id": "llm-rag-poisoning",
+      "source": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "sha256": "77394e754db53ffca3d1dd9b926cffc1491063d0f0198a4d7bd1d037e873da2b"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "schema-run-manifest",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "schema-results",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    }
+  ],
+  "limitations": [
+    "services/workers/tests/test_messaging_topology.py and test_sqs_delivery.py could not be executed dynamically: no Poetry/Python environment is installed in this checkout (`python -m pytest` -> ModuleNotFoundError). Their assertions were read in full against the final sqs_client.py diff and match; queue distinctness, FIFO shape, DLQ pairing, and non-fan-out were independently confirmed dynamically at the LocalStack broker level instead (ING-05/ING-06/AC-9).",
+    "WEB-10 (cache/intermediary leakage) and SEC-12 (backup/restore isolation) are UNVERIFIED: no CDN/proxy/backup topology information is available from this diff or this local checkout to test against.",
+    "No prior security-history run exists for CH-03 (first invocation) and no `.pipeline/security-history/` directory existed before this run, so every observation is FIRST_OBSERVATION and baseline_run_id is null.",
+    "Dynamic evidence for RLS/composite-FK/advisory-lock/history-window behavior (chatStore.rls.test.ts, 11/11 passing) was obtained against this run's own local docker-compose Postgres, not against a staging/production-topology database; this is authorized under audit-contract.md section 1 (non-shared, non-production target) but is noted as the exact environment scope.",
+    "AC-16/AC-17 (Cloudflare Pages dashboard read, live Vercel-project check) belong to an unrelated ticket (PL-15) surfaced in review.md's carried notes and have no bearing on CH-03; not evaluated here."
+  ]
+}

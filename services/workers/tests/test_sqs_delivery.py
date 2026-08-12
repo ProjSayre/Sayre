@@ -253,6 +253,37 @@ def test_production_queue_requires_store_before_receive(monkeypatch):
         )
 
 
+# @spec AC-9
+def test_chat_turns_is_a_distinct_production_fifo_lane_requiring_durable_idempotency(monkeypatch):
+    """CH-03 declares the lane; CH-04 consumes it. Broker-free: the name must be
+    FIFO, physically distinct from every other lane, and registered as a
+    production queue so `consume_once` refuses a consumer without a durable
+    delivery_store."""
+    assert sqs_client.CHAT_TURNS_QUEUE == "chat-turns.fifo"
+    assert sqs_client.CHAT_TURNS_QUEUE.endswith(".fifo")
+    assert sqs_client.CHAT_TURNS_QUEUE not in {
+        sqs_client.INGESTION_QUEUE,
+        sqs_client.REALTIME_QUEUE,
+        sqs_client.ENRICHMENT_DEFAULT_QUEUE,
+        sqs_client.ENRICHMENT_PRIORITY_QUEUE,
+        sqs_client.EMBEDDING_UPSERTS_QUEUE,
+        sqs_client.DYNAMIC_COVERAGE_QUEUE,
+    }
+    assert sqs_client.CHAT_TURNS_QUEUE in sqs_client._PRODUCTION_QUEUES
+
+    monkeypatch.setattr(
+        sqs_client,
+        "get_client",
+        lambda: pytest.fail("client should not be created without a durable store"),
+    )
+    with pytest.raises(ValueError, match="durable delivery_store"):
+        sqs_client.consume_once(
+            sqs_client.CHAT_TURNS_QUEUE,
+            lambda _envelope: None,
+            consumer_id="chat-turns",
+        )
+
+
 @pytest.mark.parametrize("interval", [float("nan"), float("inf"), True])
 def test_invalid_heartbeat_interval_fails_before_receive(monkeypatch, interval):
     monkeypatch.setattr(

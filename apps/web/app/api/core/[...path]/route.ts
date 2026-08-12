@@ -231,6 +231,41 @@ function coreRoute(
       query: NO_QUERY,
     };
   }
+  // CH-03 — the four "Ask Sayre" chat routes (OQ-1: the minimal apps/web diff
+  // needed so the sidebar can reach services/core/src/routes/chat.ts).
+  if (segments.length === 2 && segments[0] === 'chat' && segments[1] === 'conversations') {
+    if (method === 'POST') {
+      return { method, path: '/chat/conversations', query: NO_QUERY };
+    }
+    if (method === 'GET') {
+      return { method, path: '/chat/conversations', query: new Set(['limit']) };
+    }
+  }
+  if (
+    segments.length === 3 &&
+    segments[0] === 'chat' &&
+    segments[1] === 'conversations' &&
+    method === 'GET'
+  ) {
+    return {
+      method,
+      path: `/chat/conversations/${encodeURIComponent(segments[2])}`,
+      query: NO_QUERY,
+    };
+  }
+  if (
+    segments.length === 4 &&
+    segments[0] === 'chat' &&
+    segments[1] === 'conversations' &&
+    segments[3] === 'turns' &&
+    method === 'POST'
+  ) {
+    return {
+      method,
+      path: `/chat/conversations/${encodeURIComponent(segments[2])}/turns`,
+      query: NO_QUERY,
+    };
+  }
   return null;
 }
 
@@ -328,11 +363,16 @@ async function proxy(
   if (authorization !== null) headers.set('authorization', authorization);
 
   let body: string | undefined;
-  if (method === 'PUT') {
+  if (method === 'PUT' || method === 'POST') {
     const parsed = await boundedRequestBody(request);
     if (parsed instanceof NextResponse) return parsed;
-    body = parsed;
-    headers.set('content-type', 'application/json');
+    // A bodyless POST (e.g. jira/disconnect) must keep forwarding
+    // byte-identically: leave `body` undefined (never '') and set no
+    // content-type when the parsed body is empty (CH-03 spec.md OQ-1).
+    if (parsed.length > 0) {
+      body = parsed;
+      headers.set('content-type', 'application/json');
+    }
   }
 
   try {

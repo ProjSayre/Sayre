@@ -21,6 +21,7 @@
 
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   customType,
   foreignKey,
@@ -100,6 +101,10 @@ export const users = pgTable(
   (table) => [
     unique("users_org_id_email_unique").on(table.orgId, table.email),
     index("users_org_id_idx").on(table.orgId),
+    // CH-03: enables the tenant-consistent composite FK from
+    // `chat_conversations.(org_id, user_id)` -> `users.(org_id, id)`, mirroring
+    // `repositories_org_id_id_unique` below.
+    unique("users_org_id_id_unique").on(table.orgId, table.id),
   ],
 );
 
@@ -816,6 +821,101 @@ export const jiraConnections = pgTable(
   ],
 );
 
+/**
+ * "Ask Sayre" conversation container (CH-03). One row per conversation,
+ * owned by exactly one user — sharing/renaming/archiving are out of scope for
+ * v1 (spec.md "Out"). `title` is optional free text set by the client.
+ */
+export const chatConversations = pgTable(
+  "chat_conversations",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull(),
+    title: text("title"),
+    ...timestamps,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.orgId, table.userId],
+      foreignColumns: [users.orgId, users.id],
+      name: "chat_conversations_org_user_fk",
+    }).onDelete("cascade"),
+    // Supports the tenant-consistent composite FK from chat_turns below.
+    unique("chat_conversations_org_id_id_unique").on(table.orgId, table.id),
+    index("chat_conversations_owner_recent_idx").on(
+      table.orgId,
+      table.userId,
+      table.updatedAt.desc(),
+    ),
+  ],
+);
+
+/**
+ * A single user question or assistant answer within a conversation (CH-03).
+ * A user turn is always already `completed`; its paired assistant turn starts
+ * `pending` and is transitioned by CH-04 (`pending -> running ->
+ * completed|error`) — this ticket never writes to `content` after insert
+ * except the initial empty string. `request_turn_id` pairs an assistant turn
+ * back to the user turn it answers; `idempotency_key` (user turns only) is
+ * the AC-2/AC-3 "exactly once" guard.
+ *
+ * CHECK constraints, the two partial unique indexes
+ * (`chat_turns_idempotency_unique` / `chat_turns_request_turn_unique`), and
+ * RLS/triggers/grants are hand-authored raw SQL in
+ * drizzle/0021_ch03_chat_conversations_and_turns.sql (Drizzle's schema
+ * builder has no first-class CHECK/partial-index support — same convention as
+ * `users_external_auth_id_unique`, drizzle/0013_*).
+ */
+export const chatTurns = pgTable(
+  "chat_turns",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
+    // Ordering within a conversation; the user/assistant pair for one turn
+    // shares no `created_at` ordering guarantee (same-transaction inserts can
+    // share a timestamp to the microsecond), so `seq` is the sole order key.
+    seq: integer("seq").notNull(),
+    role: text("role").notNull(), // 'user' | 'assistant'
+    content: text("content").notNull(),
+    status: text("status").notNull(), // 'pending' | 'running' | 'completed' | 'error'
+    citations: jsonb("citations"),
+    metrics: jsonb("metrics"),
+    error: jsonb("error"),
+    // { view: 'technical'|'product'|'onboarding'|null, anchorNodeId: string|null }
+    // — the canvas context a user turn was asked from, so a repair republish
+    // (AC-3) rebuilds the identical chat.turn.request.v1 payload.
+    scope: jsonb("scope"),
+    idempotencyKey: text("idempotency_key"),
+    requestTurnId: uuid("request_turn_id").references(
+      (): AnyPgColumn => chatTurns.id,
+      { onDelete: "cascade" },
+    ),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.orgId, table.conversationId],
+      foreignColumns: [chatConversations.orgId, chatConversations.id],
+      name: "chat_turns_org_conversation_fk",
+    }).onDelete("cascade"),
+    unique("chat_turns_org_conversation_seq_unique").on(
+      table.orgId,
+      table.conversationId,
+      table.seq,
+    ),
+    // NOTE: no standalone org_id index -- the unique constraint above
+    // (leading org_id) already creates the btree index RLS needs, same as
+    // model_provider_configs / repository_refs.
+  ],
+);
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -850,3 +950,7 @@ export type CodeEmbedding = typeof codeEmbeddings.$inferSelect;
 export type NewCodeEmbedding = typeof codeEmbeddings.$inferInsert;
 export type JiraConnection = typeof jiraConnections.$inferSelect;
 export type NewJiraConnection = typeof jiraConnections.$inferInsert;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type NewChatConversation = typeof chatConversations.$inferInsert;
+export type ChatTurn = typeof chatTurns.$inferSelect;
+export type NewChatTurn = typeof chatTurns.$inferInsert;

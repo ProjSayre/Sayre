@@ -222,6 +222,186 @@ describe('allowlisted Core browser-for-frontend route', () => {
     expect(String(target)).not.toContain('attacker');
   });
 
+  // CH-03 — the four "Ask Sayre" chat routes (authored by `red` from spec.md).
+
+  // @spec AC-13
+  it('forwards a chat conversation creation with its POST body byte-identical', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(
+      async () => Response.json({ conversation: { id: 'c1' } }, { status: 201 }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const payload = JSON.stringify({ title: 'Auth spelunking' });
+    const request = new NextRequest(
+      'http://web.local/api/core/chat/conversations?orgId=attacker',
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer signed-session', 'content-type': 'application/json' },
+        body: payload,
+      },
+    );
+
+    const response = await POST(request, { params: { path: ['chat', 'conversations'] } });
+
+    expect(response.status).toBe(201);
+    const [target, init] = upstream.mock.calls[0]!;
+    expect(String(target)).toBe('http://core.internal:4000/chat/conversations');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBe(payload);
+    expect(requestHeaders(init).get('content-type')).toBe('application/json');
+    expect(requestHeaders(init).get('authorization')).toBe('Bearer signed-session');
+    expect(String(target)).not.toContain('attacker');
+  });
+
+  // @spec AC-13
+  it('forwards a chat turn POST body byte-identical to the conversation turns path', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(
+      async () => Response.json({ conversationId: 'c 1' }, { status: 202 }),
+    );
+    vi.stubGlobal('fetch', upstream);
+    const payload = JSON.stringify({
+      idempotencyKey: 'client-turn-0001',
+      question: 'How does login work?',
+      scope: { view: 'technical', anchorNodeId: 'file-42' },
+    });
+    const request = new NextRequest(
+      'http://web.local/api/core/chat/conversations/c%201/turns?org_id=attacker',
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer signed-session', 'content-type': 'application/json' },
+        body: payload,
+      },
+    );
+
+    const response = await POST(request, {
+      params: { path: ['chat', 'conversations', 'c 1', 'turns'] },
+    });
+
+    expect(response.status).toBe(202);
+    const [target, init] = upstream.mock.calls[0]!;
+    expect(String(target)).toBe('http://core.internal:4000/chat/conversations/c%201/turns');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBe(payload);
+    expect(String(target)).not.toContain('attacker');
+  });
+
+  // @spec AC-13
+  it('forwards only `limit` when listing conversations, and no query at all when reading one', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(async () => Response.json({ conversations: [] }));
+    vi.stubGlobal('fetch', upstream);
+
+    const listResponse = await GET(
+      new NextRequest('http://web.local/api/core/chat/conversations?limit=25&orgId=attacker&userId=attacker', {
+        headers: { authorization: 'Bearer signed-session' },
+      }),
+      { params: { path: ['chat', 'conversations'] } },
+    );
+    expect(listResponse.status).toBe(200);
+    expect(String(upstream.mock.calls[0]![0])).toBe(
+      'http://core.internal:4000/chat/conversations?limit=25',
+    );
+
+    await GET(
+      new NextRequest('http://web.local/api/core/chat/conversations/c%201?limit=25', {
+        headers: { authorization: 'Bearer signed-session' },
+      }),
+      { params: { path: ['chat', 'conversations', 'c 1'] } },
+    );
+    expect(String(upstream.mock.calls[1]![0])).toBe(
+      'http://core.internal:4000/chat/conversations/c%201',
+    );
+  });
+
+  // @spec AC-13
+  it('still forwards a bodyless POST without inventing a body or a content-type', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(async () => Response.json({ connection: null }));
+    vi.stubGlobal('fetch', upstream);
+    const request = new NextRequest(
+      'http://web.local/api/core/integrations/jira/disconnect',
+      { method: 'POST', headers: { authorization: 'Bearer signed-session' } },
+    );
+
+    const response = await POST(request, {
+      params: { path: ['integrations', 'jira', 'disconnect'] },
+    });
+
+    expect(response.status).toBe(200);
+    const [, init] = upstream.mock.calls[0]!;
+    expect(init?.body).toBeUndefined();
+    expect(requestHeaders(init).get('content-type')).toBeNull();
+
+    // Same rule on the new chat lane: nothing sent, nothing forwarded.
+    await POST(
+      new NextRequest('http://web.local/api/core/chat/conversations', {
+        method: 'POST',
+        headers: { authorization: 'Bearer signed-session' },
+      }),
+      { params: { path: ['chat', 'conversations'] } },
+    );
+    const [, chatInit] = upstream.mock.calls[1]!;
+    expect(chatInit?.body).toBeUndefined();
+    expect(requestHeaders(chatInit).get('content-type')).toBeNull();
+  });
+
+  // @spec EC-22
+  it('404s an unrecognised chat sub-path without reaching core, while the real turns path is routed', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn<typeof fetch>(async () => Response.json({ conversationId: 'x' }));
+    vi.stubGlobal('fetch', upstream);
+
+    const unrecognised = await POST(
+      new NextRequest('http://web.local/api/core/chat/conversations/x/turns/y', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }),
+      { params: { path: ['chat', 'conversations', 'x', 'turns', 'y'] } },
+    );
+
+    expect(unrecognised.status).toBe(404);
+    expect(upstream).not.toHaveBeenCalled();
+
+    // Positive control: the allowlist is narrow, not absent.
+    await POST(
+      new NextRequest('http://web.local/api/core/chat/conversations/x/turns', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }),
+      { params: { path: ['chat', 'conversations', 'x', 'turns'] } },
+    );
+    expect(upstream).toHaveBeenCalledTimes(1);
+  });
+
+  // @spec EC-22
+  it('413s a chat POST body over the 64 KB bound without reaching core', async () => {
+    vi.stubEnv('CORE_INTERNAL_BASE_URL', 'http://core.internal:4000');
+    const upstream = vi.fn();
+    vi.stubGlobal('fetch', upstream);
+    const oversized = JSON.stringify({
+      idempotencyKey: 'client-turn-0001',
+      question: 'q'.repeat(64 * 1024 + 1),
+    });
+    const request = new NextRequest(
+      'http://web.local/api/core/chat/conversations/c1/turns',
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer signed-session', 'content-type': 'application/json' },
+        body: oversized,
+      },
+    );
+
+    const response = await POST(request, {
+      params: { path: ['chat', 'conversations', 'c1', 'turns'] },
+    });
+
+    expect(response.status).toBe(413);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
   it('rejects routes outside the explicit browser contract', async () => {
     const upstream = vi.fn();
     vi.stubGlobal('fetch', upstream);

@@ -45,6 +45,12 @@ ENRICHMENT_PRIORITY_QUEUE = "enrichment-onboarding-priority"
 EMBEDDING_UPSERTS_QUEUE = "embedding-upserts"
 DYNAMIC_COVERAGE_QUEUE = "dynamic-coverage-refresh"
 SELFTEST_QUEUE = "w0-04-selftest"  # used only by the round-trip integration test
+# CH-03: "Ask Sayre" turn hand-off. services/core (Node) PRODUCES here after
+# committing a user turn + its pending assistant turn; CH-04 declares the
+# exclusive CONSUMER. FIFO so one conversation's turns process in order while
+# unrelated conversations progress concurrently. Never subscribed to the
+# graph-updated SNS topic (see infra/localstack/init/ready.d/01-create-sqs-queues.sh).
+CHAT_TURNS_QUEUE = "chat-turns.fifo"
 
 # Source-compatible aliases for the pre-v5 wrapper surface.
 ENRICHMENT_QUEUE = ENRICHMENT_DEFAULT_QUEUE
@@ -58,6 +64,7 @@ _PRODUCTION_QUEUES = frozenset(
         ENRICHMENT_PRIORITY_QUEUE,
         EMBEDDING_UPSERTS_QUEUE,
         DYNAMIC_COVERAGE_QUEUE,
+        CHAT_TURNS_QUEUE,
     }
 )
 

@@ -23,6 +23,7 @@ from workers.messaging.envelope import MessageEnvelope
 from workers.messaging.idempotency import SqliteDeliveryStore
 from workers.messaging.sns_client import publish_graph_updated
 from workers.messaging.sqs_client import (
+    CHAT_TURNS_QUEUE,
     DYNAMIC_COVERAGE_QUEUE,
     EMBEDDING_UPSERTS_QUEUE,
     ENRICHMENT_DEFAULT_QUEUE,
@@ -138,6 +139,7 @@ def _poll(
     assert acknowledged == count
 
 
+# @spec AC-9
 def test_topology_has_typed_dlqs_restricted_fanout_and_distinct_queues():
     client = get_client()
     pairs = {
@@ -146,6 +148,9 @@ def test_topology_has_typed_dlqs_restricted_fanout_and_distinct_queues():
         ENRICHMENT_DEFAULT_QUEUE: "enrichment-default-dlq",
         ENRICHMENT_PRIORITY_QUEUE: "enrichment-onboarding-priority-dlq",
         EMBEDDING_UPSERTS_QUEUE: "embedding-upserts-dlq",
+        # CH-03: the "Ask Sayre" lane is FIFO with its own FIFO DLQ, on the same
+        # 5-receive redrive policy and 14-day retention as every other lane.
+        CHAT_TURNS_QUEUE: "chat-turns-dlq.fifo",
     }
     urls = {name: get_queue_url(name) for name in pairs}
     assert len(set(urls.values())) == len(urls)
@@ -191,7 +196,11 @@ def test_topology_has_typed_dlqs_restricted_fanout_and_distinct_queues():
         )["Attributes"]
         assert subscription_attrs["RawMessageDelivery"] == "true"
     assert all(
-        ENRICHMENT_PRIORITY_QUEUE not in endpoint and EMBEDDING_UPSERTS_QUEUE not in endpoint
+        ENRICHMENT_PRIORITY_QUEUE not in endpoint
+        and EMBEDDING_UPSERTS_QUEUE not in endpoint
+        # CH-03: chat turns are produced by services/core and are deliberately
+        # never subscribed to the graph-updated topic.
+        and CHAT_TURNS_QUEUE not in endpoint
         for endpoint in endpoints
     )
 

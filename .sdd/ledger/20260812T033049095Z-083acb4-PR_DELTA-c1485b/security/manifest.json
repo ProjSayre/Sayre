@@ -1,0 +1,341 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-12T03:30:49.095Z",
+  "completed_at": "2026-08-12T03:35:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.claude\\worktrees\\agent-af3570cda57ec7fad"
+  },
+  "target": {
+    "commit_sha": "083acb4cb4e69fa2e6eb5423f9ea3157c22bc376",
+    "branch": "ticket/ch-03-chat-persistence-turn-api",
+    "dirty": false,
+    "environment": "local development worktree; dynamic checks run against the repo's own docker-compose local dev stack (sayre-postgres, sayre-localstack) — not shared, staging, or production infrastructure",
+    "base_urls": [],
+    "changed_paths": [
+      "services/core/drizzle/0020_ch03_chat_conversations_and_turns.sql -> services/core/drizzle/0021_ch03_chat_conversations_and_turns.sql (git mv, content byte-identical)",
+      "services/core/drizzle/meta/_journal.json",
+      "services/core/src/db/chatMigration.test.ts",
+      "services/core/src/db/schema.ts",
+      "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+      ".sdd/ledger/index.json",
+      ".pipeline/changes.json"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260810T214356000Z-ee496aa-PR_DELTA-e7ff26",
+    "commit_sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "comparable": true,
+    "selection_reason": "Newest complete run whose target commit is a verified ancestor of the current target (git merge-base --is-ancestor ee496aa4985fc4145afbadf34c54de9cf3e9910a 083acb4cb4e69fa2e6eb5423f9ea3157c22bc376 exits 0) with a fully comparable surface set: same repository, same feature (CH-03), same environment class (local docker-compose dev stack), same tenant-fixture convention (synthetic Org A/Org B). Per audit-contract.md section 2 option 2. This run is scoped to the ripple-rebase/renumber hop between the baseline's commit and the current target -- not a re-derivation of the whole CH-03 feature, which the baseline run already covers in full.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "MVP Wave 1 -- Ask Sayre chat persistence spine (CH-03); ripple-rebase re-gate hop (services/core/drizzle 0020_ch03... -> 0021_ch03..., resolving a migration-slot collision with CH-01's own renumbered 0020)",
+    "phase": "MVP (pre-external-customer secrets posture per .claude/rules/security-multitenancy.md and CLAUDE.md Conventions)",
+    "source_references": [
+      ".pipeline/spec.md (stale per check-stamp-freshness.mjs; advisory only, unaffected by this hop)",
+      ".pipeline/changes.md (stale/predates this hop, disclosed; advisory only)",
+      ".pipeline/changes.json (fresh; trusted for this hop's declared redTestChanges reasons)",
+      ".pipeline/review.md and .pipeline/review.json (fresh PASS, re-gate of this same hop)",
+      ".pipeline/security-report.md and .pipeline/security-history/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/ (prior full CH-03 PASS, this run's baseline)",
+      "docs/wave0-foundation-contracts.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "implicit -- same local docker-compose dev stack as baseline run (sayre-postgres, sayre-localstack, sayre-redis, sayre-neo4j, sayre-prometheus all Up per docker ps, confirmed this session). However, live credential-adjacent access (e.g. docker exec sayre-postgres env, needed to determine the DB role/auth for a live RLS query) was attempted directly this session and denied by the Claude Code auto mode classifier (\"Permission for this action was denied... Blocked by classifier\"). No fresh dynamic evidence was gathered this run as a result -- see limitations and CORE-01's methodology note in results.json. The tenant_fixtures entry below describes the standing fixture convention baseline run 20260810T214356000Z-ee496aa-PR_DELTA-e7ff26 used against this exact, unchanged migration content (required for baseline comparability); this run did not itself create or use that fixture.",
+    "resource_ceiling": "None consumed this run beyond git diff/show, sha256 hashing, docker ps (read-only), and CI-safe static test/typecheck/lint commands already present in package.json.",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "synthetic Org A / Org B rows created by services/core/src/db/chatStore.rls.test.ts's seedOrg() helper against a throwaway `ch03_chat_rls_test` database, dropped after the run"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check -- always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff adds two new tenant-scoped tables with RLS/composite-FK org stamping; dynamically verified against a real Postgres.",
+      "code_references": [
+        "services/core/src/db/chatStore.ts",
+        "services/core/drizzle/0019_ch03_chat_conversations_and_turns.sql"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check -- always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff introduces no graph/Cypher/Graph-Query-Service code; not applicable to this diff, but the mandatory check still runs and is recorded as such.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check -- always selected in every audit mode per agent-registry.json.",
+      "rationale": "mcpCredential is pinned null and AWS credentials resolve via the existing getSecret() loader; dynamically confirmed on the wire.",
+      "code_references": [
+        "services/core/src/services/chatService.ts",
+        "services/core/src/queue/sqs.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check -- always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff touches no webhook receiver; not applicable to this diff, but the mandatory check still runs and is recorded as such.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check -- always selected in every audit mode per agent-registry.json.",
+      "rationale": "This diff touches no ingestion/scratch-clone code; not applicable to this diff, but the mandatory check still runs and is recorded as such.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check -- always selected in every audit mode per agent-registry.json.",
+      "rationale": "All new SQL is parameterized via drizzle’s query builder or bound sql tags; dynamically exercised against a real Postgres with no injection-related failures.",
+      "code_references": [
+        "services/core/src/db/chatStore.ts",
+        "services/core/src/db/client.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Carried forward, not freshly re-attacked this run: this hop's own diff (25f60fa..083acb4) touches none of this brief's trigger paths -- every file this brief covers (services/core/src/queue/sqs.ts:268-311, infra/localstack/init/ready.d/01-create-sqs-queues.sh:64-97, services/workers/messaging/sqs_client.py:48-54,67) is confirmed byte-identical across the hop (git diff empty). Baseline run 20260810T214356000Z-ee496aa-PR_DELTA-e7ff26 already executed this brief's full checklist with DYNAMIC evidence against this exact code; results.json carries each observation forward with the byte-identity proof attached rather than silently dropping the brief or re-deriving fresh attack evidence for unchanged code.",
+      "rationale": "No functional content changed under this surface during the hop; all findings/passes from the baseline run stand unmodified (see results.json for the per-check carry-forward evidence).",
+      "code_references": [
+        "services/core/src/queue/sqs.ts:268-311",
+        "infra/localstack/init/ready.d/01-create-sqs-queues.sh:64-97",
+        "services/workers/messaging/sqs_client.py:48-54,67"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Carried forward, not freshly re-attacked this run: this hop's own diff (25f60fa..083acb4) touches none of this brief's trigger paths -- every file this brief covers (services/core/src/routes/chat.ts, services/core/src/services/chatService.ts, apps/web/app/api/core/[...path]/route.ts:234-267,363-376) is confirmed byte-identical across the hop (git diff empty). Baseline run 20260810T214356000Z-ee496aa-PR_DELTA-e7ff26 already executed this brief's full checklist with DYNAMIC evidence against this exact code; results.json carries each observation forward with the byte-identity proof attached rather than silently dropping the brief or re-deriving fresh attack evidence for unchanged code.",
+      "rationale": "No functional content changed under this surface during the hop; all findings/passes from the baseline run stand unmodified (see results.json for the per-check carry-forward evidence).",
+      "code_references": [
+        "services/core/src/routes/chat.ts",
+        "services/core/src/services/chatService.ts",
+        "apps/web/app/api/core/[...path]/route.ts:234-267,363-376"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Carried forward, not freshly re-attacked this run: this hop's own diff (25f60fa..083acb4) touches none of this brief's trigger paths -- every file this brief covers (services/core/src/services/chatService.ts:374-392, infra/.env.example:63-68, services/core/src/queue/sqs.ts) is confirmed byte-identical across the hop (git diff empty). Baseline run 20260810T214356000Z-ee496aa-PR_DELTA-e7ff26 already executed this brief's full checklist with DYNAMIC evidence against this exact code; results.json carries each observation forward with the byte-identity proof attached rather than silently dropping the brief or re-deriving fresh attack evidence for unchanged code.",
+      "rationale": "No functional content changed under this surface during the hop; all findings/passes from the baseline run stand unmodified (see results.json for the per-check carry-forward evidence).",
+      "code_references": [
+        "services/core/src/services/chatService.ts:374-392",
+        "infra/.env.example:63-68",
+        "services/core/src/queue/sqs.ts"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Trigger paths `services/core/**`, `services/workers/**`, `infra/**` matched only incidentally via broad globs; zero files in this diff fall within the model-provider adapter/egress code inventory. Still true this hop: the hop touches only migration numbering, journal metadata, and test/comment bookkeeping, none of which falls under this surface.",
+      "rationale": "CH-03 touches no `providerSettingsService.ts`, adapter client, or outbound model-call code. Not selected for full checklist execution.",
+      "code_references": [
+        "services/core/src/services/providerSettingsService.ts (unchanged by this diff)"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Trigger path `services/workers/**` matched only incidentally (a queue-name constant addition, no consumer); zero retrieval/embedding/prompt code touched. Still true this hop: the hop touches only migration numbering, journal metadata, and test/comment bookkeeping, none of which falls under this surface.",
+      "rationale": "CH-03 hands a work order to a not-yet-implemented consumer (CH-04); no prompt construction, retrieval, or embedding code exists in this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Trigger paths `infra/**`, `**/package.json` matched only incidentally; no dependency, lockfile, Dockerfile, or CI-workflow change is present in this diff. Still true this hop: the hop touches only migration numbering, journal metadata, and test/comment bookkeeping, none of which falls under this surface.",
+      "rationale": "`services/core/package.json`'s diff is two added npm script strings (`test:rls:chat`, `test:rls:chat:ci`) mirroring an existing sibling pair; `package-lock.json` is untouched; `.github/workflows/**` is untouched.",
+      "code_references": [
+        "services/core/package.json:24-29"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (`services/core/src/mcp/**` untouched, no `*mcp*`/`*api-key*` filename in this diff). Still true this hop: the hop touches only migration numbering, journal metadata, and test/comment bookkeeping, none of which falls under this surface.",
+      "rationale": "The ticket's `agent_key`-subject and `mcpCredential`-null-pinning asks are covered instead under CORE-03/SEC-14/ING-14/WEB-06 against the code this diff actually touches (chatService's subject-type gate and the pinned wire payload), since no MCP transport/session/key-issuance code changed here.",
+      "code_references": [
+        "services/core/src/auth/context.ts (AgentKeyAuthContext type, unconstructed anywhere — pre-existing, unchanged)",
+        "services/core/src/services/chatService.ts:113-116"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (`services/gateway/**`, `*realtime*`, `*websocket*`, `*redis*` all absent from this diff). Still true this hop: the hop touches only migration numbering, journal metadata, and test/comment bookkeeping, none of which falls under this surface.",
+      "rationale": "spec.md's Scope explicitly excludes realtime/WebSocket publication for chat (CH-05 is a separate future ticket).",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "core-mandatory-checks",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker-subagent-definition",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "cc2ebf275c8826155e920664a02ef73fa51d4d79c8af167d051965dc37dcd90d"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "model-provider-egress-ssrf",
+      "source": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "sha256": "49d99b911967a703dc696f5d5378aaa7746bcde28ecac21a46ed98ab69792a80"
+    },
+    {
+      "agent_id": "llm-rag-poisoning",
+      "source": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "sha256": "77394e754db53ffca3d1dd9b926cffc1491063d0f0198a4d7bd1d037e873da2b"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "schema-run-manifest",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "schema-results",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    }
+  ],
+  "limitations": [
+    "No fresh DYNAMIC evidence was gathered this run for the live-Postgres RLS/composite-FK/cross-org-rejection behavior of chat_conversations/chat_turns (chatStore.rls.test.ts) or for the two Python messaging suites (test_messaging_topology.py, test_sqs_delivery.py): every credential-adjacent path was denied by this session's own permission classifier (reproduced directly: `docker exec sayre-postgres env` denied). CORE-01's PASS this run rests on cryptographically-proven artifact identity to the exact bytes baseline run 20260810T214356000Z-ee496aa-PR_DELTA-e7ff26 dynamically verified, plus fresh static re-confirmation of journal ordering/idx-uniqueness (the properties a renumbering specifically risks) -- see CORE-01's methodology note in results.json. Fresh dynamic re-verification remains a standing, carried-forward pre-merge obligation (matches review.md Warning W-2 exactly) and is NOT resolved by this run.",
+    "WEB-10 (cache/intermediary leakage) and SEC-12 (backup/restore isolation) remain UNVERIFIED, carried forward unchanged from baseline: no CDN/proxy/backup topology information is available from this diff or this local checkout to test against.",
+    "test_messaging_topology.py / test_sqs_delivery.py (Python) were not executed this run: no Poetry/Python environment in this checkout, same gap as baseline. Both files are confirmed byte-identical across this hop (git diff 25f60fa 083acb4 -- <these files> is empty), so this hop introduces no new risk to their content.",
+    "This run did not re-execute the ingestion-queue-webhook / web-api-client / secrets-audit-data-lifecycle briefs' underlying attack scenarios fresh (26 checklist rows): their target code is confirmed byte-identical across the hop (git diff 25f60fa 083acb4 empty for every file involved), so baseline run 20260810T214356000Z-ee496aa-PR_DELTA-e7ff26's DYNAMIC+STATIC evidence is carried forward per-observation rather than re-derived. See each observation's evidence array (HOP-CARRY-FORWARD entries) for the exact diff commands used to establish byte-identity.",
+    "Two LOW-severity, non-blocking findings from the baseline run remain OPEN and unchanged by this hop (FND-3d7445ebdad6 / ING-04, retry-path republishes request question/scope instead of the persisted turn; FND-9ea77a9c5745 / SEC-14, no log line on the publish-failure path) -- both live in chatService.ts, confirmed byte-identical across this hop, so neither improved nor worsened. Tracked in review.md as Warning W-1 and Suggestion S-1 respectively.",
+    "AC-16/AC-17 (Cloudflare Pages dashboard read, live Vercel-project check) belong to an unrelated ticket (PL-15) and have no bearing on CH-03; not evaluated here (carried forward from baseline)."
+  ]
+}
