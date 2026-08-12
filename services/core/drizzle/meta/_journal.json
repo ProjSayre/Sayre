@@ -155,6 +155,13 @@
       "when": 1785384500000,
       "tag": "0021_ch03_chat_conversations_and_turns",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785384600000,
+      "tag": "0022_ch04_mcp_key_conversation_fk",
+      "breakpoints": true
     }
   ]
 }

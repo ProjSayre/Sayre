@@ -21,6 +21,10 @@ ConfigName: TypeAlias = Literal[
     "METRICS_PORT",
     "METRICS_ADDR",
     "UPDATE_PARSE_SNAPSHOTS",
+    "CORE_MCP_URL",
+    "REDIS_HOST",
+    "REDIS_PORT",
+    "REDIS_TLS",
 ]
 
 _SUPPORTED_NAMES = frozenset(
@@ -39,6 +43,10 @@ _SUPPORTED_NAMES = frozenset(
         "METRICS_PORT",
         "METRICS_ADDR",
         "UPDATE_PARSE_SNAPSHOTS",
+        "CORE_MCP_URL",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_TLS",
     }
 )
 _WORKERS_ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +61,10 @@ _DEFAULTS: dict[str, str] = {
     "OTEL_METRICS_EXPORTER": "prometheus",
     "METRICS_PORT": "9464",
     "METRICS_ADDR": "0.0.0.0",
+    "CORE_MCP_URL": "http://localhost:4000/mcp",
+    "REDIS_HOST": "localhost",
+    "REDIS_PORT": "6379",
+    "REDIS_TLS": "false",
 }
 _overrides: dict[str, str | None] = {}
 _SUBPROCESS_ENVIRONMENT_NAMES = (
@@ -119,7 +131,7 @@ def get_config(name: ConfigName) -> str:
     return value
 
 
-def get_bool_config(name: Literal["MESSAGING_INTEGRATION_REQUIRED"]) -> bool:
+def get_bool_config(name: Literal["MESSAGING_INTEGRATION_REQUIRED", "REDIS_TLS"]) -> bool:
     """Return a centrally validated boolean setting."""
     value = get_config(name).strip().lower()
     if value == "true":

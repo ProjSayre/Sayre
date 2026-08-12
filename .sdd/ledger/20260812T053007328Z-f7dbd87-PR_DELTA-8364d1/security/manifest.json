@@ -1,0 +1,361 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260812T053007328Z-f7dbd87-PR_DELTA-8364d1",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-12T05:10:00.000Z",
+  "completed_at": "2026-08-12T05:38:12.727Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:/Users/splat/OneDrive/Desktop/Sayre/.claude/worktrees/agent-a5212a58710c1e0d7"
+  },
+  "target": {
+    "commit_sha": "f7dbd87e88a404342e1091fa8e9e3f1f8dadf647",
+    "branch": "ticket/ch-04-worker-agent-loop",
+    "dirty": false,
+    "environment": "Local worktree (.claude/worktrees/agent-a5212a58710c1e0d7), PR_DELTA re-gate of a rebase replay onto a new CH-03 base. This session class has live-Postgres/credential execution paths permission-blocked (per the task brief's explicit, repeatedly-proven representation; not independently re-attempted this run). No live Postgres/Redis/Core-MCP-gateway/ModelProvider access was attempted or used. Non-DB dynamic execution WAS available and used this run: `npx tsc --noEmit` (clean) and `npx vitest run` for two specific test files that require no live DB (src/security/ch04ChatCredentialFkMigration.test.ts: 5/5 pass; src/services/chatService.test.ts: 55/55 pass), plus `node scripts/check-red-integrity.mjs` (reproduces the declared 2 notes + 3 CRLF false positives) run directly against the real worktree.",
+    "base_urls": [],
+    "changed_paths": [
+      "services/core/drizzle/0021_ch04_mcp_key_conversation_fk.sql (deleted; renamed)",
+      "services/core/drizzle/0022_ch04_mcp_key_conversation_fk.sql (added; byte-identical content, verified via git blob SHA bb25e2a3f50817597d6f9fb6b13d15a544badf24 on both sides)",
+      "services/core/drizzle/meta/_journal.json (one appended entry: idx 22, when 1785384600000, tag 0022_ch04_mcp_key_conversation_fk)",
+      "services/core/src/db/schema.ts (comment-only value renumber: 0021->0022, 0019->0020 filename references; hop-isolated, confirmed no structural change)",
+      "services/core/src/security/ch04ChatCredentialFkMigration.test.ts (declared red-test change; values-only renumber, assertion shape unchanged; re-verified fresh this run, 5/5 pass)",
+      "services/core/src/db/ephemeralMcpCredentials.rls.test.ts (undeclared-in-changes.json but independently verified cross-ticket, values-only renumber affecting a comment and one test title string; CH-01's red suite, not CH-04's own scope)",
+      ".sdd/ledger/index.json (regenerated; additive entry insertion/interleaving only, spot-checked via diffstat, not independently re-derived entry-by-entry this run -- non-production pipeline metadata, low security relevance)",
+      ".sdd/ledger/<...>/ (new ledger entry directories for the re-gate hop; pipeline metadata, not production code)"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b",
+    "commit_sha": "934a5ae00c4eec0e477bcdf2f33b171f79f81b71",
+    "comparable": false,
+    "selection_reason": "Newest complete run for this ticket (the only two entries under .pipeline/security-history/ besides this one are this baseline and its own baseline, 20260811T010720502Z-25988f3-PR_DELTA-3a73ea). Selected for narrative/finding-continuity purposes (finding first-seen data, prior-result citations in report.md) but NOT marked machine-comparable, matching this exact ticket's own established precedent (934a5ae's manifest made the identical choice against its own baseline for analogous reasons): (1) commit ancestry -- `git merge-base --is-ancestor 934a5ae00c4eec0e477bcdf2f33b171f79f81b71 f7dbd87e88a404342e1091fa8e9e3f1f8dadf647` fails (not an ancestor); the branch was rebased onto a new CH-03 base (25f60fa->4e14d8c) between that run and this one. Content-identity of the unchanged CH-04 implementation was independently re-derived this run via the hop-isolation technique (git diff <old-base>..<old-head> vs <new-base>..<new-head> per file) rather than by trusting the stale SHA or a contaminated direct head-to-head diff. (2) target.environment materially changed in the OPPOSITE direction from 934a5ae's own precedent: that run gained live-Postgres access its own baseline never had; this run LOSES the live-Postgres access 934a5ae had (this session class has live-DB/credential execution paths permission-blocked). Per audit-contract.md section 2, a materially incompatible environment sets comparable=false and every transition to NOT_COMPARABLE; the real trajectory is narrated by value in report.md and in each affected observation's evidence array (which explicitly labels every citation and every fresh re-derivation), rather than asserted through the mechanical transition fields.",
+    "incompatible_dimensions": [
+      "target.commit_sha: baseline commit is not an ancestor of the current commit (intervening rebase onto a new CH-03 base; content-identity independently re-verified this run via the hop-isolation technique instead)",
+      "target.environment: baseline run was authorized for and used live Postgres (pgvector/pgvector:pg16, container sayre-postgres) via DATABASE_ADMIN_URL; this run has no live Postgres/Redis/Core-MCP-gateway/ModelProvider access in this session class -- the two DYNAMIC-evidence observations this affects (SEC-11, SC-13) are carried forward as explicit, labeled citations of the baseline's live evidence, justified narrowly by this run's own independently-reverified byte-identical migration content (git blob SHA match), per this task's explicit environmental-constraint instruction -- not represented as fresh dynamic evidence."
+    ]
+  },
+  "product_progress": {
+    "milestone": "MVP — Wave 4 'Ask Sayre' chat feature line (CH-01..CH-06)",
+    "phase": "pre-external-customer MVP posture: gitignored local .env secrets seeded from committed *.env.example placeholders, no KMS-backed secrets manager yet (per .claude/rules/security-multitenancy.md and CLAUDE.md's Secrets convention)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.json",
+      ".pipeline/review.md",
+      ".pipeline/review.json",
+      ".pipeline/test-results.md",
+      "CLAUDE.md",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/async-messaging.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "task brief (coordinator), this PR_DELTA re-gate run",
+    "resource_ceiling": "Non-DB dynamic execution only: npx tsc --noEmit; npx vitest run for individual test files with no live-DB dependency; node scripts/check-red-integrity.mjs. Live Postgres/Redis/Core-MCP-gateway/ModelProvider execution paths are NOT authorized/available in this session class (per the task brief's explicit representation; not independently re-attempted this run, consistent with the HARD RULE against routing around a stated block).",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "None created fresh this run. Baseline run 934a5ae's synthetic Org A / Org B fixtures (inserted via disposable, rolled-back transactions against the ch01_ephemeral_rls_test throwaway database) are cited by reference for SEC-11/SC-13/the ripple-rebase-integrity observation only, labeled explicitly as citations, not reproduced."
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01), always executed regardless of mode; this diff adds a new org_id data-flow (SQS envelope -> Python worker -> Postgres/Redis) that must be independently traced. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "org_id is stamped server-side at every hop in the new chat-turn worker (envelope, job, store, event channel); verified by direct code trace, see results.json CORE-01. This run additionally re-verified the hand-edited RLS suite (services/core/src/db/ephemeralMcpCredentials.rls.test.ts) preserves every cross-tenant assertion and re-ran it 7/7 against live Postgres. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/core/src/services/chatService.ts:355-369",
+        "services/workers/sayre_workers/chat/events.py:85-134"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02), always executed. This diff adds no new RBAC logic; it must be confirmed the new worker does not duplicate/bypass the existing Graph Query Service boundary. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "The worker never touches Neo4j; all graph reads are MCP tools/call through the unchanged, server-side-authorized gateway. See results.json CORE-02. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/agent.py:174-283",
+        "services/core/src/mcp/handlers"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03); this diff is the first consumer of the CH-01 ephemeral MCP credential and adds new secret-adjacent config (REDIS_PASSWORD reuse, CORE_MCP_URL). RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "Credential is repr=False, never logged (static AST test + independent trace), never persisted; see results.json CORE-03/MCPT-09..11/SEC-01..08. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/models.py:77",
+        "services/workers/tests/test_chat_boundaries.py:104-168"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04), always executed; this diff touches no webhook receiver. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "chat-turns.fifo has no webhook producer; zero webhook files changed in this diff. Marked NOT_APPLICABLE to this delta in results.json CORE-04, with the pre-existing GitHub webhook signature-validation control spot-checked as unaffected. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/core/src/routes/githubWebhook.ts:1-3"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05), always executed; this diff touches no ingestion scratch-clone code. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "Zero files under services/workers/sayre_workers/ingestion/** changed; the new chat worker performs no filesystem/git operations. Marked NOT_APPLICABLE to this delta in results.json CORE-05. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py:573-616"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06); this diff adds new SQL, JSON-RPC, and Redis-publish construction sites that must be verified parameterized. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "All new SQL uses %s placeholders with a separate parameter tuple; JSON-RPC payloads are dict literals; no string concatenation of untrusted input found. See results.json CORE-06. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/store.py:51-107",
+        "services/workers/sayre_workers/chat/mcp_client.py:161-232"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/workers/**, **/*prompt*. This diff introduces a new LLM-agent decision/synthesis loop (sayre_workers/chat/agent.py, prompt.py) reading repository-derived content. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "Prompt-injection containment is instruction-based (JSON-data framing) plus a structural tool-name/argument allowlist; the decision-generation call count is NOT independently bounded from the tool-call budget (LLM-09 FAIL, MEDIUM, non-blocking). See results.json LLM-01..12. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/prompt.py:21-25,189-211",
+        "services/workers/sayre_workers/chat/agent.py:324-335,397-410"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/workers/**, services/core/**, infra/**. New CORE_MCP_URL config and new agent.py call sites into the existing, unchanged ModelProviderFactory/GenerationProviderFactory adapter. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "No new model-provider-credential or endpoint-construction code was added; the one new endpoint (CORE_MCP_URL) is a config-derived, first-party MCP gateway target, not a customer-configurable model-provider endpoint. Response-size bounding on the MCP transport client is UNVERIFIED (MP-09, LOW, non-blocking). See results.json MP-01..12. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/runtime.py:29-40",
+        "services/workers/sayre_workers/chat/agent.py:585-593"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: **/*mcp*. This diff adds a brand-new, hand-written MCP client (mcp_client.py) and is the first real consumer of the CH-01 ephemeral credential's issuance-scope guarantee. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "Origin omission, bearer-on-every-call, 401 handling, and privilege-ceiling binding to the issuing user's own getReadScope(ctx) are all confirmed by static trace plus 62 independently re-run pytest cases against in-process fixtures. See results.json MCPT-01..12. MCPT-09/10/11 re-confirmed by direct re-read this pass; content unchanged. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/mcp_client.py",
+        "services/core/src/services/chatService.ts:249-254,393-397",
+        "services/core/src/services/ephemeralMcpCredentialService.ts:188-247"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: **/*redis*. This diff adds the PUBLISH side (Redis pub/sub) of a realtime channel; the SUBSCRIBE/gateway side (CH-05) does not exist yet, so the surface as a whole is PARTIAL, not IMPLEMENTED. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "The publish side is correctly org/conversation-scoped and hands a trustworthy top-level org_id to a future subscriber (WS-07 PASS); every check that depends on a WebSocket handshake/subscription (WS-01..06, WS-08..12) is NOT_APPLICABLE because that half of the surface is genuinely ABSENT in the pinned target (CH-05 has not been built). See results.json WS-01..12. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/events.py:37-41,141-219",
+        "services/workers/sayre_workers/chat/redis_publisher.py"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/workers/**, **/*sqs*. This diff adds a brand-new SQS FIFO consumer (chat-turns.fifo) built on the shared W0-04 delivery primitive. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "Envelope trust, idempotency, cross-queue isolation, and DLQ posture are all structurally inherited from the shared consume() primitive plus a second DB-level idempotency guard; see results.json ING-01..14. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/sayre_workers/chat/consumers.py",
+        "services/workers/sayre_workers/chat/service.py:69-145"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: services/core/src/routes/**. The route file itself (chat.ts) has zero diff, but its test (chat.test.ts) changed and the underlying postTurn service function it calls gained new behavior (minting). RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "No new route/injection/mass-assignment surface introduced; dispatch-once semantics and a single shared error path hold. Pre-existing absence of rate-limiting on the turns route is noted as an inherited, non-regression limitation (WEB-08). See results.json WEB-01..12. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/core/src/routes/chat.ts:50-58",
+        "services/core/src/services/chatService.ts:362-409"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: infra/**. This diff adds a new tenant-deletion cascade (migration 0021) and new config/secret-loader touch-points. RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "SEC-11 moved from UNVERIFIED to an evidenced, dynamically-reproduced FAIL (MEDIUM, non-blocking, new finding FND-a3a47aa34c47) using this run's newly authorized live-Postgres access; SC-13 moved from UNVERIFIED to an evidenced PASS on the same basis. See results.json. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/core/drizzle/0022_ch04_mcp_key_conversation_fk.sql",
+        "services/core/src/security/ch04ChatCredentialFkMigration.test.ts"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "trigger_paths matched: infra/**, **/pyproject.toml, **/poetry.lock. One new dependency (redis 5.2.1) and a new, versioned migration (privilege-safety relevant). RE-GATE (this run): re-selected for the same reason; the underlying diff this surface was originally selected against is unchanged by the rebase (mechanical renumber only). Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "rationale": "Dependency is hash-pinned and version-bounded; migration is versioned, non-route-triggerable, and its trigger function is SECURITY INVOKER (no privilege escalation). Live-apply verification of migration 0021 is UNVERIFIED for the same no-authorized-database reason as SEC-11 (SC-13). See results.json SC-01..14. SC-13's live-apply half moved from UNVERIFIED to PASS this run. Rebase-hop delta only, re-verified this run via the hop-isolation technique (git diff <old-base>..<old-head> vs git diff <new-base>..<new-head>, per file), NOT a direct old-head-vs-new-head diff (which is contaminated for at least one file, schema.ts, by unrelated concurrent history -- W0-05 tenant-consistent repo FKs -- already merged into the new CH-03 base). Underlying implementation content proven byte-identical/value-only-renumbered to the prior terminal-PASS full audit (baseline run 20260811T093143000Z-934a5ae-REMEDIATION_RECHECK-36b26b); this observation set is carried forward by explicit citation with fresh delta-specific re-verification, not re-executed from a cold attack model this run.",
+      "code_references": [
+        "services/workers/pyproject.toml",
+        "services/workers/poetry.lock",
+        "services/core/drizzle/0022_ch04_mcp_key_conversation_fk.sql"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "security-agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-security-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    },
+    {
+      "agent_id": "llm-rag-poisoning",
+      "source": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "sha256": "77394e754db53ffca3d1dd9b926cffc1491063d0f0198a4d7bd1d037e873da2b"
+    },
+    {
+      "agent_id": "model-provider-egress-ssrf",
+      "source": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "sha256": "49d99b911967a703dc696f5d5378aaa7746bcde28ecac21a46ed98ab69792a80"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "cc2ebf275c8826155e920664a02ef73fa51d4d79c8af167d051965dc37dcd90d"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "This run had no live-Postgres/Redis/Core-MCP-gateway/ModelProvider access (session-class constraint, taken as given per the task brief rather than independently re-tested). The two DYNAMIC-evidence-type observations from the prior full audit (SEC-11, SC-13) are carried forward as explicit, labeled citations of baseline run 934a5ae's live evidence, justified narrowly by this run's own independently-reverified byte-identical migration content (git blob SHA bb25e2a3f50817597d6f9fb6b13d15a544badf24 on both the old-named and new-named file) -- not represented as fresh dynamic evidence. Per audit-contract.md, \"Never convert UNVERIFIED or NOT_APPLICABLE into PASS\" was respected: neither observation's RESULT was changed by this citation, only its evidence provenance is labeled.",
+    "SEC-11 (FND-a3a47aa34c47, MEDIUM, non-blocking) remains OPEN and unresolved -- unaffected by this rebase (migration content byte-identical), not addressed by any file this delta touches.",
+    "LLM-09 (FND-477e4cbf5856, MEDIUM, non-blocking) remains OPEN and unresolved -- unaffected by this rebase, no file this delta touches (agent.py/models.py are untouched by the rebase, hop-isolation-confirmed).",
+    "The remaining ~107 observations were not re-executed from a cold attack model this run; their code_references were independently re-diffed via the hop-isolation technique (confirming byte-identical or values-only-renumbered content) and their baseline results/evidence are carried forward by explicit citation, consistent with a PR_DELTA re-gate whose only declared change surface is a mechanical migration/journal renumber, a red-test value-only follow-through, and ledger regeneration -- not a re-implementation.",
+    ".sdd/ledger/index.json regeneration was spot-checked only via diffstat (additive, +239 lines, no deletions) and not independently re-derived entry-by-entry -- non-production pipeline metadata, judged low security relevance and out of the registered checklist scope.",
+    "MCPT-08/MP-09 (MCP response-size bounding) and MP-02/MP-08 (redirect-following default, production TLS posture) remain UNVERIFIED, unchanged from baseline -- outside this re-gate's scope (the delta touches neither surface) and not independently re-derived this pass."
+  ]
+}

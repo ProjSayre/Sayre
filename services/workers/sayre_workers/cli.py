@@ -22,6 +22,8 @@ from types import FrameType
 from typing import Any, Literal
 
 from messaging.idempotency import DeliveryStore, SqliteDeliveryStore
+from sayre_workers.chat.consumers import run_chat_turn_consumer
+from sayre_workers.chat.runtime import build_chat_turn_service
 from sayre_workers.config import get_config
 from sayre_workers.enrichment.consumers import run_enrichment_consumer
 from sayre_workers.enrichment.onboarding import run_onboarding_priority_consumer
@@ -41,6 +43,7 @@ WorkerMode = Literal[
     "enrichment-default",
     "onboarding-priority",
     "embedding",
+    "chat",
 ]
 ServiceBuilder = Callable[[], Coroutine[Any, Any, Any]]
 ServiceRunner = Callable[[Any, DeliveryStore, threading.Event], None]
@@ -50,6 +53,7 @@ WORKER_MODES: tuple[WorkerMode, ...] = (
     "enrichment-default",
     "onboarding-priority",
     "embedding",
+    "chat",
 )
 WORKER_FAILURE = "The worker process could not be completed."
 MEMORY_STORE_ERROR = "The worker delivery store must persist on disk."
@@ -106,6 +110,14 @@ def _run_embedding(
     run_embedding_consumer(consumer, delivery_store, stop_event=stop_event)
 
 
+def _run_chat(
+    service: Any,
+    delivery_store: DeliveryStore,
+    stop_event: threading.Event,
+) -> None:
+    run_chat_turn_consumer(service, delivery_store, stop_event=stop_event)
+
+
 @dataclass(frozen=True)
 class WorkerDefinition:
     builder: ServiceBuilder
@@ -121,6 +133,8 @@ def _definition(mode: WorkerMode) -> WorkerDefinition:
         return WorkerDefinition(build_enrichment_service, _run_enrichment)
     if mode == "onboarding-priority":
         return WorkerDefinition(build_enrichment_service, _run_onboarding)
+    if mode == "chat":
+        return WorkerDefinition(build_chat_turn_service, _run_chat)
     return WorkerDefinition(build_embedding_consumer, _run_embedding)
 
 
@@ -231,3 +245,7 @@ def onboarding_main(argv: Sequence[str] | None = None) -> int:
 
 def embedding_main(argv: Sequence[str] | None = None) -> int:
     return _mode_main("embedding", argv)
+
+
+def chat_main(argv: Sequence[str] | None = None) -> int:
+    return _mode_main("chat", argv)

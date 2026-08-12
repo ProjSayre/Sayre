@@ -20,6 +20,7 @@ import {
 } from '../db/chatStore';
 import { makeEnvelope, type MessageEnvelope } from '../queue/envelope';
 import { publishChatTurnRequest, type ChatTurnRequestPayload } from '../queue/sqs';
+import { mintEphemeralMcpCredential } from './ephemeralMcpCredentialService';
 
 export const CHAT_QUESTION_MAX_CHARACTERS = 8_000;
 export const CHAT_TITLE_MAX_CHARACTERS = 200;
@@ -107,6 +108,20 @@ export type ChatTurnPublisher = (
 // none of those suites ever trigger.
 export const defaultPublishChatTurn: ChatTurnPublisher = (envelope) =>
   publishChatTurnRequest(envelope);
+
+/** Mints the CH-01 chat_ephemeral credential the worker will present to the MCP
+ *  gateway. Returns the one-time token only; nothing else about the credential
+ *  leaves this module. */
+export type ChatCredentialMinter = (
+  conversationId: string,
+  ctx: AuthContext,
+) => Promise<string>;
+
+// Wrapped, not assigned directly — same rationale as `defaultPublishChatTurn`
+// above it: route suites that `vi.mock` a whole module must not dereference a
+// missing export at import time.
+export const defaultMintChatCredential: ChatCredentialMinter = async (conversationId, ctx) =>
+  (await mintEphemeralMcpCredential({ conversationId }, ctx)).token;
 
 type UserCtx = Extract<AuthContext, { subjectType: 'user' }>;
 
@@ -320,6 +335,7 @@ function buildChatTurnEnvelope(
   question: string,
   scope: ChatTurnScope,
   history: Array<{ role: ChatTurnRole; content: string }>,
+  mcpCredential: string,
 ): MessageEnvelope<ChatTurnRequestPayload> {
   // PINNED WIRE CONTRACT (spec.md "chat.turn.request.v1") — key order is part
   // of the contract; CH-04 consumes this verbatim.
@@ -332,7 +348,7 @@ function buildChatTurnEnvelope(
     question,
     scope,
     history,
-    mcpCredential: null,
+    mcpCredential,
   };
   return makeEnvelope<ChatTurnRequestPayload>({
     org_id: owner.orgId,
@@ -350,6 +366,7 @@ export async function postTurn(
   ctx: AuthContext,
   store: ChatStore = chatStore,
   publish: ChatTurnPublisher = defaultPublishChatTurn,
+  mint: ChatCredentialMinter = defaultMintChatCredential,
 ): Promise<PostTurnResult> {
   const userCtx = requireUser(ctx);
   const body = requireBodyObject(input);
@@ -372,21 +389,29 @@ export async function postTurn(
   if (result === null) throw new ChatNotFoundError();
 
   if (result.assistantTurn.dispatchedAt === null) {
-    const envelope = buildChatTurnEnvelope(
-      owner,
-      conversationId,
-      result.assistantTurn.id,
-      question,
-      scope,
-      result.history,
-    );
     try {
+      // CH-04: rebuild the republished payload from the STORED user turn, not
+      // this invocation's request body, so a repair republish is byte-
+      // identical to the original dispatch even when a retry's body differs
+      // (AC-14 / EC-25 — the CH-03 LOW finding; see spec.md "Decision:
+      // CH-03 retry-path finding").
+      const token = await mint(conversationId, userCtx);
+      const envelope = buildChatTurnEnvelope(
+        owner,
+        conversationId,
+        result.assistantTurn.id,
+        result.userTurn.content,
+        result.userTurn.scope ?? { view: null, anchorNodeId: null },
+        result.history,
+        token,
+      );
       await publish(envelope);
       await store.markTurnDispatched(owner, result.assistantTurn.id);
     } catch {
-      // Never leak SQS/AWS detail (queue URL, region, error code) — the
-      // committed rows are never rolled back; the turn simply stays pending
-      // with dispatched_at null until the next retry (EC-13, OQ-7).
+      // Never leak minter/permission-store/SQS/AWS detail (queue URL, region,
+      // error code) — the committed rows are never rolled back; the turn
+      // simply stays pending with dispatched_at null until the next retry
+      // (EC-13, EC-24, OQ-7).
       throw new ChatEnqueueError();
     }
   }

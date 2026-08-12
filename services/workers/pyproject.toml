@@ -25,6 +25,7 @@ dependencies = [
   "opentelemetry-sdk==1.29.*",
   "opentelemetry-exporter-prometheus==0.50b0",
   "prometheus-client==0.25.*",
+  "redis==5.2.*",
 ]
 
 [project.scripts]
@@ -33,6 +34,7 @@ sayre-ingestion-worker = "sayre_workers.cli:ingestion_main"
 sayre-enrichment-worker = "sayre_workers.cli:enrichment_main"
 sayre-onboarding-worker = "sayre_workers.cli:onboarding_main"
 sayre-embedding-worker = "sayre_workers.cli:embedding_main"
+sayre-chat-worker = "sayre_workers.cli:chat_main"
 sayre-graph-migrate = "scripts.run_graph_migrations:console_main"
 sayre-affected-tests = "scripts.affected_tests:console_main"
 
