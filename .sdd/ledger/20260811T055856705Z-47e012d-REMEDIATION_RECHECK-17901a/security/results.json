@@ -1,0 +1,1485 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+  "baseline_run_id": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+  "generated_at": "2026-08-11T06:04:02.675Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 25,
+      "NOT_APPLICABLE": 22,
+      "FAIL": 1,
+      "UNVERIFIED": 4
+    },
+    "result_transitions": {
+      "UNCHANGED": 49,
+      "FIRST_OBSERVATION": 3
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 49,
+      "NOT_COMPARABLE": 3
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified this REMEDIATION_RECHECK that org_id is still stamped server-side only, and re-ran the RLS-with-app-filter-removed proof against real Postgres, after confirming ephemeralMcpCredentialService.ts and ephemeralMcpCredentialStore.ts are byte-identical to the prior PASS.",
+      "evidence": [
+        "`git diff HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts services/core/src/db/ephemeralMcpCredentialStore.ts` returns zero lines -- neither file changed since the baseline PASS.",
+        "Independently ran (this run): `npx vitest run src/security/tenantIsolation.penetration.test.ts` with DATABASE_ADMIN_URL set against the local sayre-postgres container -- 17/17 passed, identical count to baseline.",
+        "Independently ran (this run): `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` (default DB name path) and again with CH01_TEST_DB_NAME overridden to a throwaway alternate name -- both 7/7, including the org-scoped issue()/listByConversation()/deleteExpired() assertions.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `DATABASE_ADMIN_URL=... npx vitest run src/security/tenantIsolation.penetration.test.ts` and two invocations of `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` (default and CH01_TEST_DB_NAME=ch01_ephemeral_rls_test_override_check) from services/core. The override database was dropped immediately after (`DROP DATABASE ch01_ephemeral_rls_test_override_check`), confirmed via `psql -c \"SELECT datname FROM pg_database WHERE datname LIKE 'ch01%'\"` showing only the sanctioned default database remains. The default database's own after() hook left it truncated (0 rows in mcp_client_keys, confirmed by direct query). No other repository file was created, modified, or left behind.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:149-236",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:108-232",
+        "services/core/src/security/tenantIsolation.penetration.test.ts",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|services/core/graph-query-permissions|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/graph-query-permissions",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked that this delta introduces no node-level access-control or graph-traversal logic outside the Graph Query Service.",
+      "evidence": [
+        "This delta's changed_paths (.github/workflows/ci.yml, packages/config/src/config.ts, services/core/src/db/ephemeralMcpCredentials.rls.test.ts) contain no file under services/core/src/graph-query/, services/core/src/routes/, apps/web/, or any graphology usage.",
+        "Independently re-ran (this run) services/core/src/security/ch01UnmodifiedSurfaces.test.ts -- 2/2 passed, still confirming graph-query/permissions.ts, gateway.ts, auth/context.ts, and all nine mcp/handlers/*.ts are byte-identical to pre-CH-01.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/security/ch01UnmodifiedSurfaces.test.ts` from services/core. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified the pepper is still resolved only through getSecret, and that no raw secret/token reaches a persisted column, log line, error message, or metric attribute. Also confirmed this delta's own new content (CH01_TEST_DB_NAME's default value, the CI step's DSN literal) is not itself secret-shaped credential material.",
+      "evidence": [
+        "getPepper: () => getSecret('env://MCP_TOKEN_PEPPER') (ephemeralMcpCredentialService.ts:111) is unchanged -- confirmed via zero-line git diff on this file since the baseline PASS.",
+        "The new packages/config/src/config.ts DEFAULT for CH01_TEST_DB_NAME is the literal database name string 'ch01_ephemeral_rls_test' (not a DSN, not a credential); the new .github/workflows/ci.yml step's DATABASE_ADMIN_URL value is `postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev`, byte-identical to the four sibling RLS steps already reviewed in this same file and never treated as a live secret.",
+        "Independently re-ran (this run) ephemeralMcpCredentialService.test.ts and mcpCredentialResolution.test.ts's log/echo-spy assertions -- both still pass with zero console calls across a success mint and every rejection scenario.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts src/services/mcpCredentialResolution.test.ts` from services/core. No fixture created outside the test process; nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:108-117,219",
+        "packages/config/src/config.ts:16,84",
+        ".github/workflows/ci.yml:294-306"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|services/core/webhook-receivers|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/webhook-receivers",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches any webhook receiver, SQS producer, or BullMQ job type.",
+      "evidence": [
+        "This delta's full changed-path list (3 files: .github/workflows/ci.yml, packages/config/src/config.ts, services/core/src/db/ephemeralMcpCredentials.rls.test.ts) contains no webhook/queue/integration file.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|services/workers/ingestion|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers/ingestion",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches the Python ingestion worker or any scratch-clone lifecycle code.",
+      "evidence": [
+        "This delta's full changed-path list is entirely under .github/, packages/config, and services/core/src/db -- no services/workers file.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|services/core/mcp-client-keys-store|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-client-keys-store",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked every SQL-touching code path this delta could plausibly affect for string-concatenated or unparameterized use of externally influenced input.",
+      "evidence": [
+        "ephemeralMcpCredentialStore.ts, mcpKeyStore.ts, and migration 0019 are byte-identical to the prior PASS -- confirmed via zero-line git diff since the baseline.",
+        "The RLS test's own SQL (insertKeyRow, seedOrg helpers) already used parameterized `pool.query(text, params)` calls before this delta and is unchanged by the hand-edit (only the header comment, an import, and the constant's right-hand side changed).",
+        "Independently re-ran (this run) mcpKeyStoreKind.test.ts, which renders the actual SQL predicate drizzle builds and asserts placeholders -- 4/4 passed.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/db/mcpKeyStoreKind.test.ts` from services/core. No fixture created; nothing to clean up.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/src/db/mcpKeyStoreKind.test.ts",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-01|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-01",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed gateway.ts's origin allowlist / DNS-rebinding protection is present, unmodified, and unaffected by this delta.",
+      "evidence": [
+        "gateway.ts is unmodified by this delta (not in changed_paths); the SHA-256 pin test (ch01UnmodifiedSurfaces.test.ts) re-ran clean this run.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required beyond the unmodified-surfaces pin re-run above. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:68-96,275-296"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-02|mcp|services/core/mcp-key-service:resolveMcpCredential|v1",
+      "check_id": "MCPT-02",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-key-service:resolveMcpCredential",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK: re-ran the prior FAIL observation and its bypass variants/sibling paths against the current tree, per this stage's REMEDIATION_RECHECK instruction. Confirmed mcpKeyService.ts (the file the finding lives in) received zero changes in this delta before re-running the dependent evidence.",
+      "evidence": [
+        "`git diff HEAD -- services/core/src/services/mcpKeyService.ts` returns zero lines. Direct re-read of lines 280-303 this run confirms the identical short-circuiting disjunction structure described in the baseline finding: every fast-reject branch (unknown prefix, wrong family, revoked, expired, wrong pepper version, deleted issuer, wrong kind) returns before `mcpSecretHmac`/`hmacMatches` is reached; only a shape-valid row with the wrong secret pays that cost.",
+        "Independently re-ran (this run) mcpCredentialResolution.test.ts (12/12) and ephemeralMcpGateway.test.ts (3/3) -- the sibling-path assertions covering EC-3/EC-4/EC-5/EC-6/EC-7/EC-8 and AC-3/EC-1 still pass, confirming the non-timing dimensions (body, status, content-type, error message, log level) remain byte-identical across every rejection reason.",
+        "No empirical wall-clock latency sampling was performed this run either (still STATIC code-path analysis for the timing dimension specifically) -- unchanged from baseline's own limitation.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-c8951999637a",
+        "status": "OPEN",
+        "first_seen_run_id": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+        "first_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "last_seen_run_id": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+        "last_seen_commit": "47e012d01a2d878bbfd33a365dd0b76ec343fac6",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "String/status/content-type parity re-reproduced via `npx vitest run src/services/mcpCredentialResolution.test.ts src/mcp/ephemeralMcpGateway.test.ts` from services/core. The timing-path finding remains a static code-read (mcpKeyService.ts:280-303, unchanged since baseline); no live timing measurement was taken this run either, so no fixture was created for it. Non-blocking per this stage's mandatory-gate rule (MEDIUM, not tenant-isolation/RBAC, not CRITICAL/HIGH, not a regression -- unchanged from the prior PASS).",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts:278-303",
+        "services/core/src/services/mcpCredentialResolution.test.ts",
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts:270-293"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-03|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-03",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a session-ID concept; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "gateway.ts unchanged (not in this delta's changed_paths); StreamableHTTPServerTransport still constructed with `sessionIdGenerator: undefined`.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-04|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-04",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a replayable request/stream ID; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "Same as MCPT-03: no session/stream identifier exists, and gateway.ts is unchanged by this delta.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300,317-321"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-05|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-05",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for SSE resumption / Last-Event-ID / replay support; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "router.get('/mcp') still returns 405 unconditionally (gateway.ts, unchanged by this delta) -- no SSE stream, no resumption cursor exists to replay.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:317-319"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-06|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-06",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for lifecycle/protocol-version confusion; gateway.ts unmodified by this delta and still not independently fuzzed.",
+      "evidence": [
+        "gateway.ts unchanged by this delta; this class of behavior is still entirely delegated to @modelcontextprotocol/sdk.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not independently probed this run either (no initialize-sequence/version-header fuzzing performed). Pre-existing, unmodified surface.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts (unmodified)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-07|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-07",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for JSON-RPC validation gaps; gateway.ts unmodified by this delta and still not independently fuzzed.",
+      "evidence": [
+        "gateway.ts unchanged by this delta; this validation is still entirely the SDK's / express.json()'s.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not independently probed this run either. Pre-existing, unmodified surface.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts (unmodified)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-08|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-08",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for streaming/long-lived-connection resource exhaustion; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "StreamableHTTPServerTransport still constructed with `enableJsonResponse: true`; GET still hard-coded to 405. gateway.ts unchanged by this delta.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300,317-319"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked secret entropy, one-time disclosure, at-rest hashing, constant-time comparison, prefix collision-resistance, log redaction, and cache safety; production code unchanged by this delta.",
+      "evidence": [
+        "ephemeralMcpCredentialService.ts and mcpKeyService.ts's mcpSecretHmac/hmacMatches are unchanged (zero-line git diff since baseline).",
+        "Independently re-ran (this run) ephemeralMcpCredentialService.test.ts (19/19) and the RLS suite's issue()-and-select-back assertion (7/7, both database-name paths) confirming only key_hmac lands in the row.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts` and `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` (real Postgres). No residual fixture; RLS suite's own after() hook truncates.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:209-220",
+        "services/core/src/services/mcpKeyService.ts:243-256"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-10|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-10",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed the minted credential's ceiling can never exceed the issuing user's own live scope; production code and the ceiling-intersection logic unchanged by this delta.",
+      "evidence": [
+        "graph-query/permissions.ts (intersectReadScopes) and ephemeralMcpCredentialService.ts are unchanged (zero-line git diff since baseline).",
+        "Independently re-ran (this run) the DB-backed proof (\"a resolved ephemeral credential reads exactly what its issuer currently reads\", \"a ceiling row widened directly in the database grants nothing extra\") in ephemeralMcpCredentials.rls.test.ts -- both still pass against real Postgres.",
+        "Independently re-ran (this run) the unit-level equivalents in ephemeralMcpCredentialService.test.ts -- all 19 still pass.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts` and `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts`. No residual fixture.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "services/core/src/graph-query/permissions.ts:178-193 (unmodified)",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:287-392"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-11|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-11",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed TTL bounds (service + DB CHECK, no clock-skew bypass) and the SECURITY DEFINER/REVOKE-GRANT re-issue state, against real Postgres, using this delta's own default-DB-name test run plus a fresh override-DB-name run for double coverage.",
+      "evidence": [
+        "ephemeralMcpCredentialService.ts's TTL validation and migration 0019 are unchanged (zero-line git diff since baseline).",
+        "Independently re-ran (this run) \"0019 CHECK constraints reject every malformed credential shape\" against real Postgres, twice (default DB name and an override DB name via CH01_TEST_DB_NAME) -- both times rejects expires_at beyond +601s, at created_at exactly, and before created_at; accepts exactly +300s and exactly +600s.",
+        "Independently re-ran (this run) \"the recreated resolve_mcp_client_key stays SECURITY DEFINER and off PUBLIC\" -- confirmed prosecdef=true, search_path pinned, PUBLIC's EXECUTE still revoked, sayre_app's still granted.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts src/services/mcpCredentialResolution.test.ts` and two runs of `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` (default and override CH01_TEST_DB_NAME). The override database was dropped immediately after; the default database's own after() hook left it truncated.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:170-199",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:108-131",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql:41-49"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-12|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-12",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked unauthorized responses, audit reads, and metric attributes for leaked key material; production code unchanged by this delta.",
+      "evidence": [
+        "toolExecution.ts and metrics.ts are unchanged (zero-line git diff since baseline).",
+        "Independently re-ran (this run) ephemeralMcpGateway.test.ts (3/3) -- the 401 body remains the fixed constant and still explicitly asserts the body does not contain the token or key prefix.",
+        "Independently re-ran (this run) ephemeralMcpCredentialService.test.ts's AC-6 assertion (19/19 overall) -- the serialized audit response still never contains 'keyHmac', 'pepperVersion', or 'token'.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/mcp/ephemeralMcpGateway.test.ts src/services/ephemeralMcpCredentialService.test.ts` from services/core. No residual fixture.",
+      "code_references": [
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts:270-293",
+        "services/core/src/mcp/toolExecution.ts:33-58",
+        "services/core/src/mcp/metrics.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-searched this delta's changed files for a direct process.env read or credential path outside getSecret(); production pepper access point unchanged.",
+      "evidence": [
+        "ephemeralMcpCredentialService.ts's getSecret('env://MCP_TOKEN_PEPPER') call site is unchanged (zero-line git diff since baseline).",
+        "None of this delta's three changed files (ci.yml, config.ts, ephemeralMcpCredentials.rls.test.ts) introduces a new process.env/os.environ read outside a designated loader -- confirmed both by direct reading and by `npm run check:secret-access` passing clean against the full tracked tree this run.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npm run check:secret-access` (exit 0, \"Secret-access gate passed.\") from the repo root. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:111"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|packages/config/src/config.ts+scripts/check-secret-access.mjs|v2",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "packages/config/src/config.ts+scripts/check-secret-access.mjs",
+      "attack_path_version": "v2",
+      "attempt": "Direct, distinct attack hypothesis for this delta specifically (not covered by the baseline PASS, which never evaluated this file): a hand-edit made to satisfy a CI secret-access gate is exactly the situation where the cheap illegitimate fix is to widen the gate's own allowlist or weaken its detection regex, rather than genuinely stop the direct process.env access. Checked whether scripts/check-secret-access.mjs's ALLOWLIST was widened, whether its detection regexes were weakened, and whether CONFIG_NAMES's widening opens any path to a secret-class value via getConfig.",
+      "evidence": [
+        "`git diff ee496aa -- scripts/` and `git diff HEAD -- scripts/` both return zero lines and `git status scripts/` reports a clean tree -- scripts/check-secret-access.mjs (and every other script) is byte-identical across the entire CH-01 branch, baseline PASS included. The allowlist still contains only the two central loaders per language (packages/config/src/config.ts, packages/config/src/secrets.ts, services/workers/sayre_workers/config/{config,secrets}.py) plus one pre-existing, independently justified test-file entry (scripts/guard-checker-readonly.test.mjs, predates this delta) -- services/core/src/db/ephemeralMcpCredentials.rls.test.ts (the hand-edited file) is NOT in that allowlist.",
+        "Independently ran (this run) `npm run check:secret-access` against the full current tree: exit 0, 'Secret-access gate passed.' -- the gate genuinely passes because the flagged line was fixed at its call site (process.env.CH01_TEST_DB_NAME -> getConfig(\"CH01_TEST_DB_NAME\")), not because the gate was defeated.",
+        "packages/config/src/config.ts's CONFIG_NAMES gained exactly one entry, CH01_TEST_DB_NAME, with default 'ch01_ephemeral_rls_test' -- a throwaway test database NAME, mirroring the pre-existing RLS_TEST_DB_NAME/TENANT_ISOLATION_TESTER_DB_NAME sibling entries in the same list, never a DSN or credential.",
+        "Independently ran (this run) a direct dynamic probe against the compiled packages/config/dist: `getConfig('DATABASE_ADMIN_URL')` throws `ConfigError: Unsupported configuration name.` (assertConfigName rejects any name outside CONFIG_NAMES), while `getConfig('CH01_TEST_DB_NAME')` returns its default 'ch01_ephemeral_rls_test' -- proving the new registration does not, and structurally cannot, let a secret-class value (DATABASE_ADMIN_URL, or any of the other 20 names in the separate, closed SECRET_NAMES catalog in packages/config/src/secrets.ts) be read through getConfig.",
+        "packages/config/src/config.test.ts's generic 'throws Unsupported configuration name for an unknown name' assertion re-ran clean this run (34/34 total in the config package's own suite), confirming the boundary-rejection behavior is still enforced generically rather than by an enumerated allowlist the test itself could go stale against.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `git diff ee496aa -- scripts/` / `git diff HEAD -- scripts/` (both empty), `npm run check:secret-access` (exit 0), `npm test --workspace @sayre/config` (34/34), and a one-off `node -e` probe against packages/config/dist/index.js's compiled getConfig confirming the accept/reject boundary dynamically. No fixture created, nothing to clean up.",
+      "code_references": [
+        "packages/config/src/config.ts:16,84,159-163,194-199",
+        "packages/config/src/secrets.ts:8-37",
+        "scripts/check-secret-access.mjs:6-18 (ALLOWLIST, unmodified)",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:33,43"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Inspected this delta's own new/changed content for a hardcoded live-looking secret.",
+      "evidence": [
+        "The only new string literals this delta introduces are: 'ch01_ephemeral_rls_test' (a database name, config.ts default), the CI step's DATABASE_ADMIN_URL (byte-identical to four already-reviewed sibling steps' literal CI-local throwaway DSN, never a live credential), and prose comments. None resembles a real credential.",
+        "Migration 0019 is untouched by this delta -- ephemeralMcpCredentialMigration.test.ts re-ran clean (4/4) this run, still confirming no credential-material vocabulary in that file.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required beyond the migration-test re-run above and direct reading of the three-file diff. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/security/ephemeralMcpCredentialMigration.test.ts:102-104"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|apps/web|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether any server-only secret from this delta could reach a browser bundle.",
+      "evidence": [
+        "No apps/web file appears in this delta's three changed files.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-exercised success and failure paths with console spies for secret/tenant-data leakage into logs/metrics/traces; underlying code unchanged.",
+      "evidence": [
+        "Same call sites as CORE-03 above, re-run this run: EC-22 tests spy console.log/info/warn/error/debug across success and every rejection scenario, zero calls.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts src/services/mcpCredentialResolution.test.ts`.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.test.ts:469-500"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified digest-only storage, least-privileged DB role, and SECURITY DEFINER privilege state, against real Postgres.",
+      "evidence": [
+        "Only keyHmac is persisted; the table has no plaintext column (schema.ts unchanged by this delta).",
+        "Independently re-ran (this run) the RLS test's \"the recreated resolve_mcp_client_key stays SECURITY DEFINER and off PUBLIC\" case -- confirmed only sayre_app (not PUBLIC) can EXECUTE.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` against real Postgres.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:511-535"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|services/core/mcp-key-service|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed a rotated pepper version still invalidates already-issued ephemeral credentials on next use; mcpKeyService.ts unchanged.",
+      "evidence": [
+        "Independently re-ran (this run) the EC-6 test: a stored row with pepperVersion != the configured version is still rejected.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/mcpCredentialResolution.test.ts`.",
+      "code_references": [
+        "services/core/src/services/mcpCredentialResolution.test.ts:330-338"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|services/workers|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this delta touches Python worker/sandbox code.",
+      "evidence": [
+        "No services/workers file appears in this delta's three changed files.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|.github|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github",
+      "attack_path_version": "v1",
+      "attempt": "This delta genuinely adds a .github/workflows/ci.yml change (unlike the baseline PASS, evaluated before this hand-edit existed) -- tested the new step for fork/PR boundary exposure, artifact uploads, test snapshots, debug output, or dependency-script access to protected secrets.",
+      "evidence": [
+        "The full diff to .github/workflows/ci.yml (`git diff ee496aa -- .github/workflows/ci.yml`, which equals `git diff HEAD` for this file since ci.yml was untouched by CH-01's own committed diff) is exactly one added step, 14 lines, inserted after the existing 'core -- RLS isolation tests (Jira connections)' step and before 'core -- MCP interop tests'. No other line in the 503-line file changed.",
+        "`grep -n \"permissions:|pull_request_target|secrets\\.|upload-artifact|actions/checkout|GITHUB_TOKEN\"` across the whole file: the only matches are the two pre-existing, unmodified `actions/checkout@v4` lines -- no `permissions:` block exists anywhere (default, unmodified GITHUB_TOKEN scope), no `secrets.*` reference exists anywhere in the file (every DSN in every step, including the new one, is a literal CI-local placeholder), no `upload-artifact` step exists, and the `on:` trigger block (`push`, `pull_request` -- not `pull_request_target`) is unchanged by this diff.",
+        "The new step's `run:` value is the fixed literal string `npm --prefix services/core run test:rls:ephemeral:ci` -- no `${{ }}` expression of any kind, so no branch name/PR title/issue text/commit message can inject a command into it (ruled out under SC-05 below using the same evidence).",
+        "The new step's `env.DATABASE_ADMIN_URL` value (`postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev`) is byte-identical to the four other RLS steps in the same job (dev suite, acceptance suite, Jira connections, and now ephemeral credentials) -- all four were already in scope and reviewed before this delta; this one is the same already-reviewed pattern, not a new credential path.",
+        "Independently ran (this run) the actual CI-equivalent command locally: `DATABASE_ADMIN_URL=... npm run test:rls:ephemeral:ci` from services/core -- 7/7 passed, confirming the new step does what it claims and nothing more.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `git diff ee496aa -- .github/workflows/ci.yml`, a full-file grep for permission/trigger/secret/artifact patterns, and `DATABASE_ADMIN_URL=... npm run test:rls:ephemeral:ci` from services/core (7/7). No fixture created, nothing to clean up. Single point of failure noted: no automated CI-workflow-diff linter enforces this repository's own no-`pull_request_target`/no-`secrets.*`-in-run/no-unpinned-action conventions on a future PR -- today's only enforcement is this manual security-checker review, which is why this check remains selected on any future delta that touches .github/**.",
+      "code_references": [
+        ".github/workflows/ci.yml:294-306"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified the audit read still records actor, tenant, target, and time for every ephemeral credential; listEphemeralMcpCredentialAudit unchanged.",
+      "evidence": [
+        "Independently re-ran (this run) the AC-6 and EC-8 tests in ephemeralMcpCredentialService.test.ts -- both still pass (19/19 overall).",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts`.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:250-275"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for tamper-evidence/append-only enforcement on the audit trail; unaffected by this delta.",
+      "evidence": [
+        "listEphemeralMcpCredentialAudit still reads directly from the mutable mcp_client_keys operational table, unchanged by this delta. Still mirrors the pre-existing W4-06 agent-key audit model; not a regression, and still not something this ticket claimed to build.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live tamper attempt performed this run either. STATIC inspection only.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:156-177"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Re-traced deletion of an expired ephemeral credential and its ceiling rows across org boundaries, and the issuing-user-deletion cascade, against real Postgres.",
+      "evidence": [
+        "Independently re-ran (this run) \"deleteExpired removes only this org's expired ephemeral rows and their ceilings\" and \"deleting the issuing user nulls created_by and empties the credential scope\" -- both still pass against real Postgres.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` against real Postgres; suite's own after() hook truncates its throwaway database.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:399-508"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|infra/backups|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/backups",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this delta touches backup/restore configuration or policy.",
+      "evidence": [
+        "No backup/restore file or config appears in this delta's three changed files.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this delta exposes any export or support-tooling surface.",
+      "evidence": [
+        "No export/support-tooling code touched by this delta's three changed files.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "ABSENT",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for alerting/anomaly-detection on repeated failed ephemeral-mint or ephemeral-auth attempts; unaffected by this delta.",
+      "evidence": [
+        "Still no alerting/detection code exists for this credential family (nor for the pre-existing agent-key family); this delta adds none.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|services/core/package.json|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/package.json",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches any lockfile, dependency version, or registry configuration.",
+      "evidence": [
+        "This delta's three changed files (.github/workflows/ci.yml, packages/config/src/config.ts, services/core/src/db/ephemeralMcpCredentials.rls.test.ts) contain no package.json, package-lock.json, pyproject.toml, or poetry.lock. The package.json script additions this ticket made were part of the already-audited, committed CH-01 diff, not this delta.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new CI step executes any install/build-time script influenced by untrusted repository or PR content.",
+      "evidence": [
+        "The new step runs `npm --prefix services/core run test:rls:ephemeral:ci`, which resolves to a fixed, already-committed package.json script (`node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts`) with no lifecycle hook, no dynamic script name, and no untrusted-content interpolation.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:303-304"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|services/core (CH-01 diff)|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta introduces a new dependency, image, or license/provenance surface requiring scanning.",
+      "evidence": [
+        "This delta adds no new npm/Poetry dependency and no new base image; it adds one CI step invoking an already-existing local script.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed the `on:` trigger block and the new step's job/permission context for secret exposure or write-token access to untrusted code.",
+      "evidence": [
+        "The workflow's `on:` block (`push:`, `pull_request:`) is unchanged by this diff -- no `pull_request_target`, `workflow_dispatch`, or `issue_comment` trigger exists anywhere in the file, before or after.",
+        "No `permissions:` key exists anywhere in the file (default, most-restrictive GITHUB_TOKEN scope applies), unchanged by this diff.",
+        "The new step runs inside the pre-existing `node` job on the pre-existing `ubuntu-latest` runner, using the same job-level `postgres`/`redis` services every other step in that job already uses -- it does not introduce a new job, a new runner, or a new privilege context.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via full-file grep for `permissions:`/`pull_request_target`/`workflow_dispatch` (no matches) and direct reading of the `on:` block. No fixture created, nothing to clean up. Single point of failure: enforcement is manual review only, same note as SEC-08.",
+      "code_references": [
+        ".github/workflows/ci.yml:1-9,294-306"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Tested whether branch names, commit messages, matrix values, issue text, artifact names, or changed paths could enter the new step's shell command.",
+      "evidence": [
+        "The new step's entire `run:` value is the fixed literal string `npm --prefix services/core run test:rls:ephemeral:ci` -- zero `${{ }}` expressions of any kind (no `github.event.*`, `github.head_ref`, `matrix.*`, or any other interpolation).",
+        "The new step's `env:` block sets exactly one literal, hardcoded value (DATABASE_ADMIN_URL); it does not read any `github.event.*`/`inputs.*` field into an environment variable or command argument.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via direct reading of the added step's exact text (14 lines, `git diff ee496aa -- .github/workflows/ci.yml`). No fixture created, nothing to clean up. Single point of failure: enforcement is manual review only, same note as SEC-08/SC-04.",
+      "code_references": [
+        ".github/workflows/ci.yml:303-306"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta introduces a new third-party action reference or artifact needing pinning.",
+      "evidence": [
+        "The new step is a `run:` step, not a `uses:` step -- it references no GitHub Action at all. The file's two existing `actions/checkout@v4` references are untouched by this diff (confirmed: neither line falls inside the diff hunk).",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:34,358"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|infra/docker-compose|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/docker-compose",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches container hardening configuration.",
+      "evidence": [
+        "No Dockerfile, docker-compose file, or container-runtime config appears in this delta's three changed files.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|infra/docker-compose|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/docker-compose",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta changes any listening-port or network-exposure configuration.",
+      "evidence": [
+        "The CI step reuses the existing job-level Postgres service on its existing port mapping (5432); nothing about port/interface exposure is touched by this delta.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|infra/iam|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/iam",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches any cloud IAM role, service credential, or wildcard-permission configuration.",
+      "evidence": [
+        "No IAM/cloud-role file appears in this delta's three changed files; the CI GITHUB_TOKEN's default (most-restrictive) permission scope is unchanged, per SC-04 above.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|.github/workflows/ci.yml+packages/config/src/config.ts|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml+packages/config/src/config.ts",
+      "attack_path_version": "v1",
+      "attempt": "Attempted to find any local/test/CI/production configuration crossover introduced by this delta specifically (credentials, database names, queue names).",
+      "evidence": [
+        "CH01_TEST_DB_NAME's default ('ch01_ephemeral_rls_test') and its CI/local override mechanism exactly mirror the pre-existing RLS_TEST_DB_NAME/TENANT_ISOLATION_TESTER_DB_NAME pattern -- a per-suite throwaway database name, never conflated with sayre_dev (the shared dev/CI database both this job and every sibling RLS step already use for migrations) or any production database name.",
+        "The new CI step's DATABASE_ADMIN_URL is the CI job's own local, ephemeral Postgres service DSN, identical to every sibling RLS step in the same job -- not a staging/production URL, and no config file in this delta references a staging/production endpoint.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required beyond direct reading of the diff and the CI-equivalent local run recorded under SEC-08. No fixture created, nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:294-306",
+        "packages/config/src/config.ts:16,84"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|infra/tls|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/tls",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches TLS posture, debug-mode flags, or default-credential configuration.",
+      "evidence": [
+        "No TLS, debug-mode, or default-credential configuration file appears in this delta's three changed files.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|infra/availability|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/availability",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches autoscaling, quota, or availability configuration.",
+      "evidence": [
+        "No autoscaling/quota/health-check configuration file appears in this delta's three changed files; the new CI step adds sequential test execution time only.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|services/core/drizzle|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/drizzle",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches migration authentication, versioning, or trigger-privilege configuration.",
+      "evidence": [
+        "No migration file (services/core/drizzle/**) appears in this delta's three changed files -- migration 0019 was already covered by CORE-06/SEC-02/MCPT-11 in the original PASS and remains byte-identical.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|services/core (CH-01 diff)|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this delta touches any vulnerable-dependency exception or patch-lifecycle record.",
+      "evidence": [
+        "This delta adds no dependency and no exception/waiver record; nothing to a patch/exception lifecycle applies to it.",
+        "REMEDIATION_RECHECK round 3 (this run): re-confirmed via `git diff 19eb88d..HEAD` that this round's entire delta is exactly one file, services/core/src/db/rls_acceptance.tester.test.ts (11 insertions, 0 deletions, confined to the EXPECTED_COLUMNS data literal for mcp_client_keys) -- no file this observation's evidence depends on was touched. Re-ran the dependent suites fresh this run: services/core RLS acceptance suite (test:rls:acceptance:ci) 64/64, test:rls:ephemeral:ci 7/7, test:rls:ci 19/19, tenantIsolation.penetration.test.ts 17/17, and all 8 CH-01-specific vitest files 50/50 -- identical counts to the round-2 baseline.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required -- static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|services/core/src/db/rls_acceptance.tester.test.ts|v2",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/db/rls_acceptance.tester.test.ts",
+      "attack_path_version": "v2",
+      "attempt": "Direct, distinct attack hypothesis for this round's own delta (not covered by any prior run, which never evaluated this file as a target asset): a schema-pin extension made to satisfy a CI gate is exactly the situation where the cheap illegitimate fix is to loosen the pin's exact-match semantics (drop the unexpected-column check, add a wildcard/any entry, or otherwise widen what silently passes) rather than genuinely account for the new columns. Verified byte-for-byte that the diff only adds two mandatory, strictly-typed entries and does not touch the assertion loop, and cross-checked the pinned types/nullability against both the migration source and a live, freshly-migrated database.",
+      "evidence": [
+        "`git diff --numstat 19eb88d..HEAD` reports `11\\t0\\tservices/core/src/db/rls_acceptance.tester.test.ts` -- eleven insertions, zero deletions, one file. Read the full diff directly: the only change is two new entries (`kind: [\"text\", false]`, `conversation_id: [\"uuid\", true]`) added to the `mcp_client_keys` block of the `EXPECTED_COLUMNS` map (lines 225-241), plus an attributing comment. The assertion loop itself, `test(\"[AC-1/AC-2] all 14 tables exist with exactly the spec's columns...\")` at lines 676-709, has a zero-line diff -- confirmed by reading both the diff hunk boundaries and the current file directly.",
+        "Read the two-directional assertion loop directly (lines 689-707): `for (const col of actual.keys()) { assert.ok(expected[col], ...'unexpected column'...) }` still rejects any live column absent from `expected` -- unchanged, still fires for a genuinely unknown column. `for (const [col, [dataType, nullable]] of Object.entries(expected)) { assert.ok(got, ...'is missing'...); assert.equal(got.is_nullable, ...); assert.equal(got.data_type, ...) }` still requires every pinned entry to exist on the live table with the exact type/nullability -- so adding `kind`/`conversation_id` to `expected` makes both entries newly MANDATORY, not merely newly tolerated. A pin entry with no live counterpart still fails (`table.col is missing`); a live column with no pin entry still fails (`unexpected column`). The edit cannot be used to wave through an undetected column -- it can only add two new obligations.",
+        "Cross-checked the pinned values against `services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql` directly: line 14 is `ALTER TABLE mcp_client_keys ADD COLUMN kind text DEFAULT 'agent' NOT NULL` (text, NOT NULL -> pin's `[\"text\", false]` is correct) and line 16 is `ALTER TABLE mcp_client_keys ADD COLUMN conversation_id uuid` (uuid, nullable, no default -> pin's `[\"uuid\", true]` is correct). These are the migration's only two `ADD COLUMN` statements, both on `mcp_client_keys`; no other table gains a column.",
+        "Independently ran (this run) the exact CI-invoked command against real PostgreSQL (`pgvector/pgvector:pg16`, the identical image CI pins): `npm --prefix services/core run test:rls:acceptance:ci` -> 64/64 pass, including test 1 (`[AC-1/AC-2] all 14 tables exist with exactly the spec's columns`). This test creates and migrates its own throwaway database (`w005_rls_tester`) fresh from all committed migrations including 0019, then asserts the exact-match pin against `information_schema.columns` on that freshly migrated database -- if either pinned type or nullability were wrong, this test would fail. It did not.",
+        "The sibling `[AC-5] mcp_client_keys has no plaintext key/secret column (only key_prefix + key_hmac)` test (lines 1072-1082) -- the guard this task explicitly asked to re-verify was not weakened -- was read directly: its forbidden-name blocklist (`key`/`secret`/`raw_key`/`token`/`password`/`key_hash`/`roles`) and required-name check (`key_prefix`, `key_hmac`) are outside the diff's line range entirely (diff is confined to lines 225-241; this test is at 1072-1082) and passed in the same 64/64 run above. Neither `kind` nor `conversation_id` is in the forbidden set, so this guard is structurally unaffected by the new columns.",
+        "Confirmed there is no second pin file this edit could have missed updating instead: `grep -rln \"EXPECTED_COLUMNS\\|information_schema.columns\" services/core/src scripts` returns only this one file.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `git diff --numstat 19eb88d..HEAD`, direct reading of services/core/src/db/rls_acceptance.tester.test.ts:225-241,676-709,1072-1082 and services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql:14,16, and `npm --prefix services/core run test:rls:acceptance:ci` against real Postgres (DATABASE_ADMIN_URL constructed from `docker inspect sayre-postgres`, never printed) -- 64/64 pass. The suite's own before/after hooks create and drop its throwaway `w005_rls_tester` database; no fixture created or left behind by this observation beyond that suite-owned lifecycle. No source file read, edited, or deleted by this observation.",
+      "code_references": [
+        "services/core/src/db/rls_acceptance.tester.test.ts:225-241",
+        "services/core/src/db/rls_acceptance.tester.test.ts:676-709",
+        "services/core/src/db/rls_acceptance.tester.test.ts:1072-1082",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql:14,16"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|services/core/src/db/rls_acceptance.tester.test.ts|v2",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/db/rls_acceptance.tester.test.ts",
+      "attack_path_version": "v2",
+      "attempt": "Verified the structural, schema-level backstop for MCP key hashing-at-rest (as distinct from the service-level MCPT-09 v1 observation already covering ephemeralMcpCredentialService.ts) still catches a plaintext-shaped column landing in mcp_client_keys, and that this round's two new pinned columns (kind, conversation_id) are not themselves credential-shaped.",
+      "evidence": [
+        "`kind` (a fixed two-value discriminator, CHECK-constrained to 'agent'/'chat_ephemeral') and `conversation_id` (a foreign identifier, not a secret) are neither in, nor plausible near-misses of, the forbidden-name blocklist (`key`, `secret`, `raw_key`, `token`, `password`, `key_hash`, `roles`) the AC-5 no-plaintext test enforces at rls_acceptance.tester.test.ts:1077.",
+        "The exact-match `[AC-1/AC-2]` loop (rebuilt as SEC-05 v2's primary evidence above) means any future migration that added a genuinely plaintext-shaped column (e.g. `raw_secret`) to `mcp_client_keys` without a corresponding, correctly-typed pin entry would fail this suite's very first test with `mcp_client_keys: unexpected column '<name>' not in spec's column list` -- the same failure class that motivated this round's fix. The mechanism this round's diff extends is the one that would catch that.",
+        "Independently ran (this run) `npm --prefix services/core run test:rls:acceptance:ci` -- 64/64, confirming both this test and the AC-5 guard pass together against the real, fully-migrated schema.",
+        " ROUND 4 (this run, /re-gate round 4, first after a rebase): the branch was rebased onto a moved main (base ee496aa -> 90a1dca, two unrelated merges: feat/w1-05-ingestion-delta-worker-core, feat/pipeline-gapfill-cost-controls). Independently re-verified this run that every one of CH-01's 25 declared paths (19 in changes.json.filesChanged plus the 6 red-listed files besides the already-declared rls.test.ts change) is byte-identical between the pre-rebase HEAD (65e2ad8, content-equivalent to round 3's own audited state 01bfb6e/19eb88d) and this round's post-rebase HEAD (47e012d01a2d878bbfd33a365dd0b76ec343fac6): `git diff --name-status 65e2ad8 47e012d` restricted to those 25 paths returns only the two files main also touched (.github/workflows/ci.yml, docs/wave0-foundation-contracts.md), and `git diff 90a1dca..HEAD` on each of those two shows only CH-01's own added hunk -- proving main's content survived and CH-01's content survived, with zero semantic change to either. This observation's own dependency set received zero content changes across the rebase; the underlying result is carried forward as UNCHANGED with fresh, independently re-run evidence, not merely re-asserted from the baseline report."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via direct reading of services/core/src/db/rls_acceptance.tester.test.ts:1072-1082 and the same `test:rls:acceptance:ci` run cited in SEC-05 v2 above. No fixture created beyond that suite-owned lifecycle.",
+      "code_references": [
+        "services/core/src/db/rls_acceptance.tester.test.ts:1072-1082",
+        "services/core/src/db/rls_acceptance.tester.test.ts:225-241"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|scripts/check-secret-access.mjs (ALLOWLIST widening)|v3",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-secret-access.mjs (ALLOWLIST widening)",
+      "attack_path_version": "v3",
+      "attempt": "This round's rebase pulled in main's own edit to the shared loader-bypass guard CH-01's own fix (SEC-01 v1/v2, still UNCHANGED above) depends on for continued protection. Attack hypothesis: a routine-looking ALLOWLIST addition is exactly where a detection rule could be silently loosened or a genuine secret-bearing path exempted without review. Verified directly rather than trusting main's own PR review.",
+      "evidence": [
+        "`git diff ee496aa..90a1dca -- scripts/check-secret-access.mjs` is a single hunk that only adds one new `ALLOWLIST` entry, `services/workers/tests/test_cross_runtime_roundtrip.py`, plus its justifying comment. No existing ALLOWLIST entry, `SOURCE_EXTENSION` regex, or detection-rule line was moved, removed, or altered.",
+        "Read the newly-allowlisted file directly (services/workers/tests/test_cross_runtime_roundtrip.py:70-171). The `dict(os.environ)` read is for a cross-runtime test harness that must hand a spawned Node subprocess the parent's full environment (PATH etc.) -- expressible no other way through a per-name config loader. Of the two direct-`os.environ`-read names actually asserted (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`), both are set earlier in the same file by the `_localstack_config` pytest fixture (`patch.setenv(..., \"localstack-test\")`) -- fixed LocalStack dummy values the test itself injects, never a value sourced from a real secret store -- and the three genuinely config-backed names (`SQS_ENDPOINT_URL`, `SNS_ENDPOINT_URL`, `AWS_REGION`) already route through `get_config()` in the same function. This is the same shape of exemption already granted to the one pre-existing entry, `scripts/guard-checker-readonly.test.mjs`, not a new class of hole.",
+        "CH-01's own branch touches nothing under `scripts/`: `git diff --name-only 90a1dca..HEAD -- scripts/` is empty, confirmed this run -- so this widening cannot have been used to smuggle a real CH-01 secret-access violation past the gate.",
+        "Independently ran (this run) `npm run check:secret-access` against the current tree -- exit 0, \"Secret-access gate passed.\" -- and `npm run check:org-secret-access` -- exit 0. Both gates still fire against CH-01's own files exactly as SEC-01 v1/v2 already established."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `git diff` commands against 90a1dca/65e2ad8/HEAD cited in the evidence above (read-only, no repository file touched) plus the specific test/gate invocations cited per-observation below. No scratch fixture under the repository was created by these observations; scratchpad-only files (a password-holding text file and two small Node runner scripts used to invoke DATABASE_ADMIN_URL-gated npm scripts without ever printing the password) were created under this session's own scratchpad directory (C:\\Users\\splat\\AppData\\Local\\Temp\\claude\\C--Users-splat-OneDrive-Desktop-Sayre\\9ee96397-6621-4edd-b707-4b0b934e3747\\scratchpad\\), never inside the repository checkout. Specifically: `git diff ee496aa..90a1dca -- scripts/check-secret-access.mjs`, direct read of services/workers/tests/test_cross_runtime_roundtrip.py, `git diff --name-only 90a1dca..HEAD -- scripts/`, and `npm run check:secret-access` / `npm run check:org-secret-access`.",
+      "code_references": [
+        "scripts/check-secret-access.mjs:15-25",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:70-84,116-132,153-171"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|services/core/drizzle/meta/_journal.json (rebase sequencing)|v2",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/drizzle/meta/_journal.json (rebase sequencing)",
+      "attack_path_version": "v2",
+      "attempt": "A rebase that moves a branch's base onto a main that itself may have landed migrations is exactly where a migration index collision (two different `idx: 19`s, or two migrations racing for the same journal slot) becomes possible and would only surface at `migrate()` time, not at diff time. Verified directly whether main added any migration between the old and new base, and whether 0019 is still uniquely and contiguously sequenced on top of it.",
+      "evidence": [
+        "Read `services/core/drizzle/meta/_journal.json` at main (90a1dca) directly: 19 entries, `idx: 0`..`idx: 18`, tip `0018_ticket_cache_inferred_reference` -- main added zero migrations relative to the old base ee496aa.",
+        "Read the same file at HEAD: 20 entries, `idx: 0`..`idx: 19`, with `idx: 19` / `tag: \"0019_ch01_ephemeral_mcp_credentials\"` / `version: \"7\"` / `breakpoints: true` appended as the newest entry -- CH-01's own migration, unchanged from every prior round's PASS.",
+        "`git ls-tree -r --name-only HEAD -- services/core/drizzle` lists a contiguous, gap-free `0000_sleepy_shinobi_shaw.sql` .. `0019_ch01_ephemeral_mcp_credentials.sql` -- no duplicate index, no renumbering, no orphaned file.",
+        "Because main added no migration, there is no idx-19-vs-idx-19 collision to resolve and none was silently created by the rebase machinery; `0019` remains the sole occupant of that slot and the sole new tip.",
+        "Independently ran (this run) `npm --prefix services/core run test:rls:acceptance:ci` against a database freshly migrated from all 20 committed migrations including 0019 -- 64/64 pass, including `[AC-12/edge] running migrate() a second time is a no-op (no duplicate policies/triggers/extension/role)` -- affirmative, dynamic confirmation the sequence applies cleanly end to end, not merely that the journal file looks correct."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `git diff` commands against 90a1dca/65e2ad8/HEAD cited in the evidence above (read-only, no repository file touched) plus the specific test/gate invocations cited per-observation below. No scratch fixture under the repository was created by these observations; scratchpad-only files (a password-holding text file and two small Node runner scripts used to invoke DATABASE_ADMIN_URL-gated npm scripts without ever printing the password) were created under this session's own scratchpad directory (C:\\Users\\splat\\AppData\\Local\\Temp\\claude\\C--Users-splat-OneDrive-Desktop-Sayre\\9ee96397-6621-4edd-b707-4b0b934e3747\\scratchpad\\), never inside the repository checkout. Specifically: `git show 90a1dca:services/core/drizzle/meta/_journal.json` and `git show HEAD:services/core/drizzle/meta/_journal.json` (parsed and diffed), `git ls-tree -r --name-only HEAD -- services/core/drizzle`, and `npm --prefix services/core run test:rls:acceptance:ci` (DATABASE_ADMIN_URL constructed from `docker inspect sayre-postgres`, never printed) -- 64/64 pass. The suite's own before/after hooks create and drop its throwaway database; nothing left behind.",
+      "code_references": [
+        "services/core/drizzle/meta/_journal.json",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|services/core/src/mcp/toolExecution.ts (metering-subject isolation from services/core/src/queue/bullmq.ts)|v3",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/mcp/toolExecution.ts (metering-subject isolation from services/core/src/queue/bullmq.ts)",
+      "attack_path_version": "v3",
+      "attempt": "Main's delta (pulled in by this round's rebase) extended the BullMQ lane/priority queue topology (services/core/src/queue/bullmq.ts) and webhook normalization. Attack hypothesis: if CH-01's `meteringSubject` rate-limit/metrics bucket key (AC-9's cache-safety property) shared any module, counter store, or key-namespace with the newly-extended BullMQ lane machinery, a queue-side change could silently widen or collide with the MCP rate-limit cache this ticket's own AC-9 depends on. Verified there is no shared code path at all.",
+      "evidence": [
+        "Read services/core/src/mcp/toolExecution.ts's full import list directly: it imports only from `./metrics` (`recordMcpToolMeasurement`) and `./rateLimit` (`mcpRateLimiter`, `McpRateLimitError`) -- zero import of, or from, anything under `services/core/src/queue/`.",
+        "`git diff --stat 90a1dca..HEAD -- services/core/src/queue/bullmq.ts` is empty -- CH-01's branch does not touch that file at all, confirming main's own BullMQ delta (` git diff --name-only ee496aa..90a1dca -- services/core/src/queue/` : bullmq.ts plus four **tests**/fixtures) landed and left independently of anything CH-01 relies on.",
+        "`credential.meteringSubject` (the string `mcp_live_<prefix>` or `chat:<userId>`) is passed only to `mcpRateLimiter.consume()` and `recordMcpToolMeasurement()` -- an in-process/Redis MCP-specific rate limiter and metrics recorder, not a BullMQ queue name, job id, or lane key. There is no shared namespace for a BullMQ lane/priority change to collide with.",
+        "services/core/src/mcp/toolExecution.ts and services/core/src/mcp/metrics.ts are both, independently, confirmed byte-identical to round 3's own PASS (`git diff --stat 01bfb6e..HEAD` on both returns no output) -- this observation's target asset received zero content change from either the rebase or from CH-01's own work this round."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `git diff` commands against 90a1dca/65e2ad8/HEAD cited in the evidence above (read-only, no repository file touched) plus the specific test/gate invocations cited per-observation below. No scratch fixture under the repository was created by these observations; scratchpad-only files (a password-holding text file and two small Node runner scripts used to invoke DATABASE_ADMIN_URL-gated npm scripts without ever printing the password) were created under this session's own scratchpad directory (C:\\Users\\splat\\AppData\\Local\\Temp\\claude\\C--Users-splat-OneDrive-Desktop-Sayre\\9ee96397-6621-4edd-b707-4b0b934e3747\\scratchpad\\), never inside the repository checkout. Specifically: direct read of services/core/src/mcp/toolExecution.ts:1-16, `git diff --stat 90a1dca..HEAD -- services/core/src/queue/bullmq.ts`, `git diff --name-only ee496aa..90a1dca -- services/core/src/queue/`, and `git diff --stat 01bfb6e..HEAD` on toolExecution.ts/metrics.ts.",
+      "code_references": [
+        "services/core/src/mcp/toolExecution.ts:1-16,34-38,53-61",
+        "services/core/src/mcp/metrics.ts",
+        "services/core/src/queue/bullmq.ts (unmodified by this branch)"
+      ]
+    }
+  ]
+}

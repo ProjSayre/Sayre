@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import type { McpReadGrant } from '@sayre/shared-types';
+import type { McpCredentialKind, McpReadGrant } from '@sayre/shared-types';
 import { withOrgContext, type Db } from './client';
 import { getRuntimeDb } from './installations';
 import { mcpClientKeys, organizations, permissions, users } from './schema';
@@ -14,6 +14,10 @@ export interface McpKeyLookup {
   revokedAt: Date | null;
   createdBy: string | null;
   rateLimitPerMinute: number;
+  /** CH-01. `null` when the stored value is not a recognized kind — fail closed. */
+  kind: McpCredentialKind | null;
+  /** CH-01. Non-null only for `kind === 'chat_ephemeral'`. */
+  conversationId: string | null;
 }
 
 export interface StoredMcpKey {
@@ -66,6 +70,17 @@ interface BootstrapRow {
   revoked_at: Date | string | null;
   created_by: string | null;
   rate_limit_per_minute: number;
+  kind: string;
+  conversation_id: string | null;
+}
+
+/**
+ * CH-01. Maps the raw DB value to the two known kinds, or `null` for
+ * anything else (including missing/unrecognized values) — never a
+ * default-to-'agent' fallback. Called from `resolve()` only.
+ */
+function credentialKind(value: unknown): McpCredentialKind | null {
+  return value === 'agent' || value === 'chat_ephemeral' ? value : null;
 }
 
 export interface PostgresMcpKeyStoreDeps {
@@ -131,6 +146,8 @@ export class PostgresMcpKeyStore implements McpKeyStore {
           revokedAt: dateValue(row.revoked_at),
           createdBy: row.created_by,
           rateLimitPerMinute: row.rate_limit_per_minute,
+          kind: credentialKind(row.kind),
+          conversationId: row.conversation_id,
         }
       : null;
   }
@@ -141,7 +158,9 @@ export class PostgresMcpKeyStore implements McpKeyStore {
       const keyRows = await tx
         .select()
         .from(mcpClientKeys)
-        .where(eq(mcpClientKeys.orgId, orgId))
+        .where(
+          and(eq(mcpClientKeys.orgId, orgId), eq(mcpClientKeys.kind, 'agent')),
+        )
         .orderBy(mcpClientKeys.createdAt);
       const prefixes = keyRows.map((row) => row.keyPrefix);
       const grantRows =
@@ -242,6 +261,7 @@ export class PostgresMcpKeyStore implements McpKeyStore {
           and(
             eq(mcpClientKeys.orgId, orgId),
             eq(mcpClientKeys.id, keyId),
+            eq(mcpClientKeys.kind, 'agent'),
             isNull(mcpClientKeys.revokedAt),
           ),
         )

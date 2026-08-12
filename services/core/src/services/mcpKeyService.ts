@@ -11,6 +11,7 @@ import type {
   McpClientKeyCreateRequest,
   McpClientKeyIssued,
   McpClientKeyView,
+  McpCredentialKind,
   McpKeySettingsResponse,
   McpReadGrant,
 } from '@sayre/shared-types';
@@ -28,7 +29,8 @@ import {
 } from '../graph-query/permissions';
 import { normalizePermissionPathPrefix } from '../graph-query/path';
 
-const KEY_RE = /^(mcp_live_[a-f0-9]{16})\.([A-Za-z0-9_-]{43})$/;
+const AGENT_KEY_RE = /^(mcp_live_[a-f0-9]{16})\.([A-Za-z0-9_-]{43})$/;
+const CHAT_KEY_RE = /^(mcp_chat_[a-f0-9]{16})\.([A-Za-z0-9_-]{43})$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_GRANTS = 64;
@@ -67,6 +69,16 @@ export interface ResolvedMcpCredential {
   keyId: string;
   keyPrefix: string;
   rateLimitPerMinute: number;
+  /** CH-01: which credential family authenticated. */
+  kind: McpCredentialKind;
+  /**
+   * CH-01: stable rate-limit and metrics bucket key.
+   * `'agent'`          -> the key prefix (unchanged behavior).
+   * `'chat_ephemeral'` -> `chat:<issuing user id>`, so minting a fresh 300s
+   * credential cannot reset the caller's per-minute budget, and metric
+   * cardinality stays bounded by users-per-org rather than by mints.
+   */
+  meteringSubject: string;
 }
 
 export interface McpKeyServiceDeps {
@@ -243,10 +255,22 @@ function hmacMatches(actualHex: string, expectedHex: string): boolean {
   );
 }
 
-function parseToken(token: string): { keyPrefix: string; secret: string } {
-  const match = KEY_RE.exec(token);
-  if (!match?.[1] || !match[2]) throw new McpKeyAuthenticationError();
-  return { keyPrefix: match[1], secret: match[2] };
+interface ParsedMcpToken {
+  keyPrefix: string;
+  secret: string;
+  kind: McpCredentialKind;
+}
+
+function parseToken(token: string): ParsedMcpToken {
+  const agentMatch = AGENT_KEY_RE.exec(token);
+  if (agentMatch?.[1] && agentMatch[2]) {
+    return { keyPrefix: agentMatch[1], secret: agentMatch[2], kind: 'agent' };
+  }
+  const chatMatch = CHAT_KEY_RE.exec(token);
+  if (chatMatch?.[1] && chatMatch[2]) {
+    return { keyPrefix: chatMatch[1], secret: chatMatch[2], kind: 'chat_ephemeral' };
+  }
+  throw new McpKeyAuthenticationError();
 }
 
 export async function resolveMcpCredential(
@@ -254,7 +278,8 @@ export async function resolveMcpCredential(
   overrides: Partial<McpKeyServiceDeps> = {},
 ): Promise<ResolvedMcpCredential> {
   const deps = depsWith(overrides);
-  const { keyPrefix, secret } = parseToken(token);
+  const parsed = parseToken(token);
+  const { keyPrefix, secret } = parsed;
   const row = await deps.store.resolve(keyPrefix);
   const now = deps.now();
   if (
@@ -263,7 +288,12 @@ export async function resolveMcpCredential(
     row.createdBy === null ||
     row.revokedAt !== null ||
     (row.expiresAt !== null && row.expiresAt <= now) ||
-    row.pepperVersion !== deps.getPepperVersion()
+    row.pepperVersion !== deps.getPepperVersion() ||
+    // Never degrades an unrecognized stored kind to 'agent' (EC-4): a `null`
+    // `row.kind` already fails the equality check below, but this explicit
+    // clause also narrows `row.kind` to non-null for the return below.
+    row.kind === null ||
+    row.kind !== parsed.kind
   ) {
     throw new McpKeyAuthenticationError();
   }
@@ -286,6 +316,12 @@ export async function resolveMcpCredential(
     keyId: row.id,
     keyPrefix,
     rateLimitPerMinute: row.rateLimitPerMinute,
+    kind: row.kind,
+    // row.kind === parsed.kind (checked above), and row.createdBy is provably
+    // non-null at this point (the disjunction above already rejected null) —
+    // so this is always the issuing user's id for a chat_ephemeral credential.
+    meteringSubject:
+      row.kind === 'chat_ephemeral' ? `chat:${row.createdBy}` : keyPrefix,
   };
 }
 

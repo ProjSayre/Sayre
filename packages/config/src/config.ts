@@ -13,6 +13,7 @@ export const CONFIG_NAMES = [
   'RLS_TEST_DB_NAME',
   'RLS_TESTER_DB_NAME',
   'TENANT_ISOLATION_TESTER_DB_NAME',
+  'CH01_TEST_DB_NAME',
   'AWS_REGION',
   'SQS_ENDPOINT_URL',
   'SQS_INGESTION_QUEUE',
@@ -80,6 +81,7 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   RLS_TEST_DB_NAME: 'w005_rls_test',
   RLS_TESTER_DB_NAME: 'w005_rls_tester',
   TENANT_ISOLATION_TESTER_DB_NAME: 'w206_tenant_isolation_tester',
+  CH01_TEST_DB_NAME: 'ch01_ephemeral_rls_test',
   AWS_REGION: 'us-east-1',
   SQS_INGESTION_QUEUE: 'ingestion.fifo',
   // SQS_ENDPOINT_URL intentionally has NO default: unset means "use real AWS".

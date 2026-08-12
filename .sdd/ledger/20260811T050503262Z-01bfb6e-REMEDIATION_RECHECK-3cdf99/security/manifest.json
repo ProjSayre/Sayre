@@ -1,0 +1,313 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+  "mode": "REMEDIATION_RECHECK",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T05:05:03.262Z",
+  "completed_at": "2026-08-11T05:10:05.221Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:/Users/splat/OneDrive/Desktop/Sayre/.claude/worktrees/agent-a7c6f9616bdc59002"
+  },
+  "target": {
+    "commit_sha": "01bfb6e9f6a9583b1c7d3ac9b684bcadfcdaed6f",
+    "branch": "ticket/ch-01-ephemeral-mcp-credentials",
+    "dirty": false,
+    "environment": "local-dev worktree; docker-compose services already running locally (sayre-postgres/pgvector:pg16, sayre-redis, sayre-neo4j, sayre-localstack, sayre-prometheus) on localhost -- not shared, not production",
+    "base_urls": [],
+    "changed_paths": [
+      "services/core/src/db/rls_acceptance.tester.test.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b",
+    "commit_sha": "7ba3067f7ccfcfd38346f53ba5773b7f1a54b1e4",
+    "comparable": true,
+    "selection_reason": "Explicitly supplied by the calling agent as this run's prior run to recheck against (round 3 of a /re-gate). `git status --porcelain` is completely empty (working tree fully clean, unlike the baseline's own dirty state) -- confirmed at run start. ANCESTRY CAVEAT, verified and resolved directly rather than assumed: `git merge-base --is-ancestor 7ba3067 HEAD` FAILS (7ba3067 is NOT a literal git ancestor of the current HEAD). Investigated rather than either silently claiming ancestry or refusing on the technicality: the branch was rebased/amended between round 2 and round 3 -- the feat commit was re-authored from 079ad62 to 9cf76a4 (folding round 2's own 3-file hand-edit directly into the feat commit's content instead of leaving it as a separate diff), and the round-2 'chore: ledger entry' commit was replaced from 7ba3067 to 19eb88d (now also recording round 2's PASS). CONTENT EQUIVALENCE VERIFIED DIRECTLY as the substitute for the failed ancestry check: `git diff --name-status 7ba3067..19eb88d -- . \":(exclude).sdd/ledger/**\"` (excluding the ledger bookkeeping directory, which legitimately differs -- it records one more completed run) returns EXACTLY the same three files round 2's own manifest already declared as its dirty, hand-edited diff (.github/workflows/ci.yml, packages/config/src/config.ts, services/core/src/db/ephemeralMcpCredentials.rls.test.ts), with no additional difference. This proves the working tree round 2 actually audited (7ba3067's commit plus its 3 declared dirty files) is content-identical to commit 19eb88d, which this round's own HEAD (01bfb6e) sits directly on top of. Fully comparable per audit-contract.md section 2 order item 1 (human-specified compatible run), with the git-ancestry verification substituted by direct content-equivalence verification for the reason given above. Same repository, same environment class, same tenant-fixture pattern, same registry/contract/orchestrator/brief content hashes (re-hashed this run; identical to round 2's) -- except this run additionally found round 2's own recorded content hash for .sdd/stages/security.md (82045d3c...) does not match this run's freshly computed hash (6c2e64d5...) for the same, git-diff-confirmed-unchanged file; investigated and resolved as a benign CRLF/LF line-ending artifact, not a content change -- see the environment/tooling note in limitations below.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": null,
+    "phase": "MVP, pre-external-customer (local .env-based secrets posture confirmed still active in code: ephemeralMcpCredentialService.ts still resolves the pepper via getSecret('env://MCP_TOKEN_PEPPER'), zero-line diff since the baseline PASS; this round's only change is a test-file schema pin, not a runtime/secrets-posture change)",
+    "source_references": [
+      ".claude/rules/security-multitenancy.md",
+      "CLAUDE.md",
+      ".pipeline/spec.md",
+      ".pipeline/review.md (round 3, this round's gating PASS)"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "implicit -- local, non-production, non-shared docker-compose environment on localhost only; audit-contract.md's default-to-read-only-until-authorized restriction is scoped to shared/production-like targets, which this is not",
+    "resource_ceiling": "Single local docker-compose Postgres instance (sayre-postgres, already running, healthy, pgvector/pgvector:pg16 -- confirmed identical to CI's pinned image). This run executed: `npm --prefix services/core run test:rls:acceptance:ci` (the exact CI-invoked step that failed on `main`, 64/64 including test 1); `npm --prefix services/core run test:rls:ephemeral:ci` (7/7); `npm --prefix services/core run test:rls:ci` (19/19); `npx vitest run src/security/tenantIsolation.penetration.test.ts` with DATABASE_ADMIN_URL set (17/17); all 8 CH-01-specific vitest files (50/50); `npm run check:secret-access` and `npm run check:org-secret-access` (both exit 0); `npm run check:security-audit-agents` (8 surface briefs, 108 unique checks, 2 schemas, exit 0). No concurrent-connection flood, no resource-exhaustion probing performed.",
+    "credential_references": [
+      "env:DATABASE_ADMIN_URL -- constructed this run from the already-running local docker-compose Postgres container's own env (read via `docker inspect sayre-postgres`, POSTGRES_USER=sayre_dev, POSTGRES_DB=sayre_dev); value redacted from this manifest and never printed, written to a file, or echoed to a persistent log by this run; never a shared or production credential",
+      "env:MCP_TOKEN_PEPPER -- not directly exercised this run (no ephemeralMcpCredentialService.ts code changed); baseline's injected test-fixture value only, never a real secret"
+    ],
+    "tenant_fixtures": [
+      "Org A / Org B synthetic orgs seeded by ephemeralMcpCredentials.rls.test.ts's seedOrg() helper (org A: repoId-scoped allow(src)/deny(src/secret) permissions rows)",
+      "MEMBER / ADMIN / OWNER / AGENT synthetic AuthContext fixtures across ephemeralMcpCredentialService.test.ts, mcpCredentialResolution.test.ts, ephemeralMcpGateway.test.ts"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01); always executed regardless of routing. This round's own one-file delta (services/core/src/db/rls_acceptance.tester.test.ts) is a direct evidentiary asset for this surface -- it contains the '[AC-4] org A/org B isolation' and 'cross-org INSERT/UPDATE rejected' tests -- even though the specific 11-line edit is confined to the unrelated EXPECTED_COLUMNS schema-pin block, not the AC-4 assertions themselves (verified: diff line range 225-241 vs. AC-4 tests at 903-1040).",
+      "rationale": "Production tenant-isolation code (ephemeralMcpCredentialService.ts, ephemeralMcpCredentialStore.ts) remains byte-identical to the prior PASS (zero-line diff since 7ba3067/19eb88d). This round's only change to the tenant-isolation evidentiary suite is additive schema-pin entries, verified by direct diff/code read to fall outside every AC-4 test's line range. Re-verified this run against real Postgres with the app-layer filter removed, and by re-running rls_acceptance.tester.test.ts's own AC-4 tests fresh (bundled in its 64/64 pass).",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:108-232",
+        "services/core/src/security/tenantIsolation.penetration.test.ts",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+        "services/core/src/db/rls_acceptance.tester.test.ts:903-1040 (AC-4 cross-org isolation tests, outside this round's edited line range)"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02); always executed regardless of routing. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "No file under this delta's changed_paths touches graph-query/permissions.ts, a route, a resolver, or client-side graphology. ch01UnmodifiedSurfaces.test.ts re-run this run and still passing, confirming the pin holds.",
+      "code_references": [
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+        "services/core/src/graph-query/permissions.ts (unmodified)"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03); always executed regardless of routing. packages/config/src/config.ts (the non-secret CONFIG_NAMES catalog) is directly touched by this delta -- the exact boundary this check exists to police. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "CH01_TEST_DB_NAME (a throwaway test database name, not a credential) is added to CONFIG_NAMES/DEFAULTS, mirroring the pre-existing RLS_TEST_DB_NAME/TENANT_ISOLATION_TESTER_DB_NAME sibling pattern. DATABASE_ADMIN_URL remains solely in the separate SECRET_NAMES catalog, resolved only through getSecret. Verified dynamically this run that the compiled getConfig() accepts CH01_TEST_DB_NAME and rejects DATABASE_ADMIN_URL with ConfigError('Unsupported configuration name.').",
+      "code_references": [
+        "packages/config/src/config.ts:16,84",
+        "packages/config/src/secrets.ts:8-37",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:33,43"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04); always executed regardless of routing. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "None of this delta's three changed files is a webhook receiver, SQS producer, or BullMQ job type.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05); always executed regardless of routing. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "No services/workers file is touched by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06); always executed regardless of routing. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "ephemeralMcpCredentialStore.ts, mcpKeyStore.ts, and migration 0019 are all byte-identical to the prior PASS. Re-ran mcpKeyStoreKind.test.ts (rendered-SQL-placeholder assertions) this run to reconfirm.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/src/db/mcpKeyStoreKind.test.ts",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger-path match: none of this delta's three changed files is under services/workers/**, packages/graph-schema/**, or an embedding/retrieval/prompt path. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Cold inspection of this delta's three changed files found zero ModelProvider/EmbeddingProvider/GraphifyAdapter/egress/outbound-HTTP-client code. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Core subject of the ticket; REMEDIATION_RECHECK mode explicitly requires rerunning the prior FAIL observation (MCPT-02) plus its bypass variants and sibling paths. This round's delta (services/core/src/db/rls_acceptance.tester.test.ts) pins mcp_client_keys's schema, a direct MCPT-09/MCPT-11 evidentiary asset, motivating a new MCPT-09 v2 observation targeting it specifically.",
+      "rationale": "mcpKeyService.ts (the file the one open finding lives in) remains byte-identical to the prior PASS (zero-line diff since 7ba3067/19eb88d). Every CH-01 MCP test file re-run fresh this run against the current tree, plus this round's new file directly re-run (64/64, including its AC-5 no-plaintext-column guard and the two new mcp_client_keys schema-pin entries this round adds).",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts",
+        "services/core/src/mcp/gateway.ts (unmodified)",
+        "services/core/src/mcp/toolExecution.ts (unmodified)",
+        "services/core/src/db/rls_acceptance.tester.test.ts:225-241,1072-1082"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No services/gateway/**, realtime, websocket, or redis file in this delta. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No queue, webhook, or integration file in this delta; BullMQ/SQS untouched. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No apps/web/**, routes, or http file in this delta. [Round 3 update: this round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not implicate this surface; the above reasoning is carried forward from round 2 and re-confirmed still accurate.]",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Trigger-path match is weaker this round (services/core/src/db/rls_acceptance.tester.test.ts does not match this surface's literal .github/**/scripts/**/*secret*/*audit* trigger patterns), but the file is squarely this surface's subject matter by content: it is the schema/RLS acceptance gate that structurally enforces 'no plaintext key/secret column ever lands in mcp_client_keys undetected' -- exactly SEC-05's concern -- so selected as a sibling/implicated surface per this stage's routing instruction to add every shared control implicated by the change, not only literal trigger-path matches. Motivates a new SEC-05 v2 observation targeting this file specifically.",
+      "rationale": "The guard fix itself (round 2's SEC-01), the CI workflow addition (round 2's SEC-08), and the CONFIG_NAMES widening (round 2's SEC-01/SEC-02) all remain unaffected -- zero diff on packages/config/src/config.ts, .github/workflows/ci.yml, and scripts/ since round 2. This round's own new content is the schema-pin extension, evaluated fresh under SEC-05 v2.",
+      "code_references": [
+        "packages/config/src/config.ts (unmodified since round 2)",
+        ".github/workflows/ci.yml (unmodified since round 2)",
+        "scripts/check-secret-access.mjs (unmodified)",
+        "services/core/src/db/rls_acceptance.tester.test.ts:225-241,676-709,1072-1082"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Carried forward from round 2's already-complete evaluation of this surface (no baseline before round 2 had ever evaluated it). This round's own delta (services/core/src/db/rls_acceptance.tester.test.ts) does not match any of this surface's trigger paths (.github/**, infra/**, Dockerfile*, **/package.json, **/package-lock.json, **/pyproject.toml, **/poetry.lock) -- confirmed: `git diff --name-only 19eb88d..HEAD` is exactly one path, and it is none of those. Selected anyway (rather than dropped) to preserve continuity of the round-2 SC-01..14 observation set, per this stage's instruction to carry forward selected surfaces across REMEDIATION_RECHECK rounds rather than silently narrowing scope.",
+      "rationale": ".github/workflows/ci.yml, every package.json/lockfile, and every infra/Dockerfile path remain byte-identical to round 2 (confirmed: `git diff --name-only 19eb88d..HEAD` returns only services/core/src/db/rls_acceptance.tester.test.ts). All 14 SC-* observations from round 2 are re-affirmed unchanged rather than re-derived from a fresh trigger.",
+      "code_references": [
+        ".github/workflows/ci.yml:294-306"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "security-agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-security-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "158b389bfbff77988d5046c9ec8b50708015ce5445bb3053520ed67f8eccca25"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "5a9313b9fb87c85267bcd26bcd6487f5eeae154c64876e0879af86faf01a5e38"
+    },
+    {
+      "agent_id": "security-audit-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "fde0283ab0d6cc50a2a289eaad12ac485580bef5c67366bb10b460b8355d759e"
+    },
+    {
+      "agent_id": "security-audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "c1a24a105aa49d8ae317a1b740e8ecf3076f326b0ff669c2d4916c8a39b4cd0e"
+    },
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-agent",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    }
+  ],
+  "limitations": [
+    "MCPT-06 (lifecycle/version confusion) and MCPT-07 (JSON-RPC validation) remain UNVERIFIED, unchanged from the baseline: gateway.ts is still byte-identical to pre-CH-01 and this run performed no dedicated fuzzing of that pre-existing, unmodified surface.",
+    "MCPT-02 remains FAIL (MEDIUM, OPEN, non-blocking): resolveMcpCredential's rejection disjunction (mcpKeyService.ts:288-300) still short-circuits before the HMAC comparison on every fast-reject branch. This delta made zero changes to mcpKeyService.ts (confirmed: `git diff HEAD` returns no lines for that file), so the finding is unchanged, not merely re-affirmed by inference -- re-run this run against the current tree with identical results to baseline. No empirical wall-clock latency sampling was performed this run either (still STATIC code-path analysis).",
+    "SEC-10 (audit-log tamper-evidence) and SEC-14 (detection/alerting) remain UNVERIFIED, unchanged: both are genuine but minor, pre-existing (not CH-01-introduced) gaps untouched by this delta.",
+    "llm-rag, model-provider, websocket-realtime, ingestion-queue-webhook, and web-api-client briefs were not selected this run either -- none has any target asset in this delta's three changed files. This is a REMEDIATION_RECHECK-proportionate judgment scoped to what changed since the prior PASS, not a MILESTONE/FULL-scoped exhaustive audit of those surfaces.",
+    "The supply-chain-infrastructure checklist (SC-01..SC-14) was executed for the first time this run, scoped to the actual one-step CI diff in front of it (a single additive `run:` step reusing an already-reviewed literal CI-local DSN pattern). Several SC checks (SC-01/02/03/07/09/11/12/13/14) resolve NOT_APPLICABLE because this specific delta has no dependency, container, IAM, TLS, availability, or migration target asset -- that is a statement about this delta, not a claim that those dimensions are secure for the repository overall; a MILESTONE/FULL run would need to audit them directly against real target assets elsewhere in the repository.",
+    "Environment/tooling note (not a finding): this run's content hash for .sdd/stages/security.md (6c2e64d5...) differs from round 2's recorded hash (82045d3c...) for the same file. Investigated directly: `git diff ee496aa..HEAD -- .sdd/stages/security.md` and `git diff 7ba3067..HEAD -- .sdd/stages/security.md` both return zero lines (the file is genuinely unchanged in git history), and `git cat-file -p HEAD:.sdd/stages/security.md | sha256` reproduces this run's hash exactly, confirming it matches the committed blob. CRLF-normalizing this run's LF content reproduces round 2's exact recorded hash byte-for-byte -- round 2's working-tree copy of this one file had CRLF line endings at the time (the same core.autocrlf=true churn review.md's own Warning 1 documents for a different file), and this round's fresh npm ci/checkout state happens to have normalized it back to LF, matching the committed blob. Not a content change, not tampering, not attributable to CH-01."
+  ]
+}
