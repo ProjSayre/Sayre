@@ -1,0 +1,19 @@
+{
+  "filesChanged": [
+    "services/core/src/services/gitSyncService.ts",
+    "services/core/src/integrations/git/worker.ts",
+    "services/core/src/services/gitSyncService.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/services/gitSyncService.test.ts",
+      "reason": "Dev added the new required installations dependency to three pre-existing test fixtures after Red recorded the file hash; the leading-red assertions and @spec coverage were not weakened or removed."
+    }
+  ],
+  "stamp": {
+    "treeHash": "15db4ff8e2afd13e1e10c45dbda3f01ba66026c3372143f4fe05e4acaf86f677",
+    "headSha": "4d9e89a8dab9e1338a68ff023785d2631777f5fe",
+    "dirty": true,
+    "writtenAt": "2026-08-11T05:59:45.372Z"
+  }
+}

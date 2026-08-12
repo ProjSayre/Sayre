@@ -1,0 +1,35 @@
+{
+  "ticket": "W1-06 — GitHub App queued-sync revocation gapfill",
+  "goal": "Close GAP-4 by enforcing the GitHub installation's current tenant binding and active state when the BullMQ ownership-sync worker begins a queued job, before any provider call, token mint, repository resolution, or graph write.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-4) A queued GitHub sync whose installation resolves as revoked, suspended, unknown, or bound to a different organization returns the existing ignored result before provider resolution, token mint, repository resolution, or graph write."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-4) A queued GitHub sync whose installation is active and bound to the envelope's server-derived organization continues through the existing provider, repository, and graph path unchanged."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "(GAP-4) A missing, non-decimal, non-positive, or greater-than-safe-integer GitHub installation ID fails closed as ignored and does not invoke the installation resolver or downstream dependencies."
+    },
+    {
+      "id": "EC-2",
+      "text": "(GAP-4) A non-GitHub provider event remains provider-agnostic and does not invoke the GitHub installation resolver."
+    },
+    {
+      "id": "EC-3",
+      "text": "(GAP-4) Installation resolution errors propagate so BullMQ can retry rather than treating an unavailable security decision as an allowed or acknowledged sync."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "f7df0fe5a685c01df432d34e9c5461a9310120bc53a0a77dd0813e390bc8fd48",
+    "headSha": "4d9e89a8dab9e1338a68ff023785d2631777f5fe",
+    "dirty": false,
+    "writtenAt": "2026-08-11T05:56:31.903Z"
+  }
+}

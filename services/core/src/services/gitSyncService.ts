@@ -7,14 +7,27 @@ import type { ProviderRepoEvent } from '../integrations/git/types';
 
 export interface GitSyncDependencies {
   providers: GitProviderRegistry;
+  installations: GitInstallationResolver;
   repositories: GitRepositoryResolver;
   graph: OwnershipGraphStore;
+}
+
+export interface GitInstallationResolver {
+  resolve(installationId: number): Promise<{ orgId: string; active: boolean } | null>;
 }
 
 export interface GitSyncResult {
   status: 'applied' | 'ignored';
   provider: string;
   updatedFiles: number;
+}
+
+function githubInstallationId(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^\d+$/u.test(value)) return null;
+  const installationId = Number(value);
+  return Number.isSafeInteger(installationId) && installationId > 0
+    ? installationId
+    : null;
 }
 
 export async function syncGitMetadata(
@@ -25,6 +38,21 @@ export async function syncGitMetadata(
   const event = envelope.payload;
   if (!envelope.type.startsWith('repo.') || envelope.type !== `repo.${event.type}`) {
     throw new Error('Git synchronization envelope type does not match its normalized event.');
+  }
+
+  if (event.provider === 'github') {
+    const installationId = githubInstallationId(event.installation_id);
+    if (installationId === null) {
+      return { status: 'ignored', provider: event.provider, updatedFiles: 0 };
+    }
+    const installation = await dependencies.installations.resolve(installationId);
+    if (
+      installation === null ||
+      !installation.active ||
+      installation.orgId !== envelope.org_id
+    ) {
+      return { status: 'ignored', provider: event.provider, updatedFiles: 0 };
+    }
   }
 
   const provider = dependencies.providers.get(event.provider);

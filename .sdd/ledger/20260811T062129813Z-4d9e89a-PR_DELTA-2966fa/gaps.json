@@ -1,0 +1,91 @@
+{
+  "ticket": "W1-06",
+  "overlays": [
+    "base",
+    "spot-check"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "OK",
+      "source": "App manifest, GET /integrations/github/install, GET /integrations/github/callback.",
+      "evidence": [
+        "infra/github-app/manifest.json",
+        "infra/github-app/README.md",
+        "services/core/src/routes/githubInstall.ts",
+        "services/core/src/routes/githubInstall.test.ts"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-2",
+      "status": "OK",
+      "source": "callback stores installation records and enqueues the correctly shaped repo.initial_parse message.",
+      "evidence": [
+        "services/core/src/services/githubAppInstallService.ts",
+        "services/core/src/db/githubAppInstallWrites.ts",
+        "services/core/src/db/githubInitialParseOutbox.ts",
+        "services/core/src/services/githubAppInstallService.test.ts",
+        "services/core/src/queue/__tests__/initialParse.fixture.test.ts"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-3",
+      "status": "OK",
+      "source": "uninstall webhook handling; revoked installations halt further sync.",
+      "evidence": [
+        "services/core/src/services/githubInstallationLifecycleService.ts",
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/services/githubInstallLifecycleTraceThrough.test.ts"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-4",
+      "status": "NARROWED",
+      "source": "revoked installations halt further sync.",
+      "evidence": [
+        "services/core/src/services/gitSyncService.ts",
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/services/gitSyncService.test.ts",
+        "services/workers/sayre_workers/ingestion/state.py"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-5",
+      "status": "OK",
+      "source": "webhook signature validation (X-Hub-Signature-256) actually rejects tampered payloads.",
+      "evidence": [
+        "services/core/src/webhooks/githubSignature.ts",
+        "services/core/src/webhooks/githubSignature.test.ts",
+        "services/core/src/services/githubWebhookService.test.ts"
+      ],
+      "needsTest": false
+    },
+    {
+      "id": "GAP-6",
+      "status": "OK",
+      "source": "credentials never read outside the W0-07 loader; no secret/credential is read outside the W0-07 getSecret() loader.",
+      "evidence": [
+        "services/core/src/github/appClient.ts",
+        "services/core/src/services/githubWebhookService.ts",
+        "packages/config/src/secrets.ts",
+        "services/workers/sayre_workers/config/secrets.py",
+        "scripts/check-secret-access.mjs",
+        "scripts/check-secret-access.test.mjs"
+      ],
+      "needsTest": false
+    }
+  ],
+  "stamp": {
+    "treeHash": "f7df0fe5a685c01df432d34e9c5461a9310120bc53a0a77dd0813e390bc8fd48",
+    "headSha": "4d9e89a8dab9e1338a68ff023785d2631777f5fe",
+    "dirty": false,
+    "writtenAt": "2026-08-11T05:55:30.308Z"
+  }
+}
