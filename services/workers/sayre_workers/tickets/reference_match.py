@@ -38,6 +38,7 @@ from sayre_workers.config import get_secret
 from sayre_workers.db.session import org_scoped_connection
 from sayre_workers.ingestion.embeddings import EmbeddingProviderFactory
 from sayre_workers.ingestion.models import EmbeddingConfig
+from sayre_workers.telemetry.vector_metrics import execute_vector_query
 
 # Cosine SIMILARITY (1 - pgvector's `<=>` cosine DISTANCE), not distance.
 # Conservative on purpose (see module docstring) -- this exact number has not
@@ -173,8 +174,10 @@ class PostgresTicketReferenceMatchStore:
         # `code_embeddings`' own unique-per-chunk-per-provider-model index
         # enforces on the write side).
         async with org_scoped_connection(self._dsn, org_id) as connection:
-            cursor = await connection.execute(
-                """
+            cursor = await execute_vector_query(
+                connection,
+                org_id=org_id,
+                query="""
                 SELECT graph_node_id, 1 - (embedding <=> %s::vector) AS similarity
                 FROM code_embeddings
                 WHERE org_id = %s AND repository_id = %s
@@ -183,7 +186,7 @@ class PostgresTicketReferenceMatchStore:
                 ORDER BY embedding <=> %s::vector
                 LIMIT 1
                 """,
-                (
+                params=(
                     _vector_literal(query_vector),
                     org_id,
                     repository_id,
@@ -232,9 +235,7 @@ class TicketReferenceMatcher:
         request = parse_ticket_reference_match_envelope(envelope)
         return await self.process(request)
 
-    async def process(
-        self, request: TicketReferenceMatchRequest
-    ) -> TicketReferenceMatchResult:
+    async def process(self, request: TicketReferenceMatchRequest) -> TicketReferenceMatchResult:
         config = await self._store.load_embedding_config(request.org_id)
         if config is None:
             # Same "retryable configuration state, not stale work" posture as
@@ -250,8 +251,10 @@ class TicketReferenceMatcher:
 
         provider = await self._provider_factory.create(config)
         try:
-            text = request.title if request.description is None else (
-                f"{request.title}\n\n{request.description}"
+            text = (
+                request.title
+                if request.description is None
+                else (f"{request.title}\n\n{request.description}")
             )
             vector = (await provider.embed([text]))[0]
         finally:

@@ -453,6 +453,22 @@ jobs:
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: changeme_local_only
 
+      - name: Vector metrics integration — pgvector required (zero skips)
+        env:
+          DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+          DATABASE_RUNTIME_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+        run: >-
+          poetry run pytest tests/test_vector_metrics_postgres.py
+          -q --junitxml=.vector-metrics-junit.xml
+
+      - name: Assert no vector metrics tests skipped
+        run: >-
+          python -c "import xml.etree.ElementTree as E;
+          root=E.parse('.vector-metrics-junit.xml').getroot();
+          skipped=sum(int(s.attrib.get('skipped', 0)) for s in
+          ([root] if root.tag == 'testsuite' else root.findall('testsuite')));
+          assert skipped == 0, f'{skipped} vector metrics tests skipped'"
+
       # W0-02 audit finding A: re-run the graph-migration test files explicitly (not
       # just as part of the full suite above) with a junit report, so the zero-skip
       # gate immediately below has something to inspect. Covers *every*

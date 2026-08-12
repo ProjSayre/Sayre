@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -69,12 +67,11 @@ class StoreWithFakeConnection(PostgresRetrievalStore):
 def vector_calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     calls: list[str] = []
 
-    @asynccontextmanager
-    async def capture(org_id: str) -> AsyncIterator[None]:
+    async def capture(connection, *, org_id, query, params=None):
         calls.append(org_id)
-        yield
+        return await connection.execute(query, params)
 
-    monkeypatch.setattr(store_module, "instrument_vector_query", capture)
+    monkeypatch.setattr(store_module, "execute_vector_query", capture)
     return calls
 
 
@@ -83,14 +80,16 @@ async def test_chunk_query_is_parameterized_exactly_scoped_indexed_and_bounded(
     vector_calls: list[str],
 ) -> None:
     connection = FakeConnection(
-        [[
-            {
-                "chunk_id": "chunk-1",
-                "graph_node_id": "node-1",
-                "content": "authorized content",
-                "token_count": 5,
-            }
-        ]]
+        [
+            [
+                {
+                    "chunk_id": "chunk-1",
+                    "graph_node_id": "node-1",
+                    "content": "authorized content",
+                    "token_count": 5,
+                }
+            ]
+        ]
     )
     store = StoreWithFakeConnection(connection)
 
@@ -136,9 +135,7 @@ async def test_connection_sets_runtime_rls_org_before_any_domain_query(
     assert await store._connect(ORG_ID) is connection
 
     connect.assert_awaited_once_with("postgresql://runtime", row_factory=store_module.dict_row)
-    assert connection.executed == [
-        ("SELECT set_config('app.org_id', %s, false)", (ORG_ID,))
-    ]
+    assert connection.executed == [("SELECT set_config('app.org_id', %s, false)", (ORG_ID,))]
 
 
 @pytest.mark.asyncio
