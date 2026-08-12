@@ -479,7 +479,15 @@ def test_delta_projection_marks_only_affected_files_as_structurally_changed() ->
 
 
 @pytest.mark.asyncio
+# @spec AC-9
 async def test_initial_ingestion_commits_event_before_embedding_and_cleans_scratch() -> None:
+    # GAP-12: import the named budget constant locally (deferred, not module-level)
+    # so this one test fails on its own missing dependency during red rather than
+    # taking down collection of every other test in this file -- the vacuous inline
+    # `< 15_000` literal below is replaced with `STRUCTURAL_SYNC_TARGET_MS` from
+    # sayre_workers/ingestion/budgets.py, per spec.md AC-9.
+    from sayre_workers.ingestion.budgets import STRUCTURAL_SYNC_TARGET_MS
+
     snapshot = FakeSnapshot(
         revision=SHA_A,
         tracked=("README.md", "src/app.py"),
@@ -492,7 +500,10 @@ async def test_initial_ingestion_commits_event_before_embedding_and_cleans_scrat
     assert result.status == "accepted"
     assert result.graph_version == 0
     assert result.full_rebuild is True
-    assert result.structural_duration_ms is not None and result.structural_duration_ms < 15_000
+    assert (
+        result.structural_duration_ms is not None
+        and result.structural_duration_ms < STRUCTURAL_SYNC_TARGET_MS
+    )
     assert graph.projections[0].full_rebuild is True
     assert publisher.onboarding_events
     assert publisher.embedding_tasks

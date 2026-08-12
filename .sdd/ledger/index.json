@@ -148,6 +148,17 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   ".gitignore": [
@@ -729,6 +740,28 @@
       }
     },
     {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
       "date": "2026-08-11",
@@ -747,6 +780,28 @@
       "ticket": "W1-01",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
       "gapfill": {
         "overlays": [
           "base"
@@ -779,6 +834,28 @@
       }
     },
     {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
       "date": "2026-08-11",
@@ -797,6 +874,28 @@
       "ticket": "W1-01",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
       "gapfill": {
         "overlays": [
           "base"
@@ -4272,6 +4371,19 @@
       }
     }
   ],
+  "docs/wave0-foundation-contracts.md": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "docs/workspace-pack-authoring.md": [
     {
       "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
@@ -5340,6 +5452,17 @@
   ],
   "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json": [
     {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
       "date": "2026-08-11",
@@ -5354,6 +5477,17 @@
   ],
   "services/core/src/queue/__fixtures__/repo_push.envelope.json": [
     {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
       "date": "2026-08-11",
@@ -5362,6 +5496,71 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/queue/__tests__/bullmq.lane.test.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/queue/__tests__/bullmq.priority.test.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/queue/__tests__/initialParse.fixture.test.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/queue/__tests__/w0-04.acceptance-wiring.test.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/queue/bullmq.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }
@@ -5381,6 +5580,17 @@
     }
   ],
   "services/core/src/routes/githubWebhook.fixtures.test.ts": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
     {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
@@ -5451,6 +5661,17 @@
     }
   ],
   "services/core/src/services/githubWebhookService.test.ts": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
     {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
@@ -5548,7 +5769,31 @@
       }
     }
   ],
+  "services/core/src/webhooks/normalizeGithubEvent.test.ts": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "services/core/src/webhooks/normalizeGithubEvent.ts": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
     {
       "runId": "20260811T153200000Z-e4b9ec2e50-PR_DELTA-9a41c7",
       "ticket": "W1-02",
@@ -5558,6 +5803,45 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/test/cross-runtime/publishIngestion.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/vitest.config.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/gateway/test/cross-runtime/consumeRealtime.ts": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }
@@ -5576,6 +5860,58 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/workers/sayre_workers/ingestion/__init__.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/ingestion/budgets.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/ingestion/models.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/sayre_workers/ingestion/service.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "services/workers/sayre_workers/parsing/__init__.py": [
@@ -5786,6 +6122,123 @@
       }
     }
   ],
+  "services/workers/tests/test_chunk_store_integration.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_cross_runtime_roundtrip.py": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_graph_updated_envelope.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_ingestion.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_ingestion_fixture_repo.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_ingestion_graph_integration.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_ingestion_routing.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_initial_parse_wire_fixture.py": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_messaging_topology.py": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "services/workers/tests/test_parsing.py": [
     {
       "runId": "20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682",
@@ -5805,6 +6258,32 @@
       "ticket": "W1-01",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T204750000Z-4856b2c4f1-PR_DELTA-d3b682/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_push_wire_fixture.py": [
+    {
+      "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
+      "ticket": "W1-05",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/workers/tests/test_sqs_roundtrip.py": [
+    {
+      "runId": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+      "ticket": "W0-04",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T040646000Z-ee496aa498-PR_DELTA-81b52d/spec.md",
       "gapfill": {
         "overlays": [
           "base"

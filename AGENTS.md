@@ -80,6 +80,7 @@ which deliberately runs none of them.
 - `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
 - `/pipeline-gapfill <ticket>` — MVP audit-and-gap-fill (`gap-scout` then gap-scoped stages); see
   `.sdd/pipeline.md`.
+- `/gap-scout-only <ticket-id…>` — triage only (gap-scout, then stop).
 - `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
 - `/pipeline-status` — report the current pipeline state without changing it.
 - `/security-recheck` — repeat only the final security assessment.

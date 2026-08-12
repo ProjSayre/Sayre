@@ -9,20 +9,34 @@ from .embeddings import (
     OpenAICompatibleEmbeddingProvider,
     validate_embeddings,
 )
-from .models import IngestionResult, InvalidIngestionJobError, parse_ingestion_envelope
+from .budgets import STRUCTURAL_SYNC_TARGET_MS
+from .models import (
+    IgnoredIngestionMessage,
+    IngestionCommand,
+    IngestionResult,
+    InvalidIngestionJobError,
+    RefDeletionCommand,
+    classify_ingestion_envelope,
+    parse_ingestion_envelope,
+)
 from .consumers import run_embedding_consumer, run_ingestion_consumer
 from .service import IngestionService
 
 __all__ = [
     "DEFAULT_EMBEDDING_MODEL",
     "EMBEDDING_DIMENSION",
+    "STRUCTURAL_SYNC_TARGET_MS",
     "DeterministicEmbeddingProvider",
     "EmbeddingConsumer",
     "EmbeddingProvider",
+    "IgnoredIngestionMessage",
+    "IngestionCommand",
     "IngestionResult",
     "IngestionService",
     "InvalidIngestionJobError",
     "OpenAICompatibleEmbeddingProvider",
+    "RefDeletionCommand",
+    "classify_ingestion_envelope",
     "parse_ingestion_envelope",
     "run_embedding_consumer",
     "run_ingestion_consumer",

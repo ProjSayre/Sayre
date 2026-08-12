@@ -1,9 +1,17 @@
-// Wire-contract test (AC4): a `repo.initial_parse` envelope, built the same
-// way githubAppInstallService.ts builds one, is byte-equal to the committed
-// fixture (ignoring the random message_id/occurred_at) — the Python
-// `MessageEnvelope.from_body` side of this contract lives in
-// services/workers/messaging/envelope.py (out of scope here, but this is what
-// "verified against a queue fixture" in the acceptance criteria means).
+// Wire-shape REGRESSION test (AC4) — NOT the W0-04 cross-language acceptance proof,
+// see below: a `repo.initial_parse` envelope, built the same way
+// githubAppInstallService.ts builds one, is byte-equal to the committed fixture
+// (ignoring the random message_id/occurred_at). The Python `MessageEnvelope.from_body`
+// side of this contract lives in services/workers/messaging/envelope.py (out of scope
+// here).
+//
+// W0-04's canonical acceptance line is docs/product/Ticket-Backlog-by-Feature-2.md
+// §W0-04 ("cross-language test messages consumed correctly; a priority message
+// demonstrably drains ahead of a backlog of default messages") — docs/backlog.md's
+// shorter reword is superseded, and this static on-disk fixture is NOT that proof (a
+// fixture never crosses a live broker). The actual cross-language evidence is
+// services/workers/tests/test_cross_runtime_roundtrip.py, which exercises this same
+// wire shape against a live broker in both directions.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

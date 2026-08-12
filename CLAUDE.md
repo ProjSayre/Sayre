@@ -63,6 +63,7 @@ Run `/pipeline <ticket description or path to ticket file>` to chain the full pi
 - `/security-recheck` — re-runs just `security-checker` against current disk state, for a fast check after a hand-edit (doesn't redo tester/review)
 - `/pipeline-lite <ticket>` — the proportionate lane for a genuinely small, mechanically-eligible change (a typo, a one-file cleanup, a doc fix): runs `planner` → `dev` → `tester` → `review` → ledger, deliberately skipping `red` and `security` — see `.sdd/pipeline.md`'s `/pipeline-lite` section
 - `/pipeline-gapfill <ticket>` — MVP audit-and-gap-fill for already-shipped Wave 0–4 tickets: `gap-scout` → gap-mode `planner`/`red` → `dev` → `tester` → `review` → `security` → ledger `--gapfill` — see `.sdd/pipeline.md`'s `/pipeline-gapfill` section and `.sdd/mvp-overlays.yml`
+- `/gap-scout-only <ticket-id…>` — triage only: run `gap-scout` for one or more ids and stop (no planner/dev/gates); uses `scripts/extract-ticket.mjs` so agents never load the full backlog
 - `/inline-edit <ticket>` — the sanctioned, spec-first front door for a direct, in-session edit: refuses to let any code change happen before a real, ratified `spec.md`/`spec.json` exists, then runs `tester` → `review` → `security` in full, deliberately skipping `red` and `dev` (no `dev` subagent — the implementation is made directly, inline) — see `.sdd/pipeline.md`'s `/inline-edit` section
 - `/hotfix <what's broken>` — the sanctioned bypass for a production incident; runs none of the stages above — see `.sdd/hotfix.md`
 

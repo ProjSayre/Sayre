@@ -1,0 +1,34 @@
+{
+  "message_id": "00000000-0000-4000-8000-000000000000",
+  "idempotency_key": "github:webhook:bcc1035ee6a9057d9f8d6fc6a35cf3cdb57728ccc2163ec59baf898425c20b11",
+  "org_id": "22222222-2222-4222-8222-222222222222",
+  "type": "repo.push",
+  "schema_version": 1,
+  "occurred_at": "2026-01-01T00:00:00.000Z",
+  "source": "github-webhook",
+  "trace_id": "22222222-2222-4222-8222-222222222222",
+  "payload": {
+    "provider": "github",
+    "type": "push",
+    "repo": {
+      "provider_repo_id": "583231",
+      "full_name": "acme-corp/widgets",
+      "repo_id": null
+    },
+    "ref": "refs/heads/feature-x",
+    "installation_id": "555",
+    "delivery_id": "22222222-2222-4222-8222-222222222222",
+    "payload": {
+      "before": "cccccccccccccccccccccccccccccccccccccccc",
+      "after": "0000000000000000000000000000000000000000",
+      "forced": false,
+      "deleted": true,
+      "ref": "refs/heads/feature-x",
+      "commits": [],
+      "pusher": {
+        "name": "octocat",
+        "email": "octocat@example.com"
+      }
+    }
+  }
+}

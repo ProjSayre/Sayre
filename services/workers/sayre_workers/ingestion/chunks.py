@@ -10,6 +10,7 @@ from typing import Protocol
 from sayre_workers.config import get_secret
 from sayre_workers.db import org_scoped_connection
 from sayre_workers.parsing import SourceFile
+from sayre_workers.telemetry.vector_metrics import execute_vector_query
 
 from .models import (
     CodeChunk,
@@ -44,9 +45,7 @@ class ChunkStore(Protocol):
 class EmbeddingStore(Protocol):
     async def load_embedding_work(self, task: EmbeddingTask) -> EmbeddingWork | None: ...
 
-    async def store_embedding(
-        self, work: EmbeddingWork, vector: tuple[float, ...]
-    ) -> bool: ...
+    async def store_embedding(self, work: EmbeddingWork, vector: tuple[float, ...]) -> bool: ...
 
 
 def build_bounded_chunks(
@@ -129,12 +128,14 @@ class PostgresChunkStore:
                     """,
                     (scope.revision_sha, scope.org_id, ref_id),
                 )
-                await connection.execute(
-                    """
+                await execute_vector_query(
+                    connection,
+                    org_id=scope.org_id,
+                    query="""
                     UPDATE code_embeddings SET revision_sha = %s, updated_at = now()
                     WHERE org_id = %s AND ref_id = %s
                     """,
-                    (scope.revision_sha, scope.org_id, ref_id),
+                    params=(scope.revision_sha, scope.org_id, ref_id),
                 )
                 for chunk in chunks:
                     cursor = await connection.execute(
@@ -207,9 +208,7 @@ class PostgresChunkStore:
             # This is retryable configuration state, not stale work. Propagating
             # keeps the delivery unacknowledged so it can succeed after an admin
             # configures the tenant's embedding provider.
-            raise EmbeddingConfigNotFoundError(
-                "embedding provider configuration is not available"
-            )
+            raise EmbeddingConfigNotFoundError("embedding provider configuration is not available")
         return EmbeddingWork(
             task=task,
             content=str(row["content"]),
@@ -227,8 +226,10 @@ class PostgresChunkStore:
         vector_literal = "[" + ",".join(format(value, ".17g") for value in vector) + "]"
         async with org_scoped_connection(self._dsn, task.org_id) as connection:
             async with connection.transaction():
-                cursor = await connection.execute(
-                    """
+                cursor = await execute_vector_query(
+                    connection,
+                    org_id=task.org_id,
+                    query="""
                     INSERT INTO code_embeddings
                         (org_id, repository_id, ref_id, revision_sha, chunk_id,
                          graph_node_id, embedding, provider, model, dimension)
@@ -245,7 +246,7 @@ class PostgresChunkStore:
                                   updated_at = now()
                     RETURNING id
                     """,
-                    (
+                    params=(
                         task.org_id,
                         task.repository_id,
                         task.ref_id,

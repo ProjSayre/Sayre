@@ -29,10 +29,12 @@ metric attributes and OpenTelemetry → Prometheus setup as W0-06.
 ## Vector Store: pgvector → Amazon OpenSearch
 
 The trigger is instrumented concurrent query load and latency, not candidate-set size, corpus size,
-or customer count. W0-06 instruments every sanctioned query with
+or customer count. W0-06 instruments every sanctioned `code_embeddings` read/write and vector
+operator query through one execution helper with
 `vector_query_duration_ms` and `vector_query_concurrent_count`, using server-resolved bounded metric
 attributes and OpenTelemetry → Prometheus locally. The exporter remains swappable without changing
-call sites.
+call sites. The real-Postgres acceptance launches 50 overlapping pgvector queries and CI rejects a
+skipped run, so the migration signal cannot be validated by simulated sleeps alone.
 
 The launch contract remains 1024-dimensional pgvector values with cosine distance and explicit
 provider/model/dimension metadata. `EmbeddingProvider` is separate from generation `ModelProvider`;

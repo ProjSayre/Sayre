@@ -1,11 +1,9 @@
 """Synthetic pgvector query load generator (W0-06).
 
 Long-running CLI that keeps `/metrics` alive and drives concurrent synthetic
-queries (default 50) spread across several `org_id`s, each routed through
-`instrument_vector_query()` -- the same wrapper a real Retrieval Service call
-site will use. It exists purely to prove the harness end-to-end against a
-locally-run Prometheus (`docker compose up prometheus`) before any real
-pgvector call site exists (see `.pipeline/W0-06/spec.md` Scope/Out).
+queries (default 50) spread across several `org_id`s. Simulation mode measures
+in-process latency; `--use-db` executes the same instrumented, tenant-scoped
+pgvector query path used by application stores.
 
 Usage:
     poetry run python scripts/synthetic_vector_load.py
@@ -38,8 +36,13 @@ import time
 
 sys.path.insert(0, ".")  # allow running as `python scripts/synthetic_vector_load.py`
 
+from sayre_workers.config import get_secret  # noqa: E402
+from sayre_workers.db import org_scoped_connection  # noqa: E402
 from sayre_workers.telemetry.otel import init_metrics, shutdown_metrics  # noqa: E402
-from sayre_workers.telemetry.vector_metrics import instrument_vector_query  # noqa: E402
+from sayre_workers.telemetry.vector_metrics import (  # noqa: E402
+    execute_vector_query,
+    instrument_vector_query,
+)
 
 EXAMPLE_PROMQL = """\
 # --- pgvector -> OpenSearch migration-trigger PromQL (docs/migration-triggers.md) ---
@@ -59,15 +62,26 @@ async def _simulate_one_query(min_latency_ms: float, max_latency_ms: float) -> N
     await asyncio.sleep(latency_s)
 
 
-async def _real_db_query() -> None:  # pragma: no cover -- requires a seeded table (later ticket)
-    """Placeholder for a real pgvector round-trip. No embedding schema /
-    seeded vector table exists yet (see spec.md Open Questions), so
-    `--use-db` is accepted but not wired to a live connection here."""
-    raise NotImplementedError(
-        "--use-db requires a seeded pgvector table, which does not exist yet "
-        "(see .pipeline/W0-06/spec.md Open Questions: Synthetic-query fidelity). "
-        "Run without --use-db for the in-process synthetic-latency simulation."
-    )
+async def _real_db_query(dsn: str, org_id: str) -> None:
+    """Execute one measured cosine query in the tenant's RLS scope.
+
+    An org with no embeddings simply returns no row; the completed query still
+    contributes valid capacity and latency evidence.
+    """
+    zero_vector = "[" + ",".join(["0"] * 1024) + "]"
+    async with org_scoped_connection(dsn, org_id) as connection:
+        await execute_vector_query(
+            connection,
+            org_id=org_id,
+            query="""
+                SELECT id
+                FROM code_embeddings
+                WHERE org_id = %s
+                ORDER BY embedding <=> %s::vector
+                LIMIT 1
+            """,
+            params=(org_id, zero_vector),
+        )
 
 
 async def run_load(
@@ -79,9 +93,11 @@ async def run_load(
     max_latency_ms: float = 200.0,
     use_db: bool = False,
 ) -> None:
-    """Repeatedly launch batches of `concurrency` instrument_vector_query
-    blocks, each awaiting a random latency in [min_latency_ms, max_latency_ms]
-    (or a real DB query if use_db=True), spread across org_ids so
+    """Repeatedly launch batches of `concurrency` measured operations.
+
+    Simulation blocks await a random latency in [min_latency_ms,
+    max_latency_ms]; database mode performs a real vector query. Work is
+    spread across org_ids so
     multi-tenant tagging is visible. Runs until duration_seconds elapses, or
     forever (until Ctrl-C) if duration_seconds is None.
     """
@@ -89,22 +105,21 @@ async def run_load(
         org_ids = ["org-a", "org-b", "org-c"]
     if not org_ids:
         raise ValueError("org_ids must be non-empty")
+    dsn = await get_secret("env://DATABASE_RUNTIME_URL") if use_db else None
 
     async def one_query(index: int) -> None:
         org_id = org_ids[index % len(org_ids)]
-        async with instrument_vector_query(org_id):
-            if use_db:
-                await _real_db_query()
-            else:
+        if dsn is not None:
+            await _real_db_query(dsn, org_id)
+        else:
+            async with instrument_vector_query(org_id):
                 await _simulate_one_query(min_latency_ms, max_latency_ms)
 
     start = time.monotonic()
     batch_number = 0
     while duration_seconds is None or (time.monotonic() - start) < duration_seconds:
         batch_number += 1
-        await asyncio.gather(
-            *(one_query(i) for i in range(concurrency)), return_exceptions=True
-        )
+        await asyncio.gather(*(one_query(i) for i in range(concurrency)))
         print(
             f"[synthetic_vector_load] batch {batch_number}: "
             f"{concurrency} queries across {len(org_ids)} org_id(s)",
@@ -114,8 +129,7 @@ async def run_load(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Drive synthetic pgvector-shaped concurrent load through "
-        "instrument_vector_query() for the Prometheus e2e demo (W0-06)."
+        description="Drive measured concurrent pgvector load for the Prometheus e2e demo (W0-06)."
     )
     parser.add_argument("--concurrency", type=int, default=50)
     parser.add_argument("--orgs", nargs="+", default=["org-a", "org-b", "org-c"])
@@ -131,7 +145,7 @@ def main() -> None:
         "--use-db",
         action="store_true",
         help="Round-trip a real pgvector query instead of simulating latency "
-        "in-process (requires a seeded table that does not exist yet).",
+        "in-process (requires DATABASE_RUNTIME_URL and UUID org ids).",
     )
     parser.add_argument(
         "--print-queries",

@@ -1,0 +1,1572 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-10T04:15:04Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 21,
+      "NOT_APPLICABLE": 40
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 61
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 61
+    },
+    "finding_statuses": {},
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|bullmq-envelope-org-id-enforcement|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "bullmq-envelope-org-id-enforcement",
+      "attack_path_version": "v1",
+      "attempt": "Traced every produce/consume boundary this diff touches or adds for a path that could accept/forward a blank or attacker-controlled org_id.",
+      "evidence": [
+        "services/core/src/queue/envelope.ts:85-98 assertValidEnvelope requires org_id (and message_id/type/source) to be a non-blank string, unchanged by this diff.",
+        "services/core/src/queue/bullmq.ts:232 enqueue() still calls assertValidEnvelope(envelope) FIRST, before any lane resolution (step order unchanged from spec).",
+        "services/core/test/cross-runtime/publishIngestion.ts:51 calls assertValidEnvelope(parsed) before publishing, so a blank org_id is refused producer-side even though publishInitialParseEvent itself does not validate org_id.",
+        "services/gateway/src/sqs/consumer.ts:122-129 parseEnvelope (unchanged) calls assertValidEnvelope before accepting a message body.",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:355-419 test_blank_org_id_is_refused_by_the_node_producer_and_by_the_python_consumer exercises both refusal paths end-to-end (not run live in this environment, see Limitations).",
+        "npx vitest run src/queue/__tests__/envelope.test.ts -> 32/32 passed (run directly by this stage)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/src/queue/envelope.ts:85-98",
+        "services/core/src/queue/bullmq.ts:227-262",
+        "services/core/test/cross-runtime/publishIngestion.ts:32-56"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|no-client-rbac-surface-in-diff|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-client-rbac-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched the full diff for any graphology, route-handler, resolver, or Graph Query Service code that could duplicate node-level authorization client-side.",
+      "evidence": [
+        "git diff --stat: only services/core/src/queue/**, services/core/vitest.config.ts, services/core/test/cross-runtime/**, services/gateway/test/cross-runtime/**, services/workers/tests/**, .github/workflows/ci.yml, docs/wave0-foundation-contracts.md changed -- no apps/web, no graph-query, no routes/resolvers.",
+        "grep for 'graphology' across the diff: zero matches."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|sqs-endpoint-url-fail-closed-guard|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "sqs-endpoint-url-fail-closed-guard",
+      "attack_path_version": "v1",
+      "attempt": "Read publishIngestion.ts's SQS_ENDPOINT_URL guard directly, then read @sayre/config's getConfig/validateValue implementation to confirm the guard genuinely fails closed with no network call preceding it, rather than trusting changes.md's/review.md's claim.",
+      "evidence": [
+        "services/core/test/cross-runtime/publishIngestion.ts:32-45 -- getConfig('SQS_ENDPOINT_URL') is called as the FIRST statement inside main(), before readStdin() and before publishInitialParseEvent(); a caught ConfigError is re-thrown as an explicit refusal message. No network call precedes this check.",
+        "packages/config/src/config.ts:85 -- comment confirms SQS_ENDPOINT_URL intentionally has no DEFAULTS entry ('unset means use real AWS').",
+        "packages/config/src/config.ts:167-183 validateValue()/getOptionalConfig(): when the env var is unset AND no DEFAULTS entry exists, getOptionalConfig returns undefined; getConfig() then throws ConfigError('Configuration SQS_ENDPOINT_URL is missing.'). An explicitly-set-but-empty value also throws ConfigError('...is empty.') via validateValue's trim().length===0 check -- both unset and blank fail closed identically.",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:423-445 test_node_harness_refuses_to_run_without_an_explicit_broker_endpoint asserts non-zero exit and 'SQS_ENDPOINT_URL' in stderr when the var is stripped from the child env.",
+        "Independently re-derived (not copied from dev/review): confirmed by direct reading of both files, not by re-running the live subprocess test (Docker/LocalStack unavailable in this environment -- see Limitations for the dynamic half)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/test/cross-runtime/publishIngestion.ts:32-45",
+        "packages/config/src/config.ts:85",
+        "packages/config/src/config.ts:167-197"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|no-hardcoded-or-logged-secret-in-diff|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-hardcoded-or-logged-secret-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Grepped the full diff for hardcoded credential patterns and traced every credential-shaped value to its source.",
+      "evidence": [
+        "grep -niE for AKIA/secret_key/password=/api_key= literal patterns across bullmq.ts, both harnesses, test_cross_runtime_roundtrip.py, ci.yml: zero matches.",
+        "The only credential-shaped literals are the string 'localstack-test' used as AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY -- a well-known LocalStack sentinel, not a real credential, and an already-established pattern: identical literal already present at .github/workflows/ci.yml:467-468 (pre-existing 'Messaging integration' step, untouched by this diff) before this diff added the same pattern to the new 'Cross-runtime round-trip' step.",
+        "Both new harnesses resolve config exclusively through @sayre/config (getConfig), never a direct process.env read; consumeRealtime.ts reads no secrets at all (only non-secret CLI args)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:467-468,498-499",
+        "services/core/test/cross-runtime/publishIngestion.ts:19-45"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|github-webhook-signature-gate-unchanged|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-webhook-signature-gate-unchanged",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the webhook receiver that calls enqueue() still validates the signature before any queue publication, and that this diff does not touch it.",
+      "evidence": [
+        "git diff services/core/src/services/githubWebhookService.ts is empty (file not in changed_paths).",
+        "services/core/src/services/githubWebhookService.ts:83 still calls enqueue('github-sync', envelope, { jobId: ... }) with no `lane`/`priority` option; module doc comment at bullmq.ts:9-15 states the webhook-trust invariant is enforced by callers before enqueue(), unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:83",
+        "services/core/src/queue/bullmq.ts:9-15"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|no-scratch-clone-surface-in-diff|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-scratch-clone-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched the diff for any ingestion worker scratch-clone/persistence code.",
+      "evidence": [
+        "changed_paths contains no file under services/workers/sayre_workers/ingestion/** or any clone/scratch-path module; the only services/workers files touched are tests/test_initial_parse_wire_fixture.py, tests/test_messaging_topology.py, tests/test_sqs_roundtrip.py, tests/test_cross_runtime_roundtrip.py, all queue/messaging test files."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|cross-runtime-harness-subprocess-invocation|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-harness-subprocess-invocation",
+      "attack_path_version": "v1",
+      "attempt": "Read both pytest call sites that shell out to the tsx harnesses to check for a shell-command built from unsanitized/attacker-influenceable input.",
+      "evidence": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:172-182 _run_node(): subprocess.run(['npx', 'tsx', *args], ..., env=..., check=False) -- list-argv form, no shell=True, no string interpolation of any value (idempotency_key, org_id, queue name) into a shell command line.",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:304-321 and :470-487: subprocess.Popen([...]) for the gateway harness -- same list-argv form.",
+        "Values that vary per test run (idempotency_key, org_id) are passed either as a single argv element (--match-idempotency-key <value>) or as JSON on stdin, never concatenated into a command string a shell would re-parse -- so even a value containing shell metacharacters cannot be interpreted as a second command.",
+        "No Cypher/SQL construction anywhere in the diff (no graph/db code touched)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:161-188",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:304-321"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|webhook-signature-validation-sibling-path|v1",
+      "check_id": "ING-01",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "webhook-signature-validation-sibling-path",
+      "attack_path_version": "v1",
+      "attempt": "Verified signature-before-processing still holds for the one shared control (enqueue()) this diff touches.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts unedited (empty diff); signature validation still precedes enqueue() call at line 83, per module contract."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:83"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|bullmq-jobid-idempotency-unchanged|v1",
+      "check_id": "ING-02",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "bullmq-jobid-idempotency-unchanged",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the lane change does not touch jobId derivation/dedup at any of the three call sites.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:83 jobId: envelope.idempotency_key -- unchanged.",
+        "services/core/src/services/ticketSyncIngress.ts:19-25 jobId = sha256(idempotency_key) -- unchanged; enqueue()'s new lane resolution only inspects opts.lane/opts.priority, never opts.jobId."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ticketSyncIngress.ts:19-25"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|installation-org-binding-unchanged|v1",
+      "check_id": "ING-03",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "installation-org-binding-unchanged",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed org_id resolution (resolveInstallationOrg) is untouched by this diff.",
+      "evidence": [
+        "No file under services/core/src/db/**, services/core/src/services/githubWebhookService.ts's resolveOrg dependency, or any installation-binding code appears in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|bullmq-enqueue-lane-and-priority-input-surface|v1",
+      "check_id": "ING-04",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "bullmq-enqueue-lane-and-priority-input-surface",
+      "attack_path_version": "v1",
+      "attempt": "Focus item 2 from the briefing: attempted to find a path where an unprivileged caller could influence which lane a job lands in, or inject a raw BullMQ priority value, by tracing every current call site and the runtime guards inside enqueue() itself.",
+      "evidence": [
+        "services/core/src/queue/bullmq.ts:227-262 enqueue(opts?: EnqueueOptions): opts.lane is resolved from a TypeScript-level function argument supplied by the CALLING NODE CODE, never deserialized from an incoming webhook body, queue message, or HTTP request -- there is no code path in this diff (or in the repo, per the three current call sites below) that maps external/client input into opts.lane.",
+        "grep across services/core/src for `enqueue(` (excluding tests): only 3 call sites -- services/core/src/services/githubWebhookService.ts:83, services/core/src/services/ticketSyncIngress.ts:23, :25 -- all pass no `opts.lane` (default lane implicitly) and none of the three files were touched by this diff (confirmed empty `git diff` against both).",
+        "services/core/src/queue/bullmq.ts:234-240 explicitly rejects a raw `priority` key on `opts` at runtime ('priority' in rawOpts) even though EnqueueOptions's Omit<JobsOptions,'priority'> is a compile-time-only guard -- this specifically defeats the forged-envelope-style bypass where a caller/attacker tries to smuggle a numeric BullMQ priority directly into opts instead of through the validated `lane` enum.",
+        "services/core/src/queue/bullmq.ts:242-248 rejects any value not in JOB_LANES (including null, '', numbers, 'urgent') -- npx vitest run src/queue/__tests__/bullmq.lane.test.ts: 7/7 passed (run directly by this stage), covering exactly these rejected values and confirming nothing is added to the queue on rejection.",
+        "assertValidEnvelope(envelope) still runs before any lane resolution (step 1 of enqueue(), unchanged) so a forged org_id/type on the envelope itself is rejected before priority/lane logic executes at all."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts:227-262",
+        "services/core/src/services/githubWebhookService.ts:83",
+        "services/core/src/services/ticketSyncIngress.ts:19-25"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|cross-runtime-harness-envelope-type-routing|v1",
+      "check_id": "ING-05",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-harness-envelope-type-routing",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new Node<->Python round-trip could let a Python-shaped or Node-shaped message be accepted by the wrong runtime's generic handler.",
+      "evidence": [
+        "services/gateway/src/sqs/consumer.ts:122-129 parseEnvelope (unchanged) explicitly rejects any envelope whose `type` is not 'graph.updated' -- a mis-typed cross-runtime message is left for redrive, not silently handled.",
+        "services/core/test/cross-runtime/publishIngestion.ts and services/gateway/test/cross-runtime/consumeRealtime.ts call the REAL production functions (publishInitialParseEvent, createRealtimeSqsConsumer) rather than a new parallel/generic deserializer -- no new fallback deserialization path was added.",
+        "services/workers/tests/test_cross_runtime_roundtrip.py exercises both directions through MessageEnvelope.from_body / assertValidEnvelope, the same schema-checked validators used by same-language tests."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/src/sqs/consumer.ts:122-129"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|bullmq-enqueue-retry-dlq-options|v1",
+      "check_id": "ING-06",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "bullmq-enqueue-retry-dlq-options",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the lane change does not alter retry/removeOnComplete defaults that bound poison-message and duplicate-write behavior.",
+      "evidence": [
+        "services/core/src/queue/bullmq.ts:254-259 queue.add() still passes attempts: 1, removeOnComplete: true ahead of the caller's `rest` spread, with `priority` applied last so it cannot be clobbered but attempts/removeOnComplete can still be overridden by an explicit opts value exactly as before this diff (unchanged from pre-existing behavior, not newly introduced by this diff)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts:253-259"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|bullmq-lane-priority-starvation-surface|v1",
+      "check_id": "ING-07",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "bullmq-lane-priority-starvation-surface",
+      "attack_path_version": "v1",
+      "attempt": "Focus item 2 continued: assessed whether the new 2-lane mechanism creates a starvation/DoS-adjacent path today, and whether it would if a future caller starts using it.",
+      "evidence": [
+        "No current caller can select the 'priority' lane (see ING-04 evidence) -- there is no starvation path an external or unprivileged caller can trigger TODAY.",
+        "Independently verified BullMQ 5.28.2's own scheduling code in this repo's installed node_modules (not just trusted from changes.md/spec.md's claim): node_modules/bullmq/dist/cjs/classes/scripts.js:145 `else if (opts.priority)` routes to addPrioritizedJob, else addStandardJob; node_modules/bullmq/dist/esm/commands/moveToActive-11.lua:70,82 confirms RPOPLPUSH(wait->active) is tried first and moveJobFromPriorityToActive only runs when that returns no job -- both lanes mapping to a non-zero priority (1 and 2) is the correct, deliberate fix for the inverted-priority bug the module header describes, not an unexamined design choice.",
+        "Design note (not a current exploit, not blocking): unlike the SQS side's consume_enrichment(priority_weight=3) which bounds starvation of the default lane by round-robin weighting, BullMQ's ZPOPMIN-by-priority-then-FIFO ordering has no such built-in bound -- if a future policy change assigns real traffic to the 'priority' lane, a sustained flood of priority-lane jobs could starve the default lane indefinitely. spec.md's Open Questions #3 already defers the 'which jobs get priority' policy decision to a separate, later ticket; recording this as a forward-looking design consideration for that follow-up, per this stage's Limitations section below."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "node_modules/bullmq/dist/cjs/classes/scripts.js:145",
+        "node_modules/bullmq/dist/esm/commands/moveToActive-11.lua:70-87",
+        "services/core/src/queue/bullmq.ts:198-213"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|no-malicious-repo-path-surface-in-diff|v1",
+      "check_id": "ING-08",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-malicious-repo-path-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any repository-path/traversal handling code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths (see manifest target.changed_paths); this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|no-parser-repo-bomb-surface-in-diff|v1",
+      "check_id": "ING-09",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-parser-repo-bomb-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any Tree-sitter parser/resource-bomb handling code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths (see manifest target.changed_paths); this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|no-scratch-clone-surface-in-diff|v1",
+      "check_id": "ING-10",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-scratch-clone-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any scratch-clone isolation code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths (see manifest target.changed_paths); this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|no-transactional-graph-vector-write-surface-in-diff|v1",
+      "check_id": "ING-11",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-transactional-graph-vector-write-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any transactional graph/vector writes code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths (see manifest target.changed_paths); this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|no-provider-response-surface-in-diff|v1",
+      "check_id": "ING-12",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-provider-response-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any Git/Jira/Linear provider response handling code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths (see manifest target.changed_paths); this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|no-sync-poisoning-surface-in-diff|v1",
+      "check_id": "ING-13",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-sync-poisoning-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any scheduled/webhook sync conflict handling code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths (see manifest target.changed_paths); this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|cross-runtime-harness-subprocess-secret-exposure|v1",
+      "check_id": "ING-14",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-harness-subprocess-secret-exposure",
+      "attack_path_version": "v1",
+      "attempt": "Checked clone URLs, process arguments, environment, and stdout/stderr of the two new harnesses and their pytest orchestrator for installation credentials or access tokens.",
+      "evidence": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts argv contract is --queue/--match-idempotency-key/--timeout-ms only -- no credential ever appears as a process argument (visible via `ps`).",
+        "services/core/test/cross-runtime/publishIngestion.ts receives the envelope on stdin, not argv, and prints only {messageId} on stdout / an error string on stderr -- no AWS credential is ever echoed by either harness.",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:146-158 _node_env() passes NODE_BROKER_ENV (SQS/SNS_ENDPOINT_URL, AWS_REGION, AWS_ACCESS_KEY_ID/SECRET) plus the full inherited os.environ to the child process -- standard local subprocess-testing practice, not a new externally-facing exposure (see SEC-07 below for the fuller writeup of this same observation from the secrets-lifecycle angle)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:146-158"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-01|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-01",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates browser cross-origin WebSocket handshake.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-02|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-02",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates handshake credential bypass.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-03|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-03",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates token leakage via URL/logs.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-04|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-04",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates subscription IDOR.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-05|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-05",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates per-message re-authorization after role/permission change.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-06|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-06",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates revocation/expiry while connected.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-07|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-07",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates Redis channel-name tenant confusion.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-08|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-08",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates client message injection/schema abuse.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-09|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-09",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates replay/ordering/dedup of pushed graph updates.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-10|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-10",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates side-channel leakage via event timing/size.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-11|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-11",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates connection exhaustion.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-12|websocket-realtime|no-browser-ws-or-fanout-surface-in-diff|v1",
+      "check_id": "WS-12",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-ws-or-fanout-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff implicates per-push node/edge/property minimization.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts, ws/connection.ts, ws/protocol.ts, fanout.ts, redis/pubsub.ts are all absent from changed_paths -- none of the browser-facing handshake/subscription/fan-out/Redis-publish code is touched.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts calls the pre-existing, unedited createRealtimeSqsConsumer (services/gateway/src/sqs/consumer.ts, also unedited) directly with its OWN synthetic onEnvelope callback -- it never reaches fanout.ts's Redis publish or any browser-facing code, so it cannot exercise or regress WS-01..WS-12's actual surface."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84",
+        "services/gateway/src/sqs/consumer.ts (unedited)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|cross-runtime-harness-config-loader-usage|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-harness-config-loader-usage",
+      "attack_path_version": "v1",
+      "attempt": "Searched both new tsx harnesses for a direct process.env read that bypasses @sayre/config.",
+      "evidence": [
+        "services/core/test/cross-runtime/publishIngestion.ts imports only ConfigError/getConfig from @sayre/config; no process.env reference anywhere in the file.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts reads only process.argv (non-secret CLI flags); no process.env reference anywhere in the file."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/test/cross-runtime/publishIngestion.ts:1-22",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:1-30"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|ci-workflow-localstack-sentinel-credentials|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-workflow-localstack-sentinel-credentials",
+      "attack_path_version": "v1",
+      "attempt": "Checked the new CI step's hardcoded AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY values for a real secret vs. a known-safe local sentinel.",
+      "evidence": [
+        "'localstack-test' is a non-functional placeholder credential LocalStack accepts for any request; it is the exact literal already used at .github/workflows/ci.yml:467-468 in the pre-existing, unedited 'Messaging integration' step -- this diff reuses the established convention rather than introducing a new one."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:463-472,486-509"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|no-frontend-surface-in-diff|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-frontend-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any apps/web change that could bundle a server-only secret.",
+      "evidence": [
+        "No apps/web/** path appears in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|cross-runtime-harness-error-output-and-junit-logs|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-harness-error-output-and-junit-logs",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether a failure/exception path in either harness or the CI junit assertion scripts could print tenant data or a credential.",
+      "evidence": [
+        "services/core/test/cross-runtime/publishIngestion.ts:58-62 error handler prints only `error.message` (or String(error)) -- never the raw envelope, stdin body, or resolved config values.",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:106-110 same pattern.",
+        "The new CI junit-skip-assertion step (.github/workflows/ci.yml:504-509) only prints a skipped-count integer, never test payload content."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/test/cross-runtime/publishIngestion.ts:58-62",
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:106-110"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|no-secret-storage-surface-in-diff|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-secret-storage-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any change to a secret-storage backend, DB role, or access path.",
+      "evidence": [
+        "No file under a secret-store/DB-role/migration path appears in changed_paths; this diff touches only queue code and test harnesses."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|no-rotation-surface-in-diff|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-rotation-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any change to secret rotation/cache-invalidation logic.",
+      "evidence": [
+        "packages/config/src/config.ts (the loader) is untouched by this diff; no rotation-related code appears in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|cross-runtime-pytest-subprocess-env-passthrough|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-pytest-subprocess-env-passthrough",
+      "attack_path_version": "v1",
+      "attempt": "Assessed whether passing the full parent os.environ to the child tsx harness process is a credential-exposure path unrelated to the job.",
+      "evidence": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:146-158 _node_env(): env = dict(os.environ), then explicitly asserts the 5 required broker vars are present and non-empty, then applies overrides -- this is standard pytest-subprocess-harness practice: the child (this repo's own trusted tsx code, invoked locally) receives the same trust-domain environment as the parent test process, never anything sent to an external destination.",
+        "No secret is newly introduced into that environment by this diff -- the vars added are LocalStack-sentinel/non-secret (AWS_REGION, *_ENDPOINT_URL) or already the same test-sentinel credential pattern used elsewhere in this suite.",
+        "Not a regression or newly introduced exposure; noted for completeness per the checklist, not a finding."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:146-158"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|ci-workflow-cross-runtime-step-secret-scope|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-workflow-cross-runtime-step-secret-scope",
+      "attack_path_version": "v1",
+      "attempt": "Checked the new CI step's trigger/permission scope for exposure to untrusted fork/PR content.",
+      "evidence": [
+        ".github/workflows/ci.yml's new 'Cross-runtime round-trip' step runs inside the existing `workers` job, under whatever trigger/permission scope that job already has -- this diff adds no new `on:`/`permissions:` block and does not change the job's trigger conditions.",
+        "The step's env values are 100% static literals (region/sentinel creds/endpoint URLs) -- no `${{ github.event.* }}` or other PR-controlled expression is interpolated into env or run:."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:486-503"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|no-audit-log-surface-in-diff|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-audit-log-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any audit-log completeness code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths; this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|no-audit-log-surface-in-diff|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-audit-log-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any audit-log tamper resistance code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths; this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|no-tenant-deletion-surface-in-diff|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-tenant-deletion-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any tenant deletion/offboarding code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths; this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|no-backup-restore-surface-in-diff|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-backup-restore-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any backup/restore isolation code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths; this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|no-export-tooling-surface-in-diff|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-export-tooling-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any export/support tooling code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths; this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|no-detection-response-surface-in-diff|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-detection-response-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any detection/alerting code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths; this diff is scoped to the BullMQ lane mechanism and cross-runtime queue test harnesses only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|no-dependency-manifest-change-in-diff|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-dependency-manifest-change-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any lockfile/manifest.",
+      "evidence": [
+        "package.json/package-lock.json/pyproject.toml/poetry.lock are all absent from changed_paths -- changes.md explicitly confirms no package.json script was added, harnesses invoked via `npx tsx` against already-installed tsx@4.x."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|no-install-build-script-change-in-diff|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-install-build-script-change-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any new/changed install or build script.",
+      "evidence": [
+        "No package.json/pyproject.toml change in this diff; no new install-time script introduced."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|no-vulnerability-scanning-surface-in-diff|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-vulnerability-scanning-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any change to dependency/image scanning or SBOM generation.",
+      "evidence": [
+        "No such workflow step added or modified by this diff (the two new .github/workflows/ci.yml hunks only add test-execution steps)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|ci-workflow-new-steps-trigger-scope|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-workflow-new-steps-trigger-scope",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the two new CI steps run under a broadened trigger (fork PR, workflow_dispatch, etc.) relative to the surrounding job.",
+      "evidence": [
+        "git diff .github/workflows/ci.yml touches only step bodies inside the existing `node` and `workers` jobs -- no `on:`, `permissions:`, or job-level trigger change anywhere in the diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml (diff hunks only, no top-level trigger change)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|ci-workflow-new-steps-shell-interpolation|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-workflow-new-steps-shell-interpolation",
+      "attack_path_version": "v1",
+      "attempt": "Checked the new/extended workflow steps for branch names, commit messages, or other untrusted values interpolated into a shell command.",
+      "evidence": [
+        "The extended 'core messaging' `run:` block only appends a fixed relative test-file path (src/queue/__tests__/bullmq.priority.test.ts) -- a literal, not derived from any GitHub context expression.",
+        "The new 'Cross-runtime round-trip' step's `run:` and `env:` blocks are 100% static literals (poetry run pytest ... -q --junitxml=...; static env values) -- no `${{ }}` expression anywhere in either new block.",
+        "The new junit-skip-assertion step reuses the exact same python -c one-liner pattern as the pre-existing graph-migration/messaging gates, parameterized only by a literal file path and literal error string."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        ".github/workflows/ci.yml:266-280,486-509"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|no-third-party-action-change-in-diff|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-third-party-action-change-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any new/modified `uses:` action reference.",
+      "evidence": [
+        "grep of the ci.yml diff hunks for `uses:`: no match -- the diff only adds `run:`/`env:` steps inside already-provisioned jobs, no new third-party action pinned or repinned."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|no-container-surface-in-diff|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-container-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any Dockerfile/image change.",
+      "evidence": [
+        "No Dockerfile* path appears in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|no-network-exposure-change-in-diff|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-network-exposure-change-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any new listening port/service exposure.",
+      "evidence": [
+        "No infra/** or docker-compose change in this diff; LocalStack/Redis service wiring in ci.yml is reused, not newly exposed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|no-iam-role-surface-in-diff|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-iam-role-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any IAM/role/policy change.",
+      "evidence": [
+        "No infra/aws/** or IAM policy file appears in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|cross-runtime-harness-environment-separation|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "cross-runtime-harness-environment-separation",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether the new harnesses/tests could cross from test config into a real/production endpoint.",
+      "evidence": [
+        "Covered in depth under CORE-03 (SQS_ENDPOINT_URL fail-closed guard) -- the harness refuses to run rather than silently falling through to the production 'unset means real AWS' default.",
+        "services/workers/tests/test_cross_runtime_roundtrip.py:109-125 the module-scoped fixture pins SAYRE_ENV=test and all broker env vars to explicit LocalStack values (http://localhost:4566) for the duration of every test in this file, restoring the prior environment on teardown (patch.undo())."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:109-125"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|no-tls-config-surface-in-diff|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-tls-config-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Checked for any TLS/certificate/cipher configuration change.",
+      "evidence": [
+        "No such configuration touched by this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|vitest-fileparallelism-availability-tradeoff|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "vitest-fileparallelism-availability-tradeoff",
+      "attack_path_version": "v1",
+      "attempt": "Assessed the `fileParallelism: false` change for an availability/DoS-adjacent regression (a test-infra change, not production, but in scope for SC-12's 'single point of failure' framing).",
+      "evidence": [
+        "services/core/vitest.config.ts adds `fileParallelism: false` workspace-wide for @sayre/core's test run only -- this affects CI/local test wall-clock time, not any production runtime path or deployed service.",
+        "Re-ran the full @sayre/core suite myself: 101 files passed, 1 skipped (broker-gated), 1021 tests passed, 14 skipped, 34.27s -- consistent with dev/tester/review's independent re-runs (37-39s range), no observed regression.",
+        "Documented tradeoff, not a vulnerability: flagged in this run's Limitations/Suggestions, matching review.md's own Warning-2."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": [
+        "services/core/vitest.config.ts:4-16"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|no-migration-surface-in-diff|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-migration-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any database/graph migration privilege code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|no-patch-exception-surface-in-diff|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-patch-exception-surface-in-diff",
+      "attack_path_version": "v1",
+      "attempt": "Searched changed_paths for any patch/exception lifecycle tracking code.",
+      "evidence": [
+        "No file relating to this surface appears in this diff's changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created; static/dynamic evidence gathered by direct code reading and running the existing, non-destructive local test suite (see Evidence). Nothing to clean up.",
+      "code_references": []
+    }
+  ]
+}

@@ -28,6 +28,7 @@ This file only maps that procedure onto Claude Code's subagents:
 8. **security** → the `security-checker` subagent (always on this lane)
 9. **ledger** → `node scripts/ledger-append.mjs --gapfill` on terminal PASS
 
-Before starting, load overlays from `.sdd/mvp-overlays.yml` and the base template from
-`docs/product/Audit-Rebuild-Cheat-Sheet.md`. Do not restate `.sdd/pipeline.md`'s procedure here —
-read it fresh each time.
+Before starting, load ticket context with:
+`node scripts/extract-ticket.mjs <id> --with-overlays`
+only — never Read the full backlog or cheat sheet. Do not restate `.sdd/pipeline.md`'s
+procedure here — read it fresh each time.

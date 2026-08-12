@@ -6,7 +6,10 @@ What to say to the agent when re-feeding an MVP-era ticket for the polished buil
 
 Don't re-paste the original ticket as-is. If you do, the agent will either say "this is already implemented" and stop, or patch around whatever's there. Every Wave 0–4 ticket gets re-framed as an **audit-and-rebuild**: the existing code is not the source of truth — the acceptance criteria are.
 
-**Preferred command:** `/pipeline-gapfill <ticket-id>` — loads overlays from `.sdd/mvp-overlays.yml`, runs `gap-scout`, then gap-scopes planner/red/dev while keeping full review+security. Use full `/pipeline` only when gap-scout escalates (mostly missing) or for greenfield work.
+**Preferred command:** `/pipeline-gapfill <ticket-id>` — agents load a single-ticket slice via
+`scripts/extract-ticket.mjs` (never the whole backlog), run `gap-scout`, then gap-scope planner/red/dev
+while keeping full review+security. Triage many tickets first with `/gap-scout-only <id…>`. Use full
+`/pipeline` only when gap-scout escalates (mostly missing) or for greenfield work.
 
 ---
 

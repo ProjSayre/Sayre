@@ -1,0 +1,318 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T040646000Z-ee496aa498-PR_DELTA-81b52d",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-10T04:06:46Z",
+  "completed_at": "2026-08-10T04:16:35Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "branch": "feat/w0-04-sqs-bullmq-gapfill",
+    "dirty": true,
+    "environment": "local-dev checkout; no live CI run; Docker/LocalStack/Redis unreachable in this environment (docker info fails, redis-cli ping refused) -- matches the same constraint dev/tester/review all hit; no Neo4j/Postgres reachable either. Working tree is dirty with exactly the W0-04 gapfill file set (git status --porcelain -uall re-verified by this stage: 8 modified + 6 untracked files matching review.json's fresh stamp) plus one confirmed-unrelated untracked Documents/PRD/ directory (pre-dates this session, not part of git diff, not in changed_paths).",
+    "base_urls": [],
+    "changed_paths": [
+      ".github/workflows/ci.yml",
+      "docs/wave0-foundation-contracts.md",
+      "services/core/src/queue/__tests__/initialParse.fixture.test.ts",
+      "services/core/src/queue/bullmq.ts",
+      "services/core/vitest.config.ts",
+      "services/workers/tests/test_initial_parse_wire_fixture.py",
+      "services/workers/tests/test_messaging_topology.py",
+      "services/workers/tests/test_sqs_roundtrip.py",
+      "services/core/src/queue/__tests__/bullmq.lane.test.ts",
+      "services/core/src/queue/__tests__/bullmq.priority.test.ts",
+      "services/core/src/queue/__tests__/w0-04.acceptance-wiring.test.ts",
+      "services/core/test/cross-runtime/publishIngestion.ts",
+      "services/gateway/test/cross-runtime/consumeRealtime.ts",
+      "services/workers/tests/test_cross_runtime_roundtrip.py"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No compatible baseline selected. Per audit-contract.md's baseline order (option 4: 'No baseline. Mark every observation FIRST_OBSERVATION; do not invent progress.'): reviewed all six prior complete runs under .pipeline/security-history/ (20260723T045054983Z-dcd04559ef, 20260726T014535000Z-7f22125a81, 20260727T042955000Z-fd80b6e8dc, 20260804T055818422Z-e7d473db5a, 20260809T044344000Z-fbdf003b67, 20260809T204750000Z-4856b2c4f1). All six target commits are git-ancestors of this run's HEAD (verified with `git merge-base --is-ancestor` for each), but none selected or evaluated observations against this diff's actual target assets (services/core/src/queue/bullmq.ts's new lane/priority mechanism, the two new cross-runtime tsx harnesses, services/core/vitest.config.ts's fileParallelism change, or the new CI messaging/cross-runtime steps) -- no observation_key in any prior run's results.json matches any observation_key this run produces (checked directly, see incompatible_dimensions).",
+    "incompatible_dimensions": [
+      "The 20260727T042955000Z-fd80b6e8dc run (W2-09) recorded PASS observations for ING-04/05/06 against target_asset 'repo-initial-parse-envelope-construction'/'repo-initial-parse-outbox' -- topically related (same publishInitialParseEvent production function) but a DIFFERENT target asset (the webhook-triggered production call path, not this run's new test-only direct-invocation tsx harness) and therefore not a matching observation_key per the contract's stable-key rule (match by key components only, never by prose similarity). Noted as supporting context in report.md, not used as a machine-comparable baseline.",
+      "No prior run's surface_inventory or observations cover the BullMQ lane/priority mechanism at all -- GAP-3 (the pre-existing SQS-only priority-lane mechanism) predates every run in security-history/.",
+      "No prior run selected websocket-realtime or ingestion-queue-webhook against services/gateway/test/** or services/core/test/** (test-harness paths, as opposed to production src/**)."
+    ]
+  },
+  "product_progress": {
+    "milestone": "Wave 0 gapfill -- W0-04 SQS + BullMQ wiring (GAPFILL: GAP-3a/GAP-4/GAP-4a/GAP-5), closing the literal acceptance line ('cross-language test messages consumed correctly; a priority message demonstrably drains ahead of a backlog of default messages') against a live broker.",
+    "phase": "pre-external-customer MVP (CLAUDE.md / security-multitenancy.md secrets-phase posture: gitignored local .env, no KMS store yet -- not implicated by this diff, which introduces no new secret, only a fail-closed guard around an existing one).",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".pipeline/gaps.json",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/async-messaging.md",
+      "CLAUDE.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Pipeline convention (security stage may execute existing, non-destructive local test suites as read-only verification -- no production source file was modified by this stage).",
+    "resource_ceiling": "Local vitest/pytest execution of pre-existing, non-broker-dependent test files only (src/queue/__tests__/bullmq.lane.test.ts, w0-04.acceptance-wiring.test.ts, initialParse.fixture.test.ts, envelope.test.ts, the full @sayre/core suite, poetry pytest --collect-only, ruff check) plus static reading of installed node_modules/bullmq source. No live broker (Docker/LocalStack/Redis unreachable), no network egress, no destructive operation, no fixture created outside this run's own analysis.",
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01), always executed.",
+      "rationale": "org_id enforcement (assertValidEnvelope) is unchanged by this diff and is exercised at every produce/consume boundary this diff touches or adds.",
+      "code_references": [
+        "services/core/src/queue/envelope.ts:85-98"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02), always executed.",
+      "rationale": "No client-side graphology, route-handler, or resolver code appears anywhere in this diff -- NOT_APPLICABLE to this specific change.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03), always executed; directly implicated by the SQS_ENDPOINT_URL guard and the two new tsx harnesses' config resolution.",
+      "rationale": "Verified the fail-closed SQS_ENDPOINT_URL guard first-hand against @sayre/config's actual getConfig/validateValue implementation, and found no hardcoded/logged secret in the diff.",
+      "code_references": [
+        "services/core/test/cross-runtime/publishIngestion.ts:32-45",
+        "packages/config/src/config.ts:85,167-197"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04), always executed; enqueue() is a shared control downstream of webhook signature validation.",
+      "rationale": "githubWebhookService.ts is unedited by this diff; signature validation still gates the one enqueue() call site.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:83"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05), always executed.",
+      "rationale": "No scratch-clone/ingestion-worker persistence code appears anywhere in this diff -- NOT_APPLICABLE to this specific change.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06), always executed; directly implicated by the two new tsx harnesses being invoked via subprocess from pytest.",
+      "rationale": "Both subprocess call sites use list-argv form with no shell=True and no string-concatenated command; no Cypher/SQL construction in the diff.",
+      "code_references": [
+        "services/workers/tests/test_cross_runtime_roundtrip.py:161-188"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Registry trigger path services/workers/** glob-matched (test files only); not selected.",
+      "rationale": "Every services/workers/** file this diff touches is a messaging/queue test file (test_initial_parse_wire_fixture.py, test_messaging_topology.py, test_sqs_roundtrip.py, test_cross_runtime_roundtrip.py) -- none contains embedding, retrieval, or prompt code. Trigger match was a floor, not evidence of relevance; confirmed by reading every touched file.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Registry trigger paths services/workers/**, services/core/** glob-matched broadly; not selected.",
+      "rationale": "No file touched by this diff relates to model-provider egress/SSRF surfaces; confirmed by reading every changed file.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No registry trigger path matched any changed path.",
+      "rationale": "services/core/src/mcp/** is untouched by this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Registry trigger paths services/gateway/**, **/*realtime* matched via the new consumeRealtime.ts harness.",
+      "rationale": "Selected and all 12 checklist IDs executed; the harness invokes the pre-existing, unedited createRealtimeSqsConsumer directly with its own synthetic onEnvelope, never reaching fanout.ts/ws/* -- every WS-* check resolved NOT_APPLICABLE to this diff's actual code.",
+      "code_references": [
+        "services/gateway/test/cross-runtime/consumeRealtime.ts:71-84"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Registry trigger paths services/workers/**, services/core/**/*queue*, **/*sqs*, **/*bullmq* matched; this is the primary surface of the diff (BullMQ lane mechanism + cross-runtime queue harnesses).",
+      "rationale": "All 14 checklist IDs executed, including the two briefed focus items (ING-04 forged-priority-input, ING-07 lane-starvation) with direct code-path tracing of every enqueue() call site plus independent verification of BullMQ 5.28.2's own scheduling code in node_modules.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts:198-262"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No registry trigger path matched any changed path (apps/web/**, services/core/src/routes/**, services/core/src/http/** all absent from changed_paths).",
+      "rationale": "No route handler or client-facing HTTP surface touched by this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Registry trigger path .github/** matched via ci.yml; secret-handling in the two new harnesses and the CI step is a shared control.",
+      "rationale": "All 14 checklist IDs executed; confirmed no loader bypass, no hardcoded/logged secret, and the CI credential literal reuses an already-established non-secret LocalStack sentinel.",
+      "code_references": [
+        ".github/workflows/ci.yml:463-472,486-509"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Registry trigger path .github/** matched via ci.yml workflow changes.",
+      "rationale": "All 14 checklist IDs executed; confirmed no trigger/permission broadening, no shell-injection-adjacent pattern in the new workflow steps, and no dependency/container/IAM surface touched.",
+      "code_references": [
+        ".github/workflows/ci.yml:266-280,486-509"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "audit-run-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "fde0283ab0d6cc50a2a289eaad12ac485580bef5c67366bb10b460b8355d759e"
+    },
+    {
+      "agent_id": "audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "c1a24a105aa49d8ae317a1b740e8ecf3076f326b0ff669c2d4916c8a39b4cd0e"
+    },
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-agent-definition",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "a6b52b93f7233cf685cd28e9c84902364723d181f10db6a094f02299c6759db8"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "87b3fd4499643c3ac5cb959c204f37b497fc4a3256aea8ec081ce70424fcbf8e"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "5a9313b9fb87c85267bcd26bcd6487f5eeae154c64876e0879af86faf01a5e38"
+    }
+  ],
+  "limitations": [
+    "Docker/LocalStack/Redis are unreachable in this environment (docker info fails; redis-cli ping refused), matching the exact constraint dev, tester, and both review passes hit. This stage could not dynamically execute the two RED-DEFERRED/broker-gated suites (bullmq.priority.test.ts, test_cross_runtime_roundtrip.py) or the new test_messaging_topology.py priority-drain test against a live broker. Every finding that depends on live-broker behavior (AC-2/AC-4's priority-drain functional correctness, AC-6/AC-7's actual cross-runtime delivery) is therefore backed by STATIC code-path evidence (including independent verification against the installed BullMQ 5.28.2 package source) and re-derivation of the code's logic, not this stage's own DYNAMIC live-broker run. This is a coverage limitation carried forward from every upstream stage, not a new gap introduced here.",
+    "The security-relevant conclusions that do NOT depend on live-broker behavior (SQS_ENDPOINT_URL fail-closed guard, no client-reachable path to the `lane` option, list-argv subprocess invocation, org_id/envelope validation ordering, CI workflow scope) were verified directly against on-disk source, not merely restated from changes.md/review.md.",
+    "spec.json/red.json/changes.json report 'stale' stamps per node scripts/check-stamp-freshness.mjs (tree-hash-only, content unaffected in every case previously checked by review) -- consistent with review.md's own PL-04 section; review.json itself is fresh (checked by this stage before proceeding, per the gate above) and is the only trusted-fresh required input.",
+    "ING-07's lane-starvation design note (see results.json) is a forward-looking consideration for the not-yet-written 'which jobs get the priority lane' policy ticket (spec.md Open Questions #3), not a current exploitable finding -- recorded here rather than as a FAIL because no caller can reach `lane` today."
+  ]
+}

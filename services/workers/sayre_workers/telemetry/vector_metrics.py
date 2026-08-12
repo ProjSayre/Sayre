@@ -1,4 +1,4 @@
-"""The two mandated vector-store metrics + the sole sanctioned wrapper.
+"""The two mandated vector-store metrics + the sole sanctioned execution path.
 
 Exporter-agnostic: this module imports only the `opentelemetry` API (never
 `opentelemetry.sdk`, never a concrete exporter/backend). It works whether or
@@ -7,18 +7,19 @@ whatever the *current* global MeterProvider is at first use, so import order
 relative to `init_metrics()` never matters and metrics are never silently
 dropped to a no-op meter.
 
-No pgvector query call sites exist yet in this repo (see
-`.pipeline/W0-06/spec.md` Scope/Out). This module is the enforced convention:
-every future pgvector similarity query routes through
-`instrument_vector_query()` -- that is how "wrap every pgvector query" is
-satisfied ahead of any real call site.
+Every sanctioned operation that reads or writes the pgvector-backed
+``code_embeddings`` store routes through ``execute_vector_query()``. The
+lower-level context manager remains public for non-connection test harnesses,
+but application call sites use the execution helper so metrics cannot be
+separated accidentally from the database operation they describe.
 """
 
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
+from typing import Any, Protocol
 
 from opentelemetry import metrics
 from opentelemetry.metrics import Histogram, MeterProvider, UpDownCounter
@@ -34,6 +35,14 @@ _METER_NAME = "sayre_workers.telemetry.vector_metrics"
 # fresh instruments bound to it, per reset_instruments_cache() below.
 _cached_provider: MeterProvider | None = None
 _cached_instruments: tuple[Histogram, UpDownCounter] | None = None
+
+
+class VectorQueryConnection(Protocol):
+    async def execute(
+        self,
+        query: str,
+        params: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> Any: ...
 
 
 def _get_instruments() -> tuple[Histogram, UpDownCounter]:
@@ -60,7 +69,7 @@ def _get_instruments() -> tuple[Histogram, UpDownCounter]:
 
 @asynccontextmanager
 async def instrument_vector_query(org_id: str) -> AsyncIterator[None]:
-    """Wrap exactly one pgvector similarity query.
+    """Measure exactly one pgvector-backed database operation.
 
     org_id MUST be the server-derived tenant id already used to scope the
     query (per-tenant namespace / RLS per PRD 4.5) -- NEVER a client-supplied
@@ -93,6 +102,26 @@ async def instrument_vector_query(org_id: str) -> AsyncIterator[None]:
         duration_ms = (time.perf_counter() - start) * 1000.0
         histogram.record(duration_ms, attrs)
         concurrent.add(-1, attrs)
+
+
+async def execute_vector_query(
+    connection: VectorQueryConnection,
+    *,
+    org_id: str,
+    query: str,
+    params: Sequence[Any] | Mapping[str, Any] | None = None,
+) -> Any:
+    """Execute one sanctioned vector-store operation with mandatory metrics.
+
+    ``org_id`` is the same server-derived tenant identifier already installed
+    on ``connection`` by the RLS boundary. SQL and parameters stay separate;
+    the returned cursor is intentionally untouched so callers retain normal
+    psycopg fetch semantics.
+    """
+    async with instrument_vector_query(org_id):
+        if params is None:
+            return await connection.execute(query)
+        return await connection.execute(query, params)
 
 
 def reset_instruments_cache() -> None:

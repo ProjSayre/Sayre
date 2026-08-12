@@ -1,0 +1,20 @@
+{
+  "filesChanged": [
+    "services/core/src/queue/bullmq.ts",
+    "services/core/vitest.config.ts",
+    ".github/workflows/ci.yml",
+    "docs/wave0-foundation-contracts.md",
+    "services/core/src/queue/__tests__/initialParse.fixture.test.ts",
+    "services/workers/tests/test_initial_parse_wire_fixture.py",
+    "services/workers/tests/test_sqs_roundtrip.py",
+    "services/core/test/cross-runtime/publishIngestion.ts",
+    "services/gateway/test/cross-runtime/consumeRealtime.ts"
+  ],
+  "redTestChanges": [],
+  "stamp": {
+    "treeHash": "1fdb2e24af1d34405eabc5b05c4fe8a184817245b0ba432c76d178e73a6a7525",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-09T22:39:08.654Z"
+  }
+}
