@@ -148,6 +148,13 @@
       "when": 1785384400000,
       "tag": "0020_w7_01_github_installation_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785384500000,
+      "tag": "0021_ch01_ephemeral_mcp_credentials",
+      "breakpoints": true
     }
   ]
 }

@@ -542,11 +542,24 @@ export const mcpClientKeys = pgTable(
     revokedByLabel: text("revoked_by_label"),
     // Audit/metering hook (last successful use). Nullable; enforcement is W4-06.
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    // CH-01: credential family discriminator. 'agent' = the long-lived, org-scoped
+    // W4-06 agent key; 'chat_ephemeral' = a short-lived, user-scoped,
+    // conversation-bound first-party chat credential. CHECK lives in drizzle/0021_*.
+    kind: text("kind").notNull().default("agent"),
+    // CH-01: the conversation an ephemeral credential is bound to. NULL for
+    // kind='agent'; NOT NULL for kind='chat_ephemeral' (CHECK in 0021). Deliberately
+    // NOT a foreign key — the conversations table does not exist until CH-03.
+    conversationId: uuid("conversation_id"),
     ...timestamps,
   },
   (table) => [
     unique("mcp_client_keys_key_prefix_unique").on(table.keyPrefix),
     index("mcp_client_keys_org_id_idx").on(table.orgId),
+    // CH-01: two further partial indexes over kind='chat_ephemeral' rows
+    // (conversation lookup, expiry sweep) are hand-authored in drizzle/0021_*
+    // — Drizzle's schema builder has no first-class partial-index support,
+    // same convention as `users_external_auth_id_unique` (drizzle/0013_*) and
+    // `jira_connections_active_org_unique` (drizzle/0016_*).
   ],
 );
 

@@ -33,7 +33,7 @@ export async function executeMcpTool(
   try {
     deps.limiter.consume(
       credential.context.orgId,
-      credential.keyPrefix,
+      credential.meteringSubject,
       credential.rateLimitPerMinute,
     );
     const result = await operation();
@@ -53,7 +53,7 @@ export async function executeMcpTool(
   } finally {
     deps.record({
       orgId: credential.context.orgId,
-      keyPrefix: credential.keyPrefix,
+      keyPrefix: credential.meteringSubject,
       tool,
       outcome,
       responseText,

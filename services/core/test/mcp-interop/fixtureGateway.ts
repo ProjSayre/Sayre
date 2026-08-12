@@ -210,6 +210,8 @@ function credentialFor(token: string): ResolvedMcpCredential {
         : '44444444-4444-4444-8444-444444444444',
     keyPrefix: prefix,
     rateLimitPerMinute: 10_000,
+    kind: 'agent',
+    meteringSubject: prefix,
   };
 }
 

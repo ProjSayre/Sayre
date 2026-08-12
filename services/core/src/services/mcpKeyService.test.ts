@@ -124,6 +124,8 @@ describe('MCP key lifecycle', () => {
       revokedAt: null,
       createdBy: USER,
       rateLimitPerMinute: 41,
+      kind: 'agent',
+      conversationId: null,
     };
     await expect(
       resolveMcpCredential(issued.token, {
@@ -142,6 +144,8 @@ describe('MCP key lifecycle', () => {
       keyId: KEY_ID,
       keyPrefix: issued.keyPrefix,
       rateLimitPerMinute: 41,
+      kind: 'agent',
+      meteringSubject: issued.keyPrefix,
     });
   });
 
@@ -196,6 +200,8 @@ describe('MCP key lifecycle', () => {
       revokedAt: null,
       createdBy: USER,
       rateLimitPerMinute: 60,
+      kind: 'agent',
+      conversationId: null,
     };
     revoked = true;
     await expect(

@@ -305,6 +305,20 @@ jobs:
         env:
           DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
 
+      # CH-01 ephemeral MCP credential RLS test
+      # (ephemeralMcpCredentials.rls.test.ts) — same node:test-vs-vitest reason
+      # as the three steps above. Without this step the suite would exist with a
+      # :ci script and still run nowhere, which is the same "a gate that should
+      # have run, didn't" failure that made CH-01's own re-gate necessary. It
+      # covers the assertions that can only be made against real PostgreSQL:
+      # migration 0021's three CHECK constraints, deleteExpired's org/kind
+      # scoping under RLS, and resolve_mcp_client_key's SECURITY DEFINER
+      # privilege state.
+      - name: core — RLS isolation tests (ephemeral MCP credentials)
+        run: npm --prefix services/core run test:rls:ephemeral:ci
+        env:
+          DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev
+
       # test/mcp-interop/interop.test.ts (MCP tool-handler contract against a
       # fixture gateway + fake OpenAI-compatible model) has its own tsconfig
       # covered by `core — typecheck` above, but execution was never wired in
