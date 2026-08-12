@@ -1,0 +1,57 @@
+{
+  "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+  "date": "2026-08-11",
+  "ticket": "CH-01",
+  "ticketTitle": "CH-01 — Ephemeral scoped MCP credentials for first-party chat",
+  "goal": "Give the first-party \"Ask Sayre\" agent loop a short-lived, conversation-bound, digest-only MCP bearer credential whose effective RBAC scope is exactly the asking user's own effective scope, so the existing MCP gateway and every existing tool handler enforce that user's access with zero handler changes.",
+  "filesTouched": [
+    ".github/workflows/ci.yml",
+    "docs/wave0-foundation-contracts.md",
+    "packages/config/src/config.ts",
+    "packages/shared-types/src/index.ts",
+    "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/package.json",
+    "services/core/src/db/ephemeralMcpCredentialStore.ts",
+    "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+    "services/core/src/db/mcpKeyStore.ts",
+    "services/core/src/db/rls_acceptance.tester.test.ts",
+    "services/core/src/db/schema.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "services/core/src/mcp/metrics.ts",
+    "services/core/src/mcp/toolExecution.ts",
+    "services/core/src/services/ephemeralMcpCredentialService.ts",
+    "services/core/src/services/mcpKeyService.test.ts",
+    "services/core/src/services/mcpKeyService.ts",
+    "services/core/test/mcp-interop/fixtureGateway.ts"
+  ],
+  "verdicts": {
+    "review": "PASS",
+    "security": "PASS"
+  },
+  "overrides": [],
+  "bypass": false,
+  "regate": {
+    "testerRan": true,
+    "gatesOnly": false,
+    "note": "code was changed in the working tree outside the pipeline's dev stage before this run; changes.md/changes.json describe the tree as it stood before that edit"
+  },
+  "lite": null,
+  "inline": null,
+  "gapfill": null,
+  "redTestPaths": [
+    "services/core/src/services/ephemeralMcpCredentialService.test.ts",
+    "services/core/src/services/mcpCredentialResolution.test.ts",
+    "services/core/src/db/mcpKeyStoreKind.test.ts",
+    "services/core/src/mcp/ephemeralMcpGateway.test.ts",
+    "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+    "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+    "services/core/src/db/ephemeralMcpCredentials.rls.test.ts"
+  ],
+  "redAbsenceNote": null,
+  "securityRunId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+  "commit": {
+    "sha": "01bfb6e9f6a9583b1c7d3ac9b684bcadfcdaed6f",
+    "dirty": false
+  }
+}

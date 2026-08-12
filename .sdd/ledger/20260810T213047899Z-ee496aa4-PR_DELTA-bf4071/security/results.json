@@ -1,0 +1,886 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+  "baseline_run_id": null,
+  "generated_at": "2026-08-10T21:49:33.261Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 15,
+      "NOT_APPLICABLE": 12,
+      "FAIL": 1,
+      "UNVERIFIED": 4
+    },
+    "result_transitions": {
+      "FIRST_OBSERVATION": 32
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 32
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "FIRST_OBSERVATION": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Traced every write/read this diff adds (mintEphemeralMcpCredential -> store.issue, listEphemeralMcpCredentialAudit -> store.listByConversation, sweepExpiredEphemeralMcpCredentials -> store.deleteExpired) for a client-suppliable org_id, and independently confirmed Postgres RLS itself (not just app-layer filtering) rejects a cross-org write/read on mcp_client_keys and permissions with the app-layer filter deliberately removed.",
+      "evidence": [
+        "mintEphemeralMcpCredential(input, ctx, ...) has no org parameter; parseMintInput() only accepts {conversationId, ttlSeconds} and rejects any extra key including a supplied orgId (ephemeralMcpCredentialService.ts:149-185, proven by mcpCredentialService test \"accepts exactly conversationId/ttlSeconds and never an org id from the caller\").",
+        "Every EphemeralMcpCredentialStore method takes orgId as an explicit parameter sourced only from ctx.orgId, and PostgresEphemeralMcpCredentialStore threads it through withOrgContext(db, orgId, ...) for every query (ephemeralMcpCredentialStore.ts:108-232).",
+        "Independently ran (this run): `npx vitest run src/security/tenantIsolation.penetration.test.ts` against the local sayre-postgres container with DATABASE_ADMIN_URL set -- 17/17 passed, including \"a filter-less SELECT ... under org A returns only org A rows, across all 13 tables\" and \"cross-org INSERT ... under context A is rejected with a row-level security error\" -- both mcp_client_keys and permissions are among the 13 covered tables.",
+        "Independently ran (this run): `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` against the same Postgres -- 7/7 passed, including org-scoped issue()/listByConversation()/deleteExpired() assertions (\"another tenant's audit read never sees it, even for the same conversation id\"; \"deleteExpired removes only this org's expired ephemeral rows\")."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `DATABASE_ADMIN_URL=postgres://sayre_dev:***@localhost:5432/sayre_dev npx vitest run src/security/tenantIsolation.penetration.test.ts` and `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` from services/core, against the already-running local `sayre-postgres` docker-compose container (credentials read from the running container's own env, not written to any file). The RLS suite creates/reuses its own throwaway database (ch01_ephemeral_rls_test) and truncates it in its own after() hook; confirmed 0 rows remain post-run. No repository file was created, modified, or left behind by this observation.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:149-236",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:108-232",
+        "services/core/src/security/tenantIsolation.penetration.test.ts",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|services/core/graph-query-permissions|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/graph-query-permissions",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff introduces any node-level access-control or graph-traversal logic outside the Graph Query Service (a route handler, resolver, or client-side graphology code), and whether the existing boundary (graph-query/permissions.ts) was altered.",
+      "evidence": [
+        "git diff --name-only / git status --porcelain show no file under services/core/src/graph-query/, services/core/src/routes/, apps/web/, or any graphology usage in this diff.",
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts pins graph-query/permissions.ts (and gateway.ts, auth/context.ts, all 9 mcp/handlers/*.ts) to an exact SHA-256; re-ran this test this run and it passed, confirming the file is still byte-identical to pre-CH-01."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Checked the pepper is resolved only through the designated loader, that no raw secret/token ever reaches a persisted column, log line, error message, or metric attribute, and that no rejection path logs anything.",
+      "evidence": [
+        "getPepper: () => getSecret('env://MCP_TOKEN_PEPPER') is the only pepper access point (ephemeralMcpCredentialService.ts:111); getSecret is the repository's one designated secret loader (packages/config/src/secrets.ts), gated to a closed SECRET_NAMES catalog.",
+        "grep for console.\\ and logger.\\ across ephemeralMcpCredentialService.ts, ephemeralMcpCredentialStore.ts, mcpKeyService.ts, mcpKeyStore.ts, toolExecution.ts, metrics.ts returns zero matches.",
+        "Independently ran (this run) ephemeralMcpCredentialService.test.ts's \"keeps every rejection message a fixed constant and never logs or echoes key material\" test (spies console.log/info/warn/error/debug across a success mint and a rejected mint) -- passed, zero calls.",
+        "Independently ran (this run) mcpCredentialResolution.test.ts's \"uses one fixed rejection message for every path and never echoes key material\" test across 8 distinct rejection scenarios -- passed.",
+        "schema.ts's mcpClientKeys table has no plaintext/raw-key column at all -- only keyHmac -- so there is no column the service could even mistakenly write the secret to."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts src/services/mcpCredentialResolution.test.ts` from services/core. No fixture created outside the test process; nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:108-117,219",
+        "services/core/src/db/schema.ts (mcpClientKeys)",
+        "services/core/src/services/ephemeralMcpCredentialService.test.ts:469-500",
+        "services/core/src/services/mcpCredentialResolution.test.ts:360-383"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|services/core/webhook-receivers|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/webhook-receivers",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches any webhook receiver, SQS producer, or BullMQ job type.",
+      "evidence": [
+        "Full changed-path list (22 files) contains no webhook/queue/integration file."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|services/workers/ingestion|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers/ingestion",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches the Python ingestion worker or any scratch-clone lifecycle code.",
+      "evidence": [
+        "Full changed-path list (22 files) is entirely under docs/, packages/shared-types, and services/core -- no services/workers file."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|services/core/mcp-client-keys-store|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-client-keys-store",
+      "attack_path_version": "v1",
+      "attempt": "Checked every new/changed SQL-touching code path (ephemeralMcpCredentialStore.ts, mcpKeyStore.ts's new predicates, migration 0019) for string-concatenated or otherwise unparameterized use of externally influenced input.",
+      "evidence": [
+        "ephemeralMcpCredentialStore.ts uses only drizzle-orm's query builder (eq/and/inArray/lte) for every WHERE clause -- no template-literal SQL construction anywhere in the file.",
+        "Independently ran (this run) mcpKeyStoreKind.test.ts, which renders the ACTUAL SQL predicate drizzle builds for list()/revoke() via PgDialect().sqlToQuery() and asserts placeholders ($1, $2) with parameters supplied out-of-band, never inlined -- passed.",
+        "Migration 0019 is static, hand-authored DDL with no interpolated variable of any kind (drizzle/0019_ch01_ephemeral_mcp_credentials.sql) -- confirmed by direct reading."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/db/mcpKeyStoreKind.test.ts` from services/core. No fixture created; nothing to clean up.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/src/db/mcpKeyStoreKind.test.ts",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-01|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-01",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether gateway.ts's origin allowlist / DNS-rebinding protection is present, unmodified, and unaffected by the introduction of a second credential family (a bad implementation could special-case ephemeral tokens and skip origin checks).",
+      "evidence": [
+        "gateway.ts (confirmed byte-identical to pre-CH-01 via SHA-256 pin) validates Origin before any credential resolution runs for POST /mcp: `if (!originAllowed(req, allowedOrigins)) { jsonRpcError(res, 403, ...); return; }`, unconditional on credential kind.",
+        "parseAllowedOrigins() only accepts https:// or http://localhost|127.0.0.1 origins, rejecting anything else at config-parse time.",
+        "StreamableHTTPServerTransport is constructed with enableDnsRebindingProtection: true."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:68-96,275-296"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-02|mcp|services/core/mcp-key-service:resolveMcpCredential|v1",
+      "check_id": "MCPT-02",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-key-service:resolveMcpCredential",
+      "attack_path_version": "v1",
+      "attempt": "Exercised resolveMcpCredential across missing, malformed, revoked, expired, wrong-pepper, wrong-kind, and under-scoped (mismatched family) credentials for both GET/DELETE (unconditional 405, credential never inspected) and POST (every request requires deps.resolveCredential to succeed). Additionally analyzed the code-path shape of every rejection branch for a non-body/non-status/non-log side channel (timing).",
+      "evidence": [
+        "router.get('/mcp') and router.delete('/mcp') return 405 unconditionally, never touching a credential (gateway.ts:317-321, unmodified).",
+        "router.post('/mcp') requires `credential = await deps.resolveCredential(bearerToken(req))` before any tool executes; a thrown McpKeyAuthenticationError maps uniformly to 401 (gateway.ts:282-291, unmodified).",
+        "mcpCredentialResolution.test.ts (this run, passed) proves: malformed tokens never reach the store (EC-5); wrong-family token/row combinations are rejected before any digest compare in both directions (EC-3); an unrecognized stored kind is rejected, never degraded to 'agent' (EC-4); wrong pepper version is rejected (EC-6); revoked is rejected (EC-7); deleted-issuer (createdBy null) is rejected (EC-8); and all of these produce byte-identical `McpKeyAuthenticationError('MCP authentication failed.')`.",
+        "ephemeralMcpGateway.test.ts (this run, passed) proves an expired ephemeral token and an entirely unknown one produce byte-identical HTTP status, body, and content-type at the gateway.",
+        "FINDING (timing, not covered by the above): resolveMcpCredential's rejection disjunction (mcpKeyService.ts:288-300) short-circuits BEFORE `mcpSecretHmac`/`hmacMatches` for every one of: unknown prefix, wrong family, revoked, expired, wrong pepper version, deleted issuer. Only a row that passes every one of those checks but has the WRONG SECRET reaches `await deps.getPepper()` + HMAC computation + `timingSafeEqual`. This is a measurable, pre-existing code-path-length asymmetry between \"no such shape-valid row\" and \"shape-valid row, wrong secret\" -- i.e. a timing side channel for row-shape-validity/existence, independent of the (correctly constant-time) secret comparison itself once reached. This predates CH-01 (the identical early-return structure already existed for mcp_live_ agent keys before this diff); CH-01's new `row.kind` clauses were added INTO the same short-circuiting disjunction, inheriting rather than introducing the gap for the new chat_ephemeral family. No empirical latency sampling was performed this run (STATIC code-path analysis only) -- see report Limitations."
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-c8951999637a",
+        "status": "OPEN",
+        "first_seen_run_id": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+        "first_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "last_seen_run_id": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+        "last_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "String/status/content-type parity reproduced via `npx vitest run src/services/mcpCredentialResolution.test.ts src/mcp/ephemeralMcpGateway.test.ts` from services/core. The timing-path finding is a static code-read (mcpKeyService.ts:278-303); no live timing measurement was taken, so no fixture was created for it.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts:278-303",
+        "services/core/src/services/mcpCredentialResolution.test.ts",
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts:270-293"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-03|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-03",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked for a session-ID concept that could be hijacked, fixated, or guessed.",
+      "evidence": [
+        "StreamableHTTPServerTransport is constructed with `sessionIdGenerator: undefined` (gateway.ts:296, unmodified) -- no session ID is ever generated, so there is no session identifier to hijack, fixate, guess, or fail to bind to a principal."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-04|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-04",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked for a request/stream ID or Last-Event-ID mechanism that could be replayed cross-session.",
+      "evidence": [
+        "Same as MCPT-03: no session/stream identifier exists in this transport configuration at all (sessionIdGenerator: undefined, no GET/SSE support)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300,317-321"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-05|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-05",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked for SSE resumption / Last-Event-ID / replay support.",
+      "evidence": [
+        "router.get('/mcp') unconditionally returns 405 (gateway.ts:317-319, unmodified) -- no SSE stream, no resumption cursor exists to replay."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:317-319"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-06|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-06",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked for lifecycle/protocol-version confusion (tool calls before initialize, repeated initialize, capability/version-header tampering, downgrade paths).",
+      "evidence": [
+        "gateway.ts is unmodified by this diff (SHA-256 pinned); this class of behavior is entirely delegated to @modelcontextprotocol/sdk's StreamableHTTPServerTransport/McpServer, unaffected by which credential family authenticated."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not independently probed this run (no initialize-sequence/version-header fuzzing performed). Pre-existing, unmodified surface; no prior security-history run exists in this worktree to cite as established baseline coverage.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts (unmodified)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-07|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-07",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked for JSON-RPC validation gaps (batches, duplicate/invalid IDs, malformed UTF-8/JSON, oversized bodies).",
+      "evidence": [
+        "gateway.ts is unmodified by this diff; this validation is entirely the SDK's / express.json()'s, unaffected by credential family."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not independently probed this run. Pre-existing, unmodified surface.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts (unmodified)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-08|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-08",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked for streaming/long-lived-connection resource exhaustion (concurrent/abandoned SSE streams, reconnect storms).",
+      "evidence": [
+        "StreamableHTTPServerTransport is constructed with `enableJsonResponse: true` and GET (the only method that could serve SSE) is hard-coded to 405 -- there is no long-lived streaming connection this gateway will accept at all."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:294-300,317-319"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Checked secret entropy, one-time disclosure, at-rest hashing, constant-time comparison, prefix collision-resistance, log redaction, and cache safety for the new chat_ephemeral family.",
+      "evidence": [
+        "Secret: 32 bytes (256 bits) from node:crypto randomBytes, base64url-encoded (ephemeralMcpCredentialService.ts:209-213), length-asserted before use.",
+        "Prefix: 8 bytes (64 bits) from randomBytes, hex-encoded to 16 chars, `mcp_chat_<16 hex>` (:214-218), length-asserted.",
+        "One-time disclosure: MintedEphemeralMcpCredential.token is returned once in-memory to the caller and is a deliberately non-shared-types interface (comment: \"nothing carrying token may become a shared, casually serialized wire type\"); listEphemeralMcpCredentialAudit's return shape has no token/secret/keyHmac field (confirmed by AC-6 test asserting the serialized audit response excludes those substrings).",
+        "At-rest hashing: keyHmac = mcpSecretHmac(secret, pepper) = HMAC-SHA256 hex digest; independently ran (this run) the RLS test's issue()-and-select-back assertion, confirming only key_hmac (not the secret) lands in the row.",
+        "Constant-time comparison: hmacMatches() uses node:crypto timingSafeEqual after a regex length/shape pre-check on both operands (mcpKeyService.ts:249-256, unmodified).",
+        "Log redaction: see CORE-03 observation above (same evidence, not repeated)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts` and `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` (real Postgres). No residual fixture; RLS suite's own after() hook truncates.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:209-220",
+        "services/core/src/services/mcpKeyService.ts:243-256"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-10|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-10",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the minted credential's ceiling can never exceed the issuing user's own live scope, and that there is no caller-controlled scope-selection input to malform in the first place (structural, not merely validated).",
+      "evidence": [
+        "The ceiling snapshot always comes from `deps.permissions.getReadScope(ctx)` -- the issuer's OWN live scope -- never from caller input; MintEphemeralMcpCredentialInput accepts only {conversationId, ttlSeconds}, no scope/grant fields exist to malform or omit.",
+        "Resolution always intersects: `intersectReadScopes(ceiling, issuer)` unions denies and only allows the pairwise intersection of allow rules (graph-query/permissions.ts:178-193, unmodified) -- so the persisted ceiling is a ceiling, never a floor.",
+        "Independently ran (this run) the DB-backed proof: \"a resolved ephemeral credential reads exactly what its issuer currently reads\" and \"a ceiling row widened directly in the database grants nothing extra\" in ephemeralMcpCredentials.rls.test.ts -- both passed against real Postgres, the latter directly UPDATE-ing the ceiling permissions row to the broadest possible rule and confirming coverage still does not exceed the issuer's live scope.",
+        "Independently ran (this run) the unit-level equivalents (AC-2, AC-5, EC-13, EC-14, EC-15) in ephemeralMcpCredentialService.test.ts -- all passed, using canReadResource probe-set coverage equality (never array equality, which intersectReadScopes(S,S) can legitimately widen without widening the authorized resource set)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts` and `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts`. No residual fixture.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "services/core/src/graph-query/permissions.ts:178-193 (unmodified)",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:287-392"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-11|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-11",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed TTL is bounded at both enforcement points with a single shared clock reading (no clock-skew bypass), tested every documented bypass input, and confirmed revoked/pepper-rotated credentials fail on next use.",
+      "evidence": [
+        "Service: ttlSeconds defaults to 300, must satisfy Number.isSafeInteger and be in [1,600] or the request is rejected BEFORE any key material is generated (ephemeralMcpCredentialService.ts:170-182,194). Independently ran (this run) the EC-9 test enumerating 0, -1, 1.5, NaN, Infinity, 601, '300' (string), null, true -- all rejected, and confirmed randomSecret/randomPrefixBytes were never invoked for any of them.",
+        "DB: `expires_at > created_at AND expires_at <= created_at + interval '600 seconds'` (migration 0019). The service passes the SAME `issuedAt` Date object as both `createdAt` and the basis for `expiresAt` (ephemeralMcpCredentialStore.ts issue(): `createdAt: input.issuedAt, updatedAt: input.issuedAt`) -- created_at and expires_at for a given row are always derived from one JS Date value, eliminating any app-clock-vs-DB-clock skew on this row's own boundary check.",
+        "Independently ran (this run) \"0019 CHECK constraints reject every malformed credential shape\" against real Postgres -- rejects expires_at beyond +601s, at created_at exactly, and before created_at; accepts exactly +300s and exactly +600s.",
+        "Revocation: EC-7 (revokedAt set -> rejected) and pepper rotation: EC-6 (wrong pepper version -> rejected) both re-ran this run and passed; no separate revocation UI ships in this ticket by design (lazy TTL-bound rejection is the sole enforcement path, matching spec.md's explicit scope)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts src/services/mcpCredentialResolution.test.ts` and `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts`. No residual fixture.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:170-199",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:108-131",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql:41-49"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-12|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-12",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Checked unauthorized responses, audit reads, and metric attributes for leaked key material, internal identifiers, or stack traces.",
+      "evidence": [
+        "ephemeralMcpGateway.test.ts (this run, passed): the 401 body for both an expired and an unknown token is the fixed constant `{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"Unauthorized.\"},\"id\":null}`, and the test explicitly asserts the body does NOT contain the token or the key prefix.",
+        "listEphemeralMcpCredentialAudit's AC-6 test (this run, passed) asserts the serialized audit response never contains 'keyHmac', 'pepperVersion', or 'token'.",
+        "The metric attribute (key_id, sourced from McpToolMeasurement.keyPrefix) now carries credential.meteringSubject, which for a chat_ephemeral credential is `chat:<userId>` -- never the key prefix or secret (toolExecution.ts:36,56; metrics.ts doc comment).",
+        "gateway.ts (unmodified) is not altered in its tool-listing/schema/error-shape behavior by this diff."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/mcp/ephemeralMcpGateway.test.ts src/services/ephemeralMcpCredentialService.test.ts` from services/core. No residual fixture.",
+      "code_references": [
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts:270-293",
+        "services/core/src/mcp/toolExecution.ts:33-58",
+        "services/core/src/mcp/metrics.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Searched every new/changed file for a direct process.env read or any credential path outside getSecret().",
+      "evidence": [
+        "grep for `process.env` across all 22 changed/new files under services/core and packages/shared-types returns no match in production code (the only `process.env` usage anywhere in the diff would be test-harness code, and none of the CH-01 test files reference it either).",
+        "The single pepper access point is `getSecret('env://MCP_TOKEN_PEPPER')`, the designated loader."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:111"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Inspected all tracked/new files, fixtures, and the migration for a hardcoded live-looking secret.",
+      "evidence": [
+        "Every secret-shaped literal in the diff is an obvious test fixture: PEPPER = 'pepper-value', keyHmac fixtures like 'a'.repeat(64), Buffer.alloc(32,3)-derived secrets -- none resemble a real credential and all live only in *.test.ts files.",
+        "Migration 0019 contains no credential-material vocabulary at all (asserted by ephemeralMcpCredentialMigration.test.ts's regex, re-run this run and passing)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/security/ephemeralMcpCredentialMigration.test.ts:102-104"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|apps/web|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether any server-only secret from this diff could reach a browser bundle.",
+      "evidence": [
+        "No apps/web file appears in this diff; MintedEphemeralMcpCredential is explicitly documented as never entering @sayre/shared-types (the one boundary a browser bundle could import from)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:56-60"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Exercised success and failure paths with console spies to check for secret/tenant-data leakage into logs/metrics/traces.",
+      "evidence": [
+        "Same evidence as CORE-03 above: EC-22 tests spy console.log/info/warn/error/debug across success and every rejection scenario, zero calls; metric attribute is meteringSubject only."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts src/services/mcpCredentialResolution.test.ts`.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.test.ts:469-500"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Verified digest-only storage, org-bound references, least-privileged DB role, and that ordinary reads cannot retrieve plaintext.",
+      "evidence": [
+        "Only keyHmac (a SHA-256 HMAC digest) is persisted; the table has no plaintext column at all.",
+        "Independently ran (this run) the RLS test's \"the recreated resolve_mcp_client_key stays SECURITY DEFINER and off PUBLIC\" case, which directly queries pg_proc/has_function_privilege and confirms only `sayre_app` (not PUBLIC) can EXECUTE the bootstrap resolver -- passed.",
+        "RLS itself (forced, org_isolation policy) governs all direct table access, confirmed for mcp_client_keys and permissions by the general tenantIsolation.penetration.test.ts run this run."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` against real Postgres.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:506-531"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|services/core/mcp-key-service|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed a rotated pepper version invalidates already-issued ephemeral credentials on next use (fail-closed, not fail-open).",
+      "evidence": [
+        "EC-6 test (re-run this run): a stored row with pepperVersion != the configured version is rejected -- resolveMcpCredential(...) rejects instead of silently accepting a stale digest."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/mcpCredentialResolution.test.ts`.",
+      "code_references": [
+        "services/core/src/services/mcpCredentialResolution.test.ts:330-338"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|services/workers|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches Python worker/sandbox code or its environment/process exposure.",
+      "evidence": [
+        "No services/workers file appears in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|.github|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches CI workflow, artifact-upload, or snapshot configuration.",
+      "evidence": [
+        "No .github file appears in this diff; the two package.json script additions (test:rls:ephemeral / :ci) mirror the existing test:rls:jira pair exactly and introduce no new CI trigger or secret exposure surface by themselves."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/package.json"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Verified the new audit read records actor, tenant, target, and time for every ephemeral credential.",
+      "evidence": [
+        "listEphemeralMcpCredentialAudit returns issuedByUserId, issuedByLabel (actor), is org-scoped via ctx.orgId (tenant), keyId/keyPrefix/conversationId (target), and issuedAt/expiresAt/lastUsedAt/revokedAt (time) -- confirmed by AC-6 test (this run, passed).",
+        "EC-8 test confirms that even after the issuing user is deleted, createdByLabel (captured at mint time) survives, so accountability is not silently lost to a later user deletion."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `npx vitest run src/services/ephemeralMcpCredentialService.test.ts`.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:250-275"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Checked for tamper-evidence / append-only enforcement on the audit trail itself (can the underlying rows be updated/deleted/forged without detection).",
+      "evidence": [
+        "listEphemeralMcpCredentialAudit reads directly from the same mutable mcp_client_keys operational table used for authentication, not a separate append-only/immutable audit ledger; the only protections are RLS (org scoping) and least-privileged role grants (sayre_app), not tamper-evidence.",
+        "This mirrors the pre-existing W4-06 agent-key audit model exactly -- not a regression introduced by CH-01, and this ticket never claimed to build an immutable audit subsystem."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live tamper attempt performed against real audit rows this run (would require write access explicitly authorized beyond this run's scope). STATIC inspection only.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:156-177"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Traced deletion of an expired ephemeral credential and its ceiling rows across org boundaries, and the issuing-user-deletion cascade.",
+      "evidence": [
+        "Independently ran (this run) \"deleteExpired removes only this org's expired ephemeral rows and their ceilings\" against real Postgres -- confirmed one org's expired row and its ceiling permissions rows are both removed, while a live ephemeral row, an expired agent row (untouched, wrong kind), and another org's expired row are all left intact.",
+        "Independently ran (this run) \"deleting the issuing user nulls created_by and empties the credential scope\" -- confirmed the ON DELETE SET NULL cascade succeeds and the credential's resolved scope becomes empty (fails closed) rather than erroring or leaking prior scope.",
+        "Note (non-blocking, matches review.md Suggestion 5): sweepExpiredEphemeralMcpCredentials is not wired to any scheduler in this ticket by explicit design (spec.md Out-of-scope) -- expired rows accumulate on disk until an admin manually invokes the sweep, but TTL-bound lazy rejection at every resolve is a complete access-control substitute regardless of accumulation (data-retention hygiene concern only, not an access-control gap)."
+      ],
+      "evidence_type": "DYNAMIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Reproduced via `node --import tsx --test src/db/ephemeralMcpCredentials.rls.test.ts` against real Postgres; suite's own after() hook truncates its throwaway database.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:394-504"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|infra/backups|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/backups",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff touches backup/restore configuration or policy.",
+      "evidence": [
+        "No backup/restore file or config appears in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Checked whether this diff exposes any export or support-tooling surface.",
+      "evidence": [
+        "No export/support-tooling code touched; spec.md ships no HTTP route or UI in this ticket at all."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "ABSENT",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Checked for alerting/anomaly-detection on repeated failed ephemeral-mint or ephemeral-auth attempts.",
+      "evidence": [
+        "No alerting/detection code exists for this credential family (nor, on inspection, for the pre-existing agent-key family) -- rejections are silent failures with no counter or alert wired."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No live reproduction required — static code inspection only. No fixture created, nothing to clean up.",
+      "code_references": []
+    }
+  ]
+}

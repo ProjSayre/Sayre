@@ -159,6 +159,42 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   ".gitignore": [
@@ -4462,6 +4498,39 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "docs/workspace-pack-authoring.md": [
@@ -4613,6 +4682,79 @@
       "ticket": "PL-15",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "packages/config/src/config.ts": [
+    {
+      "runId": "20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "packages/shared-types/src/index.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -5466,6 +5608,43 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "services/core/drizzle/0020_ch01_ephemeral_mcp_credentials.sql": [
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "services/core/drizzle/0020_w7_01_github_installation_sync.sql": [
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
@@ -5475,6 +5654,39 @@
     }
   ],
   "services/core/drizzle/meta/_journal.json": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
       "ticket": "W7-01",
@@ -5488,6 +5700,39 @@
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    },
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/app.ts": [
@@ -5501,6 +5746,85 @@
           "base",
           "spot-check"
         ]
+      }
+    }
+  ],
+  "services/core/src/db/ephemeralMcpCredentialStore.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "services/core/src/db/ephemeralMcpCredentials.rls.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
       }
     }
   ],
@@ -5536,7 +5860,77 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/src/db/mcpKeyStore.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "services/core/src/db/mcpKeyStoreKind.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
   "services/core/src/db/rls_acceptance.tester.test.ts": [
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
       "ticket": "W7-01",
@@ -5545,6 +5939,39 @@
     }
   ],
   "services/core/src/db/schema.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
       "ticket": "W7-01",
@@ -5672,12 +6099,125 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/src/mcp/ephemeralMcpGateway.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
+  "services/core/src/mcp/gateway.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "services/core/src/mcp/gateway.ts": [
     {
       "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
       "ticket": "W0-00",
       "date": "2026-08-04",
       "spec": ".sdd/ledger/20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa/spec.md"
+    }
+  ],
+  "services/core/src/mcp/metrics.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "services/core/src/mcp/toolExecution.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json": [
@@ -5922,6 +6462,65 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/src/security/ch01UnmodifiedSurfaces.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
+  "services/core/src/security/ephemeralMcpCredentialMigration.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
+  "services/core/src/services/ephemeralMcpCredentialService.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
+  "services/core/src/services/ephemeralMcpCredentialService.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "services/core/src/services/githubAppInstallService.discoveryCallback.test.ts": [
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
@@ -6087,6 +6686,84 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/src/services/mcpCredentialResolution.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    }
+  ],
+  "services/core/src/services/mcpKeyService.test.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
+  "services/core/src/services/mcpKeyService.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "services/core/src/services/repositoryCatalogService.sync.test.ts": [
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
@@ -6237,6 +6914,41 @@
         "overlays": [
           "base"
         ]
+      }
+    }
+  ],
+  "services/core/test/mcp-interop/fixtureGateway.ts": [
+    {
+      "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+      "ticket": "CH-01",
+      "date": "2026-08-10",
+      "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T050503262Z-01bfb6e-REMEDIATION_RECHECK-3cdf99/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a",
+      "ticket": "CH-01",
+      "date": "2026-08-11",
+      "spec": ".sdd/ledger/20260811T055856705Z-47e012d-REMEDIATION_RECHECK-17901a/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+      "ticket": "CH-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
       }
     }
   ],

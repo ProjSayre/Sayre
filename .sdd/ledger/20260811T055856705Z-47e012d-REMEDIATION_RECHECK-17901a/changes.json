@@ -1,0 +1,35 @@
+{
+  "filesChanged": [
+    "packages/shared-types/src/index.ts",
+    "services/core/src/db/schema.ts",
+    "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/src/db/mcpKeyStore.ts",
+    "services/core/src/db/ephemeralMcpCredentialStore.ts",
+    "services/core/src/services/ephemeralMcpCredentialService.ts",
+    "services/core/src/services/mcpKeyService.ts",
+    "services/core/src/mcp/toolExecution.ts",
+    "services/core/src/mcp/metrics.ts",
+    "services/core/src/services/mcpKeyService.test.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "docs/wave0-foundation-contracts.md",
+    "services/core/package.json",
+    "services/core/test/mcp-interop/fixtureGateway.ts",
+    "packages/config/src/config.ts",
+    "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+    ".github/workflows/ci.yml",
+    "services/core/src/db/rls_acceptance.tester.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+      "reason": "Post-PASS CI-remediation hand-edit, declared under /re-gate rather than made by dev. CI's repo-wide gate `npm run check:secret-access` (scripts/check-secret-access.mjs) failed this file at line 39 for direct `process.env.CH01_TEST_DB_NAME` access; that gate bars ALL direct environment reads outside the central loaders, not only secret-class ones, and the local lane never ran it. Line 39 now reads `getConfig(\"CH01_TEST_DB_NAME\")` from @sayre/config, the exact pattern sibling DB suites already use (src/db/rls.test.ts:41 `getConfig(\"RLS_TEST_DB_NAME\")`), with the name and its default `ch01_ephemeral_rls_test` registered in packages/config/src/config.ts's CONFIG_NAMES/DEFAULTS beside RLS_TEST_DB_NAME. Behavior is identical: same default, same env-var override, both verified. No assertion, no test case, and no scope-coverage claim was weakened, added, or removed — the diff is the import line, the constant's right-hand side, and a header comment. The suite was then executed against real Postgres and passes 7/7, up from RED-DEFERRED."
+    }
+  ],
+  "stamp": {
+    "treeHash": "be6a64ecd5e7ed3428401dc86fa32c9dfe36af508b1ad93f0a5b732ba72f65b2",
+    "headSha": "47e012d01a2d878bbfd33a365dd0b76ec343fac6",
+    "dirty": false,
+    "writtenAt": "2026-08-11T05:27:03.655Z"
+  }
+}
