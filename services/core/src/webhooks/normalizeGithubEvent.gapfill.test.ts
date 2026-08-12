@@ -75,14 +75,7 @@ describe('normalizeGithubEvent — push refs are constrained to refs/heads/* (AC
   );
 
   // @spec EC-9
-  // spec.md's EC-9 literal ("ownership only") was authored against the gap-scout checkout,
-  // which already carried an unrelated, separately-ledgered W1-05 fix narrowing branch
-  // create/delete to ownership-only. This PR is deliberately based on main, which predates
-  // that fix, to keep the two tickets in separate branches/PRs — so the actually-correct,
-  // currently-shipped destinations for a branch event here are still ['ingestion',
-  // 'ownership']. EC-9's real intent — this GAP-5 push-ref change does not touch the
-  // create/delete code path at all — holds either way; only the literal list changes.
-  it('leaves create/delete untouched: ref_type branch -> refs/heads/<name>, current destinations unchanged', () => {
+  it('leaves create/delete untouched: ref_type branch -> refs/heads/<name>, ownership only', () => {
     for (const githubEvent of ['create', 'delete'] as const) {
       const result = normalizeGithubEvent({
         githubEvent,
@@ -91,7 +84,7 @@ describe('normalizeGithubEvent — push refs are constrained to refs/heads/* (AC
       });
       if ('ignored' in result) throw new Error(`expected ${githubEvent} to normalize`);
       expect(result.event.ref).toBe('refs/heads/feature-y');
-      expect(result.destinations).toEqual(['ingestion', 'ownership']);
+      expect(result.destinations).toEqual(['ownership']);
     }
   });
 
