@@ -86,6 +86,18 @@ Runtime row-level security is mandatory defense in depth. Acceptance tests execu
 actual non-owner, non-superuser, `NOBYPASSRLS` runtime role; service-layer filtering does not
 substitute for RLS, and RLS does not substitute for Graph Query Service RBAC.
 
+CH-01 adds a second `mcp_client_keys` credential family, discriminated by a `kind` column
+(`'agent'` | `'chat_ephemeral'`) rather than a new table, so the ceiling-intersection model above
+applies unchanged. A `chat_ephemeral` row is a short-lived (<=600s), conversation-bound, digest-only
+bearer credential minted for a signed-in user by the first-party "Ask Sayre" chat loop; its ceiling
+is a mint-time snapshot of the issuing user's effective read scope, written as ordinary `permissions`
+rows with `subject_type = 'agent_key'` and `subject_id = <key prefix>` — the same rows an agent key
+would get. Because resolution always intersects that ceiling with the issuer's *current* scope, the
+credential can only narrow after mint, never widen, and a revoked or narrowed issuer takes effect on
+the credential's very next use with no separate revocation path required. Rate-limit and metrics
+bucketing for this family key on `chat:<issuing user id>` rather than the (re-mintable) key prefix, so
+minting a fresh credential mid-conversation cannot reset the caller's per-minute budget.
+
 The system may persist bounded, tenant-scoped code chunks and document chunks required for RAG,
 their embeddings, and structural metadata. It must not persist a repository checkout, source tree,
 or any derivative that reconstructs one. Scratch clones are destroyed after parsing.

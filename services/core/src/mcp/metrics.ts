@@ -30,6 +30,11 @@ function instruments(): Instruments {
 
 export interface McpToolMeasurement {
   orgId: string;
+  /**
+   * The public metering subject reported to `key_id`: an agent key's own
+   * prefix, or `chat:<issuing user id>` for a CH-01 ephemeral credential (see
+   * `ResolvedMcpCredential.meteringSubject`). Never key material.
+   */
   keyPrefix: string;
   tool: string;
   outcome: 'ok' | 'error' | 'rate_limited';

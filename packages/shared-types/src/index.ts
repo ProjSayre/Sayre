@@ -123,6 +123,9 @@ export interface McpRateLimitUpdateRequest {
   rateLimitPerMinute: number;
 }
 
+/** CH-01: which credential family a `mcp_client_keys` row belongs to. */
+export type McpCredentialKind = 'agent' | 'chat_ephemeral';
+
 export type RepoEventType = 'push' | 'pull_request' | 'branch';
 
 export interface RepoRef {
