@@ -1,0 +1,26 @@
+{
+  "filesChanged": [
+    "packages/shared-types/src/index.ts",
+    "services/core/src/db/schema.ts",
+    "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/src/db/mcpKeyStore.ts",
+    "services/core/src/db/ephemeralMcpCredentialStore.ts",
+    "services/core/src/services/ephemeralMcpCredentialService.ts",
+    "services/core/src/services/mcpKeyService.ts",
+    "services/core/src/mcp/toolExecution.ts",
+    "services/core/src/mcp/metrics.ts",
+    "services/core/src/services/mcpKeyService.test.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "docs/wave0-foundation-contracts.md",
+    "services/core/package.json",
+    "services/core/test/mcp-interop/fixtureGateway.ts"
+  ],
+  "redTestChanges": [],
+  "stamp": {
+    "treeHash": "7fad998c89d1a38e2c81e8b0ad24ebd450ccc3781ad0a2a593255fea0f68c9ea",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-10T21:09:28.599Z"
+  }
+}

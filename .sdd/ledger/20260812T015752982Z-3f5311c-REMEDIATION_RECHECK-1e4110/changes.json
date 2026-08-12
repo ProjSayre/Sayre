@@ -1,0 +1,39 @@
+{
+  "filesChanged": [
+    "packages/shared-types/src/index.ts",
+    "services/core/src/db/schema.ts",
+    "services/core/drizzle/0020_ch01_ephemeral_mcp_credentials.sql",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/src/db/mcpKeyStore.ts",
+    "services/core/src/db/ephemeralMcpCredentialStore.ts",
+    "services/core/src/services/ephemeralMcpCredentialService.ts",
+    "services/core/src/services/mcpKeyService.ts",
+    "services/core/src/mcp/toolExecution.ts",
+    "services/core/src/mcp/metrics.ts",
+    "services/core/src/services/mcpKeyService.test.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "docs/wave0-foundation-contracts.md",
+    "services/core/package.json",
+    "services/core/test/mcp-interop/fixtureGateway.ts",
+    "packages/config/src/config.ts",
+    "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+    ".github/workflows/ci.yml",
+    "services/core/src/db/rls_acceptance.tester.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+      "reason": "Post-PASS CI-remediation hand-edit, declared under /re-gate rather than made by dev. CI's repo-wide gate `npm run check:secret-access` (scripts/check-secret-access.mjs) failed this file at line 39 for direct `process.env.CH01_TEST_DB_NAME` access; that gate bars ALL direct environment reads outside the central loaders, not only secret-class ones, and the local lane never ran it. Line 39 now reads `getConfig(\"CH01_TEST_DB_NAME\")` from @sayre/config, the exact pattern sibling DB suites already use (src/db/rls.test.ts:41 `getConfig(\"RLS_TEST_DB_NAME\")`), with the name and its default `ch01_ephemeral_rls_test` registered in packages/config/src/config.ts's CONFIG_NAMES/DEFAULTS beside RLS_TEST_DB_NAME. Behavior is identical: same default, same env-var override, both verified. No assertion, no test case, and no scope-coverage claim was weakened, added, or removed — the diff is the import line, the constant's right-hand side, and a header comment. The suite was then executed against real Postgres and passes 7/7, up from RED-DEFERRED. EXTENDED in the round-5 rebase: two further comment/title-only edits in this same file, from the migration renumber described in the sibling entry below — the header comment's 'migration 0019' and one test title's '0019 CHECK constraints' both became '0020'. No assertion, no fixture, and no test body changed; the suite still passes 7/7 against real Postgres."
+    },
+    {
+      "path": "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+      "reason": "MIGRATION RENUMBER 0019 -> 0020, forced by main. Round-5 rebase onto origin/main@2520ec9: main's W0-05 gapfill landed drizzle/0019_w0_05_tenant_consistent_repo_fks.sql at journal idx 19, the slot CH-01's migration previously occupied. CH-01's migration was renumbered with `git mv` to drizzle/0020_ch01_ephemeral_mcp_credentials.sql, and its journal entry moved to idx 20 with `when` 1785384400000 (strictly greater than idx 19's 1785384300000) so journal order and drizzle's apply order agree. This test is the migration's own contract, so it necessarily moves with it: the MIGRATION_URL path, the tag lookup, the expected {idx, when, tag} triple, the describe title, and the header comment. The exact-match discipline is UNCHANGED and deliberately NOT relaxed to a presence check — it still asserts the full entry object, still asserts `journal.entries.at(-1)` equals that entry (strict newest-migration/tip assertion), and still asserts every idx is unique. No SQL text assertion, no security assertion (including the no-credential-vocabulary check), and no test case was added, removed, or weakened. Verified on a FRESH throwaway database so drizzle's bookkeeping could not carry the old 0019 name: journal is contiguous idx 0..20, `when` strictly increasing, and the full CI RLS suite passes with main's 0019 applied before CH-01's 0020."
+    }
+  ],
+  "stamp": {
+    "treeHash": "1bc4fdbfd52669813bdf950d3a7889d9c60d47e6244089cbc6bc687b7802b46f",
+    "headSha": "c7eb46ec6fb3d75fc3a61c20757097256f1191a2",
+    "dirty": true,
+    "writtenAt": "2026-08-12T01:24:16.047Z"
+  }
+}

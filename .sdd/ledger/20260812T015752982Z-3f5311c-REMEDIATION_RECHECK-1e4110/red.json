@@ -1,0 +1,119 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "services/core/src/services/ephemeralMcpCredentialService.test.ts",
+      "sha256": "ee9d83c18b05f9d1da53bbdef49b0b404ea2195025e4277f80315803722f63a1",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-12",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-17",
+        "EC-22",
+        "EC-24"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/mcpCredentialResolution.test.ts",
+      "sha256": "84aa499329209b953834bb191475cfc2abe6a1d60a30272b4d681ce9bb6ea6ff",
+      "specIds": [
+        "AC-1",
+        "AC-3",
+        "AC-9",
+        "AC-10",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-18",
+        "EC-19",
+        "EC-22"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/db/mcpKeyStoreKind.test.ts",
+      "sha256": "c94350b06054dfdb8fdcc95aa9efccbf74568905b43bb3e5f66734ffe4ad1a8a",
+      "specIds": [
+        "AC-8",
+        "AC-10",
+        "EC-4",
+        "EC-19"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/mcp/ephemeralMcpGateway.test.ts",
+      "sha256": "f8b22b3083ca6616dbd0efd9463dded6a48587c78c4ac86b3631818e6a02a222",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-9",
+        "EC-1",
+        "EC-12"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+      "sha256": "93d9fb4efe7fbfb4e524a0d8d58c935bed0580e86137c2359b6fc284c781595c",
+      "specIds": [
+        "AC-13",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+      "sha256": "5313221bdc1ebe7ebcf9e185046b6d4dda92d6a45961da90a2b6acbc6101a23c",
+      "specIds": [
+        "AC-11"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+      "sha256": "e8605b7fd424f964be336a242ca5d67957b7dbb26128ff3fb83483e1fde6109d",
+      "specIds": [
+        "AC-2",
+        "AC-5",
+        "AC-7",
+        "AC-8",
+        "AC-12",
+        "EC-8",
+        "EC-14",
+        "EC-15",
+        "EC-20",
+        "EC-21",
+        "EC-23",
+        "EC-24"
+      ],
+      "classification": "RED-DEFERRED"
+    }
+  ],
+  "stamp": {
+    "treeHash": "7f7730b0f66de489ab7865efe035c814c87a3812b465586666d277d107d277ff",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": true,
+    "writtenAt": "2026-08-10T20:49:11.544Z"
+  }
+}

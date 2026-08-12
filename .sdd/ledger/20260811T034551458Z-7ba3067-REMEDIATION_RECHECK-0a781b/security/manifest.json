@@ -1,0 +1,312 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T034551458Z-7ba3067-REMEDIATION_RECHECK-0a781b",
+  "mode": "REMEDIATION_RECHECK",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T03:45:51.458Z",
+  "completed_at": "2026-08-11T04:10:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:/Users/splat/OneDrive/Desktop/Sayre/.claude/worktrees/agent-a7c6f9616bdc59002"
+  },
+  "target": {
+    "commit_sha": "7ba3067f7ccfcfd38346f53ba5773b7f1a54b1e4",
+    "branch": "ticket/ch-01-ephemeral-mcp-credentials",
+    "dirty": true,
+    "environment": "local-dev worktree; docker-compose services already running locally (sayre-postgres/pgvector:pg16, sayre-redis, sayre-neo4j, sayre-localstack, sayre-prometheus) on localhost -- not shared, not production",
+    "base_urls": [],
+    "changed_paths": [
+      ".github/workflows/ci.yml",
+      "packages/config/src/config.ts",
+      "services/core/src/db/ephemeralMcpCredentials.rls.test.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+    "commit_sha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "comparable": true,
+    "selection_reason": "Explicitly supplied by the calling agent as the prior run to recheck against (a /re-gate REMEDIATION_RECHECK). Ancestry verified this run: `git merge-base --is-ancestor ee496aa 7ba3067` confirms ee496aa4985fc4145afbadf34c54de9cf3e9910a is a direct ancestor of this run's target 7ba3067f7ccfcfd38346f53ba5773b7f1a54b1e4 (the CH-01 feature commit and its ledger-append commit sit directly on top of it). Same repository, same environment class (local-dev docker-compose, sayre-postgres pgvector/pg16), same tenant-fixture pattern (seedOrg Org A/B via ephemeralMcpCredentials.rls.test.ts), same registry/contract/orchestrator/brief content hashes (re-hashed this run and confirmed byte-identical to those recorded in the baseline manifest, except supply-chain-infrastructure-attacker.md which the baseline never loaded because that surface was not selected then). Fully comparable per audit-contract.md section 2 order item 1 (human-specified compatible run).",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": null,
+    "phase": "MVP, pre-external-customer (local .env-based secrets posture confirmed still active in code: ephemeralMcpCredentialService.ts still resolves the pepper via getSecret('env://MCP_TOKEN_PEPPER'); the new CH01_TEST_DB_NAME config name is registered in the separate, non-secret CONFIG_NAMES catalog, not SECRET_NAMES)",
+    "source_references": [
+      ".claude/rules/security-multitenancy.md",
+      "CLAUDE.md",
+      ".pipeline/spec.md",
+      ".pipeline/changes.json (redTestChanges declaration for this delta)"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "implicit -- local, non-production, non-shared docker-compose environment on localhost only; audit-contract.md's default-to-read-only-until-authorized restriction is scoped to shared/production-like targets, which this is not",
+    "resource_ceiling": "Single local docker-compose Postgres instance (sayre-postgres, already running, healthy). This run executed: the full services/core vitest suite (105 files / 1056 tests / 7 skipped, via `npm run test --workspace @sayre/core`); the CH-01 RLS node:test suite twice against real Postgres, once at its default database name and once with CH01_TEST_DB_NAME overridden to a throwaway alternate name to prove the config wiring is live (both 7/7, the override database dropped immediately after); tenantIsolation.penetration.test.ts with DATABASE_ADMIN_URL set (17/17); every CH-01-specific vitest file individually (50/50 across 8 files); `npx tsc --noEmit` for services/core and packages/config; `npx eslint` on the two hand-edited source files plus a full `turbo run lint --filter=@sayre/core --force`; `npm run check:secret-access` against the full tracked tree; a direct dynamic probe of packages/config's compiled getConfig() confirming it accepts CH01_TEST_DB_NAME and rejects DATABASE_ADMIN_URL. No concurrent-connection flood, no resource-exhaustion probing performed.",
+    "credential_references": [
+      "env:DATABASE_ADMIN_URL -- constructed from the already-running local docker-compose Postgres container's own env (POSTGRES_USER=sayre_dev, POSTGRES_DB=sayre_dev); value redacted from this manifest and never written to a file or echoed to a persistent log by this run; never a shared or production credential",
+      "env:MCP_TOKEN_PEPPER -- not directly exercised this run (no ephemeralMcpCredentialService.ts code changed); baseline's injected test-fixture value only, never a real secret"
+    ],
+    "tenant_fixtures": [
+      "Org A / Org B synthetic orgs seeded by ephemeralMcpCredentials.rls.test.ts's seedOrg() helper (org A: repoId-scoped allow(src)/deny(src/secret) permissions rows)",
+      "MEMBER / ADMIN / OWNER / AGENT synthetic AuthContext fixtures across ephemeralMcpCredentialService.test.ts, mcpCredentialResolution.test.ts, ephemeralMcpGateway.test.ts"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01); always executed regardless of routing. ephemeralMcpCredentials.rls.test.ts (a direct evidentiary asset for this surface) is one of this delta's three changed files.",
+      "rationale": "Production tenant-isolation code (ephemeralMcpCredentialService.ts, ephemeralMcpCredentialStore.ts) is byte-identical to the prior PASS; the only change touching this surface's evidence is the RLS test's own env-access line (process.env -> getConfig), which does not alter what the test asserts. Re-verified this run against real Postgres with the app-layer filter removed.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts:108-232",
+        "services/core/src/security/tenantIsolation.penetration.test.ts",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02); always executed regardless of routing.",
+      "rationale": "No file under this delta's changed_paths touches graph-query/permissions.ts, a route, a resolver, or client-side graphology. ch01UnmodifiedSurfaces.test.ts re-run this run and still passing, confirming the pin holds.",
+      "code_references": [
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+        "services/core/src/graph-query/permissions.ts (unmodified)"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03); always executed regardless of routing. packages/config/src/config.ts (the non-secret CONFIG_NAMES catalog) is directly touched by this delta -- the exact boundary this check exists to police.",
+      "rationale": "CH01_TEST_DB_NAME (a throwaway test database name, not a credential) is added to CONFIG_NAMES/DEFAULTS, mirroring the pre-existing RLS_TEST_DB_NAME/TENANT_ISOLATION_TESTER_DB_NAME sibling pattern. DATABASE_ADMIN_URL remains solely in the separate SECRET_NAMES catalog, resolved only through getSecret. Verified dynamically this run that the compiled getConfig() accepts CH01_TEST_DB_NAME and rejects DATABASE_ADMIN_URL with ConfigError('Unsupported configuration name.').",
+      "code_references": [
+        "packages/config/src/config.ts:16,84",
+        "packages/config/src/secrets.ts:8-37",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts:33,43"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04); always executed regardless of routing.",
+      "rationale": "None of this delta's three changed files is a webhook receiver, SQS producer, or BullMQ job type.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05); always executed regardless of routing.",
+      "rationale": "No services/workers file is touched by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06); always executed regardless of routing.",
+      "rationale": "ephemeralMcpCredentialStore.ts, mcpKeyStore.ts, and migration 0019 are all byte-identical to the prior PASS. Re-ran mcpKeyStoreKind.test.ts (rendered-SQL-placeholder assertions) this run to reconfirm.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/src/db/mcpKeyStoreKind.test.ts",
+        "services/core/drizzle/0019_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger-path match: none of this delta's three changed files is under services/workers/**, packages/graph-schema/**, or an embedding/retrieval/prompt path.",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Cold inspection of this delta's three changed files found zero ModelProvider/EmbeddingProvider/GraphifyAdapter/egress/outbound-HTTP-client code.",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Core subject of the ticket; REMEDIATION_RECHECK mode explicitly requires rerunning the prior FAIL observation (MCPT-02) plus its bypass variants and sibling paths, all executed fresh this run. ephemeralMcpCredentials.rls.test.ts (a direct MCPT-11 evidentiary asset) is also one of this delta's three changed files.",
+      "rationale": "mcpKeyService.ts (the file the one open finding lives in) is byte-identical to the prior PASS -- confirmed via `git diff HEAD` returning zero lines for it. Every CH-01 MCP test file re-run fresh this run against the current tree.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts",
+        "services/core/src/mcp/gateway.ts (unmodified)",
+        "services/core/src/mcp/toolExecution.ts (unmodified)"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No services/gateway/**, realtime, websocket, or redis file in this delta.",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No queue, webhook, or integration file in this delta; BullMQ/SQS untouched.",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No apps/web/**, routes, or http file in this delta.",
+      "rationale": "Unaffected by this delta.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Trigger-path match on .github/** and the secret-loader-relevant packages/config/src/config.ts change; this delta is squarely this surface's subject matter (a post-PASS CI-remediation hand-edit that specifically touches the loader boundary and CI workflow).",
+      "rationale": "Directly implicated: the guard fix itself (SEC-01), the CI workflow addition (SEC-08), and the CONFIG_NAMES widening (SEC-01/SEC-02) are all this surface's checklist items.",
+      "code_references": [
+        "packages/config/src/config.ts",
+        ".github/workflows/ci.yml",
+        "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+        "scripts/check-secret-access.mjs (unmodified)"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Newly selected this run (was selected: false in the baseline). .github/workflows/ci.yml is genuinely touched by this delta (a new CI step) -- the baseline's non-selection reasoning ('zero dependency, lockfile, Dockerfile, CI, or IAM changes in this diff') no longer holds. This run's explicit brief per the calling agent: 'A workflow edit can exfiltrate secrets ... Confirm this edit does none of that.'",
+      "rationale": "Executed the full SC-01..SC-14 checklist against the actual one-step CI diff.",
+      "code_references": [
+        ".github/workflows/ci.yml:294-306"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "security-agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-security-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    },
+    {
+      "agent_id": "security-audit-manifest-schema",
+      "source": "security-attacker-agents/schemas/audit-run-manifest.schema.json",
+      "sha256": "f88c097bb4a92a881a56286b933c4e428e3eb8b854b04b48c90ce10ee331ba1c"
+    },
+    {
+      "agent_id": "security-audit-results-schema",
+      "source": "security-attacker-agents/schemas/audit-results.schema.json",
+      "sha256": "f9a6e712b68cb94181a83bc6129e5e87879940914ca7bc4ad5bbe93be05307fd"
+    },
+    {
+      "agent_id": "security-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker-agent",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    }
+  ],
+  "limitations": [
+    "MCPT-06 (lifecycle/version confusion) and MCPT-07 (JSON-RPC validation) remain UNVERIFIED, unchanged from the baseline: gateway.ts is still byte-identical to pre-CH-01 and this run performed no dedicated fuzzing of that pre-existing, unmodified surface.",
+    "MCPT-02 remains FAIL (MEDIUM, OPEN, non-blocking): resolveMcpCredential's rejection disjunction (mcpKeyService.ts:288-300) still short-circuits before the HMAC comparison on every fast-reject branch. This delta made zero changes to mcpKeyService.ts (confirmed: `git diff HEAD` returns no lines for that file), so the finding is unchanged, not merely re-affirmed by inference -- re-run this run against the current tree with identical results to baseline. No empirical wall-clock latency sampling was performed this run either (still STATIC code-path analysis).",
+    "SEC-10 (audit-log tamper-evidence) and SEC-14 (detection/alerting) remain UNVERIFIED, unchanged: both are genuine but minor, pre-existing (not CH-01-introduced) gaps untouched by this delta.",
+    "llm-rag, model-provider, websocket-realtime, ingestion-queue-webhook, and web-api-client briefs were not selected this run either -- none has any target asset in this delta's three changed files. This is a REMEDIATION_RECHECK-proportionate judgment scoped to what changed since the prior PASS, not a MILESTONE/FULL-scoped exhaustive audit of those surfaces.",
+    "The supply-chain-infrastructure checklist (SC-01..SC-14) was executed for the first time this run, scoped to the actual one-step CI diff in front of it (a single additive `run:` step reusing an already-reviewed literal CI-local DSN pattern). Several SC checks (SC-01/02/03/07/09/11/12/13/14) resolve NOT_APPLICABLE because this specific delta has no dependency, container, IAM, TLS, availability, or migration target asset -- that is a statement about this delta, not a claim that those dimensions are secure for the repository overall; a MILESTONE/FULL run would need to audit them directly against real target assets elsewhere in the repository."
+  ]
+}
