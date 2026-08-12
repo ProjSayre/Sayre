@@ -1,0 +1,159 @@
+{
+  "ticket": "CH-03 — Chat conversation persistence, turn API, and `chat-turns` queue",
+  "goal": "Give \"Ask Sayre\" its durable spine: Postgres tables for conversations and turns, a chatService that atomically records a user turn plus a pending assistant turn and enqueues exactly one job onto a new chat-turns.fifo SQS FIFO queue, and four thin REST routes over that service. No worker, no realtime, no UI.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "A first postTurn on an owned conversation persists exactly two chat_turns rows in one transaction: the user turn (role='user', status='completed', content = the trimmed question, idempotency_key set, request_turn_id null) and its assistant turn (role='assistant', status='pending', content='', request_turn_id = the user turn's id, seq = user turn's seq + 1), and publishes exactly one message to chat-turns.fifo."
+    },
+    {
+      "id": "AC-2",
+      "text": "Re-posting to the same conversation with the same idempotencyKey returns the same userTurn.id/assistantTurn.id, inserts no additional rows, and — when the first attempt already recorded dispatched_at — performs no second publish."
+    },
+    {
+      "id": "AC-3",
+      "text": "When a first attempt committed its rows but its publish failed (dispatched_at still null), a retry with the same idempotencyKey re-publishes with the byte-identical MessageDeduplicationId and then records dispatched_at; still no additional rows are inserted."
+    },
+    {
+      "id": "AC-4",
+      "text": "Owner-only: for a conversation created by user A, a request authenticated as user B in the same org receives 404 from GET /chat/conversations/:id and from POST /chat/conversations/:id/turns, and GET /chat/conversations as B never includes A's conversation."
+    },
+    {
+      "id": "AC-5",
+      "text": "org_id and user_id are taken only from requireAuthContext(req); an orgId, userId, or org_id supplied in the query string or request body changes nothing about the result. Structurally: chat_turns carries a composite FK (org_id, conversation_id) -> chat_conversations(org_id, id), chat_conversations carries (org_id, user_id) -> users(org_id, id), and both tables have org_isolation RLS ENABLEd and FORCEd."
+    },
+    {
+      "id": "AC-6",
+      "text": "The published envelope's payload matches the pinned chat.turn.request.v1 contract exactly: the same key set in the same order, schema equal to the literal \"chat.turn.request.v1\", turnId equal to the assistant turn's id, orgId/userId equal to the auth context's, question equal to the trimmed question, scope an object with exactly view and anchorNodeId, and mcpCredential equal to null."
+    },
+    {
+      "id": "AC-7",
+      "text": "payload.history contains at most CHAT_HISTORY_MAX_TURNS (12) entries: the most recent status='completed' turns strictly before the new user turn, in ascending seq order, each object having exactly the keys role and content."
+    },
+    {
+      "id": "AC-8",
+      "text": "The publish uses MessageGroupId === conversationId and a MessageDeduplicationId equal to the SHA-256 hex of chat.turn:<assistantTurnId>, so per-conversation ordering is preserved and a retry is transport-deduplicated."
+    },
+    {
+      "id": "AC-9",
+      "text": "chat-turns.fifo and chat-turns-dlq.fifo are created by the LocalStack init hook with the same 5-receive redrive policy and 14-day retention as every other lane, are physically distinct from every existing queue URL, and are not subscribed to the graph-updated SNS topic; CHAT_TURNS_QUEUE is present in the Python _PRODUCTION_QUEUES set, so consume_once refuses it without a durable delivery_store."
+    },
+    {
+      "id": "AC-10",
+      "text": "docs/wave0-foundation-contracts.md's \"Ingestion, events, and background work\" section records chat-turns.fifo: FIFO, its DLQ, its conversation-id message group, and its durable-idempotency posture."
+    },
+    {
+      "id": "AC-11",
+      "text": "services/core/src/routes/chat.ts contains no business logic: eslint . --ext .ts passes with the src/routes/** override in force (each handler <= 10 statements, no import of pg/drizzle-orm/bullmq/ioredis/neo4j-driver/**/db/**/graph-query), and every handler is a call to chatService plus a response."
+    },
+    {
+      "id": "AC-12",
+      "text": "Error mapping: validation failure -> 400 { error: 'invalid chat request', issues: [...] }; a non-user subject -> 403 { error: 'forbidden' }; unknown or unowned conversation -> 404 { error: 'not found' }; post-commit publish failure -> 502 { error: 'chat turn could not be queued' } with no SQS/AWS detail in the body."
+    },
+    {
+      "id": "AC-13",
+      "text": "The four routes are reachable through apps/web/app/api/core/[...path]: each maps to the intended core path, limit is the only forwarded query parameter, and a POST body arrives at core byte-identical to what the browser sent."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "question blank or whitespace-only -> 400; no row inserted, no message published."
+    },
+    {
+      "id": "EC-2",
+      "text": "question longer than CHAT_QUESTION_MAX_CHARACTERS -> 400; nothing persisted."
+    },
+    {
+      "id": "EC-3",
+      "text": "idempotencyKey missing, blank, shorter than 8, longer than 200, or containing a character outside [A-Za-z0-9._:-] -> 400; nothing persisted."
+    },
+    {
+      "id": "EC-4",
+      "text": "scope omitted entirely -> the payload still carries scope: { view: null, anchorNodeId: null } (never an omitted key, never undefined)."
+    },
+    {
+      "id": "EC-5",
+      "text": "scope.view outside the three tree names, or scope.anchorNodeId non-string / blank / over CHAT_ANCHOR_NODE_ID_MAX_CHARACTERS / containing a NUL -> 400."
+    },
+    {
+      "id": "EC-6",
+      "text": "conversationId path parameter that is not a UUID -> 404, raised before any SQL is issued (no Postgres invalid-input-syntax error reaching the 500 fallback)."
+    },
+    {
+      "id": "EC-7",
+      "text": "A conversation belonging to a different org -> 404 for both read and post; the row is invisible to the transaction because RLS filters it."
+    },
+    {
+      "id": "EC-8",
+      "text": "A conversation in the same org belonging to a different user -> 404, not 403, for both read and post (existence non-disclosure)."
+    },
+    {
+      "id": "EC-9",
+      "text": "Two concurrent postTurn calls with the same idempotencyKey on the same conversation -> exactly one user/assistant pair exists afterward and exactly one message is published; the loser observes created: false."
+    },
+    {
+      "id": "EC-10",
+      "text": "Two concurrent postTurn calls with different idempotencyKeys on the same conversation -> two pairs with distinct, contiguous seq values and no unique-constraint error."
+    },
+    {
+      "id": "EC-11",
+      "text": "First turn in a brand-new conversation -> history is []."
+    },
+    {
+      "id": "EC-12",
+      "text": "A conversation with more than 12 completed turns -> exactly the newest 12, ascending. A prior assistant turn still pending/running, or one that ended in error, is excluded from history, while its (completed) user turn is still included — so a failed exchange appears as an unanswered question rather than being silently dropped."
+    },
+    {
+      "id": "EC-13",
+      "text": "The publish throws after the transaction committed -> 502; both rows remain, the assistant turn stays pending with dispatched_at null, nothing is rolled back, and no queue URL, region, ARN, or AWS error code appears in the response body or a log line."
+    },
+    {
+      "id": "EC-14",
+      "text": "listConversations for a user with no conversations -> 200 { \"conversations\": [] }."
+    },
+    {
+      "id": "EC-15",
+      "text": "limit non-numeric, 0, negative, or above CHAT_CONVERSATION_LIST_MAX_LIMIT -> 400."
+    },
+    {
+      "id": "EC-16",
+      "text": "getConversation on a conversation with more than CHAT_CONVERSATION_TURNS_LIMIT turns -> the newest 200, returned ascending by seq."
+    },
+    {
+      "id": "EC-17",
+      "text": "title omitted, null, or whitespace-only -> stored as SQL NULL; title over CHAT_TITLE_MAX_CHARACTERS -> 400."
+    },
+    {
+      "id": "EC-18",
+      "text": "Unauthenticated request in a non-dev environment -> 401 from authenticate() before any chatService function runs."
+    },
+    {
+      "id": "EC-19",
+      "text": "Request body that is a JSON array, string, number, or null -> 400 (never a 500 from property access on a non-object)."
+    },
+    {
+      "id": "EC-20",
+      "text": "A chat_turns insert naming a conversation_id that belongs to a different org_id is rejected by the composite FK at the database layer, independent of any application check."
+    },
+    {
+      "id": "EC-21",
+      "text": "SQS accepts the send but returns no MessageId -> treated as a publish failure (502); dispatched_at is not set, so the next retry with the same key re-publishes."
+    },
+    {
+      "id": "EC-22",
+      "text": "Web proxy: an unrecognised chat sub-path (e.g. /api/core/chat/conversations/x/turns/y) -> 404 from the proxy without reaching core; a POST body over 64 KB -> 413 from the proxy."
+    },
+    {
+      "id": "EC-23",
+      "text": "An agent_key auth context reaching any chat route -> 403; no conversation is created, read, or posted to."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "bad93b98d859ace9fdd49684a8a92a2e1fdb8296ebdc582703a05ea8c7e9c70e",
+    "headSha": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+    "dirty": false,
+    "writtenAt": "2026-08-10T20:25:56.741Z"
+  }
+}

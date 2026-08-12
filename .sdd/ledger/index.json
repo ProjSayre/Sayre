@@ -2044,6 +2044,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "apps/web/app/layout.tsx": [
@@ -4489,6 +4498,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "docs/workspace-pack-authoring.md": [
@@ -4557,6 +4575,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "infra/localstack/init/ready.d/01-create-sqs-queues.sh": [
@@ -4565,6 +4592,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "package-lock.json": [
@@ -5635,6 +5671,17 @@
       }
     }
   ],
+  "services/core/drizzle/0021_ch03_chat_conversations_and_turns.sql": [
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "services/core/drizzle/meta/_journal.json": [
     {
       "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
@@ -5671,6 +5718,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -5721,6 +5777,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/app.ts": [
@@ -5740,6 +5805,15 @@
           "base",
           "spot-check"
         ]
+      }
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
       }
     }
   ],
@@ -5765,6 +5839,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/db/ephemeralMcpCredentialStore.ts": [
@@ -5957,6 +6040,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/github/repoFullName.test.ts": [
@@ -6042,6 +6134,15 @@
           "base",
           "spot-check"
         ]
+      }
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
       }
     }
   ],
@@ -6331,6 +6432,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/routes/chat.test.ts": [
@@ -6347,6 +6457,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts": [
@@ -6460,6 +6579,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/services/ephemeralMcpCredentialService.test.ts": [
@@ -6871,6 +6999,15 @@
       "ticket": "CH-03",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T214356000Z-ee496aa-PR_DELTA-e7ff26/spec.md"
+    },
+    {
+      "runId": "20260812T033049095Z-083acb4-PR_DELTA-c1485b",
+      "ticket": "CH-03",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T033049095Z-083acb4-PR_DELTA-c1485b/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/workers/poetry.lock": [
