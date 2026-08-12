@@ -134,7 +134,7 @@ function ownerFrom(ctx: UserCtx): ChatOwnerScope {
   return { orgId: ctx.orgId, userId: ctx.userId };
 }
 
-function requireConversationId(conversationId: string): void {
+export function requireConversationId(conversationId: string): void {
   if (typeof conversationId !== 'string' || !UUID_RE.test(conversationId)) {
     // Never reaches Postgres — a malformed path segment looks exactly like an
     // absent conversation (EC-6), same existence-non-disclosure posture as

@@ -1,0 +1,186 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "services/gateway/src/ws/chatEvents.test.ts",
+      "sha256": "7f1e9b732a4b8fa8b8516bd8cf633b1248055bf86a10b3b81cca3135076f6542",
+      "specIds": [
+        "AC-3",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-13",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-15",
+        "EC-16",
+        "EC-17",
+        "EC-18",
+        "EC-27",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/gateway/src/redis/chatPubsub.test.ts",
+      "sha256": "1d785b8c1ed3188e58f4789007a58cdb26d57182c4e1398424dd213b70735e7e",
+      "specIds": [
+        "AC-1",
+        "AC-5",
+        "AC-7",
+        "AC-10",
+        "EC-1",
+        "EC-9",
+        "EC-10",
+        "EC-21",
+        "EC-24",
+        "EC-25"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/gateway/src/fanout/chatFanout.test.ts",
+      "sha256": "8fe7e1bcee1763dc27ebf38e34bdf957486a8214d2f0a8452e01ab2b3cb10898",
+      "specIds": [
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "AC-8",
+        "AC-9",
+        "AC-12",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-16",
+        "EC-18",
+        "EC-23",
+        "EC-25",
+        "EC-27",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/gateway/src/chatE2e.test.ts",
+      "sha256": "21da49ce95b7eb0724690ec80188019b7296d15ad2ee054c612adfaab7da2acf",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-9",
+        "AC-12",
+        "EC-8",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-20",
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/gateway/src/ws/protocol.test.ts",
+      "sha256": "76f311d8f698943cd53458f6eb8b69eb0a01f74c408d2cb16438d7bb4154a245",
+      "specIds": [
+        "AC-5",
+        "AC-6",
+        "AC-8",
+        "AC-10",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/gateway/src/ws/connection.test.ts",
+      "sha256": "c9fcd1ed03dd0e5c0b053cf131e294b1e2ceef8bb055c922b32968c1f26ff02e",
+      "specIds": [
+        "AC-2",
+        "AC-5",
+        "AC-8",
+        "AC-10",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-19",
+        "EC-20",
+        "EC-22",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/gateway/src/coreClient.test.ts",
+      "sha256": "aa1b165dc6e3fa1ae8b0ae1a0993113af686ebad6d25e7f3fee1a43390b352e1",
+      "specIds": [
+        "AC-8",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/realtimeChatService.test.ts",
+      "sha256": "a946ccd2303c2ac1b93790951e18591151f505b0457952eae7903f47faa0acb7",
+      "specIds": [
+        "AC-8",
+        "AC-11",
+        "AC-12",
+        "EC-8",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/graph-query/index.test.ts",
+      "sha256": "5469a85e4176163ee17249c723b5672f1977a1b7e01e4f7a841a5f6bd08112f6",
+      "specIds": [
+        "AC-3",
+        "AC-11",
+        "AC-12",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/http/realtimeDeltaRequest.test.ts",
+      "sha256": "aa7c0ed80d3769ba093015eed87ae20fd4dfecf5179e11315a7fe6235c3a20df",
+      "specIds": [
+        "AC-8",
+        "AC-11",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/realtimeInternal.test.ts",
+      "sha256": "58ae42da8010050e8c6f8e9ed9e590e10f4aa38fb0cad98eb39d3e49e65df7b2",
+      "specIds": [
+        "AC-8",
+        "AC-11",
+        "EC-8",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "6d4241740ac77eb96830fd5de2ccb915ffd7f61b37284a9a22351036ac767f37",
+    "headSha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "dirty": true,
+    "writtenAt": "2026-08-11T02:12:52.880Z"
+  }
+}

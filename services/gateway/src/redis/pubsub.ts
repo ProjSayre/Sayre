@@ -27,8 +27,10 @@ export type RedisConnectionFactory = (options: RedisOptions) => IORedis;
 
 const defaultFactory: RedisConnectionFactory = (options) => new IORedis(options);
 
-/** Mirrors services/core/src/queue/bullmq.ts#createRedisConnection byte-for-byte. */
-async function createRedisConnection(factory: RedisConnectionFactory): Promise<IORedis> {
+/** Mirrors services/core/src/queue/bullmq.ts#createRedisConnection byte-for-byte.
+ *  Exported (CH-05) so redis/chatPubsub.ts reuses it verbatim rather than
+ *  copying the REDIS_PORT/getSecret resolution logic. */
+export async function createRedisConnection(factory: RedisConnectionFactory): Promise<IORedis> {
   const port = Number(getConfig('REDIS_PORT'));
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error('REDIS_PORT must be an integer between 1 and 65535.');

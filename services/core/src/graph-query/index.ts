@@ -16,6 +16,7 @@ import {
 import type {
   AffectedNodes,
   CanvasNodeLabel,
+  ChatCitationGraphQueryService,
   CoverageBadge,
   CoverageBadgeStatus,
   CoveringTest,
@@ -899,6 +900,52 @@ RETURN ticket.uid AS ticket_id,
        membership.org_id AS membership_org_id
 ORDER BY ticket_external_id, ticket_id, feature_name, feature_id, prerequisite_id
 LIMIT ${GET_READY_TICKETS_ROW_LIMIT}
+`;
+
+/** >= CH-04's CHAT_MAX_CITATIONS (24) x 2 ids each. Ids beyond this are not queried. */
+export const CHAT_CITATION_NODE_ID_LIMIT = 64;
+
+export const GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER = `
+MATCH (node)
+WHERE node.org_id = $org_id
+  AND node.uid IN $node_ids
+  AND node.repo_id IS NOT NULL
+  AND node.ref_name IS NOT NULL
+  AND (
+    ((node:Folder OR node:File)
+      AND ${canonicalGraphPathPredicate('node')}
+      AND ANY(rule IN $allow_rules WHERE
+        (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
+        (rule.branch IS NULL OR rule.branch = node.ref_name) AND
+        (rule.path_prefix IS NULL OR node.path = rule.path_prefix OR
+          node.path STARTS WITH rule.path_prefix + '/'))
+      AND NOT ANY(rule IN $deny_rules WHERE
+        (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
+        (rule.branch IS NULL OR rule.branch = node.ref_name) AND
+        (rule.path_prefix IS NULL OR node.path = rule.path_prefix OR
+          node.path STARTS WITH rule.path_prefix + '/')))
+    OR
+    ((node:Feature OR node:Ticket)
+      AND ANY(rule IN $allow_rules WHERE
+        (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
+        (rule.branch IS NULL OR rule.branch = node.ref_name) AND
+        rule.path_prefix IS NULL)
+      AND NOT ANY(rule IN $deny_rules WHERE
+        (rule.repo_id IS NULL OR rule.repo_id = node.repo_id) AND
+        (rule.branch IS NULL OR rule.branch = node.ref_name) AND
+        rule.path_prefix IS NULL))
+  )
+RETURN DISTINCT node.uid AS id,
+       node.org_id AS org_id,
+       node.repo_id AS repo_id,
+       node.ref_name AS ref_name,
+       node.path AS path,
+       CASE WHEN node:Folder THEN 'Folder'
+            WHEN node:File THEN 'File'
+            WHEN node:Feature THEN 'Feature'
+            ELSE 'Ticket' END AS label
+ORDER BY id
+LIMIT ${CHAT_CITATION_NODE_ID_LIMIT}
 `;
 
 function valueAsString(record: GraphReadRecord, key: string): string | null {
@@ -2144,6 +2191,47 @@ function scopeParameters(scope: ReadScope): Record<string, unknown> {
   };
 }
 
+/**
+ * Module-private mapper for GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER.
+ * TypeScript defense-in-depth mirror of the query's own predicates (same
+ * posture as every other mapper in this file): Folder/File are re-checked
+ * with the ordinary path-prefix rule; Feature/Ticket carry no `path`, so they
+ * are re-checked against a repository-root grant only (`path: ''`), the same
+ * root-grant call mapTicketReadiness already makes for a prerequisite.
+ */
+function mapAuthorizedCitationId(
+  record: GraphReadRecord,
+  expectedOrgId: string,
+  scope: ReadScope,
+): string | null {
+  const id = valueAsString(record, 'id');
+  const label = valueAsString(record, 'label');
+  const repoId = valueAsString(record, 'repo_id');
+  const refName = valueAsString(record, 'ref_name');
+  if (
+    !id ||
+    !label ||
+    valueAsString(record, 'org_id') !== expectedOrgId ||
+    !repoId ||
+    !refName
+  ) {
+    return null;
+  }
+
+  if (label === 'Folder' || label === 'File') {
+    const path = valueAsCanonicalPath(record, 'path');
+    if (path === null || !canReadResource(scope, { repoId, refName, path })) return null;
+    return id;
+  }
+
+  if (label === 'Feature' || label === 'Ticket') {
+    if (!canReadResource(scope, { repoId, refName, path: '' })) return null;
+    return id;
+  }
+
+  return null;
+}
+
 export class RbacGraphQueryService
   implements
     GraphQueryService,
@@ -2152,7 +2240,8 @@ export class RbacGraphQueryService
     NodeOverlayGraphQueryService,
     OnboardingGraphQueryService,
     CoveringTestsGraphQueryService,
-    TicketReadinessGraphQueryService
+    TicketReadinessGraphQueryService,
+    ChatCitationGraphQueryService
 {
   constructor(
     private readonly graph: GraphReadExecutor,
@@ -2583,6 +2672,32 @@ export class RbacGraphQueryService
     );
     return mapTicketReadiness(result.records, ctx.orgId, scope);
   }
+
+  async getAuthorizedNodeIds(nodeIds: readonly string[], ctx: AuthContext): Promise<string[]> {
+    const ids = [
+      ...new Set(
+        nodeIds
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0 && id.length <= 512),
+      ),
+    ].slice(0, CHAT_CITATION_NODE_ID_LIMIT);
+    if (ids.length === 0) return [];
+
+    const scope = await this.permissions.getReadScope(ctx);
+    if (scope.allows.length === 0) return [];
+
+    const result = await this.graph.run(ctx.orgId, 'traversal', GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER, {
+      org_id: ctx.orgId,
+      node_ids: ids,
+      ...scopeParameters(scope),
+    });
+
+    const authorized = new Set<string>();
+    for (const record of result.records) {
+      const id = mapAuthorizedCitationId(record, ctx.orgId, scope);
+      if (id) authorized.add(id);
+    }
+    return [...authorized];
+  }
 }
 
 export const graphQueryService:
@@ -2592,7 +2707,8 @@ export const graphQueryService:
   NodeOverlayGraphQueryService &
   OnboardingGraphQueryService &
   CoveringTestsGraphQueryService &
-  TicketReadinessGraphQueryService =
+  TicketReadinessGraphQueryService &
+  ChatCitationGraphQueryService =
   new RbacGraphQueryService(
     new LazyGraphReadExecutor(),
     new PostgresPermissionStore(),

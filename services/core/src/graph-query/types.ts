@@ -345,3 +345,16 @@ export interface TicketReadinessTicket {
 export interface TicketReadinessGraphQueryService {
   getTicketReadiness(ctx: AuthContext): Promise<TicketReadinessTicket[]>;
 }
+
+/**
+ * Kept separate from GraphQueryService so existing canvas/realtime/retrieval test
+ * doubles do not need a citation method. Folder/File are authorized by the usual
+ * path-prefix rules; Feature/Ticket carry no `path` and are authorized ONLY by a
+ * repository-root-level grant (`path_prefix IS NULL`) for their own
+ * (repo_id, ref_name) — the same fail-closed rule TicketReadinessPrerequisite
+ * already documents.
+ */
+export interface ChatCitationGraphQueryService {
+  /** The subset of `nodeIds` this ctx may currently read. Never throws for an unknown id. */
+  getAuthorizedNodeIds(nodeIds: readonly string[], ctx: AuthContext): Promise<string[]>;
+}

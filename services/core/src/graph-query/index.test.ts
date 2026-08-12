@@ -4,6 +4,8 @@ import type { AuthContext } from '../auth/context';
 import type { GraphReadExecutor, GraphReadRecord } from './neo4j';
 import type { PermissionStore, ReadScope } from './permissions';
 import {
+  CHAT_CITATION_NODE_ID_LIMIT,
+  GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER,
   GET_FEATURE_CLUSTERS_CYPHER,
   GET_NODE_OVERLAY_CYPHER,
   GET_NODES_IN_VIEWPORT_CYPHER,
@@ -1134,5 +1136,191 @@ describe('RbacGraphQueryService', () => {
       ),
     ).resolves.toBeNull();
     expect(executor.run).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CH-05 — getAuthorizedNodeIds: the narrow citation-authorization query behind
+// the gateway's per-push RBAC re-filter. Authored by `red` from
+// .pipeline/spec.md before any implementation exists. Every case above this
+// line predates CH-05 and must keep passing untouched (AC-10).
+// ---------------------------------------------------------------------------
+
+function citationRecord(
+  id: string,
+  label: string,
+  path: string | null,
+  overrides: Record<string, unknown> = {},
+): GraphReadRecord {
+  return record({
+    id,
+    org_id: ORG_ID,
+    repo_id: REPO_ID,
+    ref_name: 'refs/heads/main',
+    path,
+    label,
+    ...overrides,
+  });
+}
+
+describe('RbacGraphQueryService.getAuthorizedNodeIds (CH-05)', () => {
+  // @spec AC-3 AC-11
+  it('AC-3/AC-11: returns only the requested ids the ctx may currently read, and runs the pinned citation query with ctx org + scope rules', async () => {
+    const executor = new QueueExecutor([
+      [
+        citationRecord('public-file', 'File', 'src/public/index.ts'),
+        citationRecord('private-file', 'File', 'src/private/secret.ts'),
+      ],
+    ]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    const authorized = await service.getAuthorizedNodeIds(
+      ['public-file', 'private-file'],
+      user('alice'),
+    );
+
+    expect(authorized).toEqual(['public-file']);
+    expect(executor.run).toHaveBeenCalledWith(
+      ORG_ID,
+      'traversal',
+      GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER,
+      expect.objectContaining({
+        org_id: ORG_ID,
+        node_ids: ['public-file', 'private-file'],
+        allow_rules: [
+          { repo_id: REPO_ID, branch: 'refs/heads/main', path_prefix: 'src/public' },
+        ],
+        deny_rules: [],
+      }),
+    );
+  });
+
+  // @spec AC-3
+  it('AC-3: an unknown id never throws — it is simply absent from the result', async () => {
+    const executor = new QueueExecutor([[citationRecord('public-file', 'File', 'src/public/index.ts')]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(
+      service.getAuthorizedNodeIds(['public-file', 'no-such-node'], user('alice')),
+    ).resolves.toEqual(['public-file']);
+  });
+
+  // @spec EC-28
+  it('EC-28: an empty (or entirely blank) id list returns [] without touching the graph', async () => {
+    const executor = new QueueExecutor([]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(service.getAuthorizedNodeIds([], user('alice'))).resolves.toEqual([]);
+    await expect(service.getAuthorizedNodeIds(['', '   '], user('alice'))).resolves.toEqual([]);
+    expect(executor.run).not.toHaveBeenCalled();
+  });
+
+  // @spec AC-12
+  it('AC-12: a subject with no read scope at all gets [] without touching the graph (fail closed)', async () => {
+    const executor = new QueueExecutor([]);
+    const service = new RbacGraphQueryService(executor, new UserPermissionStore({}));
+
+    await expect(service.getAuthorizedNodeIds(['public-file'], user('nobody'))).resolves.toEqual([]);
+    expect(executor.run).not.toHaveBeenCalled();
+  });
+
+  // @spec AC-3
+  it('AC-3: de-duplicates ids, drops blank/over-long ones, and never queries more than CHAT_CITATION_NODE_ID_LIMIT', async () => {
+    const executor = new QueueExecutor([[]]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    const ids = [
+      'a',
+      'a',
+      '',
+      '   ',
+      'x'.repeat(513),
+      ...Array.from({ length: 80 }, (_unused, index) => `n-${index}`),
+    ];
+    await service.getAuthorizedNodeIds(ids, user('alice'));
+
+    expect(CHAT_CITATION_NODE_ID_LIMIT).toBe(64);
+    const sent = (executor.run.mock.calls[0]?.[3] ?? {}) as { node_ids: string[] };
+    expect(sent.node_ids).toHaveLength(64);
+    expect(sent.node_ids).not.toContain('');
+    expect(sent.node_ids).not.toContain('x'.repeat(513));
+    expect(new Set(sent.node_ids).size).toBe(sent.node_ids.length);
+  });
+
+  // @spec AC-3
+  it('AC-3: TypeScript defense-in-depth — a row from a different org is dropped even if the query returned it', async () => {
+    const executor = new QueueExecutor([
+      [
+        citationRecord('public-file', 'File', 'src/public/index.ts'),
+        citationRecord('leaked-file', 'File', 'src/public/other.ts', {
+          org_id: '22222222-2222-4222-8222-222222222222',
+        }),
+      ],
+    ]);
+    const service = new RbacGraphQueryService(
+      executor,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(
+      service.getAuthorizedNodeIds(['public-file', 'leaked-file'], user('alice')),
+    ).resolves.toEqual(['public-file']);
+  });
+
+  // @spec AC-3
+  it('AC-3: Feature and Ticket citations need a repository-ROOT grant — a path-scoped grant authorizes neither (fail closed)', async () => {
+    const pathScoped = new QueueExecutor([
+      [
+        citationRecord('feature-checkout', 'Feature', null),
+        citationRecord('ticket-pay-42', 'Ticket', null),
+      ],
+    ]);
+    const pathScopedService = new RbacGraphQueryService(
+      pathScoped,
+      new UserPermissionStore({ alice: publicScope }),
+    );
+
+    await expect(
+      pathScopedService.getAuthorizedNodeIds(['feature-checkout', 'ticket-pay-42'], user('alice')),
+    ).resolves.toEqual([]);
+
+    const rootScoped = new QueueExecutor([
+      [
+        citationRecord('feature-checkout', 'Feature', null),
+        citationRecord('ticket-pay-42', 'Ticket', null),
+      ],
+    ]);
+    const rootScopedService = new RbacGraphQueryService(
+      rootScoped,
+      new UserPermissionStore({ alice: repositoryScope }),
+    );
+
+    await expect(
+      rootScopedService.getAuthorizedNodeIds(['feature-checkout', 'ticket-pay-42'], user('alice')),
+    ).resolves.toEqual(['feature-checkout', 'ticket-pay-42']);
+  });
+
+  // @spec AC-3
+  it('AC-3: the pinned Cypher stays openCypher-shaped, org-scoped, id-bounded and label-restricted', () => {
+    expect(typeof GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toBe('string');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain('node.org_id = $org_id');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain('node.uid IN $node_ids');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain('(node:Folder OR node:File)');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain('(node:Feature OR node:Ticket)');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain('$allow_rules');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain('$deny_rules');
+    expect(GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER).toContain(`LIMIT ${CHAT_CITATION_NODE_ID_LIMIT}`);
   });
 });

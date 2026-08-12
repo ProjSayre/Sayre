@@ -1,0 +1,179 @@
+{
+  "ticket": "CH-05 — Gateway realtime chat events",
+  "goal": "Relay CH-04's chat.turn.progress / chat.turn.completed / chat.turn.error Redis pub/sub events to the owning client's live WebSocket connection, under a per-push RBAC re-filter, using the pinned client-facing frame shapes that CH-06 builds against.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "For a turn processed while the owner is subscribed, the owner's socket receives the chat.turn.progress frames followed by the chat.turn.completed frame, in publish order, with seq strictly increasing from 1 — proven with a Core stub whose first authorization call resolves more slowly than the second (i.e. ordering survives the async re-filter)."
+    },
+    {
+      "id": "AC-2",
+      "text": "A user in the same org who is not the conversation's owner is refused at subscribe with the generic chat_forbidden error frame, records no subscription, triggers no Redis SUBSCRIBE, and receives nothing when events subsequently flow on that conversation's channel. A connection authenticated under a different org can never match, because matchingChat compares the connection's token-derived orgId against the envelope's org_id."
+    },
+    {
+      "id": "AC-3",
+      "text": "A chat.turn.completed event whose citation list contains a node id outside the receiving client's current scope is delivered with that citation absent, with the remaining citations intact and metrics byte-identical to the worker's report."
+    },
+    {
+      "id": "AC-4",
+      "text": "When a connection's scope is reduced after it subscribed, the very next push is filtered under the new scope: with two successive events and an authorization stub that returns a narrower authorizedNodeIds on the second call, the first frame carries the citation and the second does not — and Core was called once per event per connection, not once at subscribe."
+    },
+    {
+      "id": "AC-5",
+      "text": "{ type:'unsubscribe', channel:'chat', conversationId } and socket close both release the conversation's Redis subscription; after the last subscriber for a channel goes away, chatBus.subscribedChannels() no longer contains it and a real UNSUBSCRIBE was issued exactly once. No connection close leaves a subscription behind."
+    },
+    {
+      "id": "AC-6",
+      "text": "Contract conformance: for each of the three push types, the frame the client receives has exactly the pinned key set — ['conversationId','detail','kind','seq','tool','ts','turnId','type'], ['answer','citations','conversationId','metrics','ts','turnId','type'], ['code','conversationId','message','ts','turnId','type'] — with each citation carrying exactly ['kind','label','nodeId','resolvedNodeId'] and each metrics object exactly ['baselineTokens','contextNodes','ratio','tokensUsed']. Extra keys present on the incoming worker payload never appear on the wire."
+    },
+    {
+      "id": "AC-7",
+      "text": "Each of these is dropped with a log and never forwarded to any client: a non-JSON or assertValidEnvelope-failing message; an envelope whose org_id disagrees with the channel's org segment; a payload whose conversationId disagrees with the channel's conversation segment; an envelope whose type is not one of the three pinned types."
+    },
+    {
+      "id": "AC-8",
+      "text": "The gateway never accepts an org id from client input or trusts one from a message body: the subscribe frame carries no org field, conn.orgId comes only from the verified connection identity, the relay's org comes only from envelope.org_id, and the request body fetchChatPushAuthorization sends contains exactly { conversationId, nodeIds } — no org_id, orgId, userId or token field."
+    },
+    {
+      "id": "AC-9",
+      "text": "The per-push re-filter is real, not a subscribe-time cache: N events to one subscribed connection produce N authorization calls to Core, each carrying that connection's own bearer token, and the gateway itself performs no scope computation (it only set-intersects against the ids Core returned)."
+    },
+    {
+      "id": "AC-10",
+      "text": "Back-compatibility: every existing test in services/gateway/src/**/*.test.ts passes unchanged, the existing {type:'subscribe', repoId} / {type:'unsubscribe', repoId} frames decode and behave identically, and fanOutGraphUpdated / createGraphUpdatedBus behaviour is untouched."
+    },
+    {
+      "id": "AC-11",
+      "text": "POST /internal/realtime/chat-authorization returns { conversationId, authorizedNodeIds } for the conversation's owner, returns 404 for both a nonexistent conversation and one owned by another user (indistinguishable), returns 403 for an agent-key subject, and derives org/user solely from the authenticated context — client-supplied org_id / orgId / userId body fields have no effect."
+    },
+    {
+      "id": "AC-12",
+      "text": "Fail-closed on authorization failure: when the Core authorization call errors (unavailable, non-2xx, or network), that connection receives zero frames for that push — never the unfiltered event and never a partially filtered one — and the subscription is retained for the next event."
+    },
+    {
+      "id": "AC-13",
+      "text": "chatEventChannel(orgId, conversationId) produces exactly the string CH-04's sayre_workers.chat.events.chat_event_channel produces, and CHAT_EVENT_CHANNEL_PREFIX is 'sayre:chat.events' — pinned by an explicit test so the two sides cannot drift."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "Malformed envelope on a chat channel: non-JSON text, a JSON array, or an object missing a required envelope field (assertValidEnvelope throws) — dropped, logged, handler never invoked, connection unaffected."
+    },
+    {
+      "id": "EC-2",
+      "text": "envelope.org_id differs from the channel's org segment — dropped, logged, never forwarded (even to a connection whose orgId matches one of the two values)."
+    },
+    {
+      "id": "EC-3",
+      "text": "payload.conversationId differs from the channel's conversation segment — dropped, logged, never forwarded."
+    },
+    {
+      "id": "EC-4",
+      "text": "envelope.type is graph.updated, chat.turn.request, or any other unrecognized value — dropped, logged."
+    },
+    {
+      "id": "EC-5",
+      "text": "envelope.source is not 'sayre-chat-worker' — dropped, logged."
+    },
+    {
+      "id": "EC-6",
+      "text": "The received channel string does not match sayre:chat.events:{orgId}:{conversationId} (wrong prefix, too few/many colon segments, blank segment) — dropped, logged."
+    },
+    {
+      "id": "EC-7",
+      "text": "Structurally invalid payload for its declared type: progress with seq: 0, seq: 1.5, a missing seq, or kind: 'other'; completed with a non-array citations, a citation missing nodeId, a citation with kind: 'function', a non-numeric metrics.ratio, or more than CHAT_MAX_CITATIONS (24) citations; error with a blank code — each dropped, logged."
+    },
+    {
+      "id": "EC-8",
+      "text": "Subscribe to a conversation id that does not exist — the identical chat_forbidden frame and message a non-owner gets; nothing in the reply distinguishes absent from unowned."
+    },
+    {
+      "id": "EC-9",
+      "text": "Duplicate subscribe to the same conversation on one connection — both replies are { type:'subscribed', channel:'chat', conversationId }, chatSubscriptions.size stays 1, and acquireChatChannel fired exactly once (one real Redis SUBSCRIBE)."
+    },
+    {
+      "id": "EC-10",
+      "text": "Unsubscribe for a conversation never subscribed on that connection — no throw, no reply frame, releaseChatChannel never called, refcount untouched."
+    },
+    {
+      "id": "EC-11",
+      "text": "Disconnect mid-turn: the socket closes between two events — releaseChatSubscriptions releases every held channel, the connection is deregistered, and an in-flight relayChatEvent targeting the now-closed socket is a silent no-op (sendSafe's readyState !== OPEN guard), not a crash."
+    },
+    {
+      "id": "EC-12",
+      "text": "Scope lookup failure at push time — Core returns 500, or fetch rejects — this push delivers nothing to that connection (fail closed), the error is logged without the bearer token, the subscription is retained, and the next event is attempted normally."
+    },
+    {
+      "id": "EC-13",
+      "text": "Core returns 401 at push time (session expired mid-turn) — onUnauthorized(conn) fires (production wiring closes the socket with UNAUTHENTICATED_CLOSE_CODE) and no event frame is delivered."
+    },
+    {
+      "id": "EC-14",
+      "text": "Core returns 403 or 404 at push time (ownership revoked or conversation deleted mid-turn) — exactly one {type:'error', code:'chat_forbidden'} frame, no event data, onSubscriptionRevoked fires, the conversation leaves chatSubscriptions, and the Redis refcount is released."
+    },
+    {
+      "id": "EC-15",
+      "text": "A citation with resolvedNodeId: null whose nodeId is authorized — delivered unchanged, resolvedNodeId still null. A null resolvedNodeId is never itself a reason to drop a citation."
+    },
+    {
+      "id": "EC-16",
+      "text": "A citation whose nodeId is not in authorizedNodeIds — the whole citation is dropped; metrics.contextNodes and the other three counts are not recomputed."
+    },
+    {
+      "id": "EC-17",
+      "text": "A citation whose nodeId is authorized but whose non-null resolvedNodeId is not — the whole citation is dropped (the strict reading recorded in Ticket Check item 1), not half-delivered with a nulled pointer."
+    },
+    {
+      "id": "EC-18",
+      "text": "Every citation stripped — the chat.turn.completed frame is still delivered, with citations: [], the full answer, and unchanged metrics."
+    },
+    {
+      "id": "EC-19",
+      "text": "A chat subscribe frame before authentication — the existing generic {code:'unauthenticated'} frame, no subscription recorded, no Core call, no Redis SUBSCRIBE."
+    },
+    {
+      "id": "EC-20",
+      "text": "A chat subscribe frame on a gateway constructed without the chat deps — the generic chat_forbidden refusal (fail closed), never a silently-accepted unverified subscription."
+    },
+    {
+      "id": "EC-21",
+      "text": "Two connections owned by the same user subscribe to the same conversation (two browser tabs) — exactly one real Redis SUBSCRIBE; both receive every push; each gets its own authorization call per push; when one disconnects the channel stays subscribed; when the second disconnects a single UNSUBSCRIBE is issued."
+    },
+    {
+      "id": "EC-22",
+      "text": "Two subscribe frames for the same conversation arriving before the first authorization resolves — acquireChatChannel still fires exactly once and the refcount stays balanced against the single close-time release."
+    },
+    {
+      "id": "EC-23",
+      "text": "sendSafe on a socket whose readyState is CLOSED, or whose send throws — swallowed and logged, relayChatEvent still resolves."
+    },
+    {
+      "id": "EC-24",
+      "text": "Redis subscriber reconnect: ioredis re-issues SUBSCRIBE for its tracked channels on its own, so the gateway adds no reconnect logic; events published during the gap are not replayed (chat pub/sub is at-most-once) and CH-03's REST read is the documented catch-up path. Covered by an explicit comment plus a test asserting the bus does not attempt its own replay/buffer."
+    },
+    {
+      "id": "EC-25",
+      "text": "An event arrives for a conversation with no matching connection (nobody subscribed on this gateway instance, or only a wrong-org connection exists) — short-circuits with zero Core authorization calls and zero frames."
+    },
+    {
+      "id": "EC-26",
+      "text": "A malformed chat frame from the client — {type:'subscribe', channel:'chat'} with no conversationId, a blank/non-string conversationId, or channel:'graph' — the existing generic {code:'bad_frame'} reply, connection stays open, nothing recorded."
+    },
+    {
+      "id": "EC-27",
+      "text": "Progress events with a gap or a repeat in seq (e.g. 1, 3, 3) are relayed verbatim in arrival order — the gateway never reorders, renumbers, de-duplicates or buffers; seq interpretation belongs to CH-06."
+    },
+    {
+      "id": "EC-28",
+      "text": "nodeIds is [] (every progress and error push, and every subscribe-time check) — Core is still called for the ownership half of the re-filter, authorizedNodeIds is ignored, and Core skips the graph query entirely."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "428947cd5627eb274032ee8131a9ca20e192f915a170f771223f0e9fc1e14f5e",
+    "headSha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "dirty": true,
+    "writtenAt": "2026-08-11T01:47:42.939Z"
+  }
+}

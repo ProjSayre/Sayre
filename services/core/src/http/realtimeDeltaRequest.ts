@@ -50,3 +50,53 @@ export function parseRealtimeDeltaRequest(body: unknown): ParsedRealtimeDeltaReq
     graphVersion: candidate.graphVersion,
   };
 }
+
+// ---------------------------------------------------------------------------
+// CH-05 — the internal chat-authorization request body. Deliberately never
+// reads org_id/orgId/userId from the body even if present — tenancy/identity
+// are resolved server-side from the forwarded session token.
+// ---------------------------------------------------------------------------
+
+export const CHAT_AUTHORIZATION_MAX_NODE_IDS = 64;
+
+export interface ParsedRealtimeChatAuthorizationRequest {
+  conversationId: string;
+  nodeIds: string[];
+}
+
+function isNonBlankStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'string' && item.trim().length > 0)
+  );
+}
+
+/** Reuses RealtimeDeltaParseError (already -> HTTP 400 in http/express.ts).
+ *  Deliberately never reads org_id/orgId/userId from the body even if present. */
+export function parseRealtimeChatAuthorizationRequest(
+  body: unknown,
+): ParsedRealtimeChatAuthorizationRequest {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw new RealtimeDeltaParseError('Request body must be a JSON object.');
+  }
+  const candidate = body as Record<string, unknown>;
+
+  if (typeof candidate.conversationId !== 'string' || candidate.conversationId.trim().length === 0) {
+    throw new RealtimeDeltaParseError('Invalid or missing field: conversationId');
+  }
+
+  if (!isNonBlankStringArray(candidate.nodeIds)) {
+    throw new RealtimeDeltaParseError('Invalid or missing field: nodeIds (must be an array of non-blank strings)');
+  }
+
+  if (candidate.nodeIds.length > CHAT_AUTHORIZATION_MAX_NODE_IDS) {
+    throw new RealtimeDeltaParseError(
+      `Invalid field: nodeIds (must contain at most ${CHAT_AUTHORIZATION_MAX_NODE_IDS} entries)`,
+    );
+  }
+
+  return {
+    conversationId: candidate.conversationId,
+    nodeIds: candidate.nodeIds,
+  };
+}

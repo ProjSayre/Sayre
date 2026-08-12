@@ -1,0 +1,330 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T025958679Z-6d3acfc-PR_DELTA-091a39",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-11T02:59:58.679Z",
+  "completed_at": "2026-08-11T03:45:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.claude\\worktrees\\agent-a22bee051f95621bd"
+  },
+  "target": {
+    "commit_sha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "branch": "ticket/ch-05-gateway-chat-events",
+    "dirty": true,
+    "environment": "local-checkout, no runtime dependencies (Redis/Postgres/HTTP fakes only, via each surface's existing test-double convention)",
+    "base_urls": [],
+    "changed_paths": [
+      "packages/shared-types/src/index.ts",
+      "services/core/src/graph-query/index.test.ts",
+      "services/core/src/graph-query/index.ts",
+      "services/core/src/graph-query/types.ts",
+      "services/core/src/http/realtimeDeltaRequest.test.ts",
+      "services/core/src/http/realtimeDeltaRequest.ts",
+      "services/core/src/routes/realtimeInternal.test.ts",
+      "services/core/src/routes/realtimeInternal.ts",
+      "services/core/src/services/chatService.ts",
+      "services/gateway/src/coreClient.test.ts",
+      "services/gateway/src/coreClient.ts",
+      "services/gateway/src/redis/pubsub.ts",
+      "services/gateway/src/server.ts",
+      "services/gateway/src/ws/connection.test.ts",
+      "services/gateway/src/ws/connection.ts",
+      "services/gateway/src/ws/protocol.test.ts",
+      "services/gateway/src/ws/protocol.ts",
+      "services/core/src/services/realtimeChatService.test.ts",
+      "services/core/src/services/realtimeChatService.ts",
+      "services/gateway/src/chatE2e.test.ts",
+      "services/gateway/src/fanout/chatFanout.test.ts",
+      "services/gateway/src/fanout/chatFanout.ts",
+      "services/gateway/src/redis/chatPubsub.test.ts",
+      "services/gateway/src/redis/chatPubsub.ts",
+      "services/gateway/src/ws/chatEvents.test.ts",
+      "services/gateway/src/ws/chatEvents.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": null,
+    "commit_sha": null,
+    "comparable": false,
+    "selection_reason": "No prior run exists under this worktree's .pipeline/security-history/ (directory absent before this run). No human-specified baseline was supplied. Every observation below is FIRST_OBSERVATION.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "CH wave -- realtime chat (CH-01..CH-04 landed on the diff base; CH-05 relays those events over the gateway; CH-06 web UI is parallel/out of scope)",
+    "phase": "MVP, pre-external-customer (per .claude/rules/security-multitenancy.md's phased secrets posture and CLAUDE.md's Secrets convention)",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/review.md",
+      "CLAUDE.md",
+      ".claude/rules/security-multitenancy.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "security stage default posture: local-only fakes/in-process test doubles, no shared or production infrastructure touched (audit-contract.md Rule 4)",
+    "resource_ceiling": "local Vitest suites + tsc, no network egress, no live Redis/Postgres/Core process",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "existing gateway/core test-double convention: FakeRedis, FakeSocket, vi.fn() Core-authorization stubs, synthetic org/user ids embedded in each test file (no real tenant data)"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check, run every mode.",
+      "rationale": "org_id is stamped/injected server-side across the pre-existing codebase and this diff extends the same invariant into the new chat relay path (conn.orgId, envelope.org_id, ctx.orgId).",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:80-86",
+        "services/gateway/src/ws/chatEvents.ts:216-219",
+        "services/core/src/services/realtimeChatService.ts:24-39",
+        "services/core/src/graph-query/index.ts:2688-2692"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check, run every mode.",
+      "rationale": "Node-level authorization lives only in RbacGraphQueryService (Graph Query Service); the gateway performs no traversal or scope computation, only a set-intersection of ids Core already authorized.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:2676-2700",
+        "services/gateway/src/fanout/chatFanout.ts:34-37"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check, run every mode.",
+      "rationale": "packages/config's getSecret/getConfig loader (MVP gitignored-.env phase) is reused unchanged by the new chatPubsub connection factory; no new secret handling was introduced by this diff.",
+      "code_references": [
+        "services/gateway/src/redis/pubsub.ts:33-52",
+        "services/gateway/src/redis/chatPubsub.ts:32-38"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check, run every mode; not touched by this diff (evidenced NOT_APPLICABLE result recorded).",
+      "rationale": "services/core/src/routes/githubWebhook.ts performs x-hub-signature-256 HMAC validation; CH-05 adds no webhook receiver and does not modify this file.",
+      "code_references": [
+        "services/core/src/routes/githubWebhook.ts:7-19"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check, run every mode; not touched by this diff (evidenced NOT_APPLICABLE result recorded).",
+      "rationale": "services/workers/sayre_workers/ingestion exists as the scratch-clone/parse boundary; CH-05 touches no ingestion-worker file.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check, run every mode.",
+      "rationale": "The one new Cypher query this diff adds (GET_AUTHORIZED_CITATION_NODE_IDS_CYPHER) is fully parameterized ($org_id/$node_ids/$allow_rules/$deny_rules); no string concatenation from request input.",
+      "code_references": [
+        "services/core/src/graph-query/index.ts:908-949",
+        "services/core/src/graph-query/index.ts:2676-2692"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (services/workers/**, packages/graph-schema/**, *embedding*, *retriev*, *prompt*) and this diff adds no retrieval/prompt/embedding code; CH-05 only relays already-generated answer text and metrics.",
+      "rationale": "services/workers/sayre_workers/retrieval exists; out of this diff's scope, not audited this run beyond confirming no CH-05 file touches it.",
+      "code_references": [
+        "services/workers/sayre_workers/retrieval"
+      ]
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Registry trigger 'services/core/**' matched literally on path breadth alone, but code-inventory inspection (git diff plus a read of every changed file) shows none of this diff's Core-side changes touch the Model Provider Adapter, provider-settings routes/services, or any outbound call to a customer-configured endpoint. The only new outbound call this diff adds (services/gateway/src/coreClient.ts's fetchChatPushAuthorization) targets Core's own static internal base URL (coreBaseUrl/getCoreInternalBaseUrl), the identical pattern the pre-existing fetchAuthorizedDelta already uses -- not a provider-egress path. Deselected with evidence rather than silently dropped, per audit-contract.md Section 2's NOT_APPLICABLE evidentiary bar.",
+      "rationale": "services/workers/sayre_workers/model_provider exists as the actual surface this brief targets; zero files under it, or under any provider-settings route, appear in this diff's changed_paths.",
+      "code_references": [
+        "services/workers/sayre_workers/model_provider",
+        "services/gateway/src/coreClient.ts:55-87"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (services/core/src/mcp/**, *mcp*, *api-key*); this diff touches no MCP gateway/key-lifecycle file.",
+      "rationale": "services/core/src/mcp exists; out of scope for CH-05.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Direct trigger match (services/gateway/**, services/core/**/*realtime*, *redis*); this is the ticket's primary surface.",
+      "rationale": "CH-05 adds the entire chat subscribe/relay/per-push-RBAC-refilter path onto the existing gateway WS server and Redis fan-out machinery.",
+      "code_references": [
+        "services/gateway/src/ws/chatEvents.ts",
+        "services/gateway/src/fanout/chatFanout.ts",
+        "services/gateway/src/redis/chatPubsub.ts",
+        "services/gateway/src/ws/connection.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (services/workers/**, *queue*, *webhook*, *integration*, *sqs*, *bullmq*); this diff adds no queue/webhook/integration code (BullMQ/SQS untouched).",
+      "rationale": "services/core/src/queue/bullmq.ts and services/core/src/routes/githubWebhook.ts exist; neither is in this diff's changed_paths.",
+      "code_references": [
+        "services/core/src/queue/bullmq.ts",
+        "services/core/src/routes/githubWebhook.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Direct trigger match (services/core/src/routes/**, services/core/src/http/**): realtimeInternal.ts and realtimeDeltaRequest.ts.",
+      "rationale": "CH-05 adds one new internal-only Express route and its request parser.",
+      "code_references": [
+        "services/core/src/routes/realtimeInternal.ts:47-60",
+        "services/core/src/http/realtimeDeltaRequest.ts:54-102"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (.github/**, infra/**, scripts/**, *secret*, *audit*, *backup*, *delet*); this diff touches none of those paths.",
+      "rationale": "docs/audits/ exists from prior audit tickets; out of scope for CH-05.",
+      "code_references": [
+        "docs/audits"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "FIRST_OBSERVATION",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No trigger path matched (.github/**, infra/**, Dockerfile*, package.json, package-lock.json, pyproject.toml, poetry.lock); this diff adds/edits no manifest or infra file.",
+      "rationale": "infra/docker-compose.yml and .github/workflows/ci.yml exist; no standalone Dockerfile was located in a lightweight search this run. Not audited beyond this inventory check -- out of scope for CH-05.",
+      "code_references": [
+        "infra/docker-compose.yml",
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-checker-stage-definition",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": "security-checker-agent-definition",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "73449f9df93fe91e0d937ffba93afec6049d17a06e6a93387b4ea5edc68aa333"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "2bdbfcd61535d8690baff149b4102867c86cc25378ddd5582f2a3524f54b4233"
+    }
+  ],
+  "limitations": [
+    "review.json's PASS gate is genuinely fresh for THIS worktree's .pipeline/ (verified via `node scripts/check-stamp-freshness.mjs review.json` -> status \"fresh\"); a separate, unrelated .pipeline/ tree exists at the outer repo root (C:\\Users\\splat\\OneDrive\\Desktop\\Sayre\\.pipeline\\, belonging to an unrelated ticket, PL-15 Repo restructure, on a different branch) which this run correctly ignored in favor of the worktree-local .pipeline/ the coordinator's own working directory points at. Recorded here so a later reader is not confused by the coincidental existence of that other directory.",
+    "spec.json and red.json read STALE via check-stamp-freshness.mjs, as review.md itself already discloses in its own Warning 1; per this stage's own 'Staleness of required inputs' section both are advisory, not trusted-fresh, so this is a flag, not a refusal condition. review.json (the only trusted-fresh input for this stage) is fresh.",
+    "packages/workspace-packs/src/bin.mjs shows ' M' in `git status` with an empty `git diff 6d3acfc --` (a CRLF/LF working-tree artifact per review.md Warning 3, already investigated and confirmed not a CH-05 change); excluded from changed_paths above for the same reason review.md excludes it from filesChanged.",
+    "Runtime/dynamic verification this run was limited to each surface's own existing in-process test-double convention (FakeRedis, FakeSocket, vi.fn() Core stubs) -- no live Redis, Postgres, or a real browser was started. WS-01 (Origin/CSWSH) and the ioredis-reconnect half of WS-09/EC-24 are therefore evidenced only via static code review plus the pre-existing disclosed EC-24 gap (no live Redis this checkout), not via an actual browser/Redis-outage reproduction; see results.json's evidence_type/confidence fields for exactly which rows this applies to.",
+    "The model-provider-egress-ssrf, llm-rag-poisoning, mcp-transport-key-lifecycle, ingestion-queue-webhook, secrets-audit-data-lifecycle, and supply-chain-infrastructure surfaces were inventoried at a lightweight file-existence level only (to populate surface_inventory's required readiness field) and were NOT selected or executed against this diff -- see each entry's selection_reason above. A MILESTONE/FULL-mode run is required for full coverage of those six surfaces."
+  ]
+}

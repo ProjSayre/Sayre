@@ -59,7 +59,7 @@ export function WorkspaceRealtimeProvider({ children }: { children: ReactNode })
         const message = parseGatewayMessage(event.data);
         if (message === null) return;
         if (message.type === 'ready') { socket?.send(JSON.stringify({ type: 'subscribe', repoId: repositoryId })); return; }
-        if (message.type === 'subscribed' && message.repoId === repositoryId) {
+        if (message.type === 'subscribed' && 'repoId' in message && message.repoId === repositoryId) {
           reconnectAttempt = 0;
           dispatch({ type: 'patch', patch: { realtime: 'connected' } });
           return;

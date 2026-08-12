@@ -14,7 +14,7 @@ import {
   isDevOrTestEnvironment,
   type ConnectionIdentity,
 } from './auth';
-import { decodeClientMessage, encodeServerMessage, ProtocolError } from './protocol';
+import { decodeClientMessage, encodeServerMessage, isChatChannelMessage, ProtocolError } from './protocol';
 
 export interface GatewayConnection {
   id: string;
@@ -24,6 +24,7 @@ export interface GatewayConnection {
   userId: string;
   token: string; // forwarded per push; MUST NOT be logged
   repoSubscriptions: Set<string>;
+  chatSubscriptions: Set<string>; // NEW (CH-05) -- conversation ids, owner-verified at subscribe time
   authenticated: boolean;
 }
 
@@ -37,6 +38,7 @@ export function createPendingConnection(id: string, socket: WebSocket): GatewayC
     userId: '',
     token: '',
     repoSubscriptions: new Set<string>(),
+    chatSubscriptions: new Set<string>(),
     authenticated: false,
   };
 }
@@ -60,6 +62,13 @@ export class ConnectionRegistry {
   matching(orgId: string, repoId: string): GatewayConnection[] {
     return this.all().filter(
       (conn) => conn.authenticated && conn.orgId === orgId && conn.repoSubscriptions.has(repoId),
+    );
+  }
+
+  /** authenticated && orgId match && conversationId is in the connection's chat subscriptions. */
+  matchingChat(orgId: string, conversationId: string): GatewayConnection[] {
+    return this.all().filter(
+      (conn) => conn.authenticated && conn.orgId === orgId && conn.chatSubscriptions.has(conversationId),
     );
   }
 
@@ -132,7 +141,92 @@ function sendSafe(socket: WebSocket, message: GatewayToClientMessage): void {
   }
 }
 
-export interface AttachConnectionDeps extends Partial<HandleAuthDeps> {
+// ---------------------------------------------------------------------------
+// CH-05 — per-conversation chat subscriptions.
+// ---------------------------------------------------------------------------
+
+/** The error code the client sees for ANY rejected/revoked chat subscription. One code for
+ *  "not yours" and "does not exist" alike — CH-03's existence-non-disclosure posture. */
+export const CHAT_FORBIDDEN_CODE = 'chat_forbidden';
+export const CHAT_FORBIDDEN_MESSAGE = 'Conversation not found.';
+
+export interface ChatSubscriptionDeps {
+  /** true iff Core confirms this connection's subject currently owns the conversation. */
+  authorizeChatSubscription: (conn: GatewayConnection, conversationId: string) => Promise<boolean>;
+  acquireChatChannel: (orgId: string, conversationId: string) => Promise<void>;
+  releaseChatChannel: (orgId: string, conversationId: string) => Promise<void>;
+}
+
+function chatForbiddenReply(): GatewayToClientMessage {
+  return { type: 'error', code: CHAT_FORBIDDEN_CODE, message: CHAT_FORBIDDEN_MESSAGE };
+}
+
+export async function handleChatSubscribe(
+  conn: GatewayConnection,
+  conversationId: string,
+  deps: Partial<ChatSubscriptionDeps>,
+): Promise<GatewayToClientMessage> {
+  if (!conn.authenticated) {
+    return {
+      type: 'error',
+      code: 'unauthenticated',
+      message: 'Authenticate before subscribing.',
+    };
+  }
+
+  // Fail closed: a gateway wired without chat deps refuses chat subscriptions
+  // rather than accepting them unverified (EC-20).
+  if (!deps.authorizeChatSubscription || !deps.acquireChatChannel) {
+    return chatForbiddenReply();
+  }
+
+  const authorized = await deps.authorizeChatSubscription(conn, conversationId);
+  if (!authorized) {
+    return chatForbiddenReply();
+  }
+
+  // Synchronously mark the subscription BEFORE awaiting the acquire so two
+  // racing subscribes for the same conversation acquire exactly once
+  // (EC-9/EC-22) rather than both observing an empty set.
+  const isNew = !conn.chatSubscriptions.has(conversationId);
+  conn.chatSubscriptions.add(conversationId);
+  if (isNew) {
+    await deps.acquireChatChannel(conn.orgId, conversationId);
+  }
+
+  return { type: 'subscribed', channel: 'chat', conversationId };
+}
+
+/** Never-subscribed conversationId -> no-op, no Redis release (EC-10). */
+export async function handleChatUnsubscribe(
+  conn: GatewayConnection,
+  conversationId: string,
+  deps: Partial<ChatSubscriptionDeps>,
+): Promise<void> {
+  if (!conn.chatSubscriptions.delete(conversationId)) return;
+  await deps.releaseChatChannel?.(conn.orgId, conversationId);
+}
+
+/** Releases every chat channel this connection holds and clears the set. Idempotent.
+ *  Every release is individually caught-and-logged so one failure cannot strand the others. */
+export async function releaseChatSubscriptions(
+  conn: GatewayConnection,
+  deps: Partial<ChatSubscriptionDeps>,
+): Promise<void> {
+  const conversationIds = [...conn.chatSubscriptions];
+  conn.chatSubscriptions.clear();
+  await Promise.all(
+    conversationIds.map(async (conversationId) => {
+      try {
+        await deps.releaseChatChannel?.(conn.orgId, conversationId);
+      } catch (err) {
+        console.error('[gateway] failed to release chat channel', { connectionId: conn.id, err });
+      }
+    }),
+  );
+}
+
+export interface AttachConnectionDeps extends Partial<HandleAuthDeps>, Partial<ChatSubscriptionDeps> {
   isDevOrTest?: () => boolean;
   devIdentity?: () => ConnectionIdentity;
   authTimeoutMs?: number;
@@ -212,6 +306,17 @@ export function attachConnectionLifecycle(
         return;
       }
 
+      // Placed before the repo subscribe/unsubscribe branches below so their
+      // `message.repoId` accesses stay type-valid on the narrowed union.
+      if (isChatChannelMessage(message)) {
+        if (message.type === 'subscribe') {
+          sendSafe(socket, await handleChatSubscribe(conn, message.conversationId, deps));
+        } else {
+          await handleChatUnsubscribe(conn, message.conversationId, deps);
+        }
+        return;
+      }
+
       if (message.type === 'subscribe') {
         sendSafe(socket, handleSubscribe(conn, message.repoId));
         return;
@@ -224,5 +329,6 @@ export function attachConnectionLifecycle(
   socket.on('close', () => {
     clearAuthTimer();
     registry.remove(conn.id);
+    void releaseChatSubscriptions(conn, deps);
   });
 }

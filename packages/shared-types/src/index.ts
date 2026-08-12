@@ -211,17 +211,86 @@ export interface RealtimeGraphDelta {
   resyncRequired: boolean; // true on full_rebuild (client re-fetches tree over REST)
 }
 
+// --- CH-05: realtime "Ask Sayre" chat events (gateway <-> browser) ---
+
+/** Mirrors sayre_workers/chat/models.py's CitationKind. */
+export type ChatCitationKind = 'file' | 'folder' | 'feature' | 'ticket';
+
+export interface ChatCitation {
+  nodeId: string;
+  label: string;
+  kind: ChatCitationKind;
+  resolvedNodeId: string | null;
+}
+
+export interface ChatTurnMetrics {
+  contextNodes: number;
+  tokensUsed: number;
+  baselineTokens: number;
+  ratio: number;
+}
+
+/** PINNED (CH-06 builds against these three verbatim). Key set is the contract. */
+export interface ChatTurnProgressPush {
+  type: 'chat.turn.progress';
+  conversationId: string;
+  turnId: string;
+  seq: number;
+  kind: 'status' | 'tool_call';
+  tool: string | null;
+  detail: string | null;
+  ts: string; // ISO 8601, relayed verbatim from the worker
+}
+
+export interface ChatTurnCompletedPush {
+  type: 'chat.turn.completed';
+  conversationId: string;
+  turnId: string;
+  answer: string; // markdown
+  citations: ChatCitation[];
+  metrics: ChatTurnMetrics; // counts as reported by the worker; never recomputed
+  ts: string;
+}
+
+export interface ChatTurnErrorPush {
+  type: 'chat.turn.error';
+  conversationId: string;
+  turnId: string;
+  code: string;
+  message: string;
+  ts: string;
+}
+
+export type ChatTurnPush = ChatTurnProgressPush | ChatTurnCompletedPush | ChatTurnErrorPush;
+
+/** Core internal request body (data plane only — NEVER carries org_id or userId;
+ *  Core re-derives both server-side from the forwarded session token). */
+export interface RealtimeChatAuthorizationRequest {
+  conversationId: string;
+  nodeIds: string[];
+}
+
+export interface RealtimeChatAuthorization {
+  conversationId: string;
+  /** The subset of the requested nodeIds this ctx may currently read. Order/dedup unspecified. */
+  authorizedNodeIds: string[];
+}
+
 // WebSocket wire protocol (browser client <-> gateway)
 export type ClientToGatewayMessage =
   | { type: 'auth'; token: string }
   | { type: 'subscribe'; repoId: string }
-  | { type: 'unsubscribe'; repoId: string };
+  | { type: 'unsubscribe'; repoId: string }
+  | { type: 'subscribe'; channel: 'chat'; conversationId: string }
+  | { type: 'unsubscribe'; channel: 'chat'; conversationId: string };
 
 export type GatewayToClientMessage =
   | { type: 'ready' }
   | { type: 'subscribed'; repoId: string }
   | { type: 'graph.delta'; repoId: string; graphVersion: number; upserts: CanvasNode[]; removals: string[] }
   | { type: 'graph.resync'; repoId: string; graphVersion: number }
+  | { type: 'subscribed'; channel: 'chat'; conversationId: string }
+  | ChatTurnPush
   | { type: 'error'; code: string; message: string };
 
 // --- W3-08: minimal provider-backed semantic-view state ---

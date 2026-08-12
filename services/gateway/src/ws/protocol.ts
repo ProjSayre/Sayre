@@ -58,11 +58,29 @@ export function decodeClientMessage(raw: unknown): ClientToGatewayMessage {
       }
       return { type: 'auth', token: candidate.token };
     case 'subscribe':
+      if (candidate.channel !== undefined) {
+        if (candidate.channel !== 'chat') {
+          throw new ProtocolError('Unknown "channel".');
+        }
+        if (!nonEmptyString(candidate.conversationId)) {
+          throw new ProtocolError('chat subscribe frame requires a non-empty "conversationId".');
+        }
+        return { type: 'subscribe', channel: 'chat', conversationId: candidate.conversationId };
+      }
       if (!nonEmptyString(candidate.repoId)) {
         throw new ProtocolError('subscribe frame requires a non-empty "repoId".');
       }
       return { type: 'subscribe', repoId: candidate.repoId };
     case 'unsubscribe':
+      if (candidate.channel !== undefined) {
+        if (candidate.channel !== 'chat') {
+          throw new ProtocolError('Unknown "channel".');
+        }
+        if (!nonEmptyString(candidate.conversationId)) {
+          throw new ProtocolError('chat unsubscribe frame requires a non-empty "conversationId".');
+        }
+        return { type: 'unsubscribe', channel: 'chat', conversationId: candidate.conversationId };
+      }
       if (!nonEmptyString(candidate.repoId)) {
         throw new ProtocolError('unsubscribe frame requires a non-empty "repoId".');
       }
@@ -70,6 +88,17 @@ export function decodeClientMessage(raw: unknown): ClientToGatewayMessage {
     default:
       throw new ProtocolError('Unknown frame "type".');
   }
+}
+
+/** True only for the `channel: 'chat'` subscribe/unsubscribe variants. */
+export function isChatChannelMessage(
+  message: ClientToGatewayMessage,
+): message is Extract<ClientToGatewayMessage, { channel: 'chat' }> {
+  return (
+    (message.type === 'subscribe' || message.type === 'unsubscribe') &&
+    'channel' in message &&
+    message.channel === 'chat'
+  );
 }
 
 export function encodeServerMessage(message: GatewayToClientMessage): string {
