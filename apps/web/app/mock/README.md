@@ -30,7 +30,7 @@ apps/web/app/mock/
   state.tsx                   scenario + UI state (context + reducer)
   components/                 shell slots: top bar, view rail, toolbar,
                               status banner, canvas states, global states,
-                              reserved Ask Sayre dock, mock controls
+                              the Ask Sayre dock shell, mock controls
   canvas/                     React Flow canvases + tree layout
   drawer/                     node overlay modules and the feature drawer
   settings/                   GitHub Integrations, Model Providers
@@ -62,10 +62,13 @@ resizing, and semantic theme tokens without changing product code.
 ## Reserved, not functional
 
 These have backends but no browser-callable route yet, so they hold space and
-say so rather than pretending to work: contextual **Ask Sayre** (dock under the
-canvas), the **Standards** overlay module, detailed **GitHub installation
-management**, **Jira/Linear connection management**, **branch switching**, and
-the **realtime sync indicator**, which reports state and controls nothing.
+say so rather than pretending to work: the **Standards** overlay module,
+detailed **GitHub installation management**, **Jira/Linear connection
+management**, **branch switching**, and the **realtime sync indicator**,
+which reports state and controls nothing. Contextual **Ask Sayre** (dock
+under the canvas) is real now; in the fixture workspace specifically its
+composer stays disabled and says why, because there is no chat backend
+behind the mock.
 
 ## Not in the mock
 

@@ -1,0 +1,148 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "apps/web/app/workspace/chat/chatContract.test.ts",
+      "sha256": "a9ddfad1ebbf648e4673b0dd69a7b3459303ebd6b5cddb633c4cc0c4fd2bf65c",
+      "specIds": [
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "EC-7",
+        "EC-9",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-20",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/chat/answerMarkdown.test.ts",
+      "sha256": "76f4360a35e2d90a4d957cd63872f938b5237656d74b6653a837d62ddafdf8da",
+      "specIds": [
+        "AC-4",
+        "AC-17",
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/chat/citationTarget.test.ts",
+      "sha256": "6d3aa3a4dcdecaaef70fab93faf92962bdb720cad7fed0ba4dcacdb540d7f767",
+      "specIds": [
+        "AC-5",
+        "AC-6",
+        "EC-12",
+        "EC-13"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/chat/chatClient.test.ts",
+      "sha256": "19a8eadbe379e3ca7add729718c44fdcd928ff7a7292d3c7e50cfc74fddbddb5",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-8",
+        "AC-11",
+        "AC-12",
+        "EC-19",
+        "EC-23",
+        "EC-24"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/chat/chatTranscript.test.ts",
+      "sha256": "abda5c9a00acc9dea631aec3614dbecd77f17a5a273552970bb883e7c300fa5a",
+      "specIds": [
+        "AC-1",
+        "AC-3",
+        "AC-4",
+        "AC-8",
+        "AC-11",
+        "AC-12",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-10",
+        "EC-16",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/chat/chatSafetyGuards.test.ts",
+      "sha256": "3546a51747c35575a5528ca3eb92bee801dbce40fce3f1a23e4234c5bf8ea4dc",
+      "specIds": [
+        "AC-15",
+        "AC-16",
+        "AC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/chat/AskSayrePanel.test.tsx",
+      "sha256": "8153f0c4e879a130420d4f98375c1da2a7f5fb34494afc6110100aecc648977c",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-16",
+        "AC-18",
+        "EC-9",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-14",
+        "EC-15",
+        "EC-16",
+        "EC-17",
+        "EC-18",
+        "EC-19",
+        "EC-20",
+        "EC-21",
+        "EC-22",
+        "EC-23",
+        "EC-24",
+        "EC-25",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/askSayreRegistry.test.ts",
+      "sha256": "de93adb53124be50af53fd98a0866d3c2d5ddb1db15301ac10c8a72de94655df",
+      "specIds": [
+        "AC-9",
+        "AC-16"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "2fb340d415ba5419a95c93aa7e4910be7529ad1650424bbab2793b03551ab72c",
+    "headSha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "dirty": true,
+    "writtenAt": "2026-08-11T02:44:48.521Z"
+  }
+}

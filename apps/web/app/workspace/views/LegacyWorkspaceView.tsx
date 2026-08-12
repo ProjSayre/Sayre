@@ -17,6 +17,7 @@ import {
   ProductUnavailableState,
   UnavailableState,
 } from '../components/CanvasStates';
+import { AskSayreDock } from '../components/AskSayrePanel';
 import { CanvasToolbar } from '../components/CanvasToolbar';
 import { ControlPanel } from '../../mock/components/ControlPanel';
 import { GlobalStates } from '../components/GlobalStates';
@@ -111,6 +112,7 @@ function WorkspaceBody() {
       <ReactFlowProvider>
         <Workspace />
       </ReactFlowProvider>
+      <AskSayreDock />
     </div>
   );
 }

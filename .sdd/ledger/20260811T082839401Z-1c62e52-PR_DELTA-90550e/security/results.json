@@ -1,0 +1,913 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260811T082839401Z-1c62e52-PR_DELTA-90550e",
+  "baseline_run_id": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+  "generated_at": "2026-08-11T08:40:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 28,
+      "FAIL": 2,
+      "UNVERIFIED": 1
+    },
+    "result_transitions": {
+      "UNCHANGED": 20,
+      "CHANGED": 10,
+      "FIRST_OBSERVATION": 1
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 20,
+      "GAINED": 10,
+      "NOT_COMPARABLE": 1
+    },
+    "finding_statuses": {
+      "OPEN": 2
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 13,
+      "ADVANCED": 1
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|apps/web postTurn/createConversation request bodies|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web postTurn/createConversation request bodies",
+      "attack_path_version": "v1",
+      "attempt": "Re-read chatClient.ts's PostTurnBody construction and, newly this round, services/core/src/services/chatService.ts's postTurn/createConversation server-side handlers to confirm the server independently enforces the same boundary rather than trusting the client body for identity.",
+      "evidence": [
+        "apps/web/app/workspace/chat/chatClient.ts:45-49,217-228 (unchanged since baseline): PostTurnBody is exactly question/scope/idempotencyKey; single JSON.stringify(body), no extra fields.",
+        "NEW this round: services/core/src/services/chatService.ts:363-388 postTurn destructures only body.idempotencyKey/body.question/body.scope by name (never spreads req.body); owner = ownerFrom(userCtx) derived from requireAuthContext(req), never from the body. services/core/src/routes/chat.ts:50-58 confirms requireAuthContext(req) is the only identity source passed to the service.",
+        "apps/web/app/workspace/chat/AskSayrePanel.test.tsx:592-597 (re-run this round as part of 70/436): Object.keys(body) is exactly [idempotencyKey, question, scope].",
+        "services/core full vitest suite re-run this round: 115 files / 1236 passing / 7 pre-existing skips (includes chatService's own test coverage)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (chatClient.ts + newly chatService.ts/routes/chat.ts) + `npx vitest run app/workspace/chat/AskSayrePanel.test.tsx` (apps/web) + `npx vitest run` (services/core, 115/1236). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatClient.ts",
+        "services/core/src/services/chatService.ts:363-388",
+        "services/core/src/routes/chat.ts:50-58"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|apps/web/app/workspace/chat/** and askSayreRegistry.ts/components/AskSayrePanel.tsx|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/** and askSayreRegistry.ts/components/AskSayrePanel.tsx",
+      "attack_path_version": "v1",
+      "attempt": "Re-grepped the entire chat directory plus askSayreRegistry.ts and components/AskSayrePanel.tsx for orgId/org_id/rbac/isAuthorized/canAccess/hasPermission/authorize and for graphology/sigma/canvas imports; re-ran chatSafetyGuards.test.ts.",
+      "evidence": [
+        "Grep across apps/web/app/workspace/chat, askSayreRegistry.ts, components/AskSayrePanel.tsx: zero source-code hits (only test-assertion and comment occurrences), unchanged since baseline.",
+        "apps/web/app/workspace/chat/chatSafetyGuards.test.ts (3/3 pass, re-run this round as part of 70/436).",
+        "apps/web/app/workspace/chat/citationTarget.ts (pure lookup, no traversal, no I/O) re-read in full this round."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Grep + `npx vitest run app/workspace/chat/chatSafetyGuards.test.ts` (re-reproduced, 3/3). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatSafetyGuards.test.ts",
+        "apps/web/app/workspace/chat/citationTarget.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|CH-06-authored files (apps/web/app/workspace/chat/**, askSayreRegistry.ts, and the 5 modified apps/web files)|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "CH-06-authored files (apps/web/app/workspace/chat/**, askSayreRegistry.ts, and the 5 modified apps/web files)",
+      "attack_path_version": "v1",
+      "attempt": "Re-ran `npm run check:secret-access` from the worktree root this round; independently confirmed the coordinator's claim that the inherited CH-01 finding baseline flagged is now fixed upstream, rather than accepting the claim.",
+      "evidence": [
+        "`npm run check:secret-access` output this round: \"Secret-access gate passed.\" — exit 0, ZERO flagged lines (baseline had exactly one, services/core/src/db/ephemeralMcpCredentials.rls.test.ts:39, outside CH-06's lane).",
+        "`npm run check:org-secret-access`: \"Org-secret access gate passed.\" — exit 0.",
+        "No CH-06-authored file was ever flagged by either gate, in this run or baseline's."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npm run check:secret-access` && `npm run check:org-secret-access` (re-reproduced, both clean). No fixture created.",
+      "code_references": [
+        "apps/web/app/lib/coreFetch.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|services/core/src/webhooks/** (unchanged)|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/webhooks/** (unchanged)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read the full signature-verification path end to end (verifyGithubSignature -> handleGithubWebhook) rather than leaving it unexamined as baseline did, since the coordinator explicitly asked this round to resolve untouched server surfaces wherever the assembled tree makes it possible.",
+      "evidence": [
+        "services/core/src/webhooks/githubSignature.ts:28-47 verifyGithubSignature: constant-time crypto.timingSafeEqual on equal-length buffers; a missing/malformed/wrong-length header returns false without throwing; only the -256 (HMAC-SHA256) scheme is accepted, never legacy sha1.",
+        "services/core/src/services/githubWebhookService.ts:99-113 handleGithubWebhook: step (b), explicitly commented \"Signature FIRST. Nothing after this point can run for a bad signature — no parse, no DB lookup, no publish\" — verifyGithubSignature is called and a bad signature throws WebhookSignatureError BEFORE any JSON.parse, org resolution, or publishIngestion/publishOwnership call (queue/SQS/BullMQ boundary at lines 210-227 is unreachable on signature failure).",
+        "services/core/src/webhooks/githubSignature.test.ts is part of the 115-file/1236-test services/core suite re-run this round (exit 0)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (githubSignature.ts, githubWebhookService.ts) + `npx vitest run` from services/core (115/1236, includes githubSignature.test.ts). No fixture created.",
+      "code_references": [
+        "services/core/src/webhooks/githubSignature.ts:28-47",
+        "services/core/src/services/githubWebhookService.ts:99-227"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|services/workers/sayre_workers/ingestion/** (unchanged)|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers/sayre_workers/ingestion/** (unchanged)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read the scratch-clone lifecycle in repository.py's checkout() end to end. Could NOT dynamically re-run the Python suite — same pre-existing tooling failure tester's Impact map already reported this round (`poetry run python ...` falls back to an unsupported 3.12 interpreter and dies with ModuleNotFoundError: No module named 'pydantic' — the Poetry environment is not installed in this worktree). This limitation is unrelated to CH-06 or CH-05 and was not newly introduced by either.",
+      "evidence": [
+        "services/workers/sayre_workers/ingestion/repository.py:573 checkout(): `temporary = tempfile.TemporaryDirectory(prefix=\"sayre-ingestion-\")`; scratch_root/checkout live entirely under this directory.",
+        "repository.py:578-617: the entire clone/fetch/checkout sequence is wrapped in `try: ... finally: await asyncio.to_thread(temporary.cleanup)` — cleanup runs on every exit path, including an exception raised by any git command, an unexpected revision, or a missing installation token.",
+        "No code path returns or yields without going through the `finally` (the function is an @asynccontextmanager; the yield at line 615 is itself inside the try block, so even a caller-side exception during the `async with` body still unwinds through this finally)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only (repository.py:560-618). Python suite could not be dynamically re-run this session (poetry/pydantic environment failure, same as tester's Impact map this round) — recorded as a limitation, not silently ignored.",
+      "code_references": [
+        "services/workers/sayre_workers/ingestion/repository.py:562-618"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|apps/web/app/workspace/chat/chatClient.ts, chatContract.ts|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatClient.ts, chatContract.ts",
+      "attack_path_version": "v1",
+      "attempt": "Re-read every request-construction and parsing site in the new chat modules for string-concatenated queries/shell/templates; unchanged since baseline.",
+      "evidence": [
+        "chatClient.ts: every request body is a typed object serialized by a single JSON.stringify call; every URL segment passed through encodeURIComponent — re-confirmed this round, byte-identical to baseline.",
+        "chatContract.ts/chatClient.ts parsers use typeof/Number.isFinite/Number.isSafeInteger structural checks, never string interpolation into a query."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only. No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatClient.ts:210-228"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|apps/web/app/api/core/[...path]/route.ts|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/api/core/[...path]/route.ts",
+      "attack_path_version": "v1",
+      "attempt": "Re-diffed the proxy route file and its allowlist to confirm CH-06 still adds no new HTTP surface.",
+      "evidence": [
+        "git status --porcelain -- apps/web/app/api/ (empty), re-run this round.",
+        "route.ts's coreRoute() allowlist unchanged (still carries the four CH-03 chat routes)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "git status/diff on apps/web/app/api/. No fixture created.",
+      "code_references": [
+        "apps/web/app/api/core/[...path]/route.ts:234-268"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|apps/web/app/workspace/chat/chatContract.ts parsers, chatClient.ts request construction|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatContract.ts parsers, chatClient.ts request construction",
+      "attack_path_version": "v1",
+      "attempt": "Re-ran chatContract.test.ts covering malformed/extreme inputs; no injection construction found.",
+      "evidence": [
+        "No SQL/Cypher/shell/template construction anywhere in the diff, re-confirmed.",
+        "chatContract.test.ts (10/10, re-run this round as part of 70/436)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/chatContract.test.ts` (10/10). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatContract.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|apps/web/app/workspace/chat/answerMarkdown.ts, ChatTranscriptList.tsx (answer/citation/error rendering)|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/answerMarkdown.ts, ChatTranscriptList.tsx (answer/citation/error rendering)",
+      "attack_path_version": "v1",
+      "attempt": "Re-grepped for dangerouslySetInnerHTML/href=/createElement(\"a\")/innerHTML across the whole chat directory (source only, excluding *.test.*) and re-ran the hostile-payload and chatSafetyGuards tests.",
+      "evidence": [
+        "grep -rniE \"dangerouslySetInnerHTML|href=|createElement\\(.a.\\)|innerHTML\" apps/web/app/workspace/chat (excluding *.test.*): zero source hits (two comment-only mentions, both describing the absence).",
+        "ChatTranscriptList.tsx:134-136: turn.error.message is rendered only as a React text-node child (`<p>{turn.error.message}</p>`); turn.error.code is never rendered.",
+        "AskSayrePanel.test.tsx hostile-payload test (script tag, javascript: URL, onerror attribute) and chatSafetyGuards.test.ts re-run this round as part of 70/436, all pass."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/` (10 files / 87 tests). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/answerMarkdown.ts",
+        "apps/web/app/workspace/chat/ChatTranscriptList.tsx:134-145"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|apps/web/app/api/session/route.ts (sayre_session cookie) + apps/web/app/lib/coreFetch.ts (Bearer token)|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/api/session/route.ts (sayre_session cookie) + apps/web/app/lib/coreFetch.ts (Bearer token)",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the session cookie attributes and coreFetch's auth-header logic (both unchanged, reused by the new chat calls).",
+      "evidence": [
+        "apps/web/app/api/session/route.ts:39,53 -> sameSite: 'lax', unchanged.",
+        "apps/web/app/lib/coreFetch.ts:72-83 -> primary auth is Authorization: Bearer sourced from localStorage, never ambient; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read of unchanged, inherited (CH-03) files. No fixture created.",
+      "code_references": [
+        "apps/web/app/api/session/route.ts:39,53",
+        "apps/web/app/lib/coreFetch.ts:72-83"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|apps/web (whole app: next.config.mjs, no middleware.ts)|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web (whole app: next.config.mjs, no middleware.ts)",
+      "attack_path_version": "v1",
+      "attempt": "Re-ran the header/middleware grep this round; the pre-existing, sitewide gap is unchanged.",
+      "evidence": [
+        "grep -riE \"X-Frame-Options|Content-Security-Policy|frame-ancestors\" apps/web (excluding node_modules): zero hits, re-confirmed this round.",
+        "apps/web/next.config.mjs: still no headers() key. No apps/web/middleware.ts exists."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-0c66db8d4fe3",
+        "status": "OPEN",
+        "first_seen_run_id": "20260811T045119987Z-6d3acfc-PR_DELTA-e8d162",
+        "first_seen_commit": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+        "last_seen_run_id": "20260811T082839401Z-1c62e52-PR_DELTA-90550e",
+        "last_seen_commit": "1c62e52fc483d1d8ecfcaf4abd45a101fe3b9ee4",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Grep across apps/web + read next.config.mjs (re-reproduced, unchanged). Pre-existing, sitewide gap, not introduced or regressed by CH-06. Remediation: add a Next.js headers() block or middleware.ts setting X-Frame-Options: DENY / frame-ancestors 'none' and a baseline CSP; recheck via the same grep and, once authorized, a live clickjacking probe.",
+      "code_references": [
+        "apps/web/next.config.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|apps/web/app/workspace/chat/chatClient.ts PostTurnBody construction (client half only)|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatClient.ts PostTurnBody construction (client half only)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read services/core's server-side field handling (services/core/src/services/chatService.ts's postTurn) to resolve what baseline explicitly left UNVERIFIED (\"server-side field rejection wasn't runtime-tested\").",
+      "evidence": [
+        "services/core/src/services/chatService.ts:363-377 postTurn: extracts ONLY body.idempotencyKey / body.question / body.scope by named destructuring (never Object.assign/spread of req.body); each is independently validated (validateIdempotencyKey/validateQuestion/validateScope) and any issue throws ChatValidationError before anything is persisted.",
+        "owner (services/core/src/services/chatService.ts:380, ownerFrom(userCtx)) is derived exclusively from requireAuthContext(req) — a hidden org/role/owner field in the request body has no code path to reach persistence; there is no spread operator anywhere in postTurn/createConversation.",
+        "The apps/web client itself (chatClient.ts:45-49) has no mechanism to smuggle a hidden field either — PostTurnBody is a closed TS interface serialized by exactly one JSON.stringify(body) call, unchanged.",
+        "services/core's full vitest suite (115/1236, includes chatService's own tests) re-run this round, exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (chatService.ts postTurn/createConversation) + `npx vitest run` from services/core (115/1236). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatClient.ts:45-49,217-228",
+        "services/core/src/services/chatService.ts:363-388"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|apps/web/app/workspace/chat/chatContract.ts parsers (parseChatGatewayMessage/parseChatCitations/parseChatMetrics)|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatContract.ts parsers (parseChatGatewayMessage/parseChatCitations/parseChatMetrics)",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the structural-validation logic; re-ran the malformed/extreme-value test cases.",
+      "evidence": [
+        "Parsers destructure only named fields (no spread/merge) -> no prototype-pollution vector.",
+        "chatContract.test.ts malformed/NaN/Infinity cases re-run this round, all pass (10/10)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/chatContract.test.ts` (10/10). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatContract.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|apps/web/app/workspace/chat/ChatProvider.tsx degraded poll + apps/web/app/api/core/[...path]/route.ts request/response bounds|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx degraded poll + apps/web/app/api/core/[...path]/route.ts request/response bounds",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the degraded-poll bounding logic (now including this round's fix-round-1 per-turn re-arm) and re-ran the budget test.",
+      "evidence": [
+        "ChatProvider.tsx:301-328: degraded polling gated on `live !== 'degraded' || !busy`, capped at CHAT_DEGRADED_POLL_MAX_ATTEMPTS (20) per non-terminal turn.",
+        "chatDegradedRecovery.test.tsx (7/7, re-run this round): the per-turn budget test passes.",
+        "apps/web/app/api/core/[...path]/route.ts (unchanged): 64KB request cap, 10MB response cap, 15s timeout."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/chatDegradedRecovery.test.tsx` (7/7). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:301-328"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|apps/web/app/workspace/chat/ChatProvider.tsx ensureConversation() (concurrent-ask dedup)|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx ensureConversation() (concurrent-ask dedup)",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the conversation-creation dedup guard and re-ran the concurrent-ask test.",
+      "evidence": [
+        "ChatProvider.tsx:348-365 -> creatingRef Promise makes a second concurrent ask() await the in-flight createConversation().",
+        "AskSayrePanel.test.tsx (re-run this round): two concurrent ask() calls produce exactly one POST."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/AskSayrePanel.test.tsx -t \"creates one conversation\"`. No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:348-365"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|apps/web/app/api/core/[...path]/route.ts response headers (unchanged)|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/api/core/[...path]/route.ts response headers (unchanged)",
+      "attack_path_version": "v1",
+      "attempt": "Re-grepped for Cache-Control/cache-control across services/core/src and apps/web/app/api/core: still zero hits. This remains genuinely unresolvable via source reading alone -- it depends on actual deployment/CDN-layer caching behavior neither CH-05 nor CH-06 changed, and no live/authorized deployment target exists this run to test it dynamically.",
+      "evidence": [
+        "boundedResponse() (route.ts, unchanged) still sets only content-type; no Cache-Control/Vary header on the proxied response.",
+        "grep -rn \"Cache-Control|cache-control\" services/core/src apps/web/app/api/core: zero hits, re-run this round."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only; unchanged code inherited from CH-03. Actual CDN/deployment-level caching behavior not evaluated -- no live/authorized target this run. Stated limitation, not a silent carry-forward: closing this requires either an explicit no-store header in code or a live-deployment/CDN test, neither available in this stage.",
+      "code_references": [
+        "apps/web/app/api/core/[...path]/route.ts:310-349"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|apps/web/app/workspace/chat/chatClient.ts error normalization, ChatTranscriptList.tsx error-turn rendering, EC-16 chat.mcp_unauthorized path|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatClient.ts error normalization, ChatTranscriptList.tsx error-turn rendering, EC-16 chat.mcp_unauthorized path",
+      "attack_path_version": "v1",
+      "attempt": "Re-read ChatRequestError's normalization and the error-turn renderer; re-ran the EC-16 test.",
+      "evidence": [
+        "ChatTurnItem (ChatTranscriptList.tsx:134-145) renders only turn.error.message as plain text; turn.error.code never rendered.",
+        "chatClient.ts normalizes network/non-JSON/contract-violation failures to generic messages, unchanged.",
+        "AskSayrePanel.test.tsx EC-16 test (re-run this round): rendered text excludes /credential|secret|token|api[_ -]?key|queue|backlog|sqs/i."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/AskSayrePanel.test.tsx -t \"renders an inline error turn\"`. No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatClient.ts:92-99",
+        "apps/web/app/workspace/chat/ChatTranscriptList.tsx:134-145"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|apps/web/app/workspace/chat/** (citation/tool/detail/answer rendering)|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/** (citation/tool/detail/answer rendering)",
+      "attack_path_version": "v1",
+      "attempt": "Re-read every rendering site in the diff for a URL/anchor/redirect constructed from tenant/model content.",
+      "evidence": [
+        "Zero href/anchor/window.location/redirect construction anywhere under apps/web/app/workspace/chat/; citation activation dispatches only in-app selection state, re-confirmed this round."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Grep for href/<a/window.location across the diff. No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/citationTarget.ts",
+        "apps/web/app/workspace/chat/ChatProvider.tsx:414-422"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-01|websocket-realtime|services/gateway (Origin/handshake policy, out of this diff)|v1",
+      "check_id": "WS-01",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway (Origin/handshake policy, out of this diff)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: CH-05's gateway is now present in the pinned target -- read services/gateway/src/ws/auth.ts and server.ts's WebSocketServer construction end to end.",
+      "evidence": [
+        "services/gateway/src/server.ts:97-101: `new WebSocketServer({ server })` with no `verifyClient` option -- the gateway does NOT allowlist Origin at the WS-upgrade layer.",
+        "However: services/gateway/src/ws/auth.ts:1-10,27-32 -- the connection-time credential is EITHER an `Authorization: Bearer` upgrade header (which a cross-origin page's native WebSocket constructor cannot set) OR a first `{type:'auth',token}` frame carrying a token read from `apps/web`'s localStorage (which is same-origin-isolated and unreadable by a malicious cross-origin page). grep -rn \"cookie\" services/gateway/src (excluding tests): zero matches -- there is no ambient/cookie credential a cross-site page could rely on the browser to attach automatically.",
+        "Concretely: an attacker page CAN open a WebSocket connection to the gateway from any origin (no Origin check), but it cannot authenticate that connection (no token it can obtain), so `handleSubscribe`/`handleChatSubscribe` both reject with `unauthenticated` for any subscribe attempt on that connection -- classic Cross-Site WebSocket Hijacking (which relies on ambient/cookie auth reaching the target) does not apply to this design.",
+        "services/gateway/src/ws/auth.test.ts is part of the 14-file/193-test gateway suite re-run this round, exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (server.ts, auth.ts) + `npx vitest run` from services/gateway (14/193, includes auth.test.ts). No fixture created. Confidence MEDIUM: the absence of an Origin allowlist is real and worth a defense-in-depth follow-up even though the token design closes the classic attack; no live browser cross-origin probe was run this session.",
+      "code_references": [
+        "services/gateway/src/server.ts:96-101",
+        "services/gateway/src/ws/auth.ts:1-54"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-02|websocket-realtime|services/gateway handshake auth (out of this diff)|v1",
+      "check_id": "WS-02",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway handshake auth (out of this diff)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read the auth-failure and dev/test-bypass paths end to end.",
+      "evidence": [
+        "services/gateway/src/ws/auth.ts:46-54 authenticateConnectionToken: propagates ANY verification failure (expired/revoked/malformed/missing claims) as an error; ws/connection.ts:100-113 handleAuthFrame catches it and returns null uniformly -- caller closes with a single generic UNAUTHENTICATED_CLOSE_CODE (4401), never leaking which check failed.",
+        "ws/connection.ts:265-283: a header-token upgrade auths immediately; otherwise a 5s auth-timeout window closes the socket if no `{type:'auth'}` frame arrives; the ONLY bypass is `isDevOrTestEnvironment()` (ws/auth.ts:34-37, `NODE_ENV==='development'||'test'`), which `devConnectionIdentity()` (ws/auth.ts:65-75) itself fails closed (throws) outside that environment -- not reachable from a production deployment.",
+        "services/gateway/src/ws/connection.test.ts and auth.test.ts, part of the 14-file/193-test suite re-run this round, exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (auth.ts, connection.ts) + `npx vitest run` from services/gateway (14/193). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/auth.ts:34-75",
+        "services/gateway/src/ws/connection.ts:88-113,244-283"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-03|websocket-realtime|apps/web/app/workspace/chat/ChatProvider.tsx socket URL + auth send, apps/web/app/workspace/realtime.ts normalizeRealtimeUrl|v1",
+      "check_id": "WS-03",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx socket URL + auth send, apps/web/app/workspace/realtime.ts normalizeRealtimeUrl",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the URL-construction and token-send path for the chat socket; unchanged since baseline.",
+      "evidence": [
+        "ChatProvider.tsx: browserRealtimeUrl builds the WS URL with no token; the auth token is sent only after `open`, inside a JSON message body, never in the URL.",
+        "realtime.ts normalizeRealtimeUrl (unchanged): rejects any URL with embedded credentials/query/hash."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read only. No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:204-227",
+        "apps/web/app/workspace/realtime.ts:82-98"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-04|websocket-realtime|apps/web/app/workspace/chat/ChatProvider.tsx chat.subscribe (client half) + services/gateway subscription authorization (server half, out of diff)|v1",
+      "check_id": "WS-04",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx chat.subscribe (client half) + services/gateway subscription authorization (server half, out of diff)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: CH-05's server-side authorization is now present -- read handleChatSubscribe through to Core's ownership check end to end.",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:164-198 handleChatSubscribe: requires conn.authenticated; fails closed with the generic chat_forbidden reply if the gateway is wired without chat deps (:179); otherwise awaits `deps.authorizeChatSubscription(conn, conversationId)` and returns the SAME generic chat_forbidden reply on denial (:184-186) -- non-owner and non-existent conversation are indistinguishable to the client (existence non-disclosure).",
+        "services/gateway/src/server.ts:62-73 wires authorizeChatSubscription to fetchChatPushAuthorization against Core's /internal/realtime/chat-authorization, forwarding the CONNECTION'S OWN bearer token (never a client-supplied org/user id) and failing closed (`catch { return false }`) on ANY error including Core being unreachable.",
+        "services/core/src/services/realtimeChatService.ts:18-41 authorizeRealtimeChatPush: derives ctx.orgId/ctx.userId server-side (never from the request body); requires ctx.subjectType==='user'; calls `store.getConversation({orgId,userId}, conversationId, 0)` and throws ChatNotFoundError if the calling subject does not own that conversation row.",
+        "apps/web/app/workspace/chat/ChatProvider.tsx:233-238 (client half, unchanged since C-1's fix): chat.subscribe always uses the conversationId the client itself received from its own POST /chat/conversations, never an externally-supplied value.",
+        "services/gateway/src/chatE2e.test.ts \"AC-2/EC-8: a same-org non-owner is refused at subscribe, triggers no Redis SUBSCRIBE, and never sees a single frame\" and \"AC-2: a connection authenticated under a different org can never match the event org\" -- both re-run this round as part of the 14-file/193-test gateway suite, exit 0. services/core's realtimeChatService coverage re-run as part of the 115/1236 core suite."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (connection.ts, server.ts, realtimeChatService.ts, ChatProvider.tsx) + `npx vitest run` from services/gateway (14/193) and services/core (115/1236). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:164-198",
+        "services/gateway/src/server.ts:60-77",
+        "services/core/src/services/realtimeChatService.ts:18-41"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-05|websocket-realtime|apps/web/app/workspace/chat/chatTranscript.ts applyChatEvent (client half) + services/gateway per-message re-authorization (server half, out of diff)|v1",
+      "check_id": "WS-05",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatTranscript.ts applyChatEvent (client half) + services/gateway per-message re-authorization (server half, out of diff)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read relayChatEvent's per-push re-authorization end to end, specifically to verify it re-asks Core on EVERY delivery rather than trusting subscribe-time state (.claude/rules/security-multitenancy.md).",
+      "evidence": [
+        "services/gateway/src/fanout/chatFanout.ts:39-82 pushToConnection: for EVERY push (progress, completed, AND error alike -- not only deltas with citations), calls `deps.authorizePush({baseUrl, token: conn.token, conversationId, nodeIds})` BEFORE sending anything; a CoreForbiddenError mid-turn triggers `onSubscriptionRevoked` (removes the subscription and releases the Redis channel) plus a generic chat_forbidden reply, not a silent drop.",
+        "chatFanout.ts:89-109 relayChatEvent: `registry.matchingChat(event.orgId, event.conversationId)` re-derives the connection list from the LIVE registry on every single event delivery -- there is no cached authorization from subscribe time reused for a later push.",
+        "services/core/src/services/realtimeChatService.ts:39 re-derives `graph.getAuthorizedNodeIds(nodeIds, ctx)` fresh on every call (ctx built fresh from the forwarded bearer token each time) -- a citation authorized at subscribe time is NOT assumed authorized at push time.",
+        "apps/web/app/workspace/chat/chatTranscript.ts applyChatEvent (client half, unchanged): discards any push for a foreign conversationId or unknown turnId, returning the identical state reference.",
+        "services/gateway/src/chatE2e.test.ts \"AC-4/AC-9: a scope reduced after subscribe removes the citation from the very NEXT push, and Core is asked once per event (not once at subscribe)\" and \"EC-14: a mid-turn 403/404 from Core sends exactly one generic chat_forbidden frame\" -- both re-run this round as part of 14/193."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (chatFanout.ts, realtimeChatService.ts, chatTranscript.ts) + `npx vitest run` from services/gateway (14/193). No fixture created.",
+      "code_references": [
+        "services/gateway/src/fanout/chatFanout.ts:39-109",
+        "services/core/src/services/realtimeChatService.ts:18-41",
+        "apps/web/app/workspace/chat/chatTranscript.ts:68-91"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-06|websocket-realtime|apps/web/app/workspace/chat/ChatProvider.tsx sessionExpiredRef latch (401 / unauthenticated frame / close 4401)|v1",
+      "check_id": "WS-06",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx sessionExpiredRef latch (401 / unauthenticated frame / close 4401)",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the three revocation-signal handlers this round; re-ran every EC-24/C2 regression test.",
+      "evidence": [
+        "ChatProvider.tsx:192-200,242-244,252-264 -- sessionExpiredRef set once (idempotent) on a 401, a gateway {type:'error',code:'unauthenticated'} frame, or a close(4401), checked before every subsequent reconcile/poll/socket action, unchanged since baseline.",
+        "chatDegradedRecovery.test.tsx (7/7, re-run this round) and AskSayrePanel.test.tsx's EC-24 tests (re-run this round): all pass."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/` (10 files / 87 tests). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:192-264"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-06|websocket-realtime|apps/web/app/workspace/chat/ChatProvider.tsx handleMessage — chat_forbidden and every other non-unauthenticated gateway error frame (GAP beyond WS-06's literal \"revoke while connected\" scenario; independently re-judging review.md's W-2)|v1",
+      "check_id": "WS-06",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx handleMessage — chat_forbidden and every other non-unauthenticated gateway error frame (GAP beyond WS-06's literal \"revoke while connected\" scenario; independently re-judging review.md's W-2)",
+      "attack_path_version": "v1",
+      "attempt": "GAP-1. This is a newly-discovered surface not fully represented by an existing checklist row (audit-contract.md section 8: \"For every newly discovered surface not represented by a checklist ID, add a GAP-* row\"), filed under the closest-fitting existing check (WS-06, \"verify delivery and resumption stop promptly\" on revocation) since chat_forbidden is precisely a conversation-level authorization revocation/denial the client must resume/degrade from and does not. Traced the exact branch sequence in handleMessage independently, without accepting review.md's or tester's characterization, then independently decided severity per this stage's own contract rather than adopting review's Warning framing.",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:164-186 handleChatSubscribe has a first-class, CORRECT, fail-closed denial reply: `{type:'error',code:'chat_forbidden',message:'Conversation not found.'}`, emitted BOTH on a genuine ownership/authorization denial AND on a gateway deployed without chat deps wired (connection.ts:179 -- a realistic day-one misconfiguration state, not a rare edge case). services/gateway/src/chatE2e.test.ts's \"EC-20: a gateway wired WITHOUT chat deps refuses the subscribe with the generic chat_forbidden frame\" (re-run this round, part of 14/193) confirms this is deliberate, tested, correct SERVER behavior.",
+        "Traced apps/web/app/workspace/chat/ChatProvider.tsx:228-251 handleMessage independently, line by line: `parseGatewayMessage(event.data)` (realtime.ts) parses the frame fine (code/message are non-empty strings) and returns non-null. The `if (generic.type === 'error' && generic.code === 'unauthenticated')` branch (line 242) does NOT match `code:'chat_forbidden'`. Control falls through to the bare `return;` at line 246 inside the outer `if (generic !== null) {...}` block. No other branch in the function reads `generic.code` at all.",
+        "Consequence, independently re-derived: `chatSubscriptions` is never populated server-side for this connection/conversation, so no chat.turn.* push ever arrives; the socket itself stays open (no close event fires), so `live` never leaves 'connected'; the degraded-poll effect's own guard (ChatProvider.tsx:302, `live !== 'degraded'`) never passes, so the REST fallback never arms; the assistant turn posted just before this denial stays 'pending' forever, `busy` stays true, and the composer stays disabled with no user-visible explanation. I independently confirmed there is no other timer/listener in the file that could break this state (the only setTimeout call sites are inside the same gated degraded-poll effect).",
+        "Severity judgment (independent of review.md's ruling, per the coordinator's explicit ask): this is NOT a tenant-isolation or RBAC-boundary failure -- the server-side denial in the paragraph above is CORRECT and properly fail-closed; no unauthorized data is exposed at any point. It is a client-side availability/resilience gap: a required fallback control (degrade-to-REST, or at minimum a visible error) is absent when the server correctly (or defensively) denies a chat subscription, and it is reachable today, in the assembled system, through the single most plausible day-one misconfiguration (a gateway boot without chat deps wired) -- not a contrived or hypothetical trigger. Rated FAIL under the \"a required control is absent\" clause of this stage's own FAIL definition. Rated MEDIUM, not HIGH/CRITICAL, calibrated against this exact codebase's own precedent for a real-but-non-breach availability gap: WEB-05 (missing clickjacking headers, reachable on literally every page load, MEDIUM) and CH-05's own persisting FND-2c0a6d36bdc4 (missing rate limit on the chat-subscribe path, a DoS-adjacent gap, MEDIUM). Not blocking under this stage's gate rules (MEDIUM, not CRITICAL/HIGH; not a tenant-isolation/RBAC-boundary failure).",
+        "Cross-checked whether the underlying premise (\"subscribe always succeeds so an ack/error is unneeded\") is still live anywhere else: spec.md:427 states \"Rendering never gates on a subscription ack\" as ratified design -- this finding does not dispute that ack-gating specifically (chatAckContract.test.tsx correctly proves the ACK is safely ignored); it disputes the absence of ANY reaction to the ERROR variant of that same reply."
+      ],
+      "evidence_type": "STATIC",
+      "result": "FAIL",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "single_point_of_failure": true,
+      "finding": {
+        "finding_id": "FND-c7ac1e6d76c8",
+        "status": "OPEN",
+        "first_seen_run_id": "20260811T082839401Z-1c62e52-PR_DELTA-90550e",
+        "first_seen_commit": "1c62e52fc483d1d8ecfcaf4abd45a101fe3b9ee4",
+        "last_seen_run_id": "20260811T082839401Z-1c62e52-PR_DELTA-90550e",
+        "last_seen_commit": "1c62e52fc483d1d8ecfcaf4abd45a101fe3b9ee4",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": null,
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Static, deterministic code trace (ChatProvider.tsx:228-251's branches involve only literal string comparisons with no async/timing ambiguity) cross-checked against services/gateway/src/ws/connection.ts:164-186 and chatE2e.test.ts's EC-20 test (re-run this round, 14/193 gateway suite green). Not dynamically reproduced against a live client mount this round (a throwaway reproduction would require writing a new test file, which this read-only stage does not do); STATIC evidence judged sufficient given the branches traced have no runtime-dependent behavior. Remediation: file a follow-up ticket (as review.md already recommends) specifying per-code client behavior for unauthenticated (done) / chat_forbidden (needs a user-visible \"this conversation isn't available\" state and/or a REST-degrade trigger independent of `live`) / bad_frame; recheck by re-tracing handleMessage's branches after that ticket lands and, ideally, adding a behavioral regression test exercising a real chat_forbidden frame end to end (closing the same STATIC-only gap CH-06's own EC-24 tests already close for the unauthenticated code).",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:228-251,301-328",
+        "services/gateway/src/ws/connection.ts:164-186",
+        "services/gateway/src/chatE2e.test.ts (EC-20)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-07|websocket-realtime|services/gateway Redis channel naming/fan-out (out of this diff)|v1",
+      "check_id": "WS-07",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway Redis channel naming/fan-out (out of this diff)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read the channel-parsing and envelope-validation gate end to end.",
+      "evidence": [
+        "services/gateway/src/ws/chatEvents.ts:43-45,52-61 chatEventChannel/parseChatEventChannel: channel is strictly `sayre:chat.events:{orgId}:{conversationId}`, parsed via an anchored regex; malformed/extra-segment channel names return null.",
+        "chatEvents.ts:199-247 decodeChatEvent: validates envelope.org_id === the channel's own orgId segment, envelope.source === CHAT_EVENT_SOURCE, envelope.type is one of exactly three pinned strings, AND payload.conversationId === the channel's own conversationId segment -- four independent cross-checks against channel/tenant confusion, all before any push is constructed. Every rejection path logs only the channel name and a fixed reason string, never payload content.",
+        "The Python worker mirrors the identical closed set (sayre_workers/chat/models.py/events.py, per chatEvents.ts's own header comment) -- confirmed the worker-side CitationKind is the same closed Literal[\"file\",\"folder\",\"feature\",\"ticket\"] as the gateway/client, so a cross-layer type-confusion citation kind is defended at the source, not merely the client.",
+        "services/gateway/src/ws/chatEvents.test.ts is part of the 14-file/193-test gateway suite re-run this round, exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (chatEvents.ts) + `npx vitest run` from services/gateway (14/193, includes chatEvents.test.ts). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/chatEvents.ts:43-61,190-269"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-08|websocket-realtime|apps/web/app/workspace/chat/chatContract.ts parseChatGatewayMessage + chatTranscript.ts applyChatEvent|v1",
+      "check_id": "WS-08",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatContract.ts parseChatGatewayMessage + chatTranscript.ts applyChatEvent",
+      "attack_path_version": "v1",
+      "attempt": "Re-ran the malformed-frame test suites; independently re-read parseChatGatewayMessage against the newly-available real ack shape.",
+      "evidence": [
+        "chatContract.ts:169-182 parseChatGatewayMessage: closed match over exactly the three chat.turn.* types; anything else (confirmed by direct trace, including CH-05's real `{type:'subscribed',channel:'chat',conversationId}` ack) returns null without throwing.",
+        "chatContract.test.ts (10/10) and AskSayrePanel.test.tsx's malformed-frame-over-a-live-socket test, re-run this round.",
+        "NEW this round: chatAckContract.test.tsx (1/1, re-run) -- mutation-tested by tester, independently spot-read by me: the ack is discarded via reference-identity assertion (`toBe`, not `toStrictEqual`), which only passes if setTranscript was genuinely never called."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/` (10 files / 87 tests). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatContract.ts:169-182",
+        "apps/web/app/workspace/chat/chatAckContract.test.tsx"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-09|websocket-realtime|apps/web/app/workspace/chat/chatTranscript.ts applyChatEvent (EC-1,2,3,4,7,8)|v1",
+      "check_id": "WS-09",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/chatTranscript.ts applyChatEvent (EC-1,2,3,4,7,8)",
+      "attack_path_version": "v1",
+      "attempt": "Re-ran every ordering/idempotency/terminal-precedence test.",
+      "evidence": [
+        "chatTranscript.test.ts (15/15, re-run this round): duplicate/out-of-order/gapped seq, post-terminal progress, stray terminal seq, and double-terminal all handled per spec, unchanged."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/chatTranscript.test.ts` (15/15). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/chatTranscript.ts:68-115"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-10|websocket-realtime|services/gateway (timing/side-channel behavior, out of this diff)|v1",
+      "check_id": "WS-10",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway (timing/side-channel behavior, out of this diff)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read the uniform-failure/existence-non-disclosure design end to end (full timing-channel/traffic-capture analysis still requires a live target, not available this run).",
+      "evidence": [
+        "services/gateway/src/ws/connection.ts:148-162 chatForbiddenReply: the SAME code (chat_forbidden) and message (\"Conversation not found.\") is returned whether the conversation does not exist OR the caller is not its owner -- existence non-disclosure by construction, not merely by convention.",
+        "ws/connection.ts:100-113 handleAuthFrame: returns null (leading to a single generic close reason) uniformly for EVERY authentication failure mode (expired/malformed/revoked/wrong-signature token) -- no distinct error surfaces which specific check failed.",
+        "services/core/src/services/realtimeChatService.ts:33 maps BOTH \"conversation not found\" and \"not owned by this subject\" to the identical ChatNotFoundError -- the non-disclosure is enforced at the origin, not patched on afterward at the gateway.",
+        "chatE2e.test.ts's EC-14 test (a mid-turn 403/404 sends exactly one generic chat_forbidden frame) re-run this round as part of 14/193."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (connection.ts, realtimeChatService.ts) + `npx vitest run` from services/gateway (14/193). No fixture created. Confidence MEDIUM: response-content uniformity is confirmed; response-TIMING uniformity (a true side channel) would need live traffic capture, not performed this run.",
+      "code_references": [
+        "services/gateway/src/ws/connection.ts:100-113,148-162",
+        "services/core/src/services/realtimeChatService.ts:18-41"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-11|websocket-realtime|apps/web/app/workspace/chat/ChatProvider.tsx socket + degraded-poll lifecycle|v1",
+      "check_id": "WS-11",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web/app/workspace/chat/ChatProvider.tsx socket + degraded-poll lifecycle",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the connection lifecycle for reconnect-storm/leak potential; re-ran the bounded-budget and latch tests.",
+      "evidence": [
+        "ChatProvider.tsx: exactly one WebSocket construction per effect run; cleanup unsubscribes+closes on every re-run/unmount; no automatic reconnect loop; degraded poll bounded and latch-stopped on session expiry -- unchanged since baseline.",
+        "chatDegradedRecovery.test.tsx (7/7) and AskSayrePanel.test.tsx's EC-24 tests, re-run this round.",
+        "Noted, not re-scored here (belongs to CH-05's own lane/ledger, a different target asset): CH-05's own security run (.sdd/ledger/20260811T071754377Z-21d34a2-PR_DELTA-7029e6/security/) carries a PERSISTING, OPEN, MEDIUM finding FND-2c0a6d36bdc4 -- no rate limit on the gateway's chat-subscribe -> Core-authorization path. Re-confirmed still present this round (`grep -rniE \"rate.?limit|throttle|maxPayload|debounce\" services/gateway/src`, excluding tests: zero matches). This is CH-05's own tracked finding on a different target asset (the gateway subscribe path itself, not this client provider) and is not duplicated as a new CH-06 row."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run app/workspace/chat/` (10 files / 87 tests). No fixture created.",
+      "code_references": [
+        "apps/web/app/workspace/chat/ChatProvider.tsx:204-328"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WS-12|websocket-realtime|services/gateway push-payload minimization (server half, out of diff) / apps/web client field extraction (client half)|v1",
+      "check_id": "WS-12",
+      "surface_id": "websocket-realtime",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/gateway push-payload minimization (server half, out of diff) / apps/web client field extraction (client half)",
+      "attack_path_version": "v1",
+      "attempt": "Newly this round: read the gateway's citation-minimization filter end to end.",
+      "evidence": [
+        "services/gateway/src/ws/chatEvents.ts:294-304 filterCitations: keeps ONLY citation entries whose nodeId is in the freshly re-derived authorizedNodeIds set AND (resolvedNodeId is null OR also authorized) -- applied per-push (see WS-05), not once at subscribe time.",
+        "chatEvents.ts:117-136 decodeCitation reads ONLY the four named fields (nodeId/label/kind/resolvedNodeId) off each parsed citation object and discards everything else the worker might have included.",
+        "apps/web's client parser (parseChatCitations, chatContract.ts) is likewise a named-field-only extraction, unchanged -- defense in depth, not the sole boundary.",
+        "chatEvents.test.ts's EC-15/EC-16/EC-17 (citation-filtering cases), part of the 14-file/193-test gateway suite re-run this round."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "CHANGED",
+      "coverage_transition": "GAINED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read (chatEvents.ts) + `npx vitest run` from services/gateway (14/193). No fixture created.",
+      "code_references": [
+        "services/gateway/src/ws/chatEvents.ts:117-136,294-304"
+      ]
+    }
+  ]
+}

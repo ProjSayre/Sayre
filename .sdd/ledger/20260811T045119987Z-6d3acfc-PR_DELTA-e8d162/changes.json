@@ -1,0 +1,27 @@
+{
+  "filesChanged": [
+    "apps/web/app/workspace/chat/chatContract.ts",
+    "apps/web/app/workspace/chat/answerMarkdown.ts",
+    "apps/web/app/workspace/chat/citationTarget.ts",
+    "apps/web/app/workspace/chat/chatClient.ts",
+    "apps/web/app/workspace/chat/chatTranscript.ts",
+    "apps/web/app/workspace/chat/ChatProvider.tsx",
+    "apps/web/app/workspace/chat/AskSayrePanelBody.tsx",
+    "apps/web/app/workspace/chat/ChatTranscriptList.tsx",
+    "apps/web/app/workspace/chat/askSayreRenderers.tsx",
+    "apps/web/app/workspace/askSayreRegistry.ts",
+    "apps/web/app/workspace/components/AskSayrePanel.tsx",
+    "apps/web/app/workspace/views/LegacyWorkspaceView.tsx",
+    "apps/web/app/workspace/state/WorkspaceProvider.tsx",
+    "apps/web/app/workspace/workspace.css",
+    "apps/web/app/mock/README.md",
+    "apps/web/app/workspace/chat/chatDegradedRecovery.test.tsx"
+  ],
+  "redTestChanges": [],
+  "stamp": {
+    "treeHash": "820917bb4107303c09cd5c35ad713030620b4e90e6b342576c1311f2e9adc4da",
+    "headSha": "6d3acfce2d978ca4177038186e80b9c0ac96abe7",
+    "dirty": true,
+    "writtenAt": "2026-08-11T04:12:32.666Z"
+  }
+}
