@@ -228,6 +228,17 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
     last_used_at: ["timestamp with time zone", true],
     created_at: ["timestamp with time zone", false],
     updated_at: ["timestamp with time zone", false],
+    // CH-01 (drizzle/0021_ch01_ephemeral_mcp_credentials.sql): ephemeral,
+    // conversation-bound chat credentials live in this same table,
+    // discriminated by `kind`, rather than in a new one -- see that migration's
+    // header. These are the only two columns 0021 adds, and it adds no column
+    // to any other table. `expires_at` above is reused as the ephemeral expiry
+    // (already present, already nullable) rather than duplicated.
+    // Extending the expected set, never relaxing the exact-match check: an
+    // unexpected column is still a failure, and both entries below carry the
+    // same [dataType, nullable] pinning as every other column here.
+    kind: ["text", false],
+    conversation_id: ["uuid", true],
   },
   model_provider_configs: {
     id: ["uuid", false],
