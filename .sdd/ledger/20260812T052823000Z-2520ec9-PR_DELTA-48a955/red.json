@@ -1,0 +1,182 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/core/src/integrations/git/budgets.test.ts",
+      "sha256": "6def9438bed93bbad41d74aa78f677b18901bebd6dc16d8323ffc556dab7fcb8",
+      "specIds": [
+        "AC-5",
+        "AC-6",
+        "AC-8",
+        "EC-9",
+        "EC-16"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/http/boundedJson.test.ts",
+      "sha256": "1ab26a980fc0e206658cd6f17bf4d7029d1fd45ed21e657aed3c1edaa66ef99d",
+      "specIds": [
+        "AC-6",
+        "EC-11"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/providerCatalog.test.ts",
+      "sha256": "4b9eaf2db120b9166896d468d5b78e23e21470b9683084e39e2d4fa0df8dddf2",
+      "specIds": [
+        "AC-9",
+        "AC-10",
+        "AC-12",
+        "EC-18",
+        "EC-19",
+        "EC-20",
+        "EC-22",
+        "EC-23"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/providers/fakehub.test.ts",
+      "sha256": "8b890b6278c01aa6819a3ff77e8d68dd8275811a136436ee8fa5187224385e38",
+      "specIds": [
+        "AC-11",
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/__tests__/crossServiceFileKey.test.ts",
+      "sha256": "4e5d70dc02b3978dd4101ba5fbd5ec1533e7f5768adb5e715f9f5670aeac47fd",
+      "specIds": [
+        "AC-2"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/graphOwnershipStore.test.ts",
+      "sha256": "76f52db88afed504e60c422e0a1d8d5b1466bdf11824b1c427f8b090fd3f609a",
+      "specIds": [
+        "AC-4",
+        "EC-7"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/providerRegistry.test.ts",
+      "sha256": "4757bc30b3453b428cc299ec1ae348407b86e3b592b301feec093cf886ad6785",
+      "specIds": [
+        "AC-9"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/providers/github.test.ts",
+      "sha256": "7ad4f595d52a17127d63bd0b1c31998872f2ff1baef80b5187c7e2b2d896c727",
+      "specIds": [
+        "AC-6",
+        "AC-8",
+        "AC-12",
+        "AC-13",
+        "EC-9",
+        "EC-10",
+        "EC-12",
+        "EC-16",
+        "EC-17",
+        "EC-24",
+        "EC-25"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/gitSyncService.test.ts",
+      "sha256": "cdb4a4ac37d03e85d7ff3a2621c605ae198453bcedf0be18e5df2fb2367dffb1",
+      "specIds": [
+        "AC-4",
+        "AC-5",
+        "AC-8",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/jobPolicy.test.ts",
+      "sha256": "e9d12363d5df42f19ba118ce071e17ea3a91eeee916d60bfe3ed8d3105ad3c2f",
+      "specIds": [
+        "AC-7"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubWebhookService.jobOptions.test.ts",
+      "sha256": "d27361abd6f0ca62bf3d7a53393e74778ab7e0b87ce8019d47ae3477f426a5b8",
+      "specIds": [
+        "AC-7"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/worker.test.ts",
+      "sha256": "efed43f49245b09d235cccd5135fed277efde97f68eb1782f593ae862f7a2b7a",
+      "specIds": [
+        "AC-7",
+        "AC-9"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/__tests__/w3-04.ci-wiring.test.ts",
+      "sha256": "86ca5e4bb3a0448610eeaae28037cd06eccada80226d457d316224cfed4ade78",
+      "specIds": [
+        "AC-3"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/__tests__/ownershipGraph.integration.test.ts",
+      "sha256": "5392a4efe1c438fb646c39578772664fe644d0b31450bc24e94c2e9e8f922f7b",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-26"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/core/src/integrations/git/__tests__/w3-04.acceptance.integration.test.ts",
+      "sha256": "fd2f288b8a100ec102534ffd42aaba453248bffa0a666a499392f246df2e55b7",
+      "specIds": [
+        "AC-5",
+        "AC-9",
+        "AC-11",
+        "EC-26"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/core/src/integrations/git/__tests__/jobRetry.integration.test.ts",
+      "sha256": "c0fdfa01d98890dc7201365b676daa95a6868f52bb00c5999439d83f836a0aa0",
+      "specIds": [
+        "AC-7",
+        "EC-13",
+        "EC-14",
+        "EC-15"
+      ],
+      "classification": "RED-DEFERRED"
+    }
+  ],
+  "stamp": {
+    "treeHash": "f48e21d5d880af2d676b61fa664036dcaf384f4e2f40342e075e0730f377b26b",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": true,
+    "writtenAt": "2026-08-12T02:01:50.057Z"
+  }
+}

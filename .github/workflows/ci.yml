@@ -29,6 +29,22 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U sayre_dev -d sayre_dev"
           --health-interval 10s --health-timeout 5s --health-retries 5
+      # W3-04 gapfill (GAP-1): the `workers` job's own Neo4j service (below, :346-355),
+      # duplicated here so the git-sync ownership write (APPLY_OWNERSHIP_CYPHER) can be
+      # proven against a real Neo4j from the `node` job too — see the dedicated
+      # "core graph integration" step + zero-skip gate below (spec.md Open Question Q-5
+      # flags the CI-runtime cost of this duplication rather than moving the TS tests
+      # into the Python job).
+      neo4j:
+        image: neo4j:5.24-community
+        env:
+          NEO4J_AUTH: neo4j/changeme_local_only
+        ports:
+          - 7687:7687
+          - 7474:7474
+        options: >-
+          --health-cmd "wget -O /dev/null -q http://localhost:7474 || exit 1"
+          --health-interval 10s --health-timeout 10s --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -286,6 +302,37 @@ jobs:
           npm test --workspace @sayre/core --
           --run src/queue/__tests__/bullmq.roundtrip.test.ts
           src/queue/__tests__/bullmq.priority.test.ts
+
+      # W3-04 gapfill (GAP-1, AC-3): the git-sync ownership-write proof and the literal
+      # two-clause acceptance-sentence proof, both against a REAL Neo4j (the second also
+      # needs the redis: service above), with a junit report the zero-skip gate
+      # immediately below inspects. GRAPH_INTEGRATION_REQUIRED='true' turns an
+      # unreachable store into a hard failure instead of a silently-skipped suite
+      # (bullmq.roundtrip.test.ts:216's pattern). MESSAGING_INTEGRATION_REQUIRED='true'
+      # does the same for the acceptance file's Redis half; REDIS_HOST/REDIS_PORT already
+      # match the `redis:` service's defaults so no override is needed for those two.
+      - name: core graph integration — Neo4j required (zero skips)
+        env:
+          NODE_ENV: test
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: changeme_local_only
+          GRAPH_INTEGRATION_REQUIRED: 'true'
+          MESSAGING_INTEGRATION_REQUIRED: 'true'
+        run: >-
+          npm test --workspace @sayre/core --
+          --run --reporter=junit --outputFile=.git-sync-graph-junit.xml
+          src/integrations/git/__tests__/ownershipGraph.integration.test.ts
+          src/integrations/git/__tests__/w3-04.acceptance.integration.test.ts
+
+      - name: Assert no git-sync graph tests skipped
+        run: >-
+          node -e "
+          const fs = require('fs');
+          const xml = fs.readFileSync('services/core/.git-sync-graph-junit.xml', 'utf8');
+          const skipped = [...xml.matchAll(/skipped=\"(\d+)\"/g)].reduce((sum, m) => sum + Number(m[1]), 0);
+          if (skipped !== 0) { console.error(skipped + ' git-sync graph tests skipped'); process.exit(1); }
+          "
 
       - name: core — RLS isolation tests (dev suite)
         run: npm --prefix services/core run test:rls:ci

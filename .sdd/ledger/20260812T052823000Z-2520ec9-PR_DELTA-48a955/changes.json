@@ -1,0 +1,67 @@
+{
+  "filesChanged": [
+    "services/core/src/integrations/git/budgets.ts",
+    "services/core/src/http/boundedJson.ts",
+    "services/core/src/integrations/git/providerCatalog.ts",
+    "services/core/src/integrations/git/providers/index.ts",
+    "services/core/src/integrations/git/providers/fakehub.ts",
+    "services/core/src/integrations/git/jobPolicy.ts",
+    "services/core/src/telemetry/gitSyncMetrics.ts",
+    "services/core/src/integrations/git/types.ts",
+    "services/core/src/integrations/git/providers/github.ts",
+    "services/core/src/integrations/git/graphOwnershipStore.ts",
+    "services/core/src/integrations/git/providerRegistry.ts",
+    "services/core/src/integrations/git/worker.ts",
+    "services/core/src/integrations/git/index.ts",
+    "services/core/src/services/gitSyncService.ts",
+    "services/core/src/services/githubWebhookService.ts",
+    "services/core/src/webhooks/normalizeGithubEvent.ts",
+    "services/core/src/github/appClient.ts",
+    "packages/config/src/config.ts",
+    "infra/.env.example",
+    ".github/workflows/ci.yml",
+    "services/core/src/integrations/git/__fixtures__/fakehubProvider.ts",
+    "services/core/src/routes/githubWebhook.fixtures.test.ts",
+    "services/core/src/routes/githubWebhook.gapfill.test.ts",
+    "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+    "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json",
+    "services/core/src/integrations/git/graphOwnershipStore.test.ts",
+    "services/core/src/integrations/git/providerRegistry.test.ts",
+    "services/core/src/integrations/git/providers/github.test.ts",
+    "services/core/src/services/gitSyncService.test.ts",
+    "services/core/src/integrations/git/__tests__/jobRetry.integration.test.ts",
+    "services/core/src/integrations/git/providerCatalog.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/integrations/git/graphOwnershipStore.test.ts",
+      "reason": "spec.md's Modified-files table explicitly directs adapting this file ('Adapt to the matchedPaths return'). OwnershipApplyResult now always carries matchedPaths (AC-1/AC-2/AC-4's Interfaces section), so the two pre-existing tests' strict .resolves.toEqual({ updatedFiles: N }) assertions had to become toEqual({ updatedFiles: N, matchedPaths: [...] }) (and the first test's mock run() taught to answer a 'matched_paths' key) or they would fail against the real interface regardless of implementation. No red-authored (@spec-marked) assertion changed."
+    },
+    {
+      "path": "services/core/src/integrations/git/providerRegistry.test.ts",
+      "reason": "Deleted the test titled 'registers a second provider through one adapter module without a pipeline switch' verbatim, per spec.md's AC-11 and Approach step 12 and red.md's own explicit note that this test was never counted as AC-11 coverage and would still pass with GAP-6 fully unfixed. Also replaced its two remaining tests' dependency on the now-deleted __fixtures__/fakehubProvider.ts (GAP-7's Deleted section) with a tiny local StaticProviderAdapter stub of identical behavior; both remaining tests only exercise GitProviderRegistry's own register/get/providers() bookkeeping, never provider normalization, so this is a like-for-like substitution."
+    },
+    {
+      "path": "services/core/src/integrations/git/providers/github.test.ts",
+      "reason": "spec.md's Modified-files table explicitly directs adapting this file ('Adapt to the options-object constructor'). Its three pre-existing tests used the two-positional-argument new GithubProviderAdapter(mintToken, fetcher) constructor, which no longer exists once GithubProviderAdapterOptions ships (AC-12/GAP-8) -- adapted all three call sites to new GithubProviderAdapter({ mintToken, fetcher }). No assertion content changed, only the construction call."
+    },
+    {
+      "path": "services/core/src/services/gitSyncService.test.ts",
+      "reason": "spec.md's Modified-files table explicitly directs adapting this file ('Import fakehub from providers/fakehub, adapt constructors'). Removed the import of the deleted __fixtures__/fakehubProvider.ts fixture (GAP-7), replacing every `new FakeHubProviderAdapter(changes)` call site (in the three pre-existing tests and the red-authored W3-04 gapfill describe block) with an equivalent local StaticProviderAdapter stub of identical behavior. Also adapted the three pre-existing tests' strict toEqual(...) result assertions to the new GitSyncResult shape (unmatchedPaths/durationMs/truncated/rebuildRequired, mandated by AC-4/AC-5/AC-8's Interfaces section) and the third test's GithubProviderAdapter construction to the options-object form. No red-authored (@spec-marked) test's assertions changed, only the adapter class name those tests construct."
+    },
+    {
+      "path": "services/core/src/integrations/git/__tests__/jobRetry.integration.test.ts",
+      "reason": "RED-DEFERRED, not run locally (no live Redis in this checkout). Mechanical fixup only: removed the import of the deleted __fixtures__/fakehubProvider.ts fixture (GAP-7's Deleted section), replaced with an equivalent local StaticProviderAdapter stub at all three call sites so the file still type-checks. No assertion in this file changed. Not itself listed as a 'Modified' file in spec.md, but the fixture deletion spec.md does mandate makes this edit unavoidable for any file that imported it."
+    },
+    {
+      "path": "services/core/src/integrations/git/providerCatalog.test.ts",
+      "reason": "Added on re-invocation to fix security finding FND-7c51522045f7 (BLOCKED verdict, run 20260812T050037000Z-2520ec9-PR_DELTA-90de4e): loadGitProviderRegistry did not fail closed for a GIT_PROVIDER_CATALOG provider id naming an inherited Object.prototype member (e.g. 'constructor'), contradicting AC-9. Added an it.each block (constructor, __proto__, prototype, toString, hasOwnProperty, valueOf, isPrototypeOf, propertyIsEnumerable, toLocaleString) plus one standalone test, both @spec AC-9 EC-18, asserting GitProviderCatalogError is thrown for each. Purely additive -- no existing (red-authored) test's body or assertions were changed. Not 'the spec was wrong': this is new coverage for a gap red.md predates and could not have anticipated."
+    }
+  ],
+  "stamp": {
+    "treeHash": "38367064019fb1447ddd3b1ad436b1048eba2865f966d8b2a86f4f23b80c71fc",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": true,
+    "writtenAt": "2026-08-12T05:18:04.586Z"
+  }
+}

@@ -159,6 +159,17 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   ".gitignore": [
@@ -4524,6 +4535,19 @@
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
+  "infra/.env.example": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "package-lock.json": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -4615,6 +4639,19 @@
       "spec": ".sdd/ledger/20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e/spec.md",
       "regate": {
         "testerRan": true
+      }
+    }
+  ],
+  "packages/config/src/config.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
       }
     }
   ],
@@ -5578,6 +5615,17 @@
   ],
   "services/core/src/github/appClient.ts": [
     {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
+    {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
       "ticket": "W7-01",
       "date": "2026-08-12",
@@ -5608,6 +5656,32 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    }
+  ],
+  "services/core/src/http/boundedJson.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/http/boundedJson.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }
@@ -5656,6 +5730,305 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/src/integrations/git/__fixtures__/fakehubProvider.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/__tests__/crossServiceFileKey.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/__tests__/jobRetry.integration.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/__tests__/ownershipGraph.integration.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/__tests__/w3-04.acceptance.integration.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/__tests__/w3-04.ci-wiring.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/budgets.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/budgets.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/graphOwnershipStore.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/graphOwnershipStore.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/index.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/jobPolicy.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/jobPolicy.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providerCatalog.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providerCatalog.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providerRegistry.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providerRegistry.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providers/fakehub.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providers/fakehub.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providers/github.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providers/github.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/providers/index.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/integrations/git/types.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "services/core/src/integrations/git/worker.discoveryRouting.test.ts": [
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
@@ -5664,7 +6037,31 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/src/integrations/git/worker.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "services/core/src/integrations/git/worker.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    },
     {
       "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
       "ticket": "W7-01",
@@ -5703,6 +6100,17 @@
           "spot-check"
         ]
       }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "services/core/src/queue/__fixtures__/repo_push.envelope.json": [
@@ -5726,6 +6134,17 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }
@@ -5862,6 +6281,17 @@
           "spot-check"
         ]
       }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "services/core/src/routes/githubWebhook.gapfill.test.ts": [
@@ -5874,6 +6304,17 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }
@@ -5920,6 +6361,32 @@
       "ticket": "W7-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/gitSyncService.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
+  "services/core/src/services/gitSyncService.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "services/core/src/services/githubAppInstallService.discoveryCallback.test.ts": [
@@ -6024,6 +6491,19 @@
       }
     }
   ],
+  "services/core/src/services/githubWebhookService.jobOptions.test.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
+    }
+  ],
   "services/core/src/services/githubWebhookService.test.ts": [
     {
       "runId": "20260811T024655000Z-87b07582bc-PR_DELTA-f60fc7",
@@ -6059,6 +6539,17 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }
@@ -6117,6 +6608,19 @@
       "ticket": "W7-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/telemetry/gitSyncMetrics.ts": [
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
+        ]
+      }
     }
   ],
   "services/core/src/webhooks/__fixtures__/push.malformed-full-name.json": [
@@ -6223,6 +6727,17 @@
         "overlays": [
           "base",
           "spot-check"
+        ]
+      }
+    },
+    {
+      "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+      "ticket": "W3-04",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T052823000Z-2520ec9-PR_DELTA-48a955/spec.md",
+      "gapfill": {
+        "overlays": [
+          "base"
         ]
       }
     }

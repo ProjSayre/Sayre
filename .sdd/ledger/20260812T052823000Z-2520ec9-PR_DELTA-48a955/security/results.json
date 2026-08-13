@@ -1,0 +1,1867 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+  "baseline_run_id": "20260812T050037000Z-2520ec9-PR_DELTA-90de4e",
+  "generated_at": "2026-08-12T05:30:21.928Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 32,
+      "NOT_APPLICABLE": 37,
+      "UNVERIFIED": 4
+    },
+    "result_transitions": {
+      "UNCHANGED": 72,
+      "RESOLVED": 1
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 73
+    },
+    "finding_statuses": {
+      "RESOLVED": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|git-sync-service-org-id-and-cypher-provenance|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "git-sync-service-org-id-and-cypher-provenance",
+      "attack_path_version": "v1",
+      "attempt": "Read syncGitMetadata (gitSyncService.ts) end to end for org_id provenance across every new/changed line this diff adds (durationMs timer, unmatchedPaths computation, telemetry attribute objects), and re-read graphOwnershipStore.ts's APPLY_OWNERSHIP_CYPHER for parameterization. Also confirmed repositoryResolver.ts (unmodified by this diff) is still the only source of repositoryId, itself org-scoped via withOrgContext.",
+      "evidence": [
+        "services/core/src/services/gitSyncService.ts:41-53 — org_id read only from `envelope.org_id`, never `event.payload`; `assertValidEnvelope(envelope)` runs first.",
+        "services/core/src/services/gitSyncService.ts:60-118 — every telemetry `attributes` object and the graph.apply() call is built from `envelope.org_id`, not attacker input.",
+        "services/core/src/integrations/git/graphOwnershipStore.ts:36-85 — APPLY_OWNERSHIP_CYPHER's every MATCH/MERGE clause is parameterized on `$org_id` (never string-concatenated); the UNWIND list (`$edits`) is also a bound parameter.",
+        "services/core/src/integrations/git/repositoryResolver.ts:15-30 (unmodified, absent from `git diff --stat`) — `resolve(orgId, event)` runs inside `withOrgContext(db, orgId, ...)`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static read-only inspection of the four files above; no fixture created, nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/gitSyncService.ts",
+        "services/core/src/integrations/git/graphOwnershipStore.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|diff-touches-no-graph-query-service-route-or-graphology-code|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "diff-touches-no-graph-query-service-route-or-graphology-code",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed via `git diff --stat` and the full changed_paths inventory that this diff touches no route handler, resolver, Graph Query Service module, or client-side graphology code.",
+      "evidence": [
+        "`git diff --stat` / `git status --porcelain` — every changed path is under services/core/src/{github,http,integrations/git,queue/__fixtures__,routes/githubWebhook*.test.ts (fixture assertions only),services,telemetry,webhooks}, packages/config, infra/, or .github/; no apps/web, no Graph Query Service module."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|git-provider-credential-seam-getSecret-closed-catalog|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "git-provider-credential-seam-getSecret-closed-catalog",
+      "attack_path_version": "v1",
+      "attempt": "Read providerCatalog.ts's buildContext()/resolveCredential() end to end; grepped every new/modified file for a direct `process.env` read; dynamically re-ran providerCatalog.test.ts's credential tests, including the \"rejects with GitProviderCredentialError when credentialRef names a secret outside SECRET_NAMES\" case.",
+      "evidence": [
+        "services/core/src/integrations/git/providerCatalog.ts:87-114 — resolveCredential() calls the shared `getSecret(entry.credentialRef)` (packages/config/src/secrets.ts, unmodified); catch-block never echoes the reference name or resolved value.",
+        "packages/config/src/secrets.ts:130-134 — `getSecret` rejects any name outside the closed `SECRET_NAMES` catalog with `UnauthorizedSecretReferenceError` BEFORE attempting resolution.",
+        "`grep -rn \"process.env\\.\" services/core/src/integrations/git/*.ts services/core/src/integrations/git/providers/*.ts services/core/src/http/boundedJson.ts services/core/src/telemetry/gitSyncMetrics.ts` (excluding *.test.ts) — zero matches; all config/secret access goes through getConfig/getSecret.",
+        "Dynamically re-ran: `npx vitest run src/integrations/git/providerCatalog.test.ts` — 17/17 pass, including the SECRET_NAMES-rejection and null-credentialRef-fails-closed cases."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file; no fixture created outside the repo's own test tree.",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts",
+        "packages/config/src/secrets.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|diff-does-not-touch-signature-validation-path|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "diff-does-not-touch-signature-validation-path",
+      "attack_path_version": "v1",
+      "attempt": "Diffed githubWebhookService.ts line-by-line; confirmed the only change is publishOwnership's enqueue() options object.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:84-91 (the entire diff hunk in this file) — verifyGithubSignature / handleGithubWebhook steps (a)-(g), including signature validation, are byte-for-byte unchanged; publishOwnership runs strictly after those steps, as it did before this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|diff-does-not-touch-scratch-clone-code|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "diff-does-not-touch-scratch-clone-code",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed zero services/workers/** paths in changed_paths.",
+      "evidence": [
+        "changed_paths inventory (41 files) contains zero services/workers/** entries; spec.md's Scope section explicitly excludes ingestion/scratch-clone changes (\"not touching how repositories are first imported\")."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|github-adapter-full-name-path-construction-gap-9|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-adapter-full-name-path-construction-gap-9",
+      "attack_path_version": "v1",
+      "attempt": "Read encodedRepositoryPath()/listPullRequestFiles() end to end; compared isValidRepoFullName against appClient.ts's weaker two-part check; dynamically re-ran github.test.ts's full EC-24/EC-25 traversal/dotted-name matrix (`a/../../owner/repo`, `a/b/c`, `owner/`, `/name`, `owner//name`, `..`, `\"\"`, `own er/repo`, `owner/re%2Fpo` all rejected before any fetcher call; `acme/my.repo.js`, `acme/my-repo_2` both accepted). Re-run this session against the current (post-fix) tree: the fix touched only providerCatalog.ts/providers/index.ts, not repoFullName.ts or providers/github.ts, so this observation is unaffected by the fix — re-verified to confirm no regression.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:119-130 — encodedRepositoryPath() calls the shared, already-audited `isValidRepoFullName` (services/core/src/github/repoFullName.ts, unmodified by this diff, itself CORE-06-verified by the W1-02 run) and throws before any string is built; the thrown message is a fixed string that never echoes `fullName`.",
+        "services/core/src/github/repoFullName.ts:17-27 — exactly two `/`-delimited segments, each matched against a bounded, non-catastrophic-backtracking regex (`/^[A-Za-z0-9._-]{1,100}$/`), with explicit \".\" / \"..\" segment rejection — rejects percent-escapes, whitespace, and any `/`-containing segment.",
+        "Dynamically re-ran: `npx vitest run src/integrations/git/providers/github.test.ts` — 24/24 pass.",
+        "DYNAMIC (this run): `npx vitest run src/integrations/git/providers/github.test.ts` re-run — 24/24 pass, unchanged from baseline."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file; no fixture created outside the repo's own test tree.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/github/repoFullName.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|git-provider-catalog-registry-lookup|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "git-provider-catalog-registry-lookup",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK-style re-attempt of the exact prior attack, staying in PR_DELTA mode per the calling agent's explicit instruction. Independently re-attempted every bypass angle from the finding's own recheck scope plus additional JS-reserved-property candidates: `constructor`, `__proto__`, `prototype`, `toString`, `hasOwnProperty`, `valueOf`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, plus a genuinely-unknown control (`nope`). Also checked (a) whether `Object.create(null)` broke any other consumer of `GIT_PROVIDER_REGISTRATIONS` that might rely on inherited `.toString()`/`.hasOwnProperty()` (grepped every reference; the only consumer is `providerCatalog.ts`'s own guarded lookup — `services/core/src/integrations/git/index.ts` only re-exports the binding, never calls a prototype method on it), and (b) whether a second, unguarded lookup path exists anywhere else in the git-sync surface (grepped for `GIT_PROVIDER_REGISTRATIONS` and `registrations[` across services/core/src; `GitProviderRegistry` itself is backed by a `Map`, not an indexable object, so it has no analogous weakness). Also independently re-ran the guard against a plain `{...}` object-literal `registrations` argument passed explicitly (not `GIT_PROVIDER_REGISTRATIONS`'s own null-prototype construction), to confirm the `hasOwnProperty.call` guard itself — not just the shipped manifest's construction — is what closes the gap.",
+      "evidence": [
+        "DYNAMIC (this run, independently reproduced): disposable, non-repository script under the OS temp root imported the REAL, unmodified services/core/src/integrations/git/providerCatalog.ts and providers/index.ts via their absolute filesystem paths and called loadGitProviderRegistry() for all 9 reserved names plus a genuine-unknown control. Every one of the 10 cases now throws the documented GitProviderCatalogError with message `GIT_PROVIDER_CATALOG names unknown git provider \"<name>\".` — including \"__proto__\", which in the pre-fix baseline run threw a milder, undocumented raw TypeError (a secondary defect this fix also closes, not just the primary constructor bypass).",
+        "DYNAMIC (this run): `Object.getPrototypeOf(GIT_PROVIDER_REGISTRATIONS) === null` confirmed directly against the real, unmodified import (not a mock) — providers/index.ts:25-27 builds it via `Object.freeze(Object.assign(Object.create(null), REGISTRATIONS))`, eliminating the prototype chain entirely for the shipped manifest.",
+        "DYNAMIC (this run): the same 3-of-9 reserved names (constructor, __proto__, toString) re-tested against a plain `{...}` object-literal `registrations` argument passed explicitly to `loadGitProviderRegistry(plainLiteralRegistrations)` (bypassing GIT_PROVIDER_REGISTRATIONS's own null-prototype construction entirely) — all three still throw GitProviderCatalogError, proving the fix's second layer (`Object.prototype.hasOwnProperty.call(registrations, entry.provider)` at providerCatalog.ts:145, guarding the lookup itself) is structural and holds independent of how the `registrations` map was built, not merely incidental to the one manifest that ships.",
+        "STATIC (this run): grepped every reference to `GIT_PROVIDER_REGISTRATIONS` and `registrations[` in services/core/src — exactly one indexed-lookup call site exists (providerCatalog.ts:150, `registrations[entry.provider]`), immediately preceded by the hasOwnProperty guard at line 145; `services/core/src/integrations/git/index.ts:17` only re-exports the binding, calling no method on it; no second, unguarded lookup path found.",
+        "STATIC (this run): `GitProviderRegistry` (providerRegistry.ts) is backed by a `Map<string, GitProviderAdapter>`, not an indexable plain object — `.get()`/`.has()` on a Map never resolves inherited Object.prototype members regardless of the key string, so this class carries no analogous weakness.",
+        "DYNAMIC (this run): `npx vitest run src/integrations/git/providerCatalog.test.ts` — 27/27 pass, including the 9 reserved-name it.each cases (lines 107-124) and the dedicated real-manifest \"constructor\" case (lines 129-133).",
+        "DYNAMIC (this run): `npx tsc --noEmit -p services/core/tsconfig.json` and `npx eslint providerCatalog.ts providers/index.ts providerCatalog.test.ts` both clean.",
+        "Baseline (20260812T050037000Z-2520ec9-PR_DELTA-90de4e, same commit 2520ec9d9919eab2498a548efb6321a440693c0b, dirty working tree, pre-fix): FAIL — see that run's results.json for the original dynamic repro showing \"constructor\" silently registered a non-functional adapter instead of throwing."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "FAIL",
+      "result_transition": "RESOLVED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-7c51522045f7",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260812T050037000Z-2520ec9-PR_DELTA-90de4e",
+        "first_seen_commit": "2520ec9d9919eab2498a548efb6321a440693c0b",
+        "last_seen_run_id": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+        "last_seen_commit": "2520ec9d9919eab2498a548efb6321a440693c0b",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "services/core/src/integrations/git/providerCatalog.ts:loadGitProviderRegistry (hasOwnProperty.call guard) and services/core/src/integrations/git/providers/index.ts:GIT_PROVIDER_REGISTRATIONS (Object.create(null) construction). Both layers independently verified in this run.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Reproduction: created /var/folders/dw/y01pxx3n6p370q1gfz24d3200000gn/T/w3-04-sec-recheck-7ab21c/ (OS temp root, never inside the repository) containing one throwaway script (run.ts) importing ONLY the real, unmodified providerCatalog.ts and providers/index.ts via their absolute paths. Ran via `npx tsx` from services/core (so the imported files' own node_modules resolution reaches the repo/workspace node_modules, e.g. @sayre/config, without the temp script needing any node_modules of its own). No repository file was created, modified, or left behind. Cleanup: `rm -f` the script then `rmdir` the containing directory immediately after capturing output; a follow-up `ls` on the parent OS temp directory confirmed the w3-04-sec-recheck-7ab21c path no longer exists. Finding FND-7c51522045f7 moves to RESOLVED: affirmative re-attempted-attack evidence (not mere absence of a new exploit) now shows the attack blocked at both independent layers the fix added (Object.create(null) construction + hasOwnProperty.call guard).",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts:145-150 (hasOwnProperty guard, structural fix layer 1)",
+        "services/core/src/integrations/git/providers/index.ts:15-27 (Object.create(null) construction, structural fix layer 2)",
+        "services/core/src/integrations/git/providerCatalog.test.ts:103-133 (regression coverage)",
+        "services/core/src/integrations/git/providerRegistry.ts (Map-backed registry, confirmed no analogous weakness)"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|signature-validation-path-unmodified|v1",
+      "check_id": "ING-01",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "signature-validation-path-unmodified",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff never runs before or bypasses the existing signature check.",
+      "evidence": [
+        "Same evidence as CORE-04 above: githubWebhookService.ts's signature-validation steps are byte-for-byte unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|github-sync-job-idempotency-and-write-idempotency|v1",
+      "check_id": "ING-02",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-sync-job-idempotency-and-write-idempotency",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the BullMQ jobId used for dedup is unchanged, and that the graph write itself is idempotent under redelivery.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:87-90 — `enqueue('github-sync', envelope, { jobId: envelope.idempotency_key, ...GIT_SYNC_JOB_OPTIONS })` — `jobId` (the BullMQ dedup key) is untouched by this diff; only the spread-in retry/backoff options are new.",
+        "services/core/src/integrations/git/graphOwnershipStore.ts:36-85 — APPLY_OWNERSHIP_CYPHER is composed entirely of `MERGE`/`SET` clauses (no `CREATE`), so re-applying the identical edit set twice leaves node/edge counts unchanged (EC-4's own requirement)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code/Cypher-text inspection; EC-4's own dynamic proof is RED-DEFERRED (needs live Neo4j) — see Limitations.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts",
+        "services/core/src/integrations/git/graphOwnershipStore.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|org-scoped-repository-binding-and-unregistered-repo-handling|v1",
+      "check_id": "ING-03",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "org-scoped-repository-binding-and-unregistered-repo-handling",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed repository resolution stays org-scoped and that an unregistered repo fails the job rather than being swallowed.",
+      "evidence": [
+        "services/core/src/integrations/git/repositoryResolver.ts:15-30 (unmodified) — `resolve(orgId, event)` runs a Postgres lookup scoped by `eq(repositories.orgId, orgId)` inside `withOrgContext`.",
+        "spec.md EC-15 (unchanged by this diff's implementation, confirmed present in gitSyncService.test.ts's pre-existing coverage) — `GitRepositoryNotRegisteredError` propagates and fails the job rather than resolving to a false `'ignored'`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only (repositoryResolver.ts is unmodified by this diff).",
+      "code_references": [
+        "services/core/src/integrations/git/repositoryResolver.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|org-id-and-provider-derivation-from-envelope-only|v1",
+      "check_id": "ING-04",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "org-id-and-provider-derivation-from-envelope-only",
+      "attack_path_version": "v1",
+      "attempt": "Attempted to trace whether org_id, provider, or repository identity could originate from attacker-influenced `event.payload` rather than the trusted envelope. Re-verified this session per the recheck scope named in the baseline finding (a sibling path in the same provider-dispatch surface).",
+      "evidence": [
+        "services/core/src/services/gitSyncService.ts:41-52 — `assertValidEnvelope(envelope)` runs first; `envelope.org_id` (not `event.payload.org_id` — no such field exists on `ProviderRepoEvent`) is the only org_id used; `dependencies.providers.get(event.provider)` only selects an ALREADY-REGISTERED adapter (closed registry, see CORE-06 finding above for the one gap in that closure) — it never instantiates a new adapter from payload content.",
+        "gaps.json's explicitly-preserved item confirmed unchanged: `git diff` shows zero changes to this org_id-from-envelope-only logic.",
+        "STATIC (this run): re-read gitSyncService.ts:41-52 — unchanged by the 3-file fix; org_id/provider derivation from the envelope only remains unmodified."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/services/gitSyncService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|no-new-queue-provider-dispatch-stays-in-payload|v1",
+      "check_id": "ING-05",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-new-queue-provider-dispatch-stays-in-payload",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no new BullMQ queue name was introduced and that provider dispatch happens inside the payload, not via queue selection.",
+      "evidence": [
+        "`git diff --stat` — services/core/src/queue/bullmq.ts is absent from the diff (QUEUE_NAMES unchanged, three-queue closed set preserved per CLAUDE.md/async-messaging.md); `fakehub` is dispatched via `event.provider` inside the existing `github-sync` queue's payload, confirmed in providerRegistry.get()."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/providerRegistry.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|gap-4-retry-backoff-and-dlq-retention|v1",
+      "check_id": "ING-06",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gap-4-retry-backoff-and-dlq-retention",
+      "attack_path_version": "v1",
+      "attempt": "Read jobPolicy.ts and its one call site; confirmed exhausted jobs are retained, not deleted.",
+      "evidence": [
+        "services/core/src/integrations/git/jobPolicy.ts:7-13 — `GIT_SYNC_JOB_OPTIONS = { attempts: 5, backoff: { type: 'exponential', delay: 1_000 }, removeOnFail: false }`.",
+        "services/core/src/services/githubWebhookService.ts:87-90 — spread into the one `github-sync` enqueue call site only; `services/core/src/queue/bullmq.ts` (the shared default: `attempts: 1, removeOnComplete: true`) is unmodified — this is a per-call override, not a shared-default change.",
+        "Dynamically re-ran: `npx vitest run src/integrations/git/jobPolicy.test.ts` — 1/1 pass."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file.",
+      "code_references": [
+        "services/core/src/integrations/git/jobPolicy.ts",
+        "services/core/src/services/githubWebhookService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|no-priority-lane-touched-by-gap-4|v1",
+      "check_id": "ING-07",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-priority-lane-touched-by-gap-4",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed GIT_SYNC_JOB_OPTIONS carries no `priority`/`lane` key, so this job type does not gain a new starvation surface.",
+      "evidence": [
+        "services/core/src/integrations/git/jobPolicy.ts:7-13 — no `priority` or `lane` field present.",
+        "services/core/src/queue/bullmq.ts:234-238 (unmodified) — `enqueue()` throws if a raw `priority` key is present on `opts`, structurally preventing any caller (including this one) from silently defeating the lane guarantee."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/jobPolicy.ts",
+        "services/core/src/queue/bullmq.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|traversal-shaped-repository-full-name-rejected-pre-network|v1",
+      "check_id": "ING-08",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "traversal-shaped-repository-full-name-rejected-pre-network",
+      "attack_path_version": "v1",
+      "attempt": "Same as the CORE-06/github-adapter observation above, from the ingestion/provider-response angle: confirmed the fetcher is never invoked for a malformed full_name.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.test.ts EC-24 block — asserts `fetcher was never invoked` for every traversal/malformed full_name case; dynamically re-ran, 24/24 pass."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|diff-does-not-touch-tree-sitter-parsing-or-scratch-clone|v1",
+      "check_id": "ING-09",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "diff-does-not-touch-tree-sitter-parsing-or-scratch-clone",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff handles only a bounded metadata delta, never raw file content or a parser.",
+      "evidence": [
+        "No Tree-sitter/parsing code in changed_paths; GITHUB_PUSH_COMMIT_CAP=20 and MAX_PULL_REQUEST_FILE_PAGES×100=3000 bound the metadata this diff ever processes per event."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|diff-does-not-touch-scratch-clone-isolation|v1",
+      "check_id": "ING-10",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "diff-does-not-touch-scratch-clone-isolation",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no scratch-clone code is in scope for this diff.",
+      "evidence": [
+        "Same as CORE-05: zero services/workers/** paths in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|single-statement-ownership-write-atomicity|v1",
+      "check_id": "ING-11",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "single-statement-ownership-write-atomicity",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the graph write is a single Cypher statement (one round trip), so interruption between provider-resolve and graph-write cannot leave a partial multi-statement write.",
+      "evidence": [
+        "services/core/src/integrations/git/graphOwnershipStore.ts:36-85 — the entire Person/Commit/AUTHORED/MODIFIED/OWNS write is one `UNWIND ... MERGE ... SET ... RETURN` statement, not multiple sequential statements."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static Cypher-text inspection; Neo4j's own single-statement transactional guarantee was not dynamically exercised in this local environment (no live Neo4j) — confidence MEDIUM rather than HIGH for that reason.",
+      "code_references": [
+        "services/core/src/integrations/git/graphOwnershipStore.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|gap-3-bounded-github-pr-files-response-handling|v1",
+      "check_id": "ING-12",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gap-3-bounded-github-pr-files-response-handling",
+      "attack_path_version": "v1",
+      "attempt": "Read listPullRequestFiles()/readBoundedJson() end to end for page-count, timeout, size, and redirect bounds; dynamically re-ran both files' tests.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:144-178 — page loop bounded by MAX_PULL_REQUEST_FILE_PAGES (throws on reaching the cap, never returns a truncated list); every request carries `signal: AbortSignal.timeout(GIT_PROVIDER_REQUEST_TIMEOUT_MS)` and `redirect: 'manual'`.",
+        "services/core/src/http/boundedJson.ts:17-63 — rejects on declared Content-Length > 256KB and on streamed bytes exceeding the same cap (cancels the reader), before JSON.parse.",
+        "Dynamically re-ran: `npx vitest run src/integrations/git/providers/github.test.ts src/http/boundedJson.test.ts` — 28/28 pass (24 + 4)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest files.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/http/boundedJson.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|ownership-conflict-single-valued-owns-and-tenant-ref-scoping|v1",
+      "check_id": "ING-13",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ownership-conflict-single-valued-owns-and-tenant-ref-scoping",
+      "attack_path_version": "v1",
+      "attempt": "Read the OPTIONAL MATCH/DELETE-old-OWNS clause and the File MATCH key's org_id+ref_name scoping for EC-1/EC-2/EC-3 (two edits same path different authors; different org_id; different ref_name).",
+      "evidence": [
+        "services/core/src/integrations/git/graphOwnershipStore.ts:70-73 — `OPTIONAL MATCH (previous:Person)-[old_owns:OWNS]->(file) WHERE old_owns.org_id = $org_id AND previous.uid <> person.uid DELETE old_owns` followed by a single `MERGE (person)-[owns:OWNS]->(file)` — structurally guarantees single-valued OWNS per file within an org.",
+        "services/core/src/integrations/git/graphOwnershipStore.ts:38-43 — the File MATCH itself is keyed on `org_id`, `repo_id`, `ref_name`, `path` (OWNERSHIP_FILE_MATCH_KEYS), so a same-path node under a different org_id or ref_name is structurally never matched by this write."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static Cypher-text inspection; EC-1/EC-2/EC-3's own dynamic proof is RED-DEFERRED (needs live Neo4j, not reachable in this local environment) — confidence MEDIUM rather than HIGH for that reason; see Limitations.",
+      "code_references": [
+        "services/core/src/integrations/git/graphOwnershipStore.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|worker-failed-listener-and-startup-error-no-secret-exposure|v1",
+      "check_id": "ING-14",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "worker-failed-listener-and-startup-error-no-secret-exposure",
+      "attack_path_version": "v1",
+      "attempt": "Read worker.ts's `failed` listener and `main()`'s catch block line by line for payload/token exposure.",
+      "evidence": [
+        "services/core/src/integrations/git/worker.ts:50-64 — the `failed` listener's `console.error` payload is `JSON.stringify({ message, org_id, provider, delivery_id, attemptsMade, error_name })` — reads `job.data.org_id`/`job.data.trace_id`/`job.data.payload?.provider` only, never `job.data.payload` in full, never `error.message`/`error.stack`.",
+        "services/core/src/integrations/git/worker.ts:84-88 — `main()`'s top-level catch logs a fixed string (`'Git synchronization worker failed to start.'`) with an explicit comment (\"Avoid serializing an error that could contain provider request context\").",
+        "Dynamically re-ran: `npx vitest run src/integrations/git/worker.test.ts` — 4/4 pass, statically asserting the same fields are present in source."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file.",
+      "code_references": [
+        "services/core/src/integrations/git/worker.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-01|web-api-client|no-route-added-or-modified-by-this-diff|v1",
+      "check_id": "WEB-01",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-route-added-or-modified-by-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no browser-facing route/method/endpoint is added or modified.",
+      "evidence": [
+        "changed_paths contains no file under services/core/src/routes/** whose route SHAPE changed (the two githubWebhook.*.test.ts files only widen an existing enqueue-options assertion)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-02|web-api-client|outbound-github-api-client-injection-boundaries|v1",
+      "check_id": "WEB-02",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "outbound-github-api-client-injection-boundaries",
+      "attack_path_version": "v1",
+      "attempt": "Traced every value flowing into the GitHub API request URL/headers for SQL/Cypher/shell/URL/template injection.",
+      "evidence": [
+        "URL construction (github.ts:144-146) uses `encodedRepositoryPath()` (validated + percent-encoded) and numeric `pullNumber`/`page` template-interpolated into a URL — `pullNumber` originates from `pullRequestMetadata()`'s `Number.isSafeInteger(number) && number >= 1` guard (github.ts:110), not raw attacker text.",
+        "No shell/OS-command construction anywhere in this diff's files (`grep -rn \"exec(\\|spawn(\\|execSync(\"` across the changed paths — zero matches).",
+        "Cypher: see CORE-01/CORE-06 above (fully parameterized)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection + grep.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-03|web-api-client|no-html-markdown-rendering-touched|v1",
+      "check_id": "WEB-03",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-html-markdown-rendering-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no rendering/templating code is touched.",
+      "evidence": [
+        "No apps/web, canvas, or HTML/Markdown-rendering file in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-04|web-api-client|no-cookie-authenticated-route-touched|v1",
+      "check_id": "WEB-04",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-cookie-authenticated-route-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no cookie-session route/CORS/CSRF configuration is touched.",
+      "evidence": [
+        "No express/CORS/session-middleware file in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-05|web-api-client|no-browser-response-headers-touched|v1",
+      "check_id": "WEB-05",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-browser-response-headers-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no CSP/frame/header-setting code is touched.",
+      "evidence": [
+        "No http/express header-configuration file in changed_paths (http/boundedJson.ts is an outbound reader, not a response-header setter)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-06|web-api-client|no-create-update-request-handler-touched|v1",
+      "check_id": "WEB-06",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-create-update-request-handler-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no user-facing create/update endpoint accepting a request body is touched (the GitHub PR-files response is READ-only provider output, not a client-submitted update).",
+      "evidence": [
+        "providers/github.ts only performs outbound GET-shaped requests to GitHub; no inbound mass-assignable request handler exists in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-07|web-api-client|ambiguous-and-prototype-shaped-input-handling|v1",
+      "check_id": "WEB-07",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ambiguous-and-prototype-shaped-input-handling",
+      "attack_path_version": "v1",
+      "attempt": "Exercised duplicate/unknown-key catalog entries and confirmed the property-shaped provider-name weakness already captured under CORE-06 does not extend to the catalog's OWN object-key validation. Re-verified this session per the recheck scope named in the baseline finding (a sibling path relying on the same providerCatalog.ts validation surface).",
+      "evidence": [
+        "services/core/src/integrations/git/providerCatalog.ts:44-49 — `exactKeys()` rejects any catalog entry object carrying an unlisted key (`provider`/`credentialRef` only) — dynamically re-verified via providerCatalog.test.ts's malformed-shape cases (17/17 pass).",
+        "See CORE-06's second observation above for the one place ambiguous/reserved-word input (the `provider` string VALUE, not an object key) is NOT fully constrained — recorded there, not duplicated as a second FAIL here, since it is the same underlying finding.",
+        "DYNAMIC (this run): full providerCatalog.test.ts re-run (27/27 pass) confirms exactKeys() object-key validation is unaffected by the CORE-06 fix; the sibling FND-7c51522045f7 (provider string VALUE, not an object key) is now RESOLVED per this run's CORE-06 observation above."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file.",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-08|web-api-client|gap-3-resource-consumption-bounds-on-outbound-client|v1",
+      "check_id": "WEB-08",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gap-3-resource-consumption-bounds-on-outbound-client",
+      "attack_path_version": "v1",
+      "attempt": "Same evidence as ING-12 (page cap, timeout, size cap) from the resource-consumption angle.",
+      "evidence": [
+        "See ING-12 above — MAX_PULL_REQUEST_FILE_PAGES, GIT_PROVIDER_REQUEST_TIMEOUT_MS, MAX_JSON_RESPONSE_BYTES all dynamically re-verified."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest files.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/integrations/git/budgets.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-09|web-api-client|no-admin-business-flow-touched|v1",
+      "check_id": "WEB-09",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-admin-business-flow-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no invitation/role-change/key-creation/provider-settings admin flow is touched.",
+      "evidence": [
+        "This diff's GIT_PROVIDER_CATALOG is a process-wide deployment config value, not a runtime admin-UI-mutable setting — no route to race exists in this diff."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-10|web-api-client|no-cached-http-response-touched|v1",
+      "check_id": "WEB-10",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-cached-http-response-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no caching/CDN/ETag-relevant response path is touched.",
+      "evidence": [
+        "providers/github.ts's outbound GitHub responses are never cached or re-served to a browser."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-11|web-api-client|error-message-and-enumeration-leak-review|v1",
+      "check_id": "WEB-11",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "error-message-and-enumeration-leak-review",
+      "attack_path_version": "v1",
+      "attempt": "Read every thrown-error message in this diff's new/modified code for value echoing.",
+      "evidence": [
+        "GithubGitSyncError messages (github.ts) are all fixed strings (\"...full_name is malformed.\", \"...pagination exceeded the page cap.\", \"...has no valid number.\") — none interpolate the offending value; EC-24 dynamically asserts `message: expect.not.stringContaining('a/../../owner/repo')`.",
+        "GitProviderCatalogError/GitProviderCredentialError messages (providerCatalog.ts) name the PROVIDER ID (non-secret, operator-supplied config) but never the credentialRef value or resolved secret; the `invalidCatalog()` helper is deliberately generic specifically to avoid echoing a crafted raw value (commented in source)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection + dynamic re-run of github.test.ts's EC-24 message assertion.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/integrations/git/providerCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|WEB-12|web-api-client|no-redirect-generating-endpoint-in-this-diff|v1",
+      "check_id": "WEB-12",
+      "surface_id": "web-api-client",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-redirect-generating-endpoint-in-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff generates no redirect/callback URL of its own (the `redirect: 'manual'` addition is about NOT following an INBOUND redirect from GitHub, covered under ING-12/WEB-08, not about generating an outbound redirect ourselves).",
+      "evidence": [
+        "No `res.redirect`/Location-header-generating code in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-01|model-provider|github-api-base-url-is-fixed-admin-config-not-user-input|v1",
+      "check_id": "MP-01",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-api-base-url-is-fixed-admin-config-not-user-input",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed GITHUB_API_BASE_URL is unchanged by this diff and is not attacker-influenced.",
+      "evidence": [
+        "packages/config/src/config.ts diff — GITHUB_API_BASE_URL is absent from this diff's hunk (unchanged); it is a deployment-wide config default (`https://api.github.com`), never derived from a webhook payload, queue envelope, or catalog entry."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        "packages/config/src/config.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-02|model-provider|github-pr-files-request-does-not-follow-redirects|v1",
+      "check_id": "MP-02",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-pr-files-request-does-not-follow-redirects",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed a 3xx from the GitHub API is never followed with a live bearer token.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:153 — `redirect: 'manual'` on every listPullRequestFiles() request; EC-12 dynamically asserted in github.test.ts."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest file.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-03|model-provider|no-attacker-parsed-endpoint-scheme-in-this-diff|v1",
+      "check_id": "MP-03",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-attacker-parsed-endpoint-scheme-in-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the request target is built from a fixed base URL + validated path segments, never a raw attacker-supplied URL/scheme.",
+      "evidence": [
+        "github.ts:146 — the request URL is `${getConfig('GITHUB_API_BASE_URL')}/repos/${repository}/...` — `repository` is the encoded/validated full_name (GAP-9), never a full URL or scheme."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-04|model-provider|gap-8-credential-seam-never-echoes-or-misroutes-the-token|v1",
+      "check_id": "MP-04",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gap-8-credential-seam-never-echoes-or-misroutes-the-token",
+      "attack_path_version": "v1",
+      "attempt": "Traced resolveCredential()'s output forward to confirm it only ever reaches the outbound Authorization header for the SAME provider's own request, never a log, error message, or another provider's request.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:219-230 — `token` (from either `context.resolveCredential()` or `mintToken()`) flows only into `Authorization: Bearer ${token}` on this adapter's own `fetcher` calls; never logged, never returned, never included in any thrown error.",
+        "providerCatalog.ts's buildContext() (see CORE-03 above) never echoes the resolved value in any error path."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts",
+        "services/core/src/integrations/git/providerCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-05|model-provider|catalog-is-process-wide-not-per-org-no-org-b-credential-exists|v1",
+      "check_id": "MP-05",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "catalog-is-process-wide-not-per-org-no-org-b-credential-exists",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed GIT_PROVIDER_CATALOG is a single, process-wide deployment config (like GITHUB_API_BASE_URL), not a per-org setting, so there is no Org-B credential reference in this surface to confuse Org A into using.",
+      "evidence": [
+        "services/core/src/integrations/git/providerCatalog.ts — `loadGitProviderRegistry()` takes no org/tenant parameter; it is called once at worker startup (worker.ts:24), not per-request/per-org. Tenant scoping for the actual graph write is enforced separately at CORE-01 (org_id from the envelope)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts",
+        "services/core/src/integrations/git/worker.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-06|model-provider|no-llm-embedding-call-in-this-diff|v1",
+      "check_id": "MP-06",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-llm-embedding-call-in-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed zero LLM/embedding endpoint calls exist in this diff.",
+      "evidence": [
+        "No @anthropic-ai/@openai/embedding-provider import anywhere in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-07|model-provider|no-unsafe-fallback-surface-in-this-diff|v1",
+      "check_id": "MP-07",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-unsafe-fallback-surface-in-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed there is no \"fall back to a hosted provider\" concept anywhere in this diff (the analogous case — GAP-8's credentialRef-vs-mintToken fallback — falls back to Sayre's OWN installation-token minting, not to a different/less-trusted external endpoint).",
+      "evidence": [
+        "github.ts:219-230 — the only \"fallback\" is context-credential vs. installation-token minting, both against the SAME GitHub API, never a different provider."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-08|model-provider|tls-and-endpoint-authenticity-not-dynamically-tested|v1",
+      "check_id": "MP-08",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "tls-and-endpoint-authenticity-not-dynamically-tested",
+      "attack_path_version": "v1",
+      "attempt": "Did not perform a live TLS-downgrade/certificate-validation test against api.github.com from this local environment (out of the approved resource ceiling for a unit-test-scoped ticket).",
+      "evidence": [
+        "Node's built-in `fetch` (github.ts:205) is used with default TLS validation; not overridden by this diff; no dynamic verification performed in this run."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not exercised dynamically in this run.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-09|model-provider|gap-3-oversized-slow-malformed-response-handling|v1",
+      "check_id": "MP-09",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gap-3-oversized-slow-malformed-response-handling",
+      "attack_path_version": "v1",
+      "attempt": "Same evidence as ING-12/WEB-08 from the response-abuse angle.",
+      "evidence": [
+        "See ING-12/WEB-08 above — readBoundedJson's byte cap, per-request timeout, page cap; dynamically re-verified."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran the package's own pre-existing vitest files.",
+      "code_references": [
+        "services/core/src/http/boundedJson.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-10|model-provider|shared-worker-concurrency-pool-not-load-tested|v1",
+      "check_id": "MP-10",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "shared-worker-concurrency-pool-not-load-tested",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed but did not dynamically load-test the shared concurrency:4 worker pool for cross-provider starvation.",
+      "evidence": [
+        "services/core/src/integrations/git/worker.ts:45 — `{ concurrency: 4 }`, pre-existing and unmodified by this diff (the number itself is not part of this diff's changed lines); GAP-3's per-request timeout (10s) bounds how long one stalled request can occupy one of those 4 slots, but no cross-tenant circuit breaker exists."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not load-tested in this run.",
+      "code_references": [
+        "services/core/src/integrations/git/worker.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-11|model-provider|no-runtime-mutable-provider-config-audit-trail-in-scope|v1",
+      "check_id": "MP-11",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-runtime-mutable-provider-config-audit-trail-in-scope",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed GIT_PROVIDER_CATALOG is a deploy-time config value (env var / config loader), not an admin-UI-mutable, audited runtime setting, so there is no config-change race to test in this surface.",
+      "evidence": [
+        "packages/config/src/config.ts — GIT_PROVIDER_CATALOG resolved via the standard getConfig() loader (env-var-backed), not a database-stored, admin-editable value."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "packages/config/src/config.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MP-12|model-provider|single-fetch-call-site-no-adapter-bypass|v1",
+      "check_id": "MP-12",
+      "surface_id": "model-provider",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "single-fetch-call-site-no-adapter-bypass",
+      "attack_path_version": "v1",
+      "attempt": "Grepped every changed/new file for a direct fetch/http-client call outside providers/github.ts's adapter.",
+      "evidence": [
+        "`grep -rn \"fetch(\\|http.request\\|https.request\\|axios\" services/core/src/integrations/git/` (excluding *.test.ts) — exactly one match: github.ts:205's `this.fetcher = options.fetcher ?? ((input, init) => fetch(input, init))`, the adapter's own declared seam."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep across the diff's own directory tree.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|no-loader-bypass-in-new-files|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-loader-bypass-in-new-files",
+      "attack_path_version": "v1",
+      "attempt": "Grepped every new/modified file for a direct `process.env` secret read outside getConfig/getSecret.",
+      "evidence": [
+        "Same grep as CORE-03 — zero direct `process.env.` reads in the new git-sync/http/telemetry files (excluding tests)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep across the diff's own files.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|no-hardcoded-secret-in-diff-or-ci-yml|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-hardcoded-secret-in-diff-or-ci-yml",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed every new/modified file, plus the ci.yml diff, for a hardcoded credential.",
+      "evidence": [
+        "No API key/token/password literal in any new git-sync source file.",
+        ".github/workflows/ci.yml's new `NEO4J_AUTH: neo4j/changeme_local_only` reuses the EXACT same CI-only placeholder password already present at 6 other locations in the same file (POSTGRES_PASSWORD, existing `workers` job's own neo4j service, DATABASE_ADMIN_URL) — not a new secret, not a real credential."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|no-frontend-code-touched|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-frontend-code-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no apps/web/browser-bundle code is touched by this diff.",
+      "evidence": [
+        "changed_paths contains zero apps/web/** entries."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|gap-1b-2-5-telemetry-and-worker-logs-carry-no-secret-or-path|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "gap-1b-2-5-telemetry-and-worker-logs-carry-no-secret-or-path",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed every new log/metric call site for tenant-data or secret leakage.",
+      "evidence": [
+        "services/core/src/telemetry/gitSyncMetrics.ts:13-18 — `GitSyncMetricAttributes` interface + every call site (gitSyncService.ts) passes exactly `{ org_id, provider, status }`, never a path/repo name/token.",
+        "worker.ts's `'unmatched'` console.warn (line 39-42) logs `result.provider`, `result.unmatchedPaths.length` (a COUNT, not the paths themselves), and `envelope.org_id` — no path string, no token.",
+        "See ING-14 above for the `failed` listener's equivalent review."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/telemetry/gitSyncMetrics.ts",
+        "services/core/src/integrations/git/worker.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|no-new-secret-storage-table-touched|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-new-secret-storage-table-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed GAP-8 adds no new secret-storage mechanism.",
+      "evidence": [
+        "providerCatalog.ts's buildContext() delegates entirely to the existing getSecret()/SECRET_NAMES loader (packages/config/src/secrets.ts, unmodified) — no new table, no new encryption scheme, no new cache."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|secret-cache-rotation-behavior-pre-existing-not-retested|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "secret-cache-rotation-behavior-pre-existing-not-retested",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed packages/config/src/secrets.ts's in-memory cache/backend-swap mechanism is unmodified by this diff; did not re-run a live rotation test in this session.",
+      "evidence": [
+        "packages/config/src/secrets.ts diff — absent from `git diff --stat` (unmodified)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not dynamically re-tested in this run (pre-existing, unmodified surface).",
+      "code_references": [
+        "packages/config/src/secrets.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|worker-process-does-not-dump-env-or-args|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "worker-process-does-not-dump-env-or-args",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed worker.ts's startup/shutdown/error paths for environment or argument exposure.",
+      "evidence": [
+        "worker.ts:84-88 — `main()`'s catch logs a fixed string, never `error`/`error.stack`/`process.env`/`process.argv`."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static code inspection only.",
+      "code_references": [
+        "services/core/src/integrations/git/worker.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|ci-yml-new-steps-use-only-existing-non-fork-triggers|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-yml-new-steps-use-only-existing-non-fork-triggers",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed the ci.yml diff for new artifact uploads or fork-triggered access to a protected secret.",
+      "evidence": [
+        "The new `neo4j` service and two new steps run inside the EXISTING `node` job (same `on:` trigger, same permissions block, both unmodified by this diff); no `actions/upload-artifact` step added; the new junit output (`.git-sync-graph-junit.xml`) is read by the very next step, not uploaded anywhere."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|no-permission-org-membership-change-touched|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-permission-org-membership-change-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff touches no permission/org-membership/integration-connect audit-logged action.",
+      "evidence": [
+        "No audit-log table or permission-change route in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|no-audit-log-write-path-touched|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-audit-log-write-path-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff touches no audit-log write path.",
+      "evidence": [
+        "No audit-log module in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|no-tenant-deletion-offboarding-path-touched|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-tenant-deletion-offboarding-path-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff touches no deletion/offboarding path.",
+      "evidence": [
+        "No deletion/offboarding route or worker in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|no-backup-restore-path-touched|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-backup-restore-path-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff touches no backup/restore mechanism.",
+      "evidence": [
+        "No backup/restore code in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|no-export-support-tooling-path-touched|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-export-support-tooling-path-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed this diff touches no export/support-tooling endpoint.",
+      "evidence": [
+        "No export/support-tooling code in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|new-metrics-have-no-defined-alerting-rule-in-repo-scope|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "new-metrics-have-no-defined-alerting-rule-in-repo-scope",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the new git_sync_* metrics (GAP-1b/2/5) exist but no alerting-rule definition exists in this repository for them.",
+      "evidence": [
+        "services/core/src/telemetry/gitSyncMetrics.ts defines the instruments; no alerting/dashboard-as-code file references them anywhere in the repository (`grep -rn \"git_sync_\" --include=*.yml --include=*.yaml` — no matches outside the metrics/service files themselves)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "grep across the repository for alerting-rule references; none found.",
+      "code_references": [
+        "services/core/src/telemetry/gitSyncMetrics.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|no-package-manifest-or-lockfile-touched|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-package-manifest-or-lockfile-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no package.json/package-lock.json/pyproject.toml/poetry.lock is touched.",
+      "evidence": [
+        "changed_paths contains zero manifest/lockfile entries."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|no-install-build-script-touched|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-install-build-script-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no install/build script (package.json scripts, postinstall hooks) is touched.",
+      "evidence": [
+        "No package.json in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|no-new-dependency-introduced|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-new-dependency-introduced",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no new dependency is introduced (all new source files import only existing workspace packages and already-present node_modules).",
+      "evidence": [
+        "No package.json/lockfile change; new files' imports (`@sayre/config`, `@opentelemetry/api`, node:crypto) are all pre-existing dependencies."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static import inspection only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|ci-yml-new-steps-inherit-existing-job-trigger-and-permissions|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-yml-new-steps-inherit-existing-job-trigger-and-permissions",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the new steps run inside the existing `node` job with no new trigger/permission grant.",
+      "evidence": [
+        "`git diff .github/workflows/ci.yml` — no `on:`/`permissions:` block touched; the new `neo4j` service and two steps are added inside the pre-existing `node:` job body only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|no-dynamic-value-interpolated-into-new-ci-shell-commands|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-dynamic-value-interpolated-into-new-ci-shell-commands",
+      "attack_path_version": "v1",
+      "attempt": "Reviewed both new `run:` blocks for branch-name/commit-message/matrix-value interpolation.",
+      "evidence": [
+        "The \"core graph integration\" step's `run:` is a static `npm test --workspace @sayre/core -- --run --reporter=junit ...` command with two hardcoded file paths — no `${{ }}` expression, no shell variable built from untrusted input.",
+        "The \"Assert no git-sync graph tests skipped\" step's `run:` is a static inline `node -e \"...\"` script reading a fixed local junit path — no untrusted interpolation."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|neo4j-service-image-pinned-consistent-with-existing-practice|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "neo4j-service-image-pinned-consistent-with-existing-practice",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the new `neo4j` service image is version-pinned, matching the pre-existing `workers` job's identical reference.",
+      "evidence": [
+        "`.github/workflows/ci.yml` — `image: neo4j:5.24-community` (a specific version tag, not `:latest`), byte-for-byte the same image reference already used by the pre-existing `workers` job's own neo4j service."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|ci-service-container-not-a-deployed-runtime|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "ci-service-container-not-a-deployed-runtime",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the new neo4j container is an ephemeral CI service, not a deployed production container.",
+      "evidence": [
+        "No Dockerfile/deployment-manifest change in this diff; the `neo4j:` block is a GitHub Actions `services:` entry, torn down at the end of the job run."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|neo4j-service-ports-only-reachable-within-the-runner|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "neo4j-service-ports-only-reachable-within-the-runner",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the new service's ports are exposed only to the ephemeral GitHub Actions runner, not the internet, matching the already-accepted `workers` job pattern.",
+      "evidence": [
+        "`.github/workflows/ci.yml` — `ports: [7687:7687, 7474:7474]` on a `services:` container, identical exposure model to the pre-existing `workers` job's own neo4j service (already reviewed/accepted infrastructure, unmodified by this diff)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|no-iam-role-or-cloud-credential-touched|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-iam-role-or-cloud-credential-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no IAM role/policy file is touched.",
+      "evidence": [
+        "No infra/ IAM/cloud-credential file in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|no-environment-crossover-introduced-by-new-config-defaults|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-environment-crossover-introduced-by-new-config-defaults",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed the two new config keys' defaults preserve today's behavior exactly and introduce no test/staging/production crossover.",
+      "evidence": [
+        "packages/config/src/config.ts — `GIT_PROVIDER_CATALOG` default `'[{\"provider\":\"github\"}]'` (EC-19: unset behaves exactly as today, github-only); `GRAPH_INTEGRATION_REQUIRED` default `'false'`, boolean-validated identically to the pre-existing `MESSAGING_INTEGRATION_REQUIRED`.",
+        "The new CI step's `NEO4J_PASSWORD`/`NEO4J_AUTH` values are the same CI-only placeholder already used elsewhere in ci.yml — no production credential/URL introduced."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static diff inspection only.",
+      "code_references": [
+        "packages/config/src/config.ts",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|no-tls-proxy-or-management-plane-config-touched|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-tls-proxy-or-management-plane-config-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no TLS/proxy/management-plane configuration is touched.",
+      "evidence": [
+        "No TLS/proxy config file in changed_paths (REDIS_TLS is pre-existing and unmodified)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|no-availability-recovery-configuration-touched|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-availability-recovery-configuration-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no autoscaling/circuit-breaker/backup-restore infrastructure config is touched.",
+      "evidence": [
+        "No infra/ availability config in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|no-database-graph-migration-in-this-diff|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-database-graph-migration-in-this-diff",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no migration file is added or modified.",
+      "evidence": [
+        "No db/migration file in changed_paths; the Cypher RETURN-clause change is applied inline by the existing write path, not via a migration."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|no-dependency-vulnerability-exception-touched|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "no-dependency-vulnerability-exception-touched",
+      "attack_path_version": "v1",
+      "attempt": "Confirmed no dependency-vulnerability exception/allowlist file is touched.",
+      "evidence": [
+        "No vulnerability-exception file in changed_paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inventory check only.",
+      "code_references": []
+    }
+  ]
+}

@@ -58,6 +58,8 @@ export const CONFIG_NAMES = [
   'MCP_ALLOWED_ORIGINS',
   'JIRA_POLL_INTERVAL_MS',
   'REDIS_TLS',
+  'GIT_PROVIDER_CATALOG',
+  'GRAPH_INTEGRATION_REQUIRED',
 ] as const;
 
 export type ConfigName = (typeof CONFIG_NAMES)[number];
@@ -136,6 +138,13 @@ const DEFAULTS: Readonly<Partial<Record<ConfigName, string>>> = {
   // W3-10 Jira poll loop (pollWorker.ts) — matches its prior process.env
   // fallback of 60_000ms.
   JIRA_POLL_INTERVAL_MS: '60000',
+  // W3-04 gapfill (GAP-6): the closed-by-default provider catalog — an unset value
+  // yields exactly today's behavior (github only). See
+  // services/core/src/integrations/git/providerCatalog.ts.
+  GIT_PROVIDER_CATALOG: '[{"provider":"github"}]',
+  // W3-04 gapfill (GAP-1): mirrors MESSAGING_INTEGRATION_REQUIRED's "off unless CI says
+  // otherwise" posture for the git-sync graph-integration test files.
+  GRAPH_INTEGRATION_REQUIRED: 'false',
 };
 
 const supportedNames = new Set<string>(CONFIG_NAMES);
@@ -170,7 +179,12 @@ function validateValue(name: ConfigName, value: string | undefined): string {
     throw new ConfigError(`Configuration ${name} is empty.`);
   }
 
-  if (name === 'CI' || name === 'MESSAGING_INTEGRATION_REQUIRED' || name === 'REDIS_TLS') {
+  if (
+    name === 'CI' ||
+    name === 'MESSAGING_INTEGRATION_REQUIRED' ||
+    name === 'REDIS_TLS' ||
+    name === 'GRAPH_INTEGRATION_REQUIRED'
+  ) {
     const normalized = value.trim().toLowerCase();
     if (normalized !== 'true' && normalized !== 'false') {
       throw new ConfigError(`Configuration ${name} must be "true" or "false".`);

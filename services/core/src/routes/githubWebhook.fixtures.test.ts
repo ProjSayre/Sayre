@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { resetSecretsForTests, setSecretBackendForTests } from '@sayre/config';
 import { loadFixture, signFixture, type WebhookFixture } from '../webhooks/__fixtures__/loadFixture';
+import { GIT_SYNC_JOB_OPTIONS } from '../integrations/git/jobPolicy';
 
 const SECRET = 'fixture-replay-secret';
 
@@ -158,7 +159,9 @@ describe('POST /webhooks/github — replayed fixtures (O-1 routing)', () => {
     expect(queueName).toBe('github-sync');
     expect(ownershipEnvelope).toBe(ingestionEnvelope);
     expect(ownershipEnvelope.org_id).toBe('org-primary-555');
-    expect(options).toEqual({ jobId: ownershipEnvelope.idempotency_key });
+    // W3-04 gapfill (GAP-4): publishOwnership's default now also passes
+    // GIT_SYNC_JOB_OPTIONS (retry/backoff/failed-retention), not jobId alone.
+    expect(options).toEqual({ jobId: ownershipEnvelope.idempotency_key, ...GIT_SYNC_JOB_OPTIONS });
   });
 
   it('push.branch-deletion.json (deleted:true, all-zero after) still normalizes and publishes to both, payload.deleted reflected', async () => {
