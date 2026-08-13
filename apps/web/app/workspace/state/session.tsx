@@ -2,14 +2,23 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { WorkspaceDataSource, WorkspaceScope } from '../dataSource';
-import type { BackendState, Repository, RepositoryAccess, RepositoryReadiness, Role, SessionState } from '../types';
+import type { BackendState, Repository, RepositoryAccess, RepositoryImportSync, RepositoryReadiness, Role, SessionState } from '../types';
 import { getStoredSessionToken } from '../../lib/coreFetch';
 import { statusOf, useWorkspaceStore } from './store';
+
+const IDLE_SYNC: RepositoryImportSync = {
+  status: 'idle',
+  updatedAt: null,
+  discoveredRepositories: null,
+  registeredRepositories: null,
+};
 
 export interface WorkspaceSessionContextValue {
   mode: 'live' | 'fixture'; session: SessionState; role: Role; access: RepositoryAccess; backend: BackendState;
   isAdmin: boolean; repositories: readonly Repository[]; repository: Repository | null;
   authorizedForRepository: boolean; readiness: RepositoryReadiness; scope: WorkspaceScope | null;
+  /** W7-01: the workspace's partial-sync indicator, from GET /repositories's `sync`. */
+  sync: RepositoryImportSync;
   viewer: WorkspaceDataSource['viewer']; reloadCatalog(): void; signOut(): void;
 }
 
@@ -24,6 +33,7 @@ function visibleRepositories(mode: WorkspaceDataSource['id'], access: Repository
 export function WorkspaceSessionProvider({ children }: { children: ReactNode }) {
   const { state, dispatch, source } = useWorkspaceStore();
   const [catalog, setCatalog] = useState<Repository[]>([]);
+  const [sync, setSync] = useState<RepositoryImportSync>(IDLE_SYNC);
   const [catalogVersion, setCatalogVersion] = useState(0);
   const reloadCatalog = useCallback(() => setCatalogVersion((version) => version + 1), []);
   const repositories = useMemo(() => visibleRepositories(source.id, state.access, catalog), [catalog, source.id, state.access]);
@@ -39,9 +49,10 @@ export function WorkspaceSessionProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    void source.repositories(controller.signal).then((nextCatalog) => {
+    void source.repositories(controller.signal).then(({ repositories: nextCatalog, sync: nextSync }) => {
       if (!active) return;
       setCatalog(nextCatalog);
+      setSync(nextSync);
       const selected = nextCatalog.find((item) => item.id === state.repositoryId) ?? nextCatalog[0] ?? null;
       dispatch({ type: 'patch', patch: {
         backend: 'available',
@@ -78,10 +89,19 @@ export function WorkspaceSessionProvider({ children }: { children: ReactNode }) 
   }, [dispatch, source, state.session]);
 
   useEffect(() => {
-    if (source.id !== 'live' || state.session !== 'authenticated' || !catalog.some((item) => item.readiness === 'registered')) return undefined;
+    // W7-01 (AC-16): also re-poll while a sync is in flight, even with an empty catalog — a
+    // large installation that is still importing has no `registered` repository yet, but the
+    // workspace still needs to notice new rows landing. Deliberately NOT gated on
+    // `state.session` (unlike the catalog-fetch effect above): that field is also written by the
+    // unrelated admin-role-detection effect below, and re-arming/tearing down this timer on that
+    // effect's own unrelated transitions would race the very re-poll this exists to guarantee. A
+    // reload while genuinely unauthenticated is harmless — the fetch's own catch handler already
+    // updates `session` from a real 401, same as any other catalog fetch.
+    const syncInFlight = sync.status === 'importing';
+    if (source.id !== 'live' || (!catalog.some((item) => item.readiness === 'registered') && !syncInFlight)) return undefined;
     const timer = setTimeout(reloadCatalog, 2_500);
     return () => clearTimeout(timer);
-  }, [catalog, reloadCatalog, source.id, state.session]);
+  }, [catalog, reloadCatalog, source.id, sync.status]);
 
   const value = useMemo<WorkspaceSessionContextValue>(() => ({
     mode: source.id,
@@ -95,10 +115,11 @@ export function WorkspaceSessionProvider({ children }: { children: ReactNode }) 
     authorizedForRepository,
     readiness,
     scope,
+    sync,
     viewer: source.viewer,
     reloadCatalog,
     signOut: () => dispatch({ type: 'patch', patch: { session: 'signed-out' } }),
-  }), [authorizedForRepository, dispatch, readiness, reloadCatalog, repositories, repository, scope, source.id, source.viewer, state.access, state.backend, state.role, state.session]);
+  }), [authorizedForRepository, dispatch, readiness, reloadCatalog, repositories, repository, scope, source.id, source.viewer, state.access, state.backend, state.role, state.session, sync]);
   return <WorkspaceSessionContext.Provider value={value}>{children}</WorkspaceSessionContext.Provider>;
 }
 

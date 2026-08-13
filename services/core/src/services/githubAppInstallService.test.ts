@@ -1,14 +1,18 @@
 // Fully DI-mocked unit tests for startGithubAppInstall / handleGithubAppCallback
-// — no real GitHub API, no Postgres, no SQS. Mirrors the DI-mock pattern in
+// — no real GitHub API, no Postgres, no BullMQ. Mirrors the DI-mock pattern in
 // githubWebhookService.test.ts.
+//
+// W7-01: the callback is now row-write-only (no repo listing/registration/enqueue on the
+// request path — see githubAppInstallService.discoveryCallback.test.ts for the AC-1/EC-7/EC-8
+// behavioral coverage that replaced this file's old "happy path" repo-registration assertions).
+// What stays here is what's still true post-W7-01: state validation, GitHub identity
+// authorization failures, and the org-conflict guard, all against the new CallbackResult shape
+// and InstallCallbackDeps (startInstallationSync/kickDiscoveryDispatcher, not
+// registerRepository/enqueueInitialParse/kickInitialParseOutbox).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetConfigForTests, setConfigOverrideForTests } from '@sayre/config';
-import {
-  GithubAppAuthorizationError,
-  type GithubAppClient,
-  type InstalledRepo,
-} from '../github/appClient';
+import { GithubAppAuthorizationError, type GithubAppClient } from '../github/appClient';
 import { InstallStateError } from '../github/installState';
 import {
   GithubApiError,
@@ -20,9 +24,6 @@ import {
   type CallbackInput,
   type InstallCallbackDeps,
 } from './githubAppInstallService';
-
-const SHA_A = 'a'.repeat(40);
-const SHA_B = 'b'.repeat(40);
 
 beforeEach(() => {
   setConfigOverrideForTests('GITHUB_WEB_BASE_URL', 'https://github.test');
@@ -51,16 +52,6 @@ describe('startGithubAppInstall', () => {
   });
 });
 
-function makeRepo(overrides: Partial<InstalledRepo> = {}): InstalledRepo {
-  return {
-    provider_repo_id: '1',
-    full_name: 'acme/widgets',
-    default_branch: 'main',
-    default_branch_head_sha: SHA_A,
-    ...overrides,
-  };
-}
-
 function makeGithubClient(overrides: Partial<GithubAppClient> = {}): GithubAppClient {
   return {
     authorizeInstallation: vi.fn(async () => ({
@@ -68,7 +59,12 @@ function makeGithubClient(overrides: Partial<GithubAppClient> = {}): GithubAppCl
       account_type: 'Organization' as const,
     })),
     mintInstallationToken: vi.fn(async () => 'ghs_fake'),
-    listInstallationRepos: vi.fn(async () => [makeRepo()]),
+    getInstallationRepo: vi.fn(),
+    // W7-01 (AC-1): the callback must never call this — a fake that throws if reached
+    // correctly documents/enforces "the callback performs no repository listing".
+    listInstallationReposPage: vi.fn(async () => {
+      throw new Error('listInstallationReposPage must not be called by the install callback.');
+    }),
     ...overrides,
   };
 }
@@ -87,24 +83,21 @@ interface Deps extends InstallCallbackDeps {
   resolveExistingInstallationOrg: ReturnType<typeof vi.fn>;
   withOrg: ReturnType<typeof vi.fn>;
   getDb: ReturnType<typeof vi.fn>;
-  enqueueInitialParse: ReturnType<typeof vi.fn>;
-  kickInitialParseOutbox: ReturnType<typeof vi.fn>;
   upsertInstallation: ReturnType<typeof vi.fn>;
-  registerRepository: ReturnType<typeof vi.fn>;
+  startInstallationSync: ReturnType<typeof vi.fn>;
+  kickDiscoveryDispatcher: ReturnType<typeof vi.fn>;
 }
 
 function makeCallbackDeps(overrides: Partial<Deps> = {}): Deps {
-  let repoCounter = 0;
   return {
     verifyState: vi.fn(async () => ({ org_id: 'org-resolved-1', nonce: 'n', purpose: 'github_app_install' as const })),
     resolveExistingInstallationOrg: vi.fn(async () => null),
     githubClient: makeGithubClient(),
     withOrg: vi.fn(async (_db: unknown, _orgId: string, fn: (tx: unknown) => Promise<unknown>) => fn({})),
     getDb: vi.fn(async () => ({}) as never),
-    enqueueInitialParse: vi.fn(async () => undefined),
-    kickInitialParseOutbox: vi.fn(),
     upsertInstallation: vi.fn(async () => undefined),
-    registerRepository: vi.fn(async () => ({ repoId: `repo-${(repoCounter += 1)}` })),
+    startInstallationSync: vi.fn(async () => ({ reset: true, runId: 'run-uuid-1' })),
+    kickDiscoveryDispatcher: vi.fn(),
     ...overrides,
   } as Deps;
 }
@@ -145,7 +138,7 @@ describe('handleGithubAppCallback — state validation (400s)', () => {
     await expect(
       handleGithubAppCallback({ state: 'x' }, deps),
     ).rejects.toBeInstanceOf(InstallCallbackBadRequestError);
-    expect(deps.githubClient.listInstallationRepos).not.toHaveBeenCalled();
+    expect(deps.startInstallationSync).not.toHaveBeenCalled();
   });
 
   it('throws InstallCallbackBadRequestError when installation_id is non-numeric', async () => {
@@ -166,21 +159,21 @@ describe('handleGithubAppCallback — state validation (400s)', () => {
 });
 
 describe('handleGithubAppCallback — setup_action=request (pending approval)', () => {
-  it('redirects without minting a token, writing rows, or enqueuing anything', async () => {
+  it('redirects without minting a token, writing rows, or dispatching anything', async () => {
     const deps = makeCallbackDeps();
     const result = await handleGithubAppCallback(
       { state: 'x', setupAction: 'request' },
       deps,
     );
-    expect(result).toEqual({ redirectTo: '/settings/integrations', enqueuedRepos: 0 });
-    expect(deps.githubClient.listInstallationRepos).not.toHaveBeenCalled();
+    expect(result).toEqual({ redirectTo: '/settings/integrations', discovery: 'skipped' });
     expect(deps.upsertInstallation).not.toHaveBeenCalled();
-    expect(deps.enqueueInitialParse).not.toHaveBeenCalled();
+    expect(deps.startInstallationSync).not.toHaveBeenCalled();
+    expect(deps.kickDiscoveryDispatcher).not.toHaveBeenCalled();
   });
 });
 
 describe('handleGithubAppCallback — GitHub identity authorization', () => {
-  it('rejects an arbitrary installation id before tenant lookup, repo listing, or writes', async () => {
+  it('rejects an arbitrary installation id before tenant lookup or any write', async () => {
     const deps = makeCallbackDeps({
       githubClient: makeGithubClient({
         authorizeInstallation: vi.fn(async () => {
@@ -193,37 +186,18 @@ describe('handleGithubAppCallback — GitHub identity authorization', () => {
       handleGithubAppCallback(authorizedCallback(), deps),
     ).rejects.toBeInstanceOf(GithubInstallationAuthorizationError);
     expect(deps.resolveExistingInstallationOrg).not.toHaveBeenCalled();
-    expect(deps.githubClient.listInstallationRepos).not.toHaveBeenCalled();
     expect(deps.upsertInstallation).not.toHaveBeenCalled();
-    expect(deps.enqueueInitialParse).not.toHaveBeenCalled();
+    expect(deps.startInstallationSync).not.toHaveBeenCalled();
   });
 });
 
-describe('handleGithubAppCallback — happy path', () => {
-  it('AC3: writes one installation row, registers each repo, and enqueues one repo.initial_parse per repo', async () => {
-    const repos = [
-      makeRepo({
-        provider_repo_id: '1',
-        full_name: 'acme/widgets',
-        default_branch: 'main',
-        default_branch_head_sha: SHA_A,
-      }),
-      makeRepo({
-        provider_repo_id: '2',
-        full_name: 'acme/gadgets',
-        default_branch: 'trunk',
-        default_branch_head_sha: SHA_B,
-      }),
-    ];
-    const deps = makeCallbackDeps({
-      githubClient: makeGithubClient({
-        listInstallationRepos: vi.fn(async () => repos),
-      }),
-    });
+describe('handleGithubAppCallback — happy path (row-write-only, W7-01)', () => {
+  it('writes one installation row and one pending sync row, kicks the dispatcher, returns { discovery: "queued" }', async () => {
+    const deps = makeCallbackDeps();
 
     const result = await handleGithubAppCallback(authorizedCallback(), deps);
 
-    expect(result).toEqual({ redirectTo: '/settings/integrations', enqueuedRepos: 2 });
+    expect(result).toEqual({ redirectTo: '/settings/integrations', discovery: 'queued' });
     expect(deps.githubClient.authorizeInstallation).toHaveBeenCalledWith(
       'one-time-oauth-code',
       555,
@@ -238,96 +212,20 @@ describe('handleGithubAppCallback — happy path', () => {
         accountType: 'Organization',
       }),
     );
-    expect(deps.registerRepository).toHaveBeenCalledTimes(2);
-    expect(deps.enqueueInitialParse).toHaveBeenCalledTimes(2);
-    expect(deps.kickInitialParseOutbox).toHaveBeenCalledOnce();
-
-    const [, envelope1] = deps.enqueueInitialParse.mock.calls[0] as [
-      unknown,
-      Record<string, unknown>,
-    ];
-    expect(envelope1.type).toBe('repo.initial_parse');
-    expect(envelope1.source).toBe('github-app-install');
-    expect(envelope1.org_id).toBe('org-resolved-1');
-    expect(envelope1.idempotency_key).toBe(
-      `github:initial_parse:555:1:refs/heads/main:${SHA_A}`,
+    expect(deps.startInstallationSync).toHaveBeenCalledTimes(1);
+    expect(deps.startInstallationSync).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        orgId: 'org-resolved-1',
+        installationId: 555,
+        reason: 'app_install',
+        requestedBy: null,
+      }),
     );
-    expect(envelope1.payload).toMatchObject({
-      provider: 'github',
-      type: 'initial_parse',
-      repo: { provider_repo_id: '1', full_name: 'acme/widgets', repo_id: 'repo-1' },
-      ref: 'refs/heads/main',
-      revision_sha: SHA_A,
-      installation_id: '555',
-      reason: 'app_install',
-    });
+    expect(deps.kickDiscoveryDispatcher).toHaveBeenCalledOnce();
   });
 
-  it('zero repos: installation row written, zero enqueues, no error', async () => {
-    const deps = makeCallbackDeps({
-      githubClient: makeGithubClient({
-        listInstallationRepos: vi.fn(async () => []),
-      }),
-    });
-    const result = await handleGithubAppCallback(authorizedCallback(), deps);
-    expect(result.enqueuedRepos).toBe(0);
-    expect(deps.upsertInstallation).toHaveBeenCalledTimes(1);
-    expect(deps.enqueueInitialParse).not.toHaveBeenCalled();
-    expect(deps.kickInitialParseOutbox).not.toHaveBeenCalled();
-  });
-
-  it('a repo with default_branch=null is registered but excluded from enqueuedRepos', async () => {
-    const deps = makeCallbackDeps({
-      githubClient: makeGithubClient({
-        listInstallationRepos: vi.fn(async () => [
-          makeRepo({
-            provider_repo_id: '1',
-            default_branch: null,
-            default_branch_head_sha: null,
-          }),
-          makeRepo({ provider_repo_id: '2', default_branch: 'main' }),
-        ]),
-      }),
-    });
-    const result = await handleGithubAppCallback(authorizedCallback(), deps);
-    expect(result.enqueuedRepos).toBe(1);
-    expect(deps.registerRepository).toHaveBeenCalledTimes(2);
-    expect(deps.enqueueInitialParse).toHaveBeenCalledTimes(1);
-  });
-
-  it('a repo whose default branch has no HEAD is registered but not enqueued', async () => {
-    const deps = makeCallbackDeps({
-      githubClient: makeGithubClient({
-        listInstallationRepos: vi.fn(async () => [
-          makeRepo({ default_branch: 'main', default_branch_head_sha: null }),
-        ]),
-      }),
-    });
-
-    const result = await handleGithubAppCallback(authorizedCallback(), deps);
-
-    expect(result.enqueuedRepos).toBe(0);
-    expect(deps.registerRepository).toHaveBeenCalledTimes(1);
-    expect(deps.enqueueInitialParse).not.toHaveBeenCalled();
-  });
-
-  it('O-5 deviation: caps processing at the first 25 repos, silently excluding the rest', async () => {
-    const repos = Array.from({ length: 30 }, (_, i) =>
-      makeRepo({ provider_repo_id: String(i), full_name: `acme/repo-${i}`, default_branch: 'main' }),
-    );
-    const deps = makeCallbackDeps({
-      githubClient: makeGithubClient({
-        listInstallationRepos: vi.fn(async () => repos),
-      }),
-    });
-    const result = await handleGithubAppCallback(authorizedCallback(), deps);
-    expect(result.enqueuedRepos).toBe(25);
-    expect(deps.registerRepository).toHaveBeenCalledTimes(25);
-    expect(deps.enqueueInitialParse).toHaveBeenCalledTimes(25);
-    expect(deps.githubClient.listInstallationRepos).toHaveBeenCalledWith(555, 25);
-  });
-
-  it('persists the outbox row inside the tenant transaction, then wakes delivery after commit', async () => {
+  it('persists the sync row inside the tenant transaction, then wakes the dispatcher after commit', async () => {
     const order: string[] = [];
     const deps = makeCallbackDeps({
       withOrg: vi.fn(async (_db, _orgId, fn) => {
@@ -336,10 +234,11 @@ describe('handleGithubAppCallback — happy path', () => {
         order.push('transaction-committed');
         return result;
       }),
-      enqueueInitialParse: vi.fn(async () => {
-        order.push('outbox-persisted');
+      startInstallationSync: vi.fn(async () => {
+        order.push('sync-row-written');
+        return { reset: true, runId: 'run-uuid-1' };
       }),
-      kickInitialParseOutbox: vi.fn(() => {
+      kickDiscoveryDispatcher: vi.fn(() => {
         order.push('dispatcher-woken');
       }),
     });
@@ -348,15 +247,15 @@ describe('handleGithubAppCallback — happy path', () => {
 
     expect(order).toEqual([
       'transaction-started',
-      'outbox-persisted',
+      'sync-row-written',
       'transaction-committed',
       'dispatcher-woken',
     ]);
   });
 
-  it('does not wake delivery when the tenant transaction rolls back', async () => {
+  it('does not wake the dispatcher when the tenant transaction rolls back', async () => {
     const deps = makeCallbackDeps({
-      registerRepository: vi.fn(async () => {
+      upsertInstallation: vi.fn(async () => {
         throw new Error('transaction failed');
       }),
     });
@@ -364,21 +263,22 @@ describe('handleGithubAppCallback — happy path', () => {
     await expect(handleGithubAppCallback(authorizedCallback(), deps)).rejects.toThrow(
       'transaction failed',
     );
-    expect(deps.enqueueInitialParse).not.toHaveBeenCalled();
-    expect(deps.kickInitialParseOutbox).not.toHaveBeenCalled();
+    expect(deps.startInstallationSync).not.toHaveBeenCalled();
+    expect(deps.kickDiscoveryDispatcher).not.toHaveBeenCalled();
   });
 });
 
 describe('handleGithubAppCallback — tenant isolation / conflict (409)', () => {
-  it('AC9: an installation already bound to a different org is rejected, no DB write, no enqueue', async () => {
+  it('AC9: an installation already bound to a different org is rejected, no DB write, no dispatch', async () => {
     const deps = makeCallbackDeps({
       resolveExistingInstallationOrg: vi.fn(async () => ({ orgId: 'org-OTHER', active: true })),
     });
     await expect(
       handleGithubAppCallback(authorizedCallback(), deps),
     ).rejects.toBeInstanceOf(InstallationOrgConflictError);
-    expect(deps.githubClient.listInstallationRepos).not.toHaveBeenCalled();
     expect(deps.upsertInstallation).not.toHaveBeenCalled();
+    expect(deps.startInstallationSync).not.toHaveBeenCalled();
+    expect(deps.kickDiscoveryDispatcher).not.toHaveBeenCalled();
   });
 
   it('an installation already bound to the SAME org (setup_action=update) proceeds without conflict', async () => {
@@ -389,7 +289,7 @@ describe('handleGithubAppCallback — tenant isolation / conflict (409)', () => 
       authorizedCallback({ setupAction: 'update' }),
       deps,
     );
-    expect(result.enqueuedRepos).toBe(1);
+    expect(result.discovery).toBe('queued');
   });
 
   it('a forged org_id-shaped field in the callback input is never read — org comes only from verified state', async () => {
@@ -405,15 +305,19 @@ describe('handleGithubAppCallback — tenant isolation / conflict (409)', () => 
       {},
       expect.objectContaining({ orgId: 'org-resolved-1' }),
     );
+    expect(deps.startInstallationSync).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ orgId: 'org-resolved-1' }),
+    );
   });
 });
 
 describe('handleGithubAppCallback — GitHub API failures (502)', () => {
-  it('token mint / repo-list failure -> GithubApiError, no rows written, no enqueue', async () => {
+  it('authorization failure -> GithubApiError, no rows written, no dispatch', async () => {
     const deps = makeCallbackDeps({
       githubClient: makeGithubClient({
-        listInstallationRepos: vi.fn(async () => {
-          throw new Error('GitHub API request to /app/installations/555/access_tokens returned 401.');
+        authorizeInstallation: vi.fn(async () => {
+          throw new Error('GitHub API request to /app/installations/555 returned 500.');
         }),
       }),
     });
@@ -421,50 +325,7 @@ describe('handleGithubAppCallback — GitHub API failures (502)', () => {
       handleGithubAppCallback(authorizedCallback(), deps),
     ).rejects.toBeInstanceOf(GithubApiError);
     expect(deps.upsertInstallation).not.toHaveBeenCalled();
-    expect(deps.enqueueInitialParse).not.toHaveBeenCalled();
-  });
-});
-
-describe('handleGithubAppCallback — idempotency', () => {
-  it('replaying the identical callback produces the same idempotency_key both times', async () => {
-    const deps = makeCallbackDeps();
-    await handleGithubAppCallback(authorizedCallback(), deps);
-    await handleGithubAppCallback(authorizedCallback(), deps);
-    const [, first] = deps.enqueueInitialParse.mock.calls[0] as [
-      unknown,
-      { idempotency_key: string },
-    ];
-    const [, second] = deps.enqueueInitialParse.mock.calls[1] as [
-      unknown,
-      { idempotency_key: string },
-    ];
-    expect(first.idempotency_key).toBe(second.idempotency_key);
-  });
-
-  it('uses the immutable revision SHA in the idempotency key', async () => {
-    const listInstallationRepos = vi
-      .fn()
-      .mockResolvedValueOnce([makeRepo({ default_branch_head_sha: SHA_A })])
-      .mockResolvedValueOnce([makeRepo({ default_branch_head_sha: SHA_B })]);
-    const deps = makeCallbackDeps({
-      githubClient: makeGithubClient({
-        listInstallationRepos,
-      }),
-    });
-
-    await handleGithubAppCallback(authorizedCallback(), deps);
-    await handleGithubAppCallback(authorizedCallback(), deps);
-
-    const [, first] = deps.enqueueInitialParse.mock.calls[0] as [
-      unknown,
-      { idempotency_key: string },
-    ];
-    const [, second] = deps.enqueueInitialParse.mock.calls[1] as [
-      unknown,
-      { idempotency_key: string },
-    ];
-    expect(first.idempotency_key).toContain(SHA_A);
-    expect(second.idempotency_key).toContain(SHA_B);
-    expect(first.idempotency_key).not.toBe(second.idempotency_key);
+    expect(deps.startInstallationSync).not.toHaveBeenCalled();
+    expect(deps.kickDiscoveryDispatcher).not.toHaveBeenCalled();
   });
 });

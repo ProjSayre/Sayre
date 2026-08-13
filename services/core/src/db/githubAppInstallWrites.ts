@@ -12,7 +12,7 @@
 // No schema migration required: `github_app_installations` and `repositories`
 // already exist with every column this ticket needs (see spec.md).
 
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, notInArray, or, sql } from 'drizzle-orm';
 import type { Db } from './client';
 import { githubAppInstallations, repositories } from './schema';
 
@@ -63,11 +63,27 @@ export async function upsertInstallation(
  * unique index. W2-09: re-adding a previously-removed repo (installation_repositories `added`
  * webhook, or reconcile's additive repair) clears `revoked_at` — re-activation, consistent with
  * `upsertInstallation` clearing `suspendedAt`/`revokedAt` on re-install.
+ *
+ * W7-01 (OQ-4): `discoveryRunId`, when supplied, stamps the sweep markers
+ * (`last_discovery_run_id`/`last_discovery_at`) — set ONLY by discovery. The webhook `added`
+ * path (which never passes it) leaves the marker untouched rather than clearing it, matching
+ * `listRevokeSweepCandidates`'s exclusion of rows carrying a currently-observed run's marker.
  */
 export async function registerRepository(
   tx: Db,
-  row: { orgId: string; providerRepoId: string; fullName: string; defaultBranch: string | null },
+  row: {
+    orgId: string;
+    providerRepoId: string;
+    fullName: string;
+    defaultBranch: string | null;
+    discoveryRunId?: string;
+  },
 ): Promise<{ repoId: string }> {
+  const now = new Date();
+  const discoveryMarker = row.discoveryRunId
+    ? { lastDiscoveryRunId: row.discoveryRunId, lastDiscoveryAt: now }
+    : {};
+
   const [inserted] = await tx
     .insert(repositories)
     .values({
@@ -76,6 +92,7 @@ export async function registerRepository(
       provider: 'github',
       externalId: row.providerRepoId,
       defaultBranch: row.defaultBranch,
+      ...discoveryMarker,
     })
     .onConflictDoUpdate({
       target: [repositories.orgId, repositories.provider, repositories.externalId],
@@ -83,12 +100,64 @@ export async function registerRepository(
         name: row.fullName,
         defaultBranch: row.defaultBranch,
         revokedAt: null,
-        updatedAt: new Date(),
+        updatedAt: now,
+        ...discoveryMarker,
       },
     })
     .returning({ id: repositories.id });
 
   return { repoId: inserted.id };
+}
+
+/**
+ * OQ-4: active GitHub repositories of this org that the observed runs did NOT report.
+ * `observedRunIds` = the completed_run_id of every active installation of the org.
+ * `runStartedAt` excludes any row created/updated after the run began (mid-run `added`
+ * webhook, or a concurrent installation's run) — the second false-positive guard (EC-34).
+ * Only `revoked_at IS NULL` rows ever qualify (EC-36).
+ */
+export async function listRevokeSweepCandidates(
+  tx: Db,
+  input: { orgId: string; observedRunIds: string[]; runStartedAt: Date },
+): Promise<Array<{ id: string; externalId: string }>> {
+  const notObservedByAnyCurrentRun =
+    input.observedRunIds.length > 0
+      ? or(
+          isNull(repositories.lastDiscoveryRunId),
+          notInArray(repositories.lastDiscoveryRunId, input.observedRunIds),
+        )
+      : undefined;
+
+  const rows = await tx
+    .select({ id: repositories.id, externalId: repositories.externalId })
+    .from(repositories)
+    .where(
+      and(
+        eq(repositories.orgId, input.orgId),
+        eq(repositories.provider, 'github'),
+        isNull(repositories.revokedAt),
+        lt(repositories.updatedAt, input.runStartedAt),
+        ...(notObservedByAnyCurrentRun ? [notObservedByAnyCurrentRun] : []),
+      ),
+    );
+
+  return rows
+    .filter((row): row is { id: string; externalId: string } => row.externalId !== null)
+    .map((row) => ({ id: row.id, externalId: row.externalId }));
+}
+
+export async function countActiveGithubRepositories(tx: Db, orgId: string): Promise<number> {
+  const rows = await tx
+    .select({ count: sql<number>`count(*)` })
+    .from(repositories)
+    .where(
+      and(
+        eq(repositories.orgId, orgId),
+        eq(repositories.provider, 'github'),
+        isNull(repositories.revokedAt),
+      ),
+    );
+  return Number(rows[0]?.count ?? 0);
 }
 
 /**

@@ -22,6 +22,14 @@ export interface InstalledRepo {
   default_branch_head_sha: string | null; // null when the repository has no branch HEAD
 }
 
+/** W7-01: one page of an installation's accessible repositories. */
+export interface InstallationRepoPage {
+  repos: InstalledRepo[]; // this page only, in GitHub's order
+  page: number; // the 1-based page just fetched
+  hasNextPage: boolean; // true iff GitHub returned a FULL page (repos.length === perPage)
+  totalCount: number | null; // GitHub's total_count, or null when absent/invalid
+}
+
 export interface AuthorizedInstallation {
   account_login: string;
   account_type: 'Organization' | 'User';
@@ -38,16 +46,26 @@ export interface GithubAppClient {
     installationId: number,
   ): Promise<AuthorizedInstallation>;
   mintInstallationToken(installationId: number): Promise<string>; // in-memory only, never persisted/logged
-  listInstallationRepos(installationId: number, maxRepos?: number): Promise<InstalledRepo[]>; // handles pagination
+  /**
+   * W7-01: page-level installation repository discovery — no whole-discovery accumulation
+   * loop, no repo-count cap parameter. `page` is 1-based and `perPage` defaults to
+   * INSTALLATION_REPOS_PER_PAGE (100); both are validated (page a positive safe integer,
+   * perPage in 1..100) BEFORE any network call or token mint.
+   */
+  listInstallationReposPage(
+    installationId: number,
+    page: number,
+    perPage?: number,
+  ): Promise<InstallationRepoPage>;
   /**
    * W2-09: fetch a single installation-accessible repo's metadata + default-branch HEAD
    * (used by the `installation_repositories` `added` webhook path, which only receives
    * `id`/`full_name` in the payload — no `default_branch`/HEAD). Mints an installation
    * token (in-memory only), GETs /repos/{owner}/{repo}, then resolves the default-branch
-   * HEAD via the same `resolveDefaultBranchHead` helper `listInstallationRepos` uses.
+   * HEAD via the same `resolveDefaultBranchHead` helper `listInstallationReposPage` uses.
    * Returns null when the repo is not accessible to the installation (404) — e.g. a
    * removed/renamed repo between the webhook firing and this call running.
-   * `default_branch_head_sha` is null for an empty repo (409), same as `listInstallationRepos`.
+   * `default_branch_head_sha` is null for an empty repo (409), same as the page listing.
    */
   getInstallationRepo(installationId: number, fullName: string): Promise<InstalledRepo | null>;
 }
@@ -69,10 +87,13 @@ export class GithubAppAuthorizationError extends GithubAppApiError {
 }
 
 const APP_JWT_EXPIRY_SECONDS = 9 * 60; // GitHub allows up to 10m; stay comfortably under.
-const PER_PAGE = 100;
+/** W7-01: default page size for listInstallationReposPage. Also the maximum valid perPage. */
+export const INSTALLATION_REPOS_PER_PAGE = 100;
 const REVISION_SHA = /^[0-9a-fA-F]{40,64}$/;
 const REQUEST_TIMEOUT_MS = 10_000;
-const REPOSITORY_DISCOVERY_TIMEOUT_MS = 30_000;
+// W7-01: the previous whole-discovery 30s budget (REPOSITORY_DISCOVERY_TIMEOUT_MS), rescoped
+// to cover ONE page + its branch lookups, renamed accordingly.
+const PAGE_DISCOVERY_TIMEOUT_MS = 30_000;
 const DEFAULT_BRANCH_LOOKUP_CONCURRENCY = 5;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 
@@ -212,14 +233,6 @@ async function readBoundedJson<T>(response: Response, context: string): Promise<
   } catch {
     throw new GithubAppApiError(`${context} returned invalid JSON.`);
   }
-}
-
-function positiveLimit(value: number | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new GithubAppApiError('GitHub repository list limit must be a positive integer.');
-  }
-  return value;
 }
 
 function encodedRepositoryPath(fullName: string): string {
@@ -417,44 +430,70 @@ async function resolveRepositoryPage(
   return results;
 }
 
-async function discoverInstallationRepos(
-  installationId: number,
-  maxRepos: number | undefined,
-  signal: AbortSignal,
-): Promise<InstalledRepo[]> {
-  const token = await mintInstallationToken(installationId, signal);
-  const limit = positiveLimit(maxRepos);
-  const repos: InstalledRepo[] = [];
-  let page = 1;
-
-  for (;;) {
-    const remaining = limit === undefined ? PER_PAGE : Math.min(PER_PAGE, limit - repos.length);
-    if (remaining <= 0) break;
-    const response = await githubApiFetch(
-      `/installation/repositories?per_page=${remaining}&page=${page}`,
-      { headers: { Authorization: `Bearer ${token}` }, signal },
-    );
-    const body = await readBoundedJson<{ repositories?: GithubRepoResponse[] }>(
-      response,
-      'GitHub installation repository list',
-    );
-    const pageRepos = (body.repositories ?? []).slice(0, remaining);
-    repos.push(...(await resolveRepositoryPage(token, pageRepos, signal)));
-    if (repos.length === limit || pageRepos.length < remaining) break;
-    page += 1;
-  }
-
-  return repos;
+/** Defensive parse: a safe, non-negative integer, or null for anything else (EC-13). */
+function parseTotalCount(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return null;
+  return value;
 }
 
-/** Wraps ANY failure (including a failed token mint) as GithubAppApiError. */
-async function listInstallationRepos(
+/** EC-15: validated BEFORE any network call or token mint. */
+function assertValidPageArgs(page: number, perPage: number): void {
+  if (!Number.isSafeInteger(page) || page < 1) {
+    throw new GithubAppApiError('GitHub repository page must be a positive integer.');
+  }
+  if (!Number.isSafeInteger(perPage) || perPage < 1 || perPage > INSTALLATION_REPOS_PER_PAGE) {
+    throw new GithubAppApiError(
+      `GitHub repository perPage must be an integer between 1 and ${INSTALLATION_REPOS_PER_PAGE}.`,
+    );
+  }
+}
+
+async function fetchInstallationReposPage(
   installationId: number,
-  maxRepos?: number,
-): Promise<InstalledRepo[]> {
+  page: number,
+  perPage: number,
+  signal: AbortSignal,
+): Promise<InstallationRepoPage> {
+  const token = await mintInstallationToken(installationId, signal);
+  const response = await githubApiFetch(
+    `/installation/repositories?per_page=${perPage}&page=${page}`,
+    { headers: { Authorization: `Bearer ${token}` }, signal },
+  );
+  const body = await readBoundedJson<{ repositories?: unknown; total_count?: unknown }>(
+    response,
+    'GitHub installation repository list',
+  );
+  if (!Array.isArray(body.repositories)) {
+    throw new GithubAppApiError('GitHub returned a malformed repository list.');
+  }
+  const repos = await resolveRepositoryPage(
+    token,
+    body.repositories as GithubRepoResponse[],
+    signal,
+  );
+  return {
+    repos,
+    page,
+    hasNextPage: repos.length === perPage,
+    totalCount: parseTotalCount(body.total_count),
+  };
+}
+
+/**
+ * W7-01: page-level installation repository discovery. Fetches exactly ONE page — no
+ * accumulation loop, no repo-count cap. Wraps ANY failure (including a failed token mint) as
+ * GithubAppApiError.
+ */
+async function listInstallationReposPage(
+  installationId: number,
+  page: number,
+  perPage: number = INSTALLATION_REPOS_PER_PAGE,
+): Promise<InstallationRepoPage> {
+  assertValidPageArgs(page, perPage);
+
   const operationController = new AbortController();
   const deadlineError = new GithubAppApiError(
-    'GitHub repository discovery exceeded its overall deadline.',
+    'GitHub repository page discovery exceeded its deadline.',
   );
   let deadlineHandle: ReturnType<typeof setTimeout> | undefined;
 
@@ -462,12 +501,12 @@ async function listInstallationRepos(
     deadlineHandle = setTimeout(() => {
       operationController.abort(deadlineError);
       reject(deadlineError);
-    }, REPOSITORY_DISCOVERY_TIMEOUT_MS);
+    }, PAGE_DISCOVERY_TIMEOUT_MS);
   });
 
   try {
     return await Promise.race([
-      discoverInstallationRepos(installationId, maxRepos, operationController.signal),
+      fetchInstallationReposPage(installationId, page, perPage, operationController.signal),
       deadline,
     ]);
   } catch (error) {
@@ -479,7 +518,7 @@ async function listInstallationRepos(
     if (deadlineHandle !== undefined) clearTimeout(deadlineHandle);
     if (!operationController.signal.aborted) {
       operationController.abort(
-        new GithubAppApiError('GitHub repository discovery has completed.'),
+        new GithubAppApiError('GitHub repository page discovery has completed.'),
       );
     }
   }
@@ -518,7 +557,7 @@ export function createDefaultGithubAppClient(): GithubAppClient {
   return {
     authorizeInstallation,
     mintInstallationToken,
-    listInstallationRepos,
+    listInstallationReposPage,
     getInstallationRepo,
   };
 }

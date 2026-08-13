@@ -1,9 +1,17 @@
 import type { AuthContext } from '../auth/context';
+import { getRuntimeDb } from '../db/installations';
+import { withOrgContext } from '../db/client';
 import {
   repositoryCatalogStore,
   type RepositoryCatalogStore,
   type StoredRepositoryCatalogEntry,
 } from '../db/repositoryCatalogStore';
+import {
+  INSTALLATION_SYNC_STALL_MS,
+  listInstallationSyncRows,
+  type InstallationSweepOutcome,
+  type InstallationSyncRow,
+} from '../db/githubInstallationSyncStore';
 import {
   PostgresPermissionStore,
   canReadResource,
@@ -23,19 +31,37 @@ export interface RepositoryCatalogEntry {
   readiness: RepositoryReadiness;
 }
 
+// W7-01: the workspace's partial-sync indicator (AC-11/AC-12).
+export type RepositoryImportSyncStatus = 'idle' | 'importing' | 'stalled' | 'failed';
+
+export interface RepositoryImportSync {
+  status: RepositoryImportSyncStatus;
+  updatedAt: string | null; // ISO-8601, most recent sync row touch
+  discoveredRepositories: number | null; // admin/owner only; null for member
+  registeredRepositories: number | null; // admin/owner only; null for member
+  revokedRepositories: number | null; // admin/owner only; null for member (OQ-4)
+  sweepOutcome: InstallationSweepOutcome | null; // admin/owner only; null for member (OQ-4)
+}
+
 export interface RepositoryCatalog {
   authorization: 'server-filtered';
   repositories: RepositoryCatalogEntry[];
+  sync: RepositoryImportSync;
 }
 
 export interface RepositoryCatalogServiceDeps {
   store: RepositoryCatalogStore;
   permissions: PermissionStore;
+  syncRows: (orgId: string) => Promise<InstallationSyncRow[]>;
+  now: () => Date;
 }
 
 const defaultDeps: RepositoryCatalogServiceDeps = {
   store: repositoryCatalogStore,
   permissions: new PostgresPermissionStore(),
+  syncRows: async (orgId) =>
+    withOrgContext(await getRuntimeDb(), orgId, (tx) => listInstallationSyncRows(tx, orgId)),
+  now: () => new Date(),
 };
 
 const MAX_REPOSITORIES = 250;
@@ -145,6 +171,54 @@ function currentAuthorizedRef(
 }
 
 /**
+ * Aggregation precedence (AC-11): any pending/running row touched within
+ * INSTALLATION_SYNC_STALL_MS -> "importing"; else any pending/running row older than that ->
+ * "stalled"; else any failed row -> "failed"; else "idle" (no rows, or all complete/cancelled).
+ * Counts, `revokedRepositories` and `sweepOutcome` are non-null only for an admin/owner caller
+ * (AC-12, EC-16); `sweepOutcome` reports the most-recently-touched row's outcome, so a withheld
+ * mass-revoke is visible to an admin rather than silent.
+ */
+function summarizeSync(
+  rows: InstallationSyncRow[],
+  now: Date,
+  includeAdminFields: boolean,
+): RepositoryImportSync {
+  const isStalled = (row: InstallationSyncRow) =>
+    now.getTime() - row.updatedAt.getTime() > INSTALLATION_SYNC_STALL_MS;
+  const isInFlight = (row: InstallationSyncRow) =>
+    row.status === 'pending' || row.status === 'running';
+
+  let status: RepositoryImportSyncStatus = 'idle';
+  if (rows.some((row) => isInFlight(row) && !isStalled(row))) {
+    status = 'importing';
+  } else if (rows.some((row) => isInFlight(row) && isStalled(row))) {
+    status = 'stalled';
+  } else if (rows.some((row) => row.status === 'failed')) {
+    status = 'failed';
+  }
+
+  const mostRecent = rows.reduce<InstallationSyncRow | null>(
+    (latest, row) => (!latest || row.updatedAt.getTime() > latest.updatedAt.getTime() ? row : latest),
+    null,
+  );
+
+  return {
+    status,
+    updatedAt: mostRecent ? mostRecent.updatedAt.toISOString() : null,
+    discoveredRepositories: includeAdminFields
+      ? rows.reduce((sum, row) => sum + row.discoveredCount, 0)
+      : null,
+    registeredRepositories: includeAdminFields
+      ? rows.reduce((sum, row) => sum + row.registeredCount, 0)
+      : null,
+    revokedRepositories: includeAdminFields
+      ? rows.reduce((sum, row) => sum + row.revokedCount, 0)
+      : null,
+    sweepOutcome: includeAdminFields ? (mostRecent?.sweepOutcome ?? null) : null,
+  };
+}
+
+/**
  * Returns only repositories for which the server-derived auth context has at
  * least one readable resource. No client-supplied tenant identity exists in
  * this API. Ref selection is filtered through the same permission predicate as
@@ -155,10 +229,13 @@ export async function getRepositoryCatalog(
   overrides: Partial<RepositoryCatalogServiceDeps> = {},
 ): Promise<RepositoryCatalog> {
   const deps = { ...defaultDeps, ...overrides };
-  const [stored, scope] = await Promise.all([
+  const [stored, scope, syncRows] = await Promise.all([
     deps.store.list(ctx.orgId),
     deps.permissions.getReadScope(ctx),
+    deps.syncRows(ctx.orgId),
   ]);
+  const isAdminOrOwner = ctx.roles.includes('admin') || ctx.roles.includes('owner');
+  const sync = summarizeSync(syncRows, deps.now(), isAdminOrOwner);
 
   const repositories = stored
     .flatMap((entry) => {
@@ -185,5 +262,5 @@ export async function getRepositoryCatalog(
     )
     .slice(0, MAX_REPOSITORIES);
 
-  return { authorization: 'server-filtered', repositories };
+  return { authorization: 'server-filtered', repositories, sync };
 }

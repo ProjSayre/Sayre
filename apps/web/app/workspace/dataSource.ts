@@ -18,6 +18,7 @@ import {
   NODE_OVERLAYS,
   PROVIDER_SETTINGS,
   REPOSITORIES,
+  REPOSITORY_IMPORT_SYNC,
 } from '../mock/fixtures';
 import {
   fetchAgentSkillMdHistory,
@@ -65,6 +66,7 @@ import type {
   OnboardingWorkflow,
   ProductCoverage,
   Repository,
+  RepositoryImportSync,
 } from './types';
 import {
   parseMcpClientKey,
@@ -84,7 +86,9 @@ export interface WorkspaceScope {
 
 export interface WorkspaceDataSource {
   readonly id: 'live' | 'fixture';
-  repositories(signal: AbortSignal): Promise<Repository[]>;
+  repositories(
+    signal: AbortSignal,
+  ): Promise<{ repositories: Repository[]; sync: RepositoryImportSync }>;
   technicalTree(
     scope: WorkspaceScope,
     signal: AbortSignal,
@@ -281,7 +285,8 @@ export const liveWorkspaceDataSource: WorkspaceDataSource = {
     org: 'Sayre workspace',
   },
   async repositories(signal) {
-    return (await fetchRepositoryCatalog({ signal })).repositories;
+    const catalog = await fetchRepositoryCatalog({ signal });
+    return { repositories: catalog.repositories, sync: catalog.sync };
   },
   async githubIntegrationStatus(signal) {
     return fetchGitHubIntegrationStatus({ signal });
@@ -544,7 +549,7 @@ export const fixtureWorkspaceDataSource: WorkspaceDataSource = {
     org: 'Acme Engineering',
   },
   async repositories() {
-    return REPOSITORIES;
+    return { repositories: REPOSITORIES, sync: REPOSITORY_IMPORT_SYNC };
   },
   async githubIntegrationStatus() {
     return {

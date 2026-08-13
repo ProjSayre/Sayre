@@ -17,12 +17,13 @@ const ORG_A = '11111111-1111-4111-8111-111111111111';
 const ORG_B = '22222222-2222-4222-8222-222222222222';
 const SIGNING_KEY = 'reconcile-route-test-signing-key';
 
+// W7-01: reconcile is now row-write-only/async — see routes/githubInstallationReconcile.discoveryStatus.test.ts
+// for the AC-10 202/result-shape coverage. This file keeps testing the still-true half: the
+// auth gate (admin/owner allowed, org isolation) around whatever the service returns.
 const reconcileResultFixture = {
+  status: 'queued' as const,
   installations: 1,
-  registered: 1,
-  enqueued: 1,
-  revoked: 0,
-  truncated: false,
+  queued: 1,
 };
 
 const reconcileInstallationRepositories = vi.fn(async () => reconcileResultFixture);
@@ -103,7 +104,7 @@ describe('POST /integrations/github/reconcile', () => {
       headers: { authorization: `Bearer ${token}` },
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(await response.json()).toEqual(reconcileResultFixture);
     expect(reconcileInstallationRepositories).toHaveBeenCalledWith(
       expect.objectContaining({ subjectType: 'user', orgId: ORG_A, roles: ['admin'] }),
@@ -120,7 +121,7 @@ describe('POST /integrations/github/reconcile', () => {
       headers: { authorization: `Bearer ${token}` },
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
   });
 
   it('org identity comes only from the verified session token; a forged org header/query has no effect', async () => {

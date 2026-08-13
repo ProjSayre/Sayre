@@ -55,6 +55,24 @@ export type QueueName = (typeof QUEUE_NAMES)[number];
 // don't break.
 export type GithubSyncPayload = NormalizedRepoEvent;
 
+// W7-01 (OQ-3): the discovery dispatcher's own job type on the EXISTING `github-sync`
+// queue — no new queue system. Delivered ONLY by `installationDiscoveryDispatcher.ts`,
+// which is the sole caller of `enqueue('github-sync', ...)` for this event type.
+export const GITHUB_INSTALLATION_DISCOVERY_EVENT_TYPE = 'github.installation_discovery';
+
+export interface GithubInstallationDiscoveryPayload {
+  provider: 'github';
+  type: 'installation_discovery';
+  installation_id: string; // stringified, matching the envelope conventions
+  run_id: string; // the run this delivery belongs to (stale-redispatch guard)
+  reason: 'app_install' | 'manual_reconcile';
+}
+
+// W7-01: widened to a union so `github-sync` carries both the existing NormalizedRepoEvent
+// (repo.* envelopes) and the new discovery job. QUEUE_NAMES is unchanged — this is a new job
+// TYPE on the existing queue, not a new queue (.claude/rules/async-messaging.md).
+export type GithubSyncJobPayload = NormalizedRepoEvent | GithubInstallationDiscoveryPayload;
+
 // Typed job payloads (skeletons — integration tickets extend these).
 export interface TicketUpdatePayload {
   title?: string;
@@ -74,7 +92,7 @@ export type JiraSyncPayload = TicketSyncPayload & { provider: 'jira' };
 export type LinearSyncPayload = TicketSyncPayload & { provider: 'linear' };
 
 export interface QueuePayloads {
-  'github-sync': GithubSyncPayload;
+  'github-sync': GithubSyncJobPayload;
   'jira-sync': JiraSyncPayload;
   'linear-sync': LinearSyncPayload;
 }

@@ -1,0 +1,288 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+  "mode": "REMEDIATION_RECHECK",
+  "status": "COMPLETE",
+  "started_at": "2026-08-12T23:48:10Z",
+  "completed_at": "2026-08-12T23:59:40Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "branch": "ticket/w7-01-github-paginated-reconciliation",
+    "dirty": true,
+    "environment": "local-dev checkout; no live CI run for this session. Working tree is dirty with exactly W7-01's round-2 (post-review-fix) file set: `git diff --name-only` shows 25 modified files and `git status --porcelain` shows 23 additional untracked files (all under apps/web/** and services/core/**, matching changes.md's declared 'Files changed' inventory with no extra/undeclared paths). Ran the full services/core vitest suite directly in this environment (121 files / 1296 tests passed, 1 file / 14 tests skipped \u2014 the RLS-deferred file, which requires a live Postgres via DATABASE_ADMIN_URL not reachable here) as dynamic verification, plus a focused re-run of the five new/changed W7-01 test files most relevant to this run's findings (githubInstallationRevokeTraceThrough.test.ts, githubInstallationDiscoveryService.test.ts, installationDiscoveryDispatcher.test.ts, assertInstallationDiscoveryOutboxReady.test.ts, githubInstallationDiscoveryEndToEnd.test.ts \u2014 50/50 passed). Also independently re-ran `npx tsc --noEmit` (clean) in services/core. No dynamic test against a live Postgres/Redis was performed in this session (none reachable) \u2014 the migration 0020 RLS/grant boundary and the dispatcher's live claim/lease behavior are therefore verified STATICALLY (SQL text + mocked-metadata unit tests) in this run, not against a live database \u2014 see Limitations.",
+    "base_urls": [],
+    "changed_paths": [
+      "services/core/src/db/githubInstallationSyncStore.ts",
+      "services/core/src/services/githubInstallationDiscoveryService.ts",
+      "services/core/src/services/githubInstallationDiscoveryService.test.ts",
+      "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260812T231343443Z-2520ec9-PR_DELTA-935c11",
+    "commit_sha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "comparable": true,
+    "selection_reason": "Direct, comparable baseline per audit-contract.md's baseline order: this is the immediately prior run against the identical commit_sha/dirty-tree feature (W7-01), whose sole BLOCKED finding (FND-cf76b24c5057 / ING-04) this REMEDIATION_RECHECK exists to reverify. Same repository, same target commit, same tenant_fixtures, same physical execution environment (local-dev checkout, no live Postgres/Redis reachable) -- the only material difference is round 3's fix landing in the working tree between the two runs, which is exactly what a REMEDIATION_RECHECK is meant to measure.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "Wave 7 -- W7-01 GitHub paginated reconciliation (removes the 25-repo cap): remediation recheck of round 1 security's sole BLOCKED finding (FND-cf76b24c5057 / ING-04, the OQ-4 sweep's authorization source) after dev's round-3 fix and review's round-3 PASS re-verdict. This is the pipeline's 3rd and final permitted dev/security loop.",
+    "phase": "pre-external-customer MVP (CLAUDE.md / security-multitenancy.md secrets-phase posture: gitignored local .env, no KMS store yet). Unaffected by this ticket.",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/changes.json",
+      ".pipeline/review.md",
+      ".pipeline/review.json",
+      ".pipeline/security-report.md",
+      ".pipeline/security-history/20260812T231343443Z-2520ec9-PR_DELTA-935c11/report.md",
+      ".claude/rules/security-multitenancy.md",
+      ".claude/rules/async-messaging.md",
+      ".claude/rules/service-layer.md",
+      "CLAUDE.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Pipeline convention (security stage may execute existing, non-destructive local test suites as read-only dynamic verification; no production source file was left modified by this stage -- see the revert-and-restore experiment logged below). No live Postgres/Redis instance was reachable in this session.",
+    "resource_ceiling": "Local vitest execution: focused reruns of the two directly-fixed files' test suites (githubInstallationDiscoveryService.test.ts, githubInstallationRevokeTraceThrough.test.ts, githubInstallationSyncStore.ts) -- 33/33 pass. `npx tsc --noEmit` in services/core: clean. One self-authored, logged, and cleaned-up revert-and-rerun experiment: temporarily reverted services/core/src/services/githubInstallationDiscoveryService.ts line 508 from `reason: claimed.reason,` back to the pre-fix `reason: payload.reason,`, reran the same two test files (3 failed / 30 passed, independently reproducing security's own round-1 finding), then restored the file from a byte-identical backup (sha256 7e78e9f9...d071ec9 before and after) and reran clean (33/33). No network egress, no destructive operation, no repository file created/modified/left behind by this stage.",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "ORG (synthetic org id, githubInstallationRevokeTraceThrough.test.ts / githubInstallationDiscoveryService.test.ts fixtures, unmodified by this run)",
+      "acme/* synthetic repository full_names (fixture data only, no real tenant/customer data)"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01..CORE-06 run in every mode per .sdd/stages/security.md).",
+      "rationale": "Mandatory core check, run in every mode. Round 3's diff (githubInstallationSyncStore.ts's claimInstallationSync gaining a returned `reason` column, and githubInstallationDiscoveryService.ts's sweep authorization source) touches no org_id provenance code. org_id remains envelope.org_id (dispatcher-authored from the row's own column, never a payload claim) re-verified via resolveInstallationOrg before any write; claimInstallationSync's WHERE clause still includes eq(orgId, key.orgId). Independently re-read the current file content to confirm this is unchanged from round 1's PASS.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts",
+        "services/core/src/db/githubInstallationSyncStore.ts"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01..CORE-06 run in every mode per .sdd/stages/security.md).",
+      "rationale": "Mandatory core check, run in every mode. CORE-02 as literally scoped (Graph Query Service node-level RBAC) is untouched by W7-01 end to end -- reconfirmed no graph traversal, node-level filtering, or client graphology code appears anywhere in round 3's diff (2 non-test files + 3 test files, all under services/core/src/{db,services}). The destructive-sweep ADMIN-authorization question (this run's actual remediation target) is assessed under ING-04 below, matching round 1's own scoping note.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts",
+        "services/core/src/db/githubInstallationSyncStore.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01..CORE-06 run in every mode per .sdd/stages/security.md).",
+      "rationale": "Mandatory core check, run in every mode. The only console.log call site touched by this ticket (githubInstallationDiscoveryService.ts's runRevokeSweep) is unchanged by round 3's diff -- re-read directly this round, still a fixed structured line (outcome/revoked/installation_id/org_id only, no repository name, provider message, or token).",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts",
+        "services/core/src/db/githubInstallationSyncStore.ts"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01..CORE-06 run in every mode per .sdd/stages/security.md).",
+      "rationale": "Mandatory core check, run in every mode. Round 3's diff does not touch the webhook receiver, worker dispatch-by-envelope.type branch, or queue producer set. Explicitly re-verified this round as part of the task's request to recheck 'webhook-to-queue trust': confirmed exactly 2 producers of github-sync envelopes still exist (installationDiscoveryDispatcher.ts and githubWebhookService.ts) and the webhook receiver's envelope.type remains a closed RepoEventType enum that structurally cannot become github.installation_discovery.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts",
+        "services/core/src/db/githubInstallationSyncStore.ts"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01..CORE-06 run in every mode per .sdd/stages/security.md).",
+      "rationale": "Mandatory core check, run in every mode. No scratch-clone or parsing code exists in this ticket's scope (unaffected by round 3's diff, confirmed unchanged surface).",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts",
+        "services/core/src/db/githubInstallationSyncStore.ts"
+      ]
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01..CORE-06 run in every mode per .sdd/stages/security.md).",
+      "rationale": "Mandatory core check, run in every mode. Round 3's only SQL-adjacent change is claimInstallationSync's .returning() clause gaining one drizzle-builder column (reason: githubInstallationSync.reason) -- still parameterized query-builder code, no string concatenation introduced.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts",
+        "services/core/src/db/githubInstallationSyncStore.ts"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected this run. REMEDIATION_RECHECK's scope is the failing observation's control (queue/envelope trust) and its siblings within that same brief; this ticket has no LLM/RAG surface (unaffected by round 3's diff, confirmed via file-touch check below). Round 1's FIRST_OBSERVATION baseline for this surface (not selected there either) remains the current record.",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected this run (narrower REMEDIATION_RECHECK scope). No model-provider egress/adapter/credential code is touched by round 3's diff (unchanged since round 1, where this surface WAS selected only via the registry's broad services/core/** path-routing floor and found NOT_APPLICABLE throughout -- that record remains current).",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected this run. No MCP transport/key code exists in this ticket's scope at any round (unaffected, unchanged since round 1).",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected this run. No WebSocket/realtime code exists in this ticket's scope at any round (unaffected, unchanged since round 1).",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Selected: this is the brief whose ING-04 checklist item produced round 1's sole BLOCKED finding (FND-cf76b24c5057). Per .sdd/stages/security.md's REMEDIATION_RECHECK instruction ('rerun the prior failing observation, bypass variants, and sibling paths using the same underlying control') and progress-audit-orchestrator.md's identical wording, this run reruns the full ING-01..ING-14 checklist against the current code, not just ING-04, since all 14 checks probe the same envelope/queue-trust surface (github_installation_sync outbox + discovery worker) the fix touched.",
+      "rationale": "Selected: rerunning this brief's full checklist as the sibling-path set for round 1's sole finding (FND-cf76b24c5057), per this run's REMEDIATION_RECHECK scope.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected this run (narrower REMEDIATION_RECHECK scope). Round 3's diff does not touch apps/web or the repository-catalog client parsing path; round 1's PASS record for this surface (WEB-06 admin-gated sync fields, etc.) is unaffected by a fix confined to services/core/src/{db,services}/*.ts.",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected as a full brief this run (narrower REMEDIATION_RECHECK scope -- selecting it would additionally require SEC-01..SEC-14 per this script's validator, most of which are unrelated to the fixed control). The task explicitly asked this run to re-verify 'audit trail' specifically; that narrower re-verification is performed directly in this report's prose (see 'Adjacent properties re-verified' section) against the unchanged requestedBySubject/recordSweepOutcome/GRANT-no-DELETE code round 1 already found clean (SEC-09/SEC-10/SEC-11), rather than as new formal SEC-* observations this round.",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "Not selected this run. No dependency/build/infrastructure change exists in this ticket's scope at any round (unaffected, unchanged since round 1).",
+      "rationale": "Not selected: no code under this surface's registry trigger paths is touched by round 3's diff; confirmed via independent mtime/content check against the confined 2-file + 3-test-file change set review.md and changes.md both declare for round 3.",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "security-stage-procedure",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "a6b52b93f7233cf685cd28e9c84902364723d181f10db6a094f02299c6759db8"
+    }
+  ],
+  "limitations": [
+    "No live Postgres or Redis was reachable in this session (unchanged from round 1). Migration 0020's RLS/grant boundary and the dispatcher's live claim/lease SQL were not re-exercised dynamically this round; round 1's STATIC verification of that boundary is unaffected by round 3's diff (neither the migration file nor the outbox/dispatcher files were touched -- confirmed via mtime: all three carry an 11:0x-11:2x local timestamp from round 1/2, versus 19:2x-19:3x for round 3's two changed files).",
+    "This run selects a narrower surface set than round 1's full PR_DELTA sweep, per REMEDIATION_RECHECK's mode-specific scope (the prior failing observation, its proof case, bypass variants, and sibling paths on the same control). model-provider/web-api-client/secrets-audit-data-lifecycle/llm-rag/mcp/websocket-realtime/supply-chain-infrastructure are not reselected; their round-1 records remain the current, valid audit trail for those surfaces since round 3's diff does not touch any code under their registry trigger paths.",
+    "Round 1's own ING-04 observation's `finding.remediation_reference` text refers to a 'CORE-02's row above (FND-7e03a274a5dc)' that does not correspond to any observation actually present in that run's results.json (CORE-02 there is PASS, not FAIL, and no FND-7e03a274a5dc appears anywhere in that file) -- an apparent drafting leftover in the baseline's own immutable record, noted here for completeness since it surfaced while cross-referencing baseline observations, not a defect in this run's own artifacts and not something this read-only stage can or should edit in an immutable prior run."
+  ]
+}
