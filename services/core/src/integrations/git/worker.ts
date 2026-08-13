@@ -1,9 +1,20 @@
 import type { Worker } from 'bullmq';
 import { createWorker } from '../../queue/bullmq';
+import type { GithubInstallationDiscoveryPayload } from '../../queue/bullmq';
+import type { MessageEnvelope } from '../../queue/envelope';
 import { createOwnershipGraphStore } from './graphOwnershipStore';
 import { loadGitProviderRegistry } from './providerCatalog';
 import { PostgresGitRepositoryResolver } from './repositoryResolver';
 import { syncGitMetadata, type GitSyncDependencies } from '../../services/gitSyncService';
+import type { ProviderRepoEvent } from './types';
+import { runInstallationDiscovery } from '../../services/githubInstallationDiscoveryService';
+
+// Duplicated as a literal (rather than importing GITHUB_INSTALLATION_DISCOVERY_EVENT_TYPE from
+// '../../queue/bullmq') so this routing check keeps working under a test double that mocks that
+// entire module (see worker.discoveryRouting.test.ts, which replaces '../../queue/bullmq' with
+// only `{ createWorker }`). Must stay in sync with queue/bullmq.ts's
+// GITHUB_INSTALLATION_DISCOVERY_EVENT_TYPE export.
+const GITHUB_INSTALLATION_DISCOVERY_EVENT_TYPE = 'github.installation_discovery';
 
 export interface GitSyncWorkerRuntime {
   worker: Worker;
@@ -29,7 +40,16 @@ export async function startGitSyncWorker(
   const worker = await createWorker(
     'github-sync',
     async (envelope) => {
-      const result = await syncGitMetadata(envelope, resolved);
+      // AC-9: discovery runs as job type github.installation_discovery on this SAME
+      // existing queue; every other (repo.*) envelope routes to syncGitMetadata exactly
+      // as before. QUEUE_NAMES/worker concurrency are unchanged.
+      if (envelope.type === GITHUB_INSTALLATION_DISCOVERY_EVENT_TYPE) {
+        await runInstallationDiscovery(
+          envelope as MessageEnvelope<GithubInstallationDiscoveryPayload>,
+        );
+        return;
+      }
+      const result = await syncGitMetadata(envelope as MessageEnvelope<ProviderRepoEvent>, resolved);
       // GAP-1b: the result is consumed, not discarded — an 'unmatched' write (edits
       // resolved but the graph matched zero File nodes) is distinguishable from a
       // legitimate 'ignored' event in the worker's own logs, not just the service

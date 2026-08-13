@@ -213,7 +213,7 @@ describe('createDefaultGithubAppClient', () => {
     await expect(client.mintInstallationToken(1)).resolves.toBe('ghs_faketoken');
   });
 
-  it('listInstallationRepos mints a token then paginates /installation/repositories', async () => {
+  it('listInstallationReposPage mints a token then fetches exactly one page', async () => {
     const calls: string[] = [];
     vi.stubGlobal(
       'fetch',
@@ -225,38 +225,31 @@ describe('createDefaultGithubAppClient', () => {
         if (url.includes('/git/ref/')) {
           return Response.json({ object: { type: 'commit', sha: SHA_A } });
         }
-        // NOTE: match on the actual `page` query param, not `url.includes('page=1')` —
-        // `per_page=100` itself contains the substring "page=1", which would
-        // spuriously match every page and pagination would never terminate.
-        const page = new URL(url).searchParams.get('page');
-        if (page === '1') {
-          return Response.json({
-            repositories: Array.from({ length: 100 }, (_, i) => ({
-              id: i,
-              full_name: `acme/repo-${i}`,
-              default_branch: 'main',
-            })),
-          });
-        }
         return Response.json({
-          repositories: [{ id: 999, full_name: 'acme/repo-999', default_branch: 'main' }],
+          repositories: Array.from({ length: 100 }, (_, i) => ({
+            id: i,
+            full_name: `acme/repo-${i}`,
+            default_branch: 'main',
+          })),
         });
       }),
     );
     const client = createDefaultGithubAppClient();
-    const repos = await client.listInstallationRepos(1);
-    expect(repos).toHaveLength(101);
-    expect(repos[0]).toEqual({
+    const page = await client.listInstallationReposPage(1, 1);
+    expect(page.repos).toHaveLength(100);
+    expect(page.hasNextPage).toBe(true);
+    expect(page.repos[0]).toEqual({
       provider_repo_id: '0',
       full_name: 'acme/repo-0',
       default_branch: 'main',
       default_branch_head_sha: SHA_A,
     });
-    expect(calls.some((u) => new URL(u).searchParams.get('page') === '2')).toBe(true);
-    expect(calls).toHaveLength(104); // mint + 2 list pages + one authenticated ref lookup per repo
+    const listCalls = calls.filter((url) => url.includes('/installation/repositories'));
+    expect(listCalls).toHaveLength(1); // no accumulation loop
+    expect(calls).toHaveLength(102); // mint + 1 list page + one authenticated ref lookup per repo
   });
 
-  it('respects a callback limit before resolving branch HEADs', async () => {
+  it('honours a custom perPage before resolving branch HEADs', async () => {
     const calls: string[] = [];
     vi.stubGlobal(
       'fetch',
@@ -276,9 +269,10 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
 
-    const repos = await createDefaultGithubAppClient().listInstallationRepos(1, 25);
+    const page = await createDefaultGithubAppClient().listInstallationReposPage(1, 1, 25);
 
-    expect(repos).toHaveLength(25);
+    expect(page.repos).toHaveLength(25);
+    expect(page.hasNextPage).toBe(true); // full page for the requested perPage
     const listCalls = calls.filter((url) => url.includes('/installation/repositories'));
     expect(listCalls).toHaveLength(1);
     expect(new URL(listCalls[0]).searchParams.get('per_page')).toBe('25');
@@ -310,9 +304,8 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
 
-    await expect(createDefaultGithubAppClient().listInstallationRepos(1)).resolves.toHaveLength(
-      12,
-    );
+    const page = await createDefaultGithubAppClient().listInstallationReposPage(1, 1);
+    expect(page.repos).toHaveLength(12);
 
     expect(peakHeadLookups).toBe(5);
   });
@@ -347,9 +340,9 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
 
-    const discovery = createDefaultGithubAppClient().listInstallationRepos(1);
+    const discovery = createDefaultGithubAppClient().listInstallationReposPage(1, 1);
     const rejection = expect(discovery).rejects.toThrow(
-      'GitHub repository discovery exceeded its overall deadline.',
+      'GitHub repository page discovery exceeded its deadline.',
     );
     await branchStarted;
     expect(branchSignal?.aborted).toBe(false);
@@ -362,7 +355,7 @@ describe('createDefaultGithubAppClient', () => {
     expect(branchSignal?.aborted).toBe(true);
   });
 
-  it('listInstallationRepos maps a null default_branch through unchanged (empty repo)', async () => {
+  it('listInstallationReposPage maps a null default_branch through unchanged (empty repo)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
@@ -373,8 +366,8 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
     const client = createDefaultGithubAppClient();
-    const repos = await client.listInstallationRepos(1);
-    expect(repos).toEqual([
+    const page = await client.listInstallationReposPage(1, 1);
+    expect(page.repos).toEqual([
       {
         provider_repo_id: '1',
         full_name: 'acme/empty',
@@ -396,7 +389,8 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
 
-    await expect(createDefaultGithubAppClient().listInstallationRepos(1)).resolves.toEqual([
+    const page = await createDefaultGithubAppClient().listInstallationReposPage(1, 1);
+    expect(page.repos).toEqual([
       {
         provider_repo_id: '1',
         full_name: 'acme/empty',
@@ -424,7 +418,7 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
 
-    const [repo] = await createDefaultGithubAppClient().listInstallationRepos(1);
+    const { repos: [repo] } = await createDefaultGithubAppClient().listInstallationReposPage(1, 1);
     const refCall = calls.find(({ url }) => url.includes('/git/ref/'));
 
     expect(refCall?.url).toContain('/repos/acme/widgets/git/ref/heads/feature/demo');
@@ -446,12 +440,12 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
 
-    await expect(createDefaultGithubAppClient().listInstallationRepos(1)).rejects.toBeInstanceOf(
-      GithubAppApiError,
-    );
+    await expect(
+      createDefaultGithubAppClient().listInstallationReposPage(1, 1),
+    ).rejects.toBeInstanceOf(GithubAppApiError);
   });
 
-  it('listInstallationRepos wraps a repo-list failure (after a successful mint) as GithubAppApiError', async () => {
+  it('listInstallationReposPage wraps a repo-list failure (after a successful mint) as GithubAppApiError', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
@@ -460,7 +454,7 @@ describe('createDefaultGithubAppClient', () => {
       }),
     );
     const client = createDefaultGithubAppClient();
-    await expect(client.listInstallationRepos(1)).rejects.toBeInstanceOf(GithubAppApiError);
+    await expect(client.listInstallationReposPage(1, 1)).rejects.toBeInstanceOf(GithubAppApiError);
   });
 
   describe('getInstallationRepo (W2-09)', () => {

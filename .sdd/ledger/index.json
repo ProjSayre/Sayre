@@ -2017,6 +2017,22 @@
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
+  "apps/web/app/lib/repositoryCatalog.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "apps/web/app/lib/repositoryCatalogSync.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
   "apps/web/app/mock/README.md": [
     {
       "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
@@ -2069,6 +2085,14 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/mock/fixtures.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/mock/page.tsx": [
@@ -2163,6 +2187,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/workspace/components/GlobalStates.tsx": [
@@ -2183,6 +2213,14 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/components/ImportingRepositoriesState.test.tsx": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/workspace/components/StatusBanner.tsx": [
@@ -2325,6 +2363,14 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/dataSource.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/workspace/drawer/AgentSkillModule.tsx": [
@@ -3297,6 +3343,20 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "apps/web/app/workspace/state/sessionSync.test.tsx": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/workspace/state/store.tsx": [
@@ -3417,6 +3477,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/workspace/views/LegacyWorkspaceView.tsx": [
@@ -3437,6 +3503,12 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "apps/web/app/workspace/views/OnboardingWorkspaceView.tsx": [
@@ -4339,6 +4411,14 @@
       "regate": {
         "testerRan": true
       }
+    }
+  ],
+  "docs/product/Pipeline-Efficiency-Plan.md": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "docs/product/SAYRE_FRONTEND_SPEC.md": [
@@ -5423,6 +5503,22 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  "services/core/drizzle/0020_w7_01_github_installation_sync.sql": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/drizzle/meta/_journal.json": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
   "services/core/package.json": [
     {
       "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
@@ -5445,6 +5541,78 @@
       }
     }
   ],
+  "services/core/src/db/githubAppInstallWrites.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/db/githubInstallationDiscoveryOutbox.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/db/githubInstallationSync.rls.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/db/githubInstallationSyncStore.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/db/rls_acceptance.tester.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/db/schema.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/github/__fixtures__/largeInstallation.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/github/appClient.page.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/github/appClient.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
   "services/core/src/github/appClient.ts": [
     {
       "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
@@ -5456,6 +5624,12 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "services/core/src/github/repoFullName.test.ts": [
@@ -5538,6 +5712,22 @@
           "spot-check"
         ]
       }
+    }
+  ],
+  "services/core/src/index.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/indexDiscoveryWiring.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "services/core/src/integrations/git/__fixtures__/fakehubProvider.ts": [
@@ -5839,6 +6029,14 @@
       }
     }
   ],
+  "services/core/src/integrations/git/worker.discoveryRouting.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
   "services/core/src/integrations/git/worker.test.ts": [
     {
       "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
@@ -5863,6 +6061,12 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "services/core/src/mcp/gateway.ts": [
@@ -6008,6 +6212,36 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/routes/githubInstallationReconcile.discoveryStatus.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/routes/githubInstallationReconcile.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/routes/githubInstallationReconcile.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "services/core/src/routes/githubWebhook.bodyCap.gapfill.test.ts": [
@@ -6113,6 +6347,22 @@
       }
     }
   ],
+  "services/core/src/security/assertInstallationDiscoveryOutboxReady.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/security/assertInstallationDiscoveryOutboxReady.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
   "services/core/src/services/gitSyncService.test.ts": [
     {
       "runId": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
@@ -6137,6 +6387,94 @@
           "base"
         ]
       }
+    }
+  ],
+  "services/core/src/services/githubAppInstallService.discoveryCallback.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubAppInstallService.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubAppInstallService.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationDiscoveryEndToEnd.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationDiscoveryService.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationDiscoveryService.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationReconcileService.discoveryQueue.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationReconcileService.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationReconcileService.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationRepositoriesTraceThrough.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "services/core/src/services/githubWebhookService.gapfill.test.ts": [
@@ -6214,6 +6552,62 @@
           "base"
         ]
       }
+    }
+  ],
+  "services/core/src/services/installationDiscoveryDispatcher.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/installationDiscoveryDispatcher.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/installationDiscoveryWake.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/repositoryCatalogService.sync.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/repositoryCatalogService.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/repositoryCatalogService.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    }
+  ],
+  "services/core/src/services/w701StructuralRemovals.test.ts": [
+    {
+      "runId": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+      "ticket": "W7-01",
+      "date": "2026-08-12",
+      "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
   "services/core/src/telemetry/gitSyncMetrics.ts": [

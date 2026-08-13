@@ -1,0 +1,196 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "services/core/src/github/appClient.page.test.ts",
+      "sha256": "d100dfcff6c28ee14e31673bd3eaf53aa4ed4d3170a95b5a5cc343591b7e284e",
+      "specIds": [
+        "AC-3",
+        "EC-12",
+        "EC-13",
+        "EC-15"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/w701StructuralRemovals.test.ts",
+      "sha256": "7372783f82bc2b34b2f9d8c4162963d987c1fdfb9ab89ffe6b7fd546c37918d0",
+      "specIds": [
+        "AC-2",
+        "AC-19"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubAppInstallService.discoveryCallback.test.ts",
+      "sha256": "470fc991043806cf09d106397e5b7eabfcb49ffc6c8285d8d75beb3ec79a2bd2",
+      "specIds": [
+        "AC-1",
+        "EC-7",
+        "EC-8"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubInstallationReconcileService.discoveryQueue.test.ts",
+      "sha256": "f38450fd93bee865c5c9e781e656a5fa350800dd2d0d65b739acf012b366663f",
+      "specIds": [
+        "AC-10"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/routes/githubInstallationReconcile.discoveryStatus.test.ts",
+      "sha256": "d3e956573db8edceb273dbe89f810002b438eb2e943eed9ede9cfcd003cd8857",
+      "specIds": [
+        "AC-10",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubInstallationDiscoveryService.test.ts",
+      "sha256": "9123ba7a4efd5eaa3f8ae6a2902f030770c3d0a564f39df8a10f606beb8854c4",
+      "specIds": [
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-24",
+        "AC-25",
+        "AC-26",
+        "AC-27",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-10",
+        "EC-11",
+        "EC-13",
+        "EC-14",
+        "EC-19",
+        "EC-30",
+        "EC-31",
+        "EC-32",
+        "EC-33",
+        "EC-34",
+        "EC-35"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/installationDiscoveryDispatcher.test.ts",
+      "sha256": "8b0bf69f5ea71171beb3544a8890ff5dbd5fc4a7c1b8c51448f13dc4c7d5980f",
+      "specIds": [
+        "AC-19",
+        "AC-20",
+        "AC-21",
+        "AC-23",
+        "EC-9",
+        "EC-23",
+        "EC-24",
+        "EC-26",
+        "EC-27",
+        "EC-28"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/security/assertInstallationDiscoveryOutboxReady.test.ts",
+      "sha256": "0def5eeeb6b991dbde34a028b4383fae0b59a16c48e1f367a4f9ce6ac3bc860e",
+      "specIds": [
+        "AC-22"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/integrations/git/worker.discoveryRouting.test.ts",
+      "sha256": "68c733fa5b18790b96270497cf8e6ae14a49d03375d95a85a6f61b38f972616a",
+      "specIds": [
+        "AC-9"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts",
+      "sha256": "495d2de414a00e3b587bfc8c82aa761d7ca6122b10ecf2068fdd3b0a26f60fe5",
+      "specIds": [
+        "AC-28",
+        "AC-29",
+        "EC-36",
+        "EC-37",
+        "EC-38"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/services/repositoryCatalogService.sync.test.ts",
+      "sha256": "0559296f3065da15de2edf75c918e0af85927a88b88e1d5995ef66844facf967",
+      "specIds": [
+        "AC-11",
+        "AC-12",
+        "EC-16",
+        "EC-18"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "services/core/src/db/githubInstallationSync.rls.test.ts",
+      "sha256": "5d9fc44cf15cf6a414d6b7a0a76cfcdc945c344a42d01a5002942b9b83c6666b",
+      "specIds": [
+        "AC-17",
+        "AC-18",
+        "EC-20",
+        "EC-25",
+        "EC-29"
+      ],
+      "classification": "RED-DEFERRED"
+    },
+    {
+      "path": "services/core/src/indexDiscoveryWiring.test.ts",
+      "sha256": "94e3d7f0f6ece3776f5281abbd0c6b2f446e7bd99a05fb6d6877a9b4b3c3ae73",
+      "specIds": [
+        "AC-22"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/lib/repositoryCatalogSync.test.ts",
+      "sha256": "94abdc7574b74d8ded2a8133f9962c81c6ad09988645752ce558006559ef9f3a",
+      "specIds": [
+        "EC-21"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/components/ImportingRepositoriesState.test.tsx",
+      "sha256": "99b815291dda1fb949192881fddf85152f09be4bf30e5bb1d8f2339490e163c7",
+      "specIds": [
+        "AC-16"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "apps/web/app/workspace/state/sessionSync.test.tsx",
+      "sha256": "1d99a9b3e8fba66fc1bb59a6a95c33d360e0a1517cb27a3ceb27be02e433b61b",
+      "specIds": [
+        "AC-16",
+        "EC-22"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "df89becc063cc372b1b68555acff8556e1a676cb260acadc55dcca2ef1b1aed5",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": true,
+    "writtenAt": "2026-08-12T14:51:00.308Z"
+  }
+}

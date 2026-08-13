@@ -141,6 +141,13 @@
       "when": 1785384300000,
       "tag": "0019_w0_05_tenant_consistent_repo_fks",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785384400000,
+      "tag": "0020_w7_01_github_installation_sync",
+      "breakpoints": true
     }
   ]
 }

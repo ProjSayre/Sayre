@@ -52,8 +52,22 @@ function dependencies(scope: ReadScope) {
   const permissions: PermissionStore = {
     getReadScope: vi.fn(async () => scope),
   };
-  return { store, permissions };
+  // W7-01: no sync rows for this pre-existing (non-sync-focused) suite — see
+  // repositoryCatalogService.sync.test.ts for the AC-11/AC-12 sync-summary coverage.
+  const syncRows = vi.fn(async () => []);
+  const now = vi.fn(() => NOW);
+  return { store, permissions, syncRows, now };
 }
+
+// MEMBER (not admin/owner) -> every admin-gated sync field is null, per AC-12/EC-16.
+const IDLE_SYNC = {
+  status: 'idle' as const,
+  updatedAt: null,
+  discoveredRepositories: null,
+  registeredRepositories: null,
+  revokedRepositories: null,
+  sweepOutcome: null,
+};
 
 describe('repository catalog service', () => {
   it('uses only the server-derived org and returns the authorized default ref', async () => {
@@ -80,6 +94,7 @@ describe('repository catalog service', () => {
           readiness: 'graph_ready',
         },
       ],
+      sync: IDLE_SYNC,
     });
   });
 
@@ -118,7 +133,12 @@ describe('repository catalog service', () => {
       })),
     };
 
-    const result = await getRepositoryCatalog(MEMBER, { store, permissions });
+    const result = await getRepositoryCatalog(MEMBER, {
+      store,
+      permissions,
+      syncRows: vi.fn(async () => []),
+      now: vi.fn(() => NOW),
+    });
 
     expect(result.repositories[0]).toMatchObject({
       currentRef: null,

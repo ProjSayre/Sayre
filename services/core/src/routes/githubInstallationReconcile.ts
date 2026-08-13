@@ -18,6 +18,7 @@ githubInstallationReconcileRouter.post(
   authenticate(),
   authorize('admin'),
   asyncHandler(async (req, res) => {
-    res.json(await reconcileInstallationRepositories(requireAuthContext(req)));
+    // W7-01 (AC-10): reconcile is now async/row-write-only — 202 Accepted, not 200.
+    res.status(202).json(await reconcileInstallationRepositories(requireAuthContext(req)));
   }),
 );

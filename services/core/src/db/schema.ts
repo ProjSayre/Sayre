@@ -123,6 +123,13 @@ export const repositories = pgTable(
     // (COALESCE-idempotent on redelivery). Re-adding a repo clears this
     // (registerRepository).
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    // W7-01 (OQ-4) sweep markers, additive via migration 0020. Set only by
+    // discovery (registerRepository's optional discoveryRunId); the
+    // `installation_repositories` `added` webhook path omits it, which leaves
+    // the marker untouched rather than clearing it. Used by
+    // listRevokeSweepCandidates to exclude rows touched by/after the current run.
+    lastDiscoveryRunId: uuid("last_discovery_run_id"),
+    lastDiscoveryAt: timestamp("last_discovery_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [
@@ -412,6 +419,67 @@ export const githubInitialParseOutbox = pgTable(
       table.idempotencyKey,
     ),
     index("github_initial_parse_outbox_due_idx").on(
+      table.nextAttemptAt,
+      table.createdAt,
+    ),
+  ],
+);
+
+/**
+ * W7-01: durable, org-scoped GitHub installation discovery run row. Doubles as the
+ * transactional outbox for the paginated discovery job (OQ-3, mirrors
+ * `githubInitialParseOutbox`'s dispatcher-boundary idiom): the request path (install
+ * callback / manual reconcile) only ever commits a row here; a narrowly privileged
+ * SECURITY DEFINER dispatcher (migration 0020) leases due rows and calls BullMQ on the
+ * runtime's behalf. `sayre_app` owns RUN state (status/reason/cursor/counts/sweep/subject);
+ * it is granted no access to the dispatch/lease bookkeeping columns, which belong solely to
+ * the dispatcher role (see migration 0020's grants).
+ */
+export const githubInstallationSync = pgTable(
+  "github_installation_sync",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    installationId: bigint("installation_id", { mode: "number" }).notNull(),
+    runId: uuid("run_id").notNull().default(sql`gen_random_uuid()`),
+    status: text("status").notNull().default("pending"),
+    reason: text("reason").notNull(),
+    nextPage: integer("next_page").notNull().default(1),
+    totalCount: integer("total_count"),
+    discoveredCount: integer("discovered_count").notNull().default(0),
+    registeredCount: integer("registered_count").notNull().default(0),
+    enqueuedCount: integer("enqueued_count").notNull().default(0),
+    revokedCount: integer("revoked_count").notNull().default(0),
+    sweepOutcome: text("sweep_outcome").notNull().default("not_applicable"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastErrorCode: text("last_error_code"),
+    requestedBySubjectType: text("requested_by_subject_type"),
+    requestedBySubjectId: text("requested_by_subject_id"),
+    // OQ-3 dispatch bookkeeping (mirrors github_initial_parse_outbox's delivery columns).
+    // NOT granted to sayre_app — see migration 0020.
+    dispatchAttemptCount: integer("dispatch_attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedRunId: uuid("completed_run_id"),
+    ...timestamps,
+  },
+  (table) => [
+    unique("github_installation_sync_org_installation_unique").on(
+      table.orgId,
+      table.installationId,
+    ),
+    index("github_installation_sync_org_status_idx").on(table.orgId, table.status),
+    index("github_installation_sync_dispatch_due_idx").on(
       table.nextAttemptAt,
       table.createdAt,
     ),
@@ -823,6 +891,8 @@ export type GithubAppInstallation = typeof githubAppInstallations.$inferSelect;
 export type NewGithubAppInstallation = typeof githubAppInstallations.$inferInsert;
 export type GithubInitialParseOutbox = typeof githubInitialParseOutbox.$inferSelect;
 export type NewGithubInitialParseOutbox = typeof githubInitialParseOutbox.$inferInsert;
+export type GithubInstallationSync = typeof githubInstallationSync.$inferSelect;
+export type NewGithubInstallationSync = typeof githubInstallationSync.$inferInsert;
 export type McpClientKey = typeof mcpClientKeys.$inferSelect;
 export type NewMcpClientKey = typeof mcpClientKeys.$inferInsert;
 export type ModelProviderConfig = typeof modelProviderConfigs.$inferSelect;

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useWorkspaceNavigation, useWorkspaceQueries, useWorkspaceSession } from '../state';
+import type { RepositoryImportSync } from '../types';
 
 function CanvasState({
   state,
@@ -51,6 +52,52 @@ export function NoRepositoryState({ reason }: { reason: 'none' | 'restricted' })
           Ask an administrator to grant access.
         </p>
       )}
+    </CanvasState>
+  );
+}
+
+/**
+ * W7-01 (AC-16): the partial-sync indicator. `variant: 'canvas'` replaces the misleading "No
+ * repository has been connected" canvas state while the very first page of a large installation
+ * is still landing (no repository is selectable yet); `variant: 'chip'` renders alongside the
+ * canvas once at least one repository IS selectable, so the indicator never blocks work that can
+ * already proceed. Deliberately reads no context — a plain presentational component so it can be
+ * driven entirely by the `sync` prop (including in isolation, outside any provider).
+ */
+export function ImportingRepositoriesState({
+  sync,
+  variant,
+}: {
+  sync: RepositoryImportSync;
+  variant: 'canvas' | 'chip';
+}) {
+  const label = sync.status === 'stalled' ? 'Import stalled' : 'Importing repositories';
+  const countLabel =
+    sync.discoveredRepositories !== null && sync.registeredRepositories !== null
+      ? `${sync.registeredRepositories} of ${sync.discoveredRepositories} repositories imported so far.`
+      : null;
+
+  if (variant === 'chip') {
+    return (
+      <span
+        className="mock-repository-import-chip"
+        data-repository-import={sync.status}
+        role="status"
+      >
+        {label}
+        {countLabel ? ` — ${countLabel}` : ''}
+      </span>
+    );
+  }
+
+  return (
+    <CanvasState state="importing-repositories" title={label}>
+      <p>
+        {sync.status === 'stalled'
+          ? 'The import has not made progress recently. It will resume automatically — nothing has been lost.'
+          : "We're still importing this organization's repositories. The list keeps filling in on its own — no action needed."}
+      </p>
+      {countLabel && <p>{countLabel}</p>}
     </CanvasState>
   );
 }

@@ -3,9 +3,13 @@ import { getConfig, getSecret } from '@sayre/config';
 import { assertRuntimeRoleRlsSafe } from './security/assertRuntimeRoleRlsSafe';
 import { assertInstallationResolverReady } from './security/assertInstallationResolverReady';
 import { assertInitialParseOutboxReady } from './security/assertInitialParseOutboxReady';
+import { assertInstallationDiscoveryOutboxReady } from './security/assertInstallationDiscoveryOutboxReady';
 import { getInitialParseOutboxDispatcher } from './services/initialParseOutboxDispatcher';
 import { setInitialParseOutboxWakeHandler } from './services/initialParseOutboxWake';
+import { getInstallationDiscoveryDispatcher } from './services/installationDiscoveryDispatcher';
+import { setInstallationDiscoveryWakeHandler } from './services/installationDiscoveryWake';
 import { closeSqsClient } from './queue/sqs';
+import { closeQueues } from './queue/bullmq';
 
 const portText = getConfig('CORE_PORT');
 const port = Number(portText);
@@ -21,10 +25,19 @@ async function main(): Promise<void> {
   await assertRuntimeRoleRlsSafe(runtimeDsn);
   await assertInstallationResolverReady(runtimeDsn);
   await assertInitialParseOutboxReady(runtimeDsn);
+  await assertInstallationDiscoveryOutboxReady(runtimeDsn);
 
   const outboxDispatcher = getInitialParseOutboxDispatcher();
   setInitialParseOutboxWakeHandler(() => outboxDispatcher.kick());
   outboxDispatcher.start();
+
+  // W7-01 (OQ-3): the discovery dispatcher is the only thing that calls BullMQ enqueue() for
+  // github.installation_discovery — start it and install its wake handler exactly as the
+  // initial-parse dispatcher above.
+  const discoveryDispatcher = getInstallationDiscoveryDispatcher();
+  setInstallationDiscoveryWakeHandler(() => discoveryDispatcher.kick());
+  discoveryDispatcher.start();
+
   const server = createApp().listen(port, () => console.log(`[core] listening on :${port}`));
 
   let shutdownPending: Promise<void> | null = null;
@@ -36,10 +49,13 @@ async function main(): Promise<void> {
         server.close((error) => (error ? reject(error) : resolve()));
       });
       // No callback can append more work now. Finish the bounded active batch,
-      // then destroy the shared SQS client before exiting.
+      // then destroy the shared SQS client and BullMQ queues before exiting.
       setInitialParseOutboxWakeHandler(null);
       await outboxDispatcher.stop();
+      setInstallationDiscoveryWakeHandler(null);
+      await discoveryDispatcher.stop();
       await closeSqsClient();
+      await closeQueues();
     })();
     void shutdownPending.then(
       () => process.exit(0),

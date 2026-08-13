@@ -1,0 +1,283 @@
+{
+  "ticket": "W7-01 — GitHub paginated reconciliation (removes the 25-repo cap)",
+  "goal": "Remove the hard 25-repository ceiling from the GitHub App install callback and the manual reconcile endpoint by moving repository discovery off the request path onto a paginated, resumable, tenant-scoped background job whose dispatch state lives in Postgres (a second transactional outbox alongside migration 0012's), surface the resulting in-progress state to the workspace canvas so a large installation reads as \"partially imported\" rather than \"empty\" or \"complete at 25\", and let an admin-triggered reconcile close the loop in the destructive direction by revoking repositories a fully-observed GitHub listing no longer reports.",
+  "lane": null,
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "handleGithubAppCallback performs no repository listing and no queue call: it verifies state, authorizes the installation, and in one withOrgContext transaction writes the installation row plus a pending github_installation_sync row (reason: 'app_install'), then kicks the discovery dispatcher after commit and returns { redirectTo, discovery: 'queued' }. No GitHub repo-list call and no BullMQ enqueue() happen on the request path."
+    },
+    {
+      "id": "AC-2",
+      "text": "The constants MAX_REPOS_PER_CALLBACK (25) and MAX_RECONCILE_REPOS (25), the allRepos.slice(0, …) second cap, the truncated result flag, and GithubAppClient.listInstallationRepos (with its maxRepos parameter) no longer exist anywhere in the repository."
+    },
+    {
+      "id": "AC-3",
+      "text": "listInstallationReposPage(installationId, page, perPage?) fetches exactly one page (GET /installation/repositories?per_page=<perPage>&page=<page>, default perPage 100) and returns { repos, page, hasNextPage, totalCount }, where hasNextPage is true iff the page came back full."
+    },
+    {
+      "id": "AC-4",
+      "text": "For a 120-repo fixture installation, discovery issues exactly 2 page requests (page 1 full, page 2 with 20) and yields each of the 120 repositories exactly once."
+    },
+    {
+      "id": "AC-5",
+      "text": "Discovery registers every discovered repository via registerRepository and enqueues exactly one repo.initial_parse outbox row per repository that has both a default branch and a HEAD sha, built by the unchanged buildInitialParseEnvelope; the 120-repo fixture ends with status = 'complete' and counts matching the fixture."
+    },
+    {
+      "id": "AC-6",
+      "text": "Each page's registrations, outbox rows, and cursor advance commit in a single transaction before the next page is fetched, and no network call is made while a transaction is open."
+    },
+    {
+      "id": "AC-7",
+      "text": "A run interrupted after page 1 resumes at page 2 on the next attempt: page 1 is not re-fetched, and no duplicate repository rows or outbox rows are produced."
+    },
+    {
+      "id": "AC-8",
+      "text": "For the >=100-repo fixture, every repository is registered and its parse job enqueued within INSTALLATION_DISCOVERY_TARGET_MS (60000 ms) of the install callback returning."
+    },
+    {
+      "id": "AC-9",
+      "text": "Discovery runs as job type github.installation_discovery on the existing github-sync queue; QUEUE_NAMES is unchanged, and the git-sync worker still routes every repo.* envelope to syncGitMetadata with identical behaviour."
+    },
+    {
+      "id": "AC-10",
+      "text": "reconcileInstallationRepositories performs no inline repo listing, registration or revocation: it records one durable manual_reconcile run row per active installation (carrying the ctx-derived subject), kicks the dispatcher, and returns { status: 'queued', installations, queued }; POST /integrations/github/reconcile responds 202 and remains authenticate() + authorize('admin') gated."
+    },
+    {
+      "id": "AC-11",
+      "text": "GET /repositories returns a sync object { status, updatedAt, discoveredRepositories, registeredRepositories, revokedRepositories, sweepOutcome } derived only from the caller's own org rows, with status resolving in the documented precedence (importing -> stalled -> failed -> idle)."
+    },
+    {
+      "id": "AC-12",
+      "text": "sync.discoveredRepositories, sync.registeredRepositories, sync.revokedRepositories and sync.sweepOutcome are populated for an admin/owner caller and null for a member caller, while sync.status is present for both."
+    },
+    {
+      "id": "AC-13",
+      "text": "Tenant isolation: discovery takes org_id only from the envelope (written server-side from the leased row, never from client input), re-verifies it against resolveInstallationOrg before any write, and performs every tenant read/write inside withOrgContext; github_installation_sync has RLS enabled and forced with the standard org_isolation policy, and sayre_app holds no DELETE on it."
+    },
+    {
+      "id": "AC-14",
+      "text": "No credential or provider text escapes: the installation token is minted only through GithubAppClient, and neither the sync row, the queue payload, nor any log line contains a token, private key, GitHub response body, or provider error message — last_error_code is restricted to provider_unavailable | page_limit_exceeded | internal_error by both the TypeScript type and a SQL CHECK constraint."
+    },
+    {
+      "id": "AC-15",
+      "text": "Page bookkeeping advances by compare-and-set on the stored cursor and run id: a second runner (or a replayed job) whose expected page or run id no longer matches stops immediately as superseded, and reprocessing the same page produces no duplicate repository rows, duplicate outbox rows, or double-counted progress."
+    },
+    {
+      "id": "AC-16",
+      "text": "The workspace shows a partial-sync indicator while sync.status is importing or stalled — as the canvas state when no repository is selectable yet, and as a chip alongside the canvas once repositories are listed — the catalog is re-polled while a sync is in flight, and both the indicator and the polling stop once status returns to idle."
+    },
+    {
+      "id": "AC-17",
+      "text": "Migration 0020_w7_01_github_installation_sync.sql creates the table with the FK to organizations, the (org_id, installation_id) unique constraint, the status/reason/error-code/sweep-outcome/subject/count CHECK constraints, the org_isolation RLS policy under ENABLE + FORCE, the set_updated_at trigger, and a sayre_app grant of SELECT/INSERT plus column-scoped UPDATE and no DELETE; schema.ts and drizzle/meta/_journal.json are updated to match."
+    },
+    {
+      "id": "AC-18",
+      "text": "The same migration establishes the dispatch boundary: the dispatch bookkeeping columns and the partial due index; the sayre_installation_discovery_dispatcher role created NOLOGIN/NOINHERIT/NOBYPASSRLS with no memberships (failing loudly if it pre-exists with unsafe attributes); column-scoped SELECT/UPDATE and dispatcher-only policies for that role, with no INSERT/DELETE and no access to counters, cursor, or requesting subject; three SECURITY DEFINER functions owned by it with pinned search_path and range-checked parameters, EXECUTE revoked from PUBLIC and granted to sayre_app; and the additive repositories.last_discovery_run_id / last_discovery_at columns (also added to rls_acceptance.tester.test.ts's column spec)."
+    },
+    {
+      "id": "AC-19",
+      "text": "Outbox-first dispatch: the only code that calls BullMQ enqueue() for github.installation_discovery is the dispatcher, acting on a row it holds a lease on. Both the install callback and reconcile commit their rows first and merely kick() afterwards, so dropping the kick entirely delays the job but never loses it."
+    },
+    {
+      "id": "AC-20",
+      "text": "Total Redis loss recovery, no human in the loop: given a running row whose cursor is at page k and whose BullMQ job has been destroyed, the dispatcher re-claims the row once next_attempt_at elapses, re-enqueues the same logical run (same run_id, same idempotency_key), and the run resumes at page k and reaches complete — with no duplicate repository rows, no duplicate repo.initial_parse outbox rows, and no admin reconcile required."
+    },
+    {
+      "id": "AC-21",
+      "text": "Dispatch failures are bounded and lossless: a failed enqueue() releases the lease with exponential backoff (row stays claimable, dispatch_attempt_count incremented), a process death after enqueue() but before the completion mark is recovered by lease expiry, and the resulting duplicate delivery is absorbed as superseded by the claim/CAS guards."
+    },
+    {
+      "id": "AC-22",
+      "text": "assertInstallationDiscoveryOutboxReady runs at startup alongside the existing gates and fails closed on a missing function, a widened ACL, an unsafe owner role, or sayre_app holding any read/write on the lease columns; index.ts starts the dispatcher, installs its wake handler, and on shutdown clears the handler, stop()s it, and closes the BullMQ queues."
+    },
+    {
+      "id": "AC-23",
+      "text": "Heartbeat: every committed page pushes next_attempt_at forward by INSTALLATION_DISCOVERY_REDISPATCH_SECONDS, so a run making progress is never redispatched concurrently, while a run that stops progressing becomes due again within that interval."
+    },
+    {
+      "id": "AC-24",
+      "text": "Destructive direction (the OQ-4 reversal of W2-09's OQ-5): when a manual_reconcile run finishes every page and reaches complete, every active GitHub repository in that org not reported by the observed listings is soft-revoked via markRepositoryRevoked in the same transaction as completion; revoked_count and sweep_outcome = 'applied' are recorded, and repository rows and graph history are retained."
+    },
+    {
+      "id": "AC-25",
+      "text": "Authorization: a sweep can only occur on a run whose stored reason is manual_reconcile — i.e. one created by the authenticate() + authorize('admin') endpoint. An app_install run never revokes anything even when it completes with repositories missing, no webhook path gains a revoke, and nothing about the sweep can be influenced by request input: the authorization decision is captured on the row at creation time and re-read from the row by the worker."
+    },
+    {
+      "id": "AC-26",
+      "text": "Audit trail: the run row records requested_by_subject_type/requested_by_subject_id (server-derived from AuthContext, null for app_install), revoked_count, sweep_outcome, completed_at and completed_run_id; each revoked repository keeps its row with revoked_at set; exactly one structured log line per sweep carries the outcome code and counts and no repository name or provider text; and an admin can read the outcome back through GET /repositories's sync."
+    },
+    {
+      "id": "AC-27",
+      "text": "Four independent false-positive guards, each of which revokes nothing and records its own outcome: (a) a run that fails, is cancelled, or is superseded never sweeps (not_applicable); (b) withheld_coverage when any active installation of the org has no completed run; (c) withheld_empty_result when the run discovered zero repositories while the org holds at least one active repository; (d) withheld_ratio when candidates exceed both MIN_SWEEP_RATIO_EXEMPT_ROWS and MAX_SWEEP_REVOKE_FRACTION of the org's active repositories."
+    },
+    {
+      "id": "AC-28",
+      "text": "Reversibility: a repository revoked by a sweep and later reported again by GitHub is re-activated (revoked_at cleared, marker restamped) by the next discovery run or installation_repositories added webhook, and is re-enqueued for parse when it has a HEAD."
+    },
+    {
+      "id": "AC-29",
+      "text": "Revoke call sites remain structurally enumerable: after this ticket exactly two code paths can move repositories.revoked_at — applyRemoved (the removed webhook) and the discovery sweep — and neither ReconcileDeps nor any other request-path service declares or reaches a markRepositoryRevoked dependency. W2-09's trace-through test is replaced by an equally structural test asserting exactly this, not deleted."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "Installation with zero accessible repositories: page 1 returns empty, hasNextPage false, sync ends complete with all counts 0, and no outbox row is written."
+    },
+    {
+      "id": "EC-2",
+      "text": "Installation with exactly 100 repositories (page-size boundary): page 1 is full so page 2 is fetched, returns empty, and the run completes with exactly 100 registered — no repo registered twice, none missed."
+    },
+    {
+      "id": "EC-3",
+      "text": "A repository with no default branch or no HEAD sha (empty repo): registered but not enqueued; it increments registered_count and not enqueued_count, matching today's callback behaviour."
+    },
+    {
+      "id": "EC-4",
+      "text": "GitHub returns 5xx / a network error on page 3 of 5: pages 1–2 stay committed, the row is marked failed with provider_unavailable and the cursor still at 3, the handler rethrows so BullMQ retries with backoff, and a later attempt resumes at page 3."
+    },
+    {
+      "id": "EC-5",
+      "text": "Installation suspended or uninstalled mid-discovery: the next loop iteration's active check fails, the row is marked cancelled, and no further repository or outbox row is written."
+    },
+    {
+      "id": "EC-6",
+      "text": "Envelope names an installation id that no longer resolves, or resolves to a different org than envelope.org_id: the run performs zero writes and ends cancelled (unknown_installation / org_mismatch)."
+    },
+    {
+      "id": "EC-7",
+      "text": "Callback with setup_action=request (GitHub sends no installation_id): no sync row, no dispatcher kick, result { discovery: 'skipped' }."
+    },
+    {
+      "id": "EC-8",
+      "text": "Callback for an installation already bound to a different org: still throws InstallationOrgConflictError before any sync row is written or any dispatch occurs."
+    },
+    {
+      "id": "EC-9",
+      "text": "The dispatcher's BullMQ enqueue() fails (Redis unreachable) after the pending row committed: the callback has already redirected successfully, the lease is released with bounded backoff, dispatch_attempt_count increments, the row stays pending and claimable, and the work is dispatched automatically once Redis returns — no manual reconcile is required (revision 2, OQ-3). Until then the catalog reports importing, then stalled past INSTALLATION_SYNC_STALL_MS."
+    },
+    {
+      "id": "EC-10",
+      "text": "Duplicate/redelivered discovery job after a run already completed: claimInstallationSync returns null (status complete), the run exits without re-fetching or re-writing anything."
+    },
+    {
+      "id": "EC-11",
+      "text": "GitHub reorders repositories between pages so one repo appears on two pages: the registerRepository upsert and the outbox's (org_id, idempotency_key) DO NOTHING make the second occurrence a no-op — no duplicate rows, and no duplicate repo.initial_parse delivery."
+    },
+    {
+      "id": "EC-12",
+      "text": "Malformed page response (missing/non-array repositories, malformed full_name, blank default branch, non-hex HEAD sha, oversized body, bad Content-Length): normalized to GithubAppApiError, the page is not committed, the cursor does not move, and the run fails with provider_unavailable."
+    },
+    {
+      "id": "EC-13",
+      "text": "total_count absent, negative, non-integer, or absurdly large: stored as null; progress reports registered counts only and never fabricates a denominator."
+    },
+    {
+      "id": "EC-14",
+      "text": "An installation that keeps reporting full pages past MAX_INSTALLATION_DISCOVERY_PAGES (100 pages ~ 10000 repositories): the loop stops at the ceiling, marks the row failed with page_limit_exceeded, and does not rethrow (a retry cannot help); the dispatcher's due predicate excludes that error code, so it is not redispatched either."
+    },
+    {
+      "id": "EC-15",
+      "text": "Invalid arguments to listInstallationReposPage (page < 1, non-integer, perPage 0, negative, > 100, non-integer): GithubAppApiError is thrown before any network call and before any token mint."
+    },
+    {
+      "id": "EC-16",
+      "text": "Member (non-admin) caller of GET /repositories: sync.status and sync.updatedAt are present, every admin-gated field is null, and the payload leaks no installation id, account login, or name of a repository the member cannot read."
+    },
+    {
+      "id": "EC-17",
+      "text": "Unauthenticated or member caller of POST /integrations/github/reconcile: 401 / 403 respectively (unchanged), and no sync row is written, no dispatcher kick occurs, and — because no manual_reconcile row exists — no sweep can subsequently run on their behalf."
+    },
+    {
+      "id": "EC-18",
+      "text": "Two organizations syncing simultaneously: each org's /repositories sync reflects only its own rows, enforced by RLS plus the explicit org predicate; neither org's counts move because of the other's discovery."
+    },
+    {
+      "id": "EC-19",
+      "text": "Re-running discovery for an org whose repositories are already registered (including ones previously revoked): repositories are upserted with revoked_at cleared, no duplicate rows appear, and counts reflect repositories processed in this run."
+    },
+    {
+      "id": "EC-20",
+      "text": "A running row abandoned by a dead worker and older than INSTALLATION_SYNC_STALL_MS: a new startInstallationSync resets it to a fresh pending run with a new run_id, while a running row touched within the window is left alone ({ reset: false }) so a live run is never restarted underneath itself."
+    },
+    {
+      "id": "EC-21",
+      "text": "Web deploy skew: a /repositories payload with no sync key parses as { status: 'idle' }; a payload with a present but malformed sync (unknown status string, non-numeric counts, unparseable updatedAt) throws RepositoryCatalogResponseError rather than silently rendering an importing state; unknown extra keys inside sync are ignored."
+    },
+    {
+      "id": "EC-22",
+      "text": "UI termination: once sync.status returns to idle and no repository is still registered, the 2.5s catalog re-poll stops and the indicator unmounts — no unbounded polling loop, and no indicator left stuck on screen after a completed import."
+    },
+    {
+      "id": "EC-23",
+      "text": "Redis entirely unavailable for the whole dispatch window: rows accumulate as pending, every claim/publish cycle defers with backoff, nothing is lost or double-counted, and when Redis returns every accumulated row dispatches and completes."
+    },
+    {
+      "id": "EC-24",
+      "text": "Redis flushed mid-run (row running, cursor at page 3 of 5, job object gone): the heartbeat stops advancing, next_attempt_at elapses, the dispatcher redispatches the same run_id, and the run resumes at page 3 and completes — pages 1–2 are not re-fetched and counters are not double-counted."
+    },
+    {
+      "id": "EC-25",
+      "text": "Two core replicas dispatching concurrently: FOR UPDATE SKIP LOCKED plus the lease means each due row is claimed by exactly one dispatcher; if a duplicate job still reaches a worker, claimInstallationSync/advanceInstallationSyncPage's CAS ends it as superseded."
+    },
+    {
+      "id": "EC-26",
+      "text": "Dispatcher dies after enqueue() succeeded but before the completion mark: the lease expires, the row is redispatched, and the second job either resumes safely or exits superseded; at-least-once dispatch never produces a duplicate repository or outbox row."
+    },
+    {
+      "id": "EC-27",
+      "text": "A permanently undispatchable row (e.g. an installation whose every attempt fails): dispatch_attempt_count reaches MAX_INSTALLATION_DISCOVERY_DISPATCH_ATTEMPTS (10) and the row stops being due — no infinite redispatch loop — while the catalog keeps reporting stalled / failed to admins."
+    },
+    {
+      "id": "EC-28",
+      "text": "Terminal rows are never claimed: complete, cancelled, and failed with page_limit_exceeded all fall outside the dispatcher's due predicate."
+    },
+    {
+      "id": "EC-29",
+      "text": "The cross-tenant claim cannot leak: each claimed row yields only its own org_id into the envelope, the dispatcher never opens an org context and never touches a tenant table, and privilege-level assertions confirm sayre_app can neither read nor write the lease/dispatch columns while the dispatcher role can neither INSERT/DELETE nor read counters, cursor, or the requesting subject."
+    },
+    {
+      "id": "EC-30",
+      "text": "Transient GitHub failure misread as \"repo no longer present\" (the primary false-positive risk of OQ-4): a manual_reconcile run gets a 502 on page 4 of 5. The run fails with the cursor at 4, sweep_outcome stays not_applicable, and zero repositories are revoked; only the later attempt that fetches every page and reaches complete may sweep, and it then revokes exactly the genuinely-absent repositories."
+    },
+    {
+      "id": "EC-31",
+      "text": "GitHub returns HTTP 200 with an empty repository list (installation permissions narrowed, or token scoped down) while the org holds 40 active repositories: the run completes but the sweep records withheld_empty_result and revokes nothing."
+    },
+    {
+      "id": "EC-32",
+      "text": "GitHub reports only 3 of 100 repositories across a fully-paginated, error-free run (a partial provider outage returning 200s): 97 candidates exceed both the row floor and the 50% fraction, so the sweep records withheld_ratio and revokes nothing; an admin sees the withheld outcome in GET /repositories's sync."
+    },
+    {
+      "id": "EC-33",
+      "text": "Multi-installation org: installation A's reconcile run completes while installation B has never completed a run. The sweep records withheld_coverage and revokes nothing, so B's repositories can never be revoked by A's run. Once both have completed runs, only repositories absent from both observed listings are revoked."
+    },
+    {
+      "id": "EC-34",
+      "text": "A repository added by the installation_repositories added webhook mid-run, after its page was already fetched: its updated_at is later than the run's started_at, so the candidate query excludes it and it is not revoked despite carrying no marker for this run."
+    },
+    {
+      "id": "EC-35",
+      "text": "An app_install run that completes while several held repositories are absent from GitHub's listing: nothing is revoked, sweep_outcome is not_applicable, and the run is otherwise a normal successful discovery."
+    },
+    {
+      "id": "EC-36",
+      "text": "A candidate that is already revoked: the candidate query only selects revoked_at IS NULL rows, and markRepositoryRevoked's COALESCE keeps an existing timestamp fixed, so revoked_count never counts a re-revoke and no timestamp advances on a repeated sweep."
+    },
+    {
+      "id": "EC-37",
+      "text": "A sweep-revoked repository re-granted on GitHub: the next discovery run registers it again with revoked_at cleared and the current run marker, and re-enqueues repo.initial_parse when it has a default branch and HEAD."
+    },
+    {
+      "id": "EC-38",
+      "text": "Revocation is unreachable from any non-admin surface: no member/unauthenticated request, no webhook payload field, and no queue payload field can cause or target a sweep — the only inputs are the row's own reason/run_id and the server's own paginated observation — and a member's GET /repositories shows revokedRepositories/sweepOutcome as null."
+    }
+  ],
+  "stamp": {
+    "treeHash": "2bfeb0419e5053dc6e355129eef8a5a79170e5998876f042e665bb81b89b1d72",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": false,
+    "writtenAt": "2026-08-12T14:20:08.095Z"
+  }
+}

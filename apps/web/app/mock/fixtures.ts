@@ -13,6 +13,7 @@ import type {
   NodeOverlay,
   ProviderSetting,
   Repository,
+  RepositoryImportSync,
 } from '../workspace/types';
 
 export const REPOSITORIES: Repository[] = [
@@ -52,6 +53,14 @@ export const REPOSITORIES: Repository[] = [
 ];
 
 export const DEFAULT_REPOSITORY_ID = 'repo_atlas';
+
+/** W7-01: the fixture lab's catalog is always fully imported — never "still importing". */
+export const REPOSITORY_IMPORT_SYNC: RepositoryImportSync = {
+  status: 'idle',
+  updatedAt: '2026-07-25T14:12:00.000Z',
+  discoveredRepositories: REPOSITORIES.length,
+  registeredRepositories: REPOSITORIES.length,
+};
 
 /**
  * Folder and File nodes only. Function/Class nodes exist in the graph but are

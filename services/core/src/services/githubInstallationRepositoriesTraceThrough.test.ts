@@ -154,7 +154,7 @@ function repoDeps(
     githubClient: {
       authorizeInstallation: vi.fn(),
       mintInstallationToken: vi.fn(),
-      listInstallationRepos: vi.fn(),
+      listInstallationReposPage: vi.fn(),
       getInstallationRepo: vi.fn(async () => makeInstalledRepo()),
     },
     registerRepository: store.registerRepository,
@@ -293,94 +293,59 @@ describe('installation_repositories removed — COALESCE redelivery against a st
   });
 });
 
-describe('reconcile OQ-5 additive-only guarantee against a stateful fake store (task item 3 — most important)', () => {
-  it('a repo we hold active that GitHub no longer reports is left completely untouched: revoked_at unchanged, revoked: 0', async () => {
+describe('reconcile request path performs no revoke, against a stateful fake store (W7-01 rewrite of the OQ-5 block)', () => {
+  // W7-01: the "a repo GitHub no longer reports is left completely untouched" claim this block
+  // used to make is now FALSE BY DESIGN — a completed manual_reconcile run's sweep (AC-24) may
+  // revoke exactly that repo. That replacement guarantee (and its four false-positive guards)
+  // is covered against a real stateful fake store in githubInstallationRevokeTraceThrough.test.ts
+  // (AC-24/AC-25/EC-36/EC-37/EC-38), not here. What remains true and is still worth proving here:
+  // the SYNCHRONOUS reconcile request path itself — reconcileInstallationRepositories, the
+  // function this file's other describe blocks exercise — never touches the repositories table
+  // at all anymore; it only records a durable run row for the discovery worker to act on later.
+  it('reconcileInstallationRepositories never touches the repositories table — the fake store is byte-for-byte unchanged', async () => {
     const store = makeFakeStore();
 
-    // Seed a repo we hold as active, which GitHub's live installation-repos
-    // response will NOT include on this reconcile run — the exact "repo
-    // present in our DB, absent from GitHub's live response" scenario.
+    // Seed a repo we hold as active, which GitHub's live installation-repos response would NOT
+    // include if this were an old-style synchronous diff — the scenario W2-09's OQ-5 test used.
     await store.registerRepository({}, {
       orgId: ORG,
       providerRepoId: '999',
       fullName: 'acme/no-longer-reported',
       defaultBranch: 'main',
     });
-    const revokedAtBefore = store.repos.get(`${ORG}|github|999`)?.revokedAt;
-    expect(revokedAtBefore).toBeNull();
+    const beforeSnapshot = JSON.stringify([...store.repos.entries()]);
 
-    // A spy claiming the (non-existent-in-the-type) `markRepositoryRevoked`
-    // dependency name: proves not merely that ReconcileDeps has no such
-    // declared member (dev's own test), but that even if a caller tried to
-    // hand the reconcile service a revocation function under that name, the
-    // service body never reaches for it — belt-and-suspenders on top of the
-    // static grep in changes.md.
+    // A spy claiming the (non-existent-in-the-type) `markRepositoryRevoked` dependency name:
+    // proves not merely that ReconcileDeps has no such declared member, but that even if a
+    // caller tried to hand the reconcile service a revocation function under that name, the
+    // service body never reaches for it.
     const suspiciousMarkRevoked = vi.fn(async () => true);
+    const suspiciousRegisterRepository = vi.fn(async () => ({ repoId: 'should-never-be-called' }));
 
     const deps = {
       resolveActiveInstallations: vi.fn(async () => [{ installationId: 555 }]),
-      listOurRepos: store.listOurRepos,
-      githubClient: {
-        authorizeInstallation: vi.fn(),
-        mintInstallationToken: vi.fn(),
-        listInstallationRepos: vi.fn(async () => []), // GitHub reports zero repos for this installation
-        getInstallationRepo: vi.fn(),
-      },
       withOrg: vi.fn(async (_orgId: string, fn: (tx: unknown) => Promise<unknown>) => fn({})),
-      registerRepository: store.registerRepository,
-      enqueueInitialParse: store.enqueueInitialParse,
-      kickInitialParseOutbox: vi.fn(),
+      startInstallationSync: vi.fn(async () => ({ reset: true, runId: 'run-uuid-1' })),
+      kickDiscoveryDispatcher: vi.fn(),
       markRepositoryRevoked: suspiciousMarkRevoked,
-    } as unknown as Partial<ReconcileDeps> & { markRepositoryRevoked: typeof suspiciousMarkRevoked };
+      registerRepository: suspiciousRegisterRepository,
+    } as unknown as Partial<ReconcileDeps> & {
+      markRepositoryRevoked: typeof suspiciousMarkRevoked;
+      registerRepository: typeof suspiciousRegisterRepository;
+    };
 
     const result = await reconcileInstallationRepositories(ctx(ORG), deps);
 
-    expect(result.revoked).toBe(0);
-    expect(result.registered).toBe(0);
-    // Structural: the type has no markRepositoryRevoked member at all.
+    expect(result).toEqual({ status: 'queued', installations: 1, queued: 1 });
+    // Structural: the type has no markRepositoryRevoked/registerRepository member at all.
     expect('markRepositoryRevoked' in ({} as ReconcileDeps)).toBe(false);
-    // Behavioral, against real mutable state: revoked_at is byte-for-byte
-    // unchanged (still null) after reconcile ran — not merely "the response
-    // said 0".
-    expect(store.repos.get(`${ORG}|github|999`)?.revokedAt).toBe(revokedAtBefore);
-    // Even a same-named spy handed in alongside the real deps is never invoked.
+    expect('registerRepository' in ({} as ReconcileDeps)).toBe(false);
+    // Behavioral, against real mutable state: the fake repositories table is byte-for-byte
+    // unchanged after reconcile ran — not merely "the response didn't mention revocation".
+    expect(JSON.stringify([...store.repos.entries()])).toBe(beforeSnapshot);
+    // Even same-named spies handed in alongside the real deps are never invoked.
     expect(suspiciousMarkRevoked).not.toHaveBeenCalled();
-  });
-
-  it('additive repair still runs normally alongside the untouched at-risk repo (repair + non-revocation in the same call)', async () => {
-    const store = makeFakeStore();
-
-    // repo A: ours, active, GitHub no longer reports it -> must stay untouched.
-    await store.registerRepository({}, {
-      orgId: ORG,
-      providerRepoId: '999',
-      fullName: 'acme/no-longer-reported',
-      defaultBranch: 'main',
-    });
-
-    const deps = {
-      resolveActiveInstallations: vi.fn(async () => [{ installationId: 555 }]),
-      listOurRepos: store.listOurRepos,
-      githubClient: {
-        authorizeInstallation: vi.fn(),
-        mintInstallationToken: vi.fn(),
-        // repo B: GitHub reports this one, we don't have it -> additive repair.
-        listInstallationRepos: vi.fn(async () => [
-          makeInstalledRepo({ provider_repo_id: '222', full_name: 'acme/newly-added' }),
-        ]),
-        getInstallationRepo: vi.fn(),
-      },
-      withOrg: vi.fn(async (_orgId: string, fn: (tx: unknown) => Promise<unknown>) => fn({})),
-      registerRepository: store.registerRepository,
-      enqueueInitialParse: store.enqueueInitialParse,
-      kickInitialParseOutbox: vi.fn(),
-    } satisfies ReconcileDeps;
-
-    const result = await reconcileInstallationRepositories(ctx(ORG), deps);
-
-    expect(result).toEqual({ installations: 1, registered: 1, enqueued: 1, revoked: 0, truncated: false });
-    expect(store.repos.get(`${ORG}|github|999`)?.revokedAt).toBeNull(); // untouched
-    expect(store.repos.get(`${ORG}|github|222`)).toBeDefined(); // repaired
+    expect(suspiciousRegisterRepository).not.toHaveBeenCalled();
   });
 });
 
@@ -391,7 +356,7 @@ describe('added path resolves a fresh HEAD per repo before enqueueing (task item
       githubClient: {
         authorizeInstallation: vi.fn(),
         mintInstallationToken: vi.fn(),
-        listInstallationRepos: vi.fn(),
+        listInstallationReposPage: vi.fn(),
         getInstallationRepo: vi.fn(async (_id: number, fullName: string) =>
           fullName === 'acme/widgets'
             ? makeInstalledRepo({ provider_repo_id: '111', full_name: 'acme/widgets', default_branch_head_sha: SHA_A })
