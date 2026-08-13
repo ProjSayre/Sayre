@@ -1,0 +1,532 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+  "baseline_run_id": "20260812T231343443Z-2520ec9-PR_DELTA-935c11",
+  "generated_at": "2026-08-12T23:59:40Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 16,
+      "NOT_APPLICABLE": 3,
+      "UNVERIFIED": 1
+    },
+    "result_transitions": {
+      "UNCHANGED": 19,
+      "RESOLVED": 1
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 20
+    },
+    "finding_statuses": {
+      "RESOLVED": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|github-installation-sync-and-discovery-worker|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-and-discovery-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified org_id provenance is unaffected by round 3's diff: re-read claimInstallationSync's WHERE clause and runInstallationDiscovery's org resolution directly against the current file content, independent of review.md's account.",
+      "evidence": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:370 (orgId = envelope.org_id, comment 'never from the payload', unchanged)",
+        "services/core/src/services/githubInstallationDiscoveryService.ts:375-385 (resolveInstallationOrg re-check before any write; cancels on org_mismatch/inactive, unchanged)",
+        "services/core/src/db/githubInstallationSyncStore.ts:170-177 (claimInstallationSync's WHERE still includes eq(githubInstallationSync.orgId, key.orgId) alongside the new `reason` column added to .returning() -- the added column did not touch the WHERE predicate)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read of both files' current on-disk content; no fixture created, no source file left modified.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:370-385",
+        "services/core/src/db/githubInstallationSyncStore.ts:157-186"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service-node-rbac|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "graph-query-service-node-rbac",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed CORE-02 as literally scoped (Graph Query Service node-level RBAC, client graphology) is untouched: round 3's diff is confined to 2 non-test files under services/core/src/{db,services} plus 3 test files, none of which is a graph-traversal, node-filtering, or canvas-rendering path.",
+      "evidence": [
+        "git status --porcelain / mtime check: round 3 touched only githubInstallationSyncStore.ts, githubInstallationDiscoveryService.ts, githubInstallationDiscoveryService.test.ts, githubInstallationRevokeTraceThrough.test.ts (Aug 12 19:29-19:31 local) -- no path under a Graph Query Service, graphology client code, or canvas-rendering module",
+        "spec.md Scope -> Out: 'Parsing, graph writes, ingestion, and every canvas view's rendering' remain explicitly out of scope for W7-01 (unchanged since round 1)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; mtime cross-check against the full changes.json filesChanged inventory. No fixture created, no source file left modified.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|installation-discovery-dispatcher-and-worker-logging|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "installation-discovery-dispatcher-and-worker-logging",
+      "attack_path_version": "v1",
+      "attempt": "Re-read the sweep's only console.log call site directly against current file content to confirm round 3's diff introduced no new logging or secret exposure.",
+      "evidence": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:356-359 (runRevokeSweep's single structured log line: outcome/revoked/installation_id/org_id only -- unchanged text, line number shifted by +8 from round 1's 348-351 due to round 3's added lines, confirmed by direct re-read)",
+        "grep -n \"console\\.\\(log\\|error\\|warn\\)\" across the two round-3-touched files: exactly the one call site above"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read and grep; no fixture created, no source file left modified.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:356-359"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|github-sync-queue-shared-webhook-and-discovery-job-types|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-sync-queue-shared-webhook-and-discovery-job-types",
+      "attack_path_version": "v1",
+      "attempt": "Explicitly re-verified per the launching task's request to recheck 'webhook-to-queue trust': confirmed the webhook receiver and worker dispatch-by-type branch are unchanged by round 3's diff and still cannot produce/consume a mismatched envelope.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts unchanged by round 3 (not in this round's 4-file changed_paths list); signature verified BEFORE any parse/publish per round 1's still-current PASS",
+        "services/core/src/integrations/git/worker.ts unchanged by round 3; envelope.type dispatch branch untouched",
+        "grep -rn \"enqueue('github-sync'\" services/core/src -- still exactly 2 call sites (installationDiscoveryDispatcher.ts, githubWebhookService.ts); no third producer introduced by the fix"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read and grep; no fixture created, no source file left modified.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|github-installation-sync-persisted-columns|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-persisted-columns",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed no raw source/repo-content persistence is introduced: round 3's only schema-adjacent change is a returned column on an existing SELECT, not a new persisted field.",
+      "evidence": [
+        "services/core/src/db/githubInstallationSyncStore.ts:157-186 (claimInstallationSync's new `reason` return value reads an existing enum column already defined by migration 0020; no new column, no file content, no clone path)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; no fixture created, no source file left modified.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|new-store-outbox-and-migration-sql|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "new-store-outbox-and-migration-sql",
+      "attack_path_version": "v1",
+      "attempt": "Re-reviewed round 3's one SQL-adjacent change (claimInstallationSync's .returning() clause) for string-concatenated untrusted input.",
+      "evidence": [
+        "services/core/src/db/githubInstallationSyncStore.ts:178-183 (.returning({ ..., reason: githubInstallationSync.reason }) -- drizzle query-builder column reference, not a string-interpolated identifier or value)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; no fixture created, no source file left modified.",
+      "code_references": [
+        "services/core/src/db/githubInstallationSyncStore.ts:157-186"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-01|ingestion-queue-webhook|githubWebhookService-signature-check|v1",
+      "check_id": "ING-01",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "githubWebhookService-signature-check",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed signature-before-processing is unmodified by round 3's diff and still gates the only webhook-driven producer of github-sync jobs.",
+      "evidence": [
+        "services/core/src/services/githubWebhookService.ts:100-115 (getWebhookSecret then verifyGithubSignature BEFORE any parse/DB lookup/publish; file not in round 3's changed_paths, confirmed unchanged)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; unaffected by this round's diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-02|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-02",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-ran the full replay/idempotency assertions (EC-10/EC-11-equivalent) after the fix to confirm the reason-source change did not disturb page/run replay safety.",
+      "evidence": [
+        "services/core/src/db/githubInstallationSyncStore.ts:189-225 (advanceInstallationSyncPage CAS on run_id+expected_page, untouched by round 3)",
+        "npx vitest run services/core/src/services/githubInstallationDiscoveryService.test.ts services/core/src/services/githubInstallationRevokeTraceThrough.test.ts -> 33/33 pass this session, including the pre-existing EC-11 duplicate-page-delivery assertion"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran `npx vitest run` against the two directly-fixed test files myself this session (33/33 pass); no fixture created, no source file left modified.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-03|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-03",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified tenant identity for a discovery job still comes from trusted server-resolved installation state, not the envelope -- unaffected by the reason-source fix (a separate field).",
+      "evidence": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:375-385 (resolveInstallationOrg re-check; cancelled on unknown_installation/org_mismatch/inactive_installation; unchanged by round 3)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; unaffected by this round's diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-04|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-04",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Independently re-traced the exact authorization path FND-cf76b24c5057 identified, reading current file content myself rather than trusting review.md round 3's account. Confirmed the fix: claimInstallationSync's .returning() clause now selects `reason: githubInstallationSync.reason` (a genuine worker-side row read, not a passthrough of caller input), and computeRevokeSweep's SweepContext.reason is built from `claimed.reason` at the call site (githubInstallationDiscoveryService.ts:508), not `payload.reason`. `grep -n \"payload.reason\"` across services/core/src returns zero live-code hits (only two comment lines documenting the fix). Then independently reproduced non-vacuousness with my own revert-and-rerun (not a re-read of review's own experiment): reverted line 508 to the exact pre-fix `reason: payload.reason,`, reran the two directly-fixed test files, restored the file from a byte-identical backup, and reran clean. Also re-ran the two new reason/row-mismatch regression tests directly (both directions: envelope over-claims manual_reconcile while the row is app_install -> no sweep; envelope under-claims app_install while the row is manual_reconcile -> sweep still correctly fires) against the current, fixed code.",
+      "evidence": [
+        "services/core/src/db/githubInstallationSyncStore.ts:157-186 (claimInstallationSync's return type now includes `reason: InstallationSyncReason`, sourced from the same UPDATE...RETURNING against the row, no new query)",
+        "services/core/src/services/githubInstallationDiscoveryService.ts:296 (computeRevokeSweep's authorization guard, unchanged: `if (ctx.reason !== 'manual_reconcile')`)",
+        "services/core/src/services/githubInstallationDiscoveryService.ts:508 (`reason: claimed.reason,` -- the fix; SweepContext.reason is now sourced from the worker's own row read captured at claim time, never from `envelope.payload.reason`)",
+        "grep -n \"payload\\.reason\" services/core/src -- zero live-code hits (two comment-only references documenting the fix)",
+        "services/core/src/services/githubInstallationDiscoveryService.test.ts:652-719 (two new reason/row-mismatch regression tests, both directions, reran directly this session -- pass against current code)",
+        "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts:347-410 (the same mismatch proven against a real stateful fake store, not a canned mock -- reran directly this session)",
+        "Self-authored revert experiment this session: reverted line 508 to `reason: payload.reason,` (sha256 of the file before revert: 7e78e9f9...d071ec9) -> reran the two files -> 3 failed / 30 passed (the exact 3 new/extended assertions fail, reproducing FND-cf76b24c5057 against the pre-fix state) -> restored the file -> sha256 confirmed byte-identical to the pre-revert content -> reran -> 33/33 pass"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "FAIL",
+      "result_transition": "RESOLVED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-cf76b24c5057",
+        "status": "RESOLVED",
+        "first_seen_run_id": "20260812T231343443Z-2520ec9-PR_DELTA-935c11",
+        "first_seen_commit": "2520ec9d9919eab2498a548efb6321a440693c0b",
+        "last_seen_run_id": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+        "last_seen_commit": "2520ec9d9919eab2498a548efb6321a440693c0b",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "Fixed in services/core/src/db/githubInstallationSyncStore.ts (claimInstallationSync now returns `reason`, re-read from the row) and services/core/src/services/githubInstallationDiscoveryService.ts:508 (`reason: claimed.reason,` replacing `reason: payload.reason,`); regression coverage added in githubInstallationDiscoveryService.test.ts:652-719 and githubInstallationRevokeTraceThrough.test.ts:347-410. See .pipeline/changes.md's 'Round 3' section and .pipeline/review.md round 3 for the full remediation record; independently re-verified in this run rather than re-read from those reports alone.",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "Reproduction: temporarily edited services/core/src/services/githubInstallationDiscoveryService.ts line 508 (`sed -i` in place), reran `npx vitest run` against the two affected test files, then restored the file from a pre-edit copy kept under this session's scratchpad directory and deleted that scratch copy immediately after confirming a byte-for-byte sha256 match. `git status --short` on the file shows only its normal untracked (`??`) status throughout -- no stray `.orig`/backup file was left in the repository tree. No other repository file was created, modified, or left behind.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:157-548",
+        "services/core/src/db/githubInstallationSyncStore.ts:151-186",
+        "services/core/src/services/githubInstallationDiscoveryService.test.ts:652-719",
+        "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts:347-410"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-05|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-05",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked cross-queue confusion is unaffected: the strict envelope.type dispatch branch in worker.ts is untouched by round 3's diff (which only changes an authorization *value source*, not the envelope shape or dispatch routing).",
+      "evidence": [
+        "services/core/src/integrations/git/worker.ts:37-52 (strict envelope.type === GITHUB_INSTALLATION_DISCOVERY_EVENT_TYPE branch, unchanged; not in round 3's changed_paths)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; unaffected by this round's diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-06|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-06",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked retry/backoff/poison bounds are unaffected: MAX_INSTALLATION_DISCOVERY_DISPATCH_ATTEMPTS and MAX_INSTALLATION_DISCOVERY_PAGES ceilings live in installationDiscoveryDispatcher.ts/githubInstallationDiscoveryService.ts's unfixed sections, untouched by round 3's one-line-plus-return-type change.",
+      "evidence": [
+        "services/core/src/services/installationDiscoveryDispatcher.ts:24-30 (MAX_INSTALLATION_DISCOVERY_DISPATCH_ATTEMPTS=10; file not in round 3's changed_paths, confirmed unchanged by mtime)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; unaffected by this round's diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-07|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-07",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether one org's discovery/reconcile traffic can starve another's dispatch -- unaffected by round 3's diff (no per-org lane/priority mechanism was added or removed by the fix).",
+      "evidence": [
+        "services/core/drizzle/0020_w7_01_github_installation_sync.sql (due-row selection is FOR UPDATE SKIP LOCKED across all orgs, unchanged; not in round 3's changed_paths)"
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; not independently load-tested (unchanged limitation from round 1).",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-08|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-08",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed: no parsing/ingestion-worker/scratch-clone path is touched by W7-01 at any round, including round 3.",
+      "evidence": [
+        "spec.md Scope -> Out: unchanged"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable; no fixture required.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-09|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-09",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed: parsing/Tree-sitter is untouched by W7-01 at any round.",
+      "evidence": [
+        "spec.md Scope -> Out: unchanged"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable; no fixture required.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-10|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-10",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed: no clone/scratch-space code is touched by W7-01 at any round (discovery only calls the GitHub REST API).",
+      "evidence": [
+        "spec.md Scope -> Out: unchanged"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Not applicable; no fixture required.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-11|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-11",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed transactional consistency across the page's five writes (registerRepository/advanceInstallationSyncPage/enqueueInitialParse/completeInstallationSync/sweep) is unaffected by the reason-source fix: the sweep still runs inside the same withOrg transaction, only its authorization input changed.",
+      "evidence": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:446-524 (sweep call still nested inside the single `resolved.withOrg(orgId, async (tx) => {...})` transaction; try/catch around the whole block still marks the row failed with 'internal_error' and rethrows on any store error)",
+        "npx vitest run services/core/src/services/githubInstallationDiscoveryService.test.ts -> 28/28 pass this session, including transactional/rollback-adjacent assertions"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Ran `npx vitest run` myself this session; no fixture created, no source file left modified.",
+      "code_references": [
+        "services/core/src/services/githubInstallationDiscoveryService.ts:446-524"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-12|ingestion-queue-webhook|appClient-listInstallationReposPage|v1",
+      "check_id": "ING-12",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "appClient-listInstallationReposPage",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed: appClient.ts's bounded/defensive response handling is untouched by round 3's diff (not in round 3's changed_paths).",
+      "evidence": [
+        "services/core/src/github/appClient.ts -- unchanged by round 3, confirmed via mtime/changed_paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; unaffected by this round's diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-13|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-13",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed: registerRepository's org-scoped upsert key is untouched by round 3's diff (the fix only changes how `reason` reaches the sweep's authorization guard, not repository registration).",
+      "evidence": [
+        "services/core/src/db/githubAppInstallWrites.ts -- unchanged by round 3, confirmed via changed_paths"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read; unaffected by this round's diff.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|ING-14|ingestion-queue-webhook|github-installation-sync-outbox-dispatcher-and-worker|v1",
+      "check_id": "ING-14",
+      "surface_id": "ingestion-queue-webhook",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "github-installation-sync-outbox-dispatcher-and-worker",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked the envelope/queue payload shape and the fix's own new log-adjacent code for a leaked installation token or credential -- the fix touches only `reason` sourcing, not the envelope's field set.",
+      "evidence": [
+        "services/core/src/queue/bullmq.ts:63-69 (GithubInstallationDiscoveryPayload unchanged: provider/type/installation_id/run_id/reason only)",
+        "grep for token/private_key/secret/authorization across githubInstallationSyncStore.ts and githubInstallationDiscoveryService.ts: no match"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static re-read and grep; unaffected by this round's diff.",
+      "code_references": []
+    }
+  ]
+}

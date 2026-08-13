@@ -26,14 +26,13 @@ import {
   GithubAppAuthorizationError,
   type AuthorizedInstallation,
   type GithubAppClient,
-  type InstalledRepo,
 } from '../github/appClient';
 import { getRuntimeDb, resolveInstallationOrg } from '../db/installations';
 import { withOrgContext, type Db } from '../db/client';
-import { registerRepository, upsertInstallation } from '../db/githubAppInstallWrites';
-import { enqueueInitialParseOutbox } from '../db/githubInitialParseOutbox';
+import { upsertInstallation } from '../db/githubAppInstallWrites';
+import { startInstallationSync } from '../db/githubInstallationSyncStore';
 import { makeEnvelope, type MessageEnvelope } from '../queue/envelope';
-import { kickInitialParseOutboxDispatcher } from './initialParseOutboxWake';
+import { kickInstallationDiscoveryDispatcher } from './installationDiscoveryWake';
 
 export interface StartInstallResult {
   redirectTo: string;
@@ -75,7 +74,7 @@ export interface CallbackInput {
 
 export interface CallbackResult {
   redirectTo: string;
-  enqueuedRepos: number;
+  discovery: 'queued' | 'skipped';
 }
 
 export class InstallCallbackBadRequestError extends Error {
@@ -117,24 +116,12 @@ export interface InstallCallbackDeps {
   githubClient: GithubAppClient;
   withOrg: <T>(db: Db, orgId: string, fn: (tx: Db) => Promise<T>) => Promise<T>;
   getDb: () => Promise<Db>;
-  enqueueInitialParse: (
-    tx: Db,
-    envelope: MessageEnvelope<RepoInitialParseEvent>,
-  ) => Promise<void>;
-  kickInitialParseOutbox: () => void;
   upsertInstallation: typeof upsertInstallation;
-  registerRepository: typeof registerRepository;
+  // W7-01 (OQ-3): replaces the callback's former inline enqueue/kick/repo-registration deps —
+  // the callback writes a pending discovery run row instead of listing/registering repos inline.
+  startInstallationSync: typeof startInstallationSync;
+  kickDiscoveryDispatcher: () => void;
 }
-
-// MVP deviation from spec.md's own stated O-5 default ("bounded synchronous
-// loop with pagination", i.e. unbounded except by GitHub's own page size):
-// human-confirmed decision caps the callback at the first 25 repos returned
-// by `listInstallationRepos` (in whatever order the API returns them) to
-// bound both ingestion cost and the callback request's time budget on a very
-// large org-wide install. Repos beyond the 25th are neither registered nor
-// enqueued — no error, no partial-failure response, no "skipped repos"
-// tracking. See .pipeline/changes.md "Deviations from spec".
-const MAX_REPOS_PER_CALLBACK = 25;
 
 const defaultCallbackDeps: InstallCallbackDeps = {
   verifyState: verifyInstallState,
@@ -143,10 +130,9 @@ const defaultCallbackDeps: InstallCallbackDeps = {
   githubClient: createDefaultGithubAppClient(),
   withOrg: withOrgContext,
   getDb: getRuntimeDb,
-  enqueueInitialParse: enqueueInitialParseOutbox,
-  kickInitialParseOutbox: kickInitialParseOutboxDispatcher,
   upsertInstallation,
-  registerRepository,
+  startInstallationSync,
+  kickDiscoveryDispatcher: kickInstallationDiscoveryDispatcher,
 };
 
 function parseInstallationId(raw: string | undefined): number | null {
@@ -170,21 +156,6 @@ async function verifyState(
       throw new InstallCallbackBadRequestError('Invalid or expired state.');
     }
     throw error;
-  }
-}
-
-async function listInstalledRepos(
-  deps: InstallCallbackDeps,
-  installationId: number,
-): Promise<InstalledRepo[]> {
-  try {
-    return await deps.githubClient.listInstallationRepos(installationId, MAX_REPOS_PER_CALLBACK);
-  } catch (error) {
-    throw new GithubApiError(
-      `Failed to fetch GitHub App installation repositories: ${
-        error instanceof Error ? error.message : 'unknown error'
-      }`,
-    );
   }
 }
 
@@ -245,11 +216,14 @@ export function buildInitialParseEnvelope(input: {
 }
 
 /**
- * Verifies `state` -> exchanges the one-time OAuth code and proves the user
- * administers the installation account -> lists repos -> commits installation
- * and repository rows -> enqueues one `repo.initial_parse` per non-empty repo.
- * `org_id` comes ONLY from the verified `state` token; a forged
- * `org_id`-shaped query param is never read.
+ * W7-01 (AC-1): row-write-only. Verifies `state` -> exchanges the one-time OAuth code and
+ * proves the user administers the installation account -> in ONE `withOrgContext` transaction,
+ * writes the installation row and a `pending` `github_installation_sync` row (`reason:
+ * 'app_install'`) -> kicks the discovery dispatcher after commit. No GitHub repo-list call and
+ * no BullMQ `enqueue()` happen on the request path — a dedicated background worker performs the
+ * actual paginated discovery (`githubInstallationDiscoveryService.ts`).
+ * `org_id` comes ONLY from the verified `state` token; a forged `org_id`-shaped query param is
+ * never read.
  */
 export async function handleGithubAppCallback(
   input: CallbackInput,
@@ -262,9 +236,9 @@ export async function handleGithubAppCallback(
 
   // GitHub does not include an installation_id for the org-owner-approval
   // ("request") flow — no token has been minted for an install that doesn't
-  // exist yet, so there is nothing to write or enqueue.
+  // exist yet, so there is nothing to write or dispatch (EC-7).
   if (input.setupAction === 'request') {
-    return { redirectTo: postInstallRedirect, enqueuedRepos: 0 };
+    return { redirectTo: postInstallRedirect, discovery: 'skipped' };
   }
 
   const installationId = parseInstallationId(input.installationId);
@@ -286,17 +260,12 @@ export async function handleGithubAppCallback(
   );
   const existing = await resolvedDeps.resolveExistingInstallationOrg(installationId);
   if (existing && existing.orgId !== state.org_id) {
+    // EC-8: the conflict guard still runs BEFORE any row is written or dispatch occurs.
     throw new InstallationOrgConflictError();
   }
 
-  const allRepos = await listInstalledRepos(resolvedDeps, installationId);
-  // O-5 (human-confirmed deviation, see MAX_REPOS_PER_CALLBACK above): the
-  // real client is asked for at most 25, and this second cap preserves that
-  // boundary for injected/custom clients.
-  const repos = allRepos.slice(0, MAX_REPOS_PER_CALLBACK);
-
   const db = await resolvedDeps.getDb();
-  const enqueuedRepos = await resolvedDeps.withOrg(db, state.org_id, async (tx) => {
+  await resolvedDeps.withOrg(db, state.org_id, async (tx) => {
     await resolvedDeps.upsertInstallation(tx, {
       orgId: state.org_id,
       installationId,
@@ -307,41 +276,18 @@ export async function handleGithubAppCallback(
       repositorySelection: null,
     });
 
-    let enqueued = 0;
-    for (const repo of repos) {
-      const { repoId } = await resolvedDeps.registerRepository(tx, {
-        orgId: state.org_id,
-        providerRepoId: repo.provider_repo_id,
-        fullName: repo.full_name,
-        defaultBranch: repo.default_branch,
-      });
-
-      // No default branch HEAD (empty/unavailable Git repository) => no
-      // immutable revision to parse. Registered, but excluded from enqueuedRepos.
-      if (!repo.default_branch || !repo.default_branch_head_sha) continue;
-
-      const ref = `refs/heads/${repo.default_branch}`;
-
-      const envelope = buildInitialParseEnvelope({
-        orgId: state.org_id,
-        installationId,
-        repoId,
-        providerRepoId: repo.provider_repo_id,
-        fullName: repo.full_name,
-        ref,
-        revisionSha: repo.default_branch_head_sha,
-      });
-      await resolvedDeps.enqueueInitialParse(tx, envelope);
-      enqueued += 1;
-    }
-    return enqueued;
+    await resolvedDeps.startInstallationSync(tx, {
+      orgId: state.org_id,
+      installationId,
+      reason: 'app_install',
+      requestedBy: null, // a GitHub redirect is not an authenticated admin action (AC-25)
+    });
   });
 
-  // The notification is only a latency optimization. The durable dispatcher
-  // polls from startup, so a process/request failure here cannot strand rows.
-  // It may claim only after `withOrg` has committed the repository + outbox
-  // transaction, and it republishes the exact stored envelope on retry.
-  if (enqueuedRepos > 0) resolvedDeps.kickInitialParseOutbox();
+  // The kick is only a latency optimization: the durable dispatcher polls from startup, so a
+  // process/request failure here cannot strand the row (OQ-3). It may fire only after `withOrg`
+  // has committed the installation + sync row.
+  resolvedDeps.kickDiscoveryDispatcher();
 
-  return { redirectTo: postInstallRedirect, enqueuedRepos };
+  return { redirectTo: postInstallRedirect, discovery: 'queued' };
 }

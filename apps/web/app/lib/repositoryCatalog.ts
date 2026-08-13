@@ -9,9 +9,35 @@ export interface RepositoryCatalogEntry {
   readiness: RepositoryReadiness;
 }
 
+// W7-01: workspace partial-sync indicator. Deploy-skew tolerant (an ABSENT `sync` key is a
+// still-deploying core that predates W7-01) but strict once present — a malformed `sync` throws
+// rather than silently rendering a misleading state (EC-21).
+export type RepositoryImportSyncStatus = 'idle' | 'importing' | 'stalled' | 'failed';
+const REPOSITORY_IMPORT_SYNC_STATUSES: readonly RepositoryImportSyncStatus[] = [
+  'idle',
+  'importing',
+  'stalled',
+  'failed',
+];
+
+export interface RepositoryImportSync {
+  status: RepositoryImportSyncStatus;
+  updatedAt: string | null;
+  discoveredRepositories: number | null;
+  registeredRepositories: number | null;
+}
+
+const IDLE_SYNC: RepositoryImportSync = {
+  status: 'idle',
+  updatedAt: null,
+  discoveredRepositories: null,
+  registeredRepositories: null,
+};
+
 export interface RepositoryCatalogResponse {
   authorization: 'server-filtered';
   repositories: RepositoryCatalogEntry[];
+  sync: RepositoryImportSync;
 }
 
 export interface FetchRepositoryCatalogOptions {
@@ -51,6 +77,41 @@ function requiredString(
   return value;
 }
 
+function nullableCount(value: unknown): number | null {
+  if (value === null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new RepositoryCatalogResponseError();
+  }
+  return value;
+}
+
+/**
+ * EC-21: an ABSENT `sync` key parses as idle (deploy skew — a still-deploying core that
+ * predates W7-01). A PRESENT but malformed `sync` throws rather than silently rendering an
+ * importing state. Unknown extra keys inside a present `sync` (e.g. the admin-only
+ * `revokedRepositories`/`sweepOutcome` this parser deliberately does not surface) are ignored.
+ */
+function parseSync(value: unknown): RepositoryImportSync {
+  if (value === undefined) return IDLE_SYNC;
+  if (!isRecord(value)) throw new RepositoryCatalogResponseError();
+  if (
+    typeof value.status !== 'string' ||
+    !REPOSITORY_IMPORT_SYNC_STATUSES.includes(value.status as RepositoryImportSyncStatus)
+  ) {
+    throw new RepositoryCatalogResponseError();
+  }
+  const updatedAt = requiredString(value.updatedAt, { allowNull: true });
+  if (updatedAt !== null && Number.isNaN(Date.parse(updatedAt))) {
+    throw new RepositoryCatalogResponseError();
+  }
+  return {
+    status: value.status as RepositoryImportSyncStatus,
+    updatedAt,
+    discoveredRepositories: nullableCount(value.discoveredRepositories),
+    registeredRepositories: nullableCount(value.registeredRepositories),
+  };
+}
+
 export function parseRepositoryCatalogResponse(
   value: unknown,
 ): RepositoryCatalogResponse {
@@ -87,7 +148,7 @@ export function parseRepositoryCatalogResponse(
     throw new RepositoryCatalogResponseError();
   }
 
-  return { authorization: 'server-filtered', repositories };
+  return { authorization: 'server-filtered', repositories, sync: parseSync(value.sync) };
 }
 
 function requestError(status: number): RepositoryCatalogRequestError {

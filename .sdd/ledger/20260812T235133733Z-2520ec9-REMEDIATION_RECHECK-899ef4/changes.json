@@ -1,0 +1,74 @@
+{
+  "filesChanged": [
+    "services/core/drizzle/0020_w7_01_github_installation_sync.sql",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/src/db/schema.ts",
+    "services/core/src/db/githubAppInstallWrites.ts",
+    "services/core/src/db/githubInstallationSyncStore.ts",
+    "services/core/src/db/githubInstallationDiscoveryOutbox.ts",
+    "services/core/src/db/rls_acceptance.tester.test.ts",
+    "services/core/src/db/githubInstallationSync.rls.test.ts",
+    "services/core/src/github/appClient.ts",
+    "services/core/src/github/appClient.test.ts",
+    "services/core/src/github/appClient.page.test.ts",
+    "services/core/src/queue/bullmq.ts",
+    "services/core/src/integrations/git/worker.ts",
+    "services/core/src/integrations/git/worker.discoveryRouting.test.ts",
+    "services/core/src/index.ts",
+    "services/core/src/indexDiscoveryWiring.test.ts",
+    "services/core/src/security/assertInstallationDiscoveryOutboxReady.ts",
+    "services/core/src/security/assertInstallationDiscoveryOutboxReady.test.ts",
+    "services/core/src/services/installationDiscoveryDispatcher.ts",
+    "services/core/src/services/installationDiscoveryDispatcher.test.ts",
+    "services/core/src/services/installationDiscoveryWake.ts",
+    "services/core/src/services/githubInstallationDiscoveryService.ts",
+    "services/core/src/services/githubInstallationDiscoveryService.test.ts",
+    "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts",
+    "services/core/src/services/githubAppInstallService.ts",
+    "services/core/src/services/githubAppInstallService.test.ts",
+    "services/core/src/services/githubAppInstallService.discoveryCallback.test.ts",
+    "services/core/src/services/githubInstallationReconcileService.ts",
+    "services/core/src/services/githubInstallationReconcileService.test.ts",
+    "services/core/src/services/githubInstallationReconcileService.discoveryQueue.test.ts",
+    "services/core/src/services/githubInstallationRepositoriesTraceThrough.test.ts",
+    "services/core/src/services/repositoryCatalogService.ts",
+    "services/core/src/services/repositoryCatalogService.test.ts",
+    "services/core/src/services/repositoryCatalogService.sync.test.ts",
+    "services/core/src/services/w701StructuralRemovals.test.ts",
+    "services/core/src/routes/githubInstallationReconcile.ts",
+    "services/core/src/routes/githubInstallationReconcile.test.ts",
+    "services/core/src/routes/githubInstallationReconcile.discoveryStatus.test.ts",
+    "services/core/src/github/__fixtures__/largeInstallation.ts",
+    "services/core/src/services/githubInstallationDiscoveryEndToEnd.test.ts",
+    "apps/web/app/lib/repositoryCatalog.ts",
+    "apps/web/app/lib/repositoryCatalogSync.test.ts",
+    "apps/web/app/mock/fixtures.ts",
+    "apps/web/app/workspace/components/CanvasStates.tsx",
+    "apps/web/app/workspace/components/ImportingRepositoriesState.test.tsx",
+    "apps/web/app/workspace/dataSource.ts",
+    "apps/web/app/workspace/state/session.tsx",
+    "apps/web/app/workspace/state/sessionSync.test.tsx",
+    "apps/web/app/workspace/types.ts",
+    "apps/web/app/workspace/views/LegacyWorkspaceView.tsx"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/github/appClient.page.test.ts",
+      "reason": "The AC-3 'short (non-full) page' test's fixture returned exactly 20 repositories while requesting perPage: 20 -- under AC-3's own definition (hasNextPage iff repos.length === perPage), 20-of-20 is a FULL page, making the test's own hasNextPage:false and toHaveLength(20) assertions mutually impossible for any spec-compliant implementation to satisfy simultaneously (confirmed against the sibling full-page assertion in the same file and against EC-2/AC-4 in githubInstallationDiscoveryService.test.ts, which independently depend on the same hasNextPage definition). Changed the fixture to return 7 repositories (a genuinely short page for perPage: 20, matching the test's own title/intent) and updated the length assertion from 20 to 7 to match. No other line changed."
+    },
+    {
+      "path": "services/core/src/services/githubInstallationRevokeTraceThrough.test.ts",
+      "reason": "Round 2 (two edits): (1) The EC-38 test's fixture had listInstallationReposPage return an empty page (0 discovered) while countActiveGithubRepositories returned 1 (org holds >=1 active repo) -- per AC-27 guard #3 (withheld_empty_result when discovered===0 && activeCount>0), any correct implementation must refuse to sweep and never reach listRevokeSweepCandidates/markRepositoryRevoked, directly contradicting this test's own stated purpose and its own assertions on those two mocks. Changed the fixture to report one discovered repo (a stable placeholder matching the adjacent EC-36 test's own pattern) so the run reaches the guards under test; no assertion text changed. (2) Removed two unused imports (MessageEnvelope type, applyInstallationRepositoriesEvent/InstallationRepositoriesDeps) and an unused webhookDeps helper function -- dead code from the file's original authoring (none of the three are referenced anywhere in the file), required to satisfy npm run lint's @typescript-eslint/no-unused-vars rule; no test body or assertion changed. Round 3 (security fix FND-cf76b24c5057): every existing claimInstallationSync mock in this file gained a `reason` field (matching what each test's envelope already implied the row's real reason was), since computeRevokeSweep's authorization guard now reads claimed.reason (the worker-side row read) instead of envelope.payload.reason -- no existing assertion text changed. One new, purely-additive describe block was added ('EC-38 (FND-cf76b24c5057 regression) -- a reason/row MISMATCH never authorizes a sweep'), using this file's own established real-stateful-fake-store pattern to prove a queue envelope claiming manual_reconcile while the row's own re-derived reason is genuinely app_install never reaches listRevokeSweepCandidates or revokes the seeded repository."
+    },
+    {
+      "path": "services/core/src/services/githubInstallationDiscoveryService.test.ts",
+      "reason": "Round 3 (security fix FND-cf76b24c5057): security-report.md found the OQ-4 sweep's authorization guard (computeRevokeSweep) gated on envelope.payload.reason instead of an independent worker-side row read, contradicting spec.md's AC-25/EC-38 -- fixed in githubInstallationDiscoveryService.ts/githubInstallationSyncStore.ts by sourcing the guard from claimInstallationSync's return value instead. This file's claimInstallationSync mocks are the fake 'row' each test simulates, so every mock that needs the sweep to actually reach a manual_reconcile-gated guard now has to return reason:'manual_reconcile' explicitly (the shared completeManualReconcileDeps helper's default mock, and the two tests that already override claimInstallationSync for their own purposes -- EC-34's custom startedAt, AC-26's log-line test); the one app_install (non-sweep) test in that block now explicitly overrides it to return reason:'app_install', preserving its original intent (an app_install run never sweeps) but now sourced from a row-level simulation rather than an implicit default. No existing assertion text was changed or removed. Two new, purely-additive tests were added proving the exact reason/row MISMATCH security's finding said had zero coverage: envelope claims manual_reconcile while the row is app_install (sweep must not fire), and the inverse -- envelope claims app_install while the row is manual_reconcile (the sweep must still correctly fire, proving authorization is driven purely by the row in both directions)."
+    }
+  ],
+  "stamp": {
+    "treeHash": "84de9660a00efd5f2b76439ed9ea20a2a18c2db9c78a8471780831b8c1d3b065",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": true,
+    "writtenAt": "2026-08-12T23:35:11.144Z"
+  }
+}

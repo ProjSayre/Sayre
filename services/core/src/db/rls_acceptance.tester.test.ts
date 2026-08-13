@@ -138,6 +138,9 @@ const EXPECTED_COLUMNS: Record<TableName, Record<string, [string, boolean]>> = {
     external_id: ["text", true],
     default_branch: ["text", true],
     revoked_at: ["timestamp with time zone", true],
+    // W7-01 (OQ-4) sweep markers, additive.
+    last_discovery_run_id: ["uuid", true],
+    last_discovery_at: ["timestamp with time zone", true],
     created_at: ["timestamp with time zone", false],
     updated_at: ["timestamp with time zone", false],
   },

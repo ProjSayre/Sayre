@@ -46,6 +46,17 @@ export interface Repository {
   restricted?: boolean;
 }
 
+/** W7-01: the workspace's partial-sync indicator, derived from `GET /repositories`'s `sync`. */
+export type RepositoryImportSyncStatus = 'idle' | 'importing' | 'stalled' | 'failed';
+
+export interface RepositoryImportSync {
+  status: RepositoryImportSyncStatus;
+  updatedAt: string | null;
+  /** Admin/owner only; null for a member caller (server-side role gate). */
+  discoveredRepositories: number | null;
+  registeredRepositories: number | null;
+}
+
 export type NodeKind = 'Folder' | 'File';
 export type CoverageStatus = 'pass' | 'fail' | 'stale' | 'unknown';
 

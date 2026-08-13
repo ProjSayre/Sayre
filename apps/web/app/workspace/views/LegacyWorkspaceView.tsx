@@ -11,6 +11,7 @@ import { SettingsPanel } from '../settings/SettingsPanel';
 import {
   EmptyGraphState,
   ForbiddenState,
+  ImportingRepositoriesState,
   LoadingState,
   NoRepositoryState,
   PreparingState,
@@ -27,6 +28,7 @@ import { useWorkspaceViewRuntime } from './WorkspaceViewRuntime';
 
 type CanvasStatus =
   | 'no-repository'
+  | 'importing'
   | 'forbidden'
   | 'preparing'
   | 'loading'
@@ -47,6 +49,11 @@ function Workspace() {
   const [canvasCommand, setCanvasCommand] = useState<CanvasCommand | null>(null);
 
   const status: CanvasStatus = (() => {
+    // W7-01 (AC-16): while no repository is selectable yet, a sync in flight reads as
+    // "partially imported" rather than the misleading "No repository has been connected".
+    if (session.repository === null && (session.sync.status === 'importing' || session.sync.status === 'stalled')) {
+      return 'importing';
+    }
     if (session.repository === null) return 'no-repository';
     if (!session.authorizedForRepository) return 'forbidden';
     if (session.readiness === 'registered') return 'preparing';
@@ -84,8 +91,12 @@ function Workspace() {
       />
 
       {session.repository !== null && session.authorizedForRepository && <StatusBanner />}
+      {session.repository !== null && session.authorizedForRepository && session.sync.status !== 'idle' && (
+        <ImportingRepositoriesState sync={session.sync} variant="chip" />
+      )}
 
       <div className="mock-canvas" ref={view.canvasRef}>
+        {status === 'importing' && <ImportingRepositoriesState sync={session.sync} variant="canvas" />}
         {status === 'no-repository' && <NoRepositoryState reason={session.access === 'no-repositories' ? 'none' : 'restricted'} />}
         {status === 'preparing' && session.repository !== null && <PreparingState repositoryLabel={session.repository.name} />}
         {status === 'forbidden' && <ForbiddenState />}

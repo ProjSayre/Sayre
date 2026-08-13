@@ -1,5 +1,5 @@
-// Orchestration for the manual "Refresh installations" reconciliation endpoint (W2-09).
-// Business logic lives here per .claude/rules/service-layer.md; the caller
+// Orchestration for the manual "Refresh installations" reconciliation endpoint (W2-09, now
+// W7-01). Business logic lives here per .claude/rules/service-layer.md; the caller
 // (routes/githubInstallationReconcile.ts) is a thin HTTP adapter that only calls
 // `reconcileInstallationRepositories`.
 //
@@ -8,92 +8,64 @@
 // authenticate()/requireAuthContext() — NEVER from a query param or request body. Every
 // read/write below runs against that single resolved org, scoped by `withOrgContext` (RLS).
 //
-// OQ-5 (human-confirmed decision, additive-only for MVP): this service repairs ONLY the
-// "GitHub reports a repo we don't have" direction (missing, or present-but-revoked in our
-// records). It deliberately does NOT implement the destructive "GitHub no longer reports a
-// repo we hold as active -> revoke it" direction spec.md's Approach step 8 proposed —
-// inferring revocation from a GitHub-API diff (rather than from a real, direct GitHub signal)
-// was judged too risky to ship for MVP. `ReconcileDeps` below has no `markRepositoryRevoked`
-// dependency and this file contains no call to it, anywhere. The ONLY code path that revokes a
-// repository is the real `installation_repositories` "removed" webhook
-// (`githubInstallationRepositoriesService.ts`'s `applyRemoved`). If a "removed" webhook is
-// ever missed, that repo simply stays un-revoked until a future real removal event — an
-// accepted, documented MVP limitation, not something this endpoint routes around.
+// W7-01 authorization note (supersedes W2-09's OQ-5 "never revokes" block): the destructive
+// direction now exists — a `manual_reconcile` run that reaches `complete` may revoke a
+// repository GitHub no longer reports (see `githubInstallationDiscoveryService.ts`'s
+// `runRevokeSweep`) — but it is asynchronous, performed entirely by the discovery WORKER, and
+// authorized by THIS endpoint's `authenticate()` + `authorize('admin')` gate at row-creation
+// time (`reason: 'manual_reconcile'`, `requestedBy` captured from `ctx`). This request-path
+// function itself still performs no listing, no registration, and no revocation inline — it has
+// no GitHub client, no repo-registration writer, and no repo-revocation writer dependency; it
+// only records one durable, admin-authorized run row per active installation and kicks the
+// dispatcher (AC-10, AC-25, AC-29).
 //
-// Credential invariant: installation tokens are minted ONLY via the existing `GithubAppClient`
-// (W0-07 loader boundary) — no new secret, no new credential store, never logged/persisted.
+// Credential invariant: no credential is read or minted on this request path at all now.
 
-import type { RepoInitialParseEvent } from '@sayre/shared-types';
 import type { AuthContext } from '../auth/context';
-import {
-  createDefaultGithubAppClient,
-  type GithubAppClient,
-  type InstalledRepo,
-} from '../github/appClient';
 import { getRuntimeDb } from '../db/installations';
 import { withOrgContext, type Db } from '../db/client';
+import { listActiveInstallationsForOrg } from '../db/githubAppInstallWrites';
 import {
-  listActiveInstallationsForOrg,
-  listOrgGithubRepositories,
-  registerRepository,
-} from '../db/githubAppInstallWrites';
-import { enqueueInitialParseOutbox } from '../db/githubInitialParseOutbox';
-import { buildInitialParseEnvelope } from './githubAppInstallService';
-import type { MessageEnvelope } from '../queue/envelope';
-import { kickInitialParseOutboxDispatcher } from './initialParseOutboxWake';
+  startInstallationSync,
+  type InstallationSyncSubject,
+} from '../db/githubInstallationSyncStore';
+import { kickInstallationDiscoveryDispatcher } from './installationDiscoveryWake';
 
 export interface ReconcileResult {
-  installations: number; // active installations examined for this org
-  registered: number; // repos inserted/re-activated (missing-in-ours repair)
-  enqueued: number; // repo.initial_parse jobs enqueued
-  // OQ-5: additive-only for MVP — always 0. Kept in the result shape (rather than removed)
-  // so a future ticket that revisits the destructive direction is an additive change to this
-  // field's meaning, not a wire-shape break. See the file header for the full rationale.
-  revoked: number;
-  // true iff any examined installation's GitHub-accessible repo list hit MAX_RECONCILE_REPOS —
-  // informational only (that installation may have more repos than reconcile inspected).
-  truncated: boolean;
+  status: 'queued';
+  installations: number; // active installations for this org
+  queued: number; // discovery runs started (== installations on success)
 }
 
 export interface ReconcileDeps {
   resolveActiveInstallations: (orgId: string) => Promise<Array<{ installationId: number }>>;
-  listOurRepos: (
-    orgId: string,
-  ) => Promise<Array<{ id: string; externalId: string; revokedAt: Date | null }>>;
-  githubClient: GithubAppClient; // listInstallationRepos(installationId, MAX_RECONCILE_REPOS)
   withOrg: <T>(orgId: string, fn: (tx: Db) => Promise<T>) => Promise<T>;
-  registerRepository: typeof registerRepository;
-  enqueueInitialParse: (tx: Db, envelope: MessageEnvelope<RepoInitialParseEvent>) => Promise<void>;
-  kickInitialParseOutbox: () => void;
+  startInstallationSync: typeof startInstallationSync;
+  kickDiscoveryDispatcher: () => void;
+  // Still no repo-revocation writer, no GitHub client, no repo-registration writer, no
+  // initial-parse enqueue dependency: the request path performs no listing, no registration
+  // and no revocation. It records an admin-authorized INTENT; the worker executes it.
 }
-
-// OQ-3 (human-confirmed): reuses W1-06's MAX_REPOS_PER_CALLBACK value. Keeps the destructive
-// direction (were it ever revisited) safe against a merely-truncated GitHub list, and bounds
-// this synchronous, request-latency-sensitive admin action the same way the install callback
-// bounds itself. Lifting this bound generally is a separate, still-deferred backlog item.
-const MAX_RECONCILE_REPOS = 25;
 
 const defaultDeps: ReconcileDeps = {
   resolveActiveInstallations: async (orgId) =>
     withOrgContext(await getRuntimeDb(), orgId, (tx) => listActiveInstallationsForOrg(tx, orgId)),
-  listOurRepos: async (orgId) =>
-    withOrgContext(await getRuntimeDb(), orgId, (tx) => listOrgGithubRepositories(tx, orgId)),
-  githubClient: createDefaultGithubAppClient(),
   withOrg: async (orgId, fn) => withOrgContext(await getRuntimeDb(), orgId, fn),
-  registerRepository,
-  enqueueInitialParse: enqueueInitialParseOutbox,
-  kickInitialParseOutbox: kickInitialParseOutboxDispatcher,
+  startInstallationSync,
+  kickDiscoveryDispatcher: kickInstallationDiscoveryDispatcher,
 };
+
+function requestedBySubject(ctx: AuthContext): InstallationSyncSubject {
+  return ctx.subjectType === 'user'
+    ? { subjectType: 'user', subjectId: ctx.userId }
+    : { subjectType: 'agent_key', subjectId: ctx.agentKeyId };
+}
 
 /**
  * `ctx.orgId` comes ONLY from the server-resolved session (`AuthContext`) — never from
- * query/body. Reads all active installations for the org, lists each installation's
- * GitHub-accessible repos (network, bounded, no tx), then registers + enqueues any repo
- * GitHub reports that we don't hold active — all writes for the call run inside ONE
- * `withOrgContext(ctx.orgId)` transaction. Never revokes (OQ-5, see file header).
- *
- * A `listInstallationRepos` failure for any one installation fails the WHOLE call (5xx,
- * safe to retry) before any write — no partial "some installations reconciled" state.
+ * query/body. Records one durable `manual_reconcile` run row per active installation (carrying
+ * the `ctx`-derived subject), all in ONE `withOrgContext(ctx.orgId)` transaction, then kicks the
+ * discovery dispatcher after commit. Row-write-only — see the file header.
  */
 export async function reconcileInstallationRepositories(
   ctx: AuthContext,
@@ -104,62 +76,25 @@ export async function reconcileInstallationRepositories(
 
   const installations = await resolvedDeps.resolveActiveInstallations(orgId);
   if (installations.length === 0) {
-    return { installations: 0, registered: 0, enqueued: 0, revoked: 0, truncated: false };
+    return { status: 'queued', installations: 0, queued: 0 };
   }
 
-  const ourRepos = await resolvedDeps.listOurRepos(orgId);
-  const activeExternalIds = new Set(
-    ourRepos.filter((repo) => repo.revokedAt === null).map((repo) => repo.externalId),
-  );
-
-  // Candidates for additive repair: GitHub repos absent from our active set (missing
-  // entirely, or present-but-revoked). Deduped by provider_repo_id in case more than one
-  // installation reports the same repo (not expected, but harmless to dedupe) — the
-  // reporting installation id is tracked alongside the repo for envelope construction.
-  const candidates = new Map<string, { repo: InstalledRepo; installationId: number }>();
-  let truncated = false;
-  for (const installation of installations) {
-    const githubRepos = await resolvedDeps.githubClient.listInstallationRepos(
-      installation.installationId,
-      MAX_RECONCILE_REPOS,
-    );
-    if (githubRepos.length >= MAX_RECONCILE_REPOS) truncated = true;
-    for (const repo of githubRepos) {
-      if (activeExternalIds.has(repo.provider_repo_id)) continue;
-      candidates.set(repo.provider_repo_id, { repo, installationId: installation.installationId });
-    }
-  }
-
-  const { registered, enqueued } = await resolvedDeps.withOrg(orgId, async (tx) => {
-    let registeredCount = 0;
-    let enqueuedCount = 0;
-    for (const { repo, installationId } of candidates.values()) {
-      const { repoId } = await resolvedDeps.registerRepository(tx, {
+  const requestedBy = requestedBySubject(ctx);
+  const queued = await resolvedDeps.withOrg(orgId, async (tx) => {
+    let count = 0;
+    for (const installation of installations) {
+      await resolvedDeps.startInstallationSync(tx, {
         orgId,
-        providerRepoId: repo.provider_repo_id,
-        fullName: repo.full_name,
-        defaultBranch: repo.default_branch,
+        installationId: installation.installationId,
+        reason: 'manual_reconcile',
+        requestedBy,
       });
-      registeredCount += 1;
-
-      if (!repo.default_branch || !repo.default_branch_head_sha) continue;
-
-      const envelope = buildInitialParseEnvelope({
-        orgId,
-        installationId,
-        repoId,
-        providerRepoId: repo.provider_repo_id,
-        fullName: repo.full_name,
-        ref: `refs/heads/${repo.default_branch}`,
-        revisionSha: repo.default_branch_head_sha,
-      });
-      await resolvedDeps.enqueueInitialParse(tx, envelope);
-      enqueuedCount += 1;
+      count += 1;
     }
-    return { registered: registeredCount, enqueued: enqueuedCount };
+    return count;
   });
 
-  if (enqueued > 0) resolvedDeps.kickInitialParseOutbox();
+  resolvedDeps.kickDiscoveryDispatcher();
 
-  return { installations: installations.length, registered, enqueued, revoked: 0, truncated };
+  return { status: 'queued', installations: installations.length, queued };
 }
