@@ -1,0 +1,79 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/write-fix-brief.test.mjs",
+      "sha256": "d2307071a2e8e406d3b3d5de30eae6a956c7b71313a6066ce4f7209334287695",
+      "specIds": [
+        "AC-2",
+        "AC-16",
+        "AC-20",
+        "EC-1",
+        "EC-2",
+        "EC-5",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-13"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/pipeline-contracts.test.mjs",
+      "sha256": "8c687136a0a8e9a3c67c01a70b8010280430845e51a59fe4488cb91b656eba26",
+      "specIds": [
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-16",
+        "EC-12",
+        "EC-15"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/check-stamp-freshness.test.mjs",
+      "sha256": "10abc1fd6a0ddbfe97ed7cc7d37961ab36a244eac1e68cfce862d49b1e1d802a",
+      "specIds": [
+        "AC-7"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "sha256": "57cff58edd83b8819b8fa51df557d6c6736df1c3dc2811bc035c0fa4d95b42fc",
+      "specIds": [
+        "AC-1",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AC-21",
+        "EC-3",
+        "EC-4",
+        "EC-6",
+        "EC-10",
+        "EC-11",
+        "EC-14"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "b24f958baebb03b8ac9a137dd5588c8e244333fd7e92c811df84650d172cf905",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T23:26:52.360Z"
+  }
+}

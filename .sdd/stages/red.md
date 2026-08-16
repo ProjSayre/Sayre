@@ -77,21 +77,33 @@ code to decide what a test *should assert* is the one thing this stage exists to
 
 ## Procedure
 
-1. For every `AC-*` and `EC-*` item in `spec.md`, author a behavioral test that fails today and would
+1. Before authoring anything, search the existing test tree for the symbols under test and for
+   nearby `@spec` ids already covering this ticket's territory (`grep -rn` for the function/class
+   name, and for the `AC-*`/`EC-*` ids themselves, across the existing `*.test.*`/`test_*.py` files —
+   PL-CI-QUAL's own `scripts/check-red-quality.mjs` and its stage-file changes are a representative
+   example of the search this step requires). If an existing test already covers what you were about
+   to write, **extend that file** — add a case to it, and record `extends: <path>` on the new/edited
+   `red.json` entry — rather than cloning a near-twin, or cite the existing coverage with a pointer
+   instead of authoring anything new. A deliberate, legitimate overlap (the same `AC-*`/`EC-*` id
+   genuinely needs two independent tests, e.g. a TypeScript path and a Python path) is not cloning —
+   declare it explicitly on the `red.json` entry with `duplicateOf` (naming the other entry) and a
+   non-empty `justification` explaining why the overlap is intentional, rather than leaving it for a
+   downstream gate to guess at.
+2. For every `AC-*` and `EC-*` item in `spec.md`, author a behavioral test that fails today and would
    pass once `dev` correctly implements that item. Write tests in the project's existing conventions
    (Jest/Vitest for TypeScript, pytest for `services/workers/`) — don't introduce a new test
    framework.
-2. Mark every test with a `@spec <ID>` comment in the file's native comment idiom (`// @spec AC-3` for
+3. Mark every test with a `@spec <ID>` comment in the file's native comment idiom (`// @spec AC-3` for
    TS/JS, `# @spec AC-3` for Python), immediately above the test block it covers. A test may cite more
    than one ID when it genuinely covers more than one item (`// @spec AC-3 EC-1`) — don't split a test
    artificially to keep markers one-ID-per-test, and don't attach an ID the test doesn't actually
    exercise.
-3. If an `AC-*` or `EC-*` item genuinely cannot be tested yet — it needs infrastructure this checkout
+4. If an `AC-*` or `EC-*` item genuinely cannot be tested yet — it needs infrastructure this checkout
    doesn't have running (a live Neo4j, a live Postgres extension, a real external provider credential)
    — do not skip it silently. Record it as `RED-DEFERRED` in `.pipeline/red.md`, naming the specific
    infrastructure gap. This mirrors the `UNVERIFIED` discipline `.sdd/stages/security.md` already
    establishes: an unrunnable check is recorded, never omitted.
-4. Run every test you authored. For each, read the actual failure output — not just whether it
+5. Run every test you authored. For each, read the actual failure output — not just whether it
    failed — and classify it:
    - **`RED-CORRECT`** — it fails because the behavior the `AC-*`/`EC-*` item describes doesn't exist
      yet (a missing function, an unhandled branch, an assertion that correctly doesn't hold). This is
@@ -100,12 +112,23 @@ code to decide what a test *should assert* is the one thing this stage exists to
      syntax error, a bad fixture, a typo in the test itself. This is not leading-red, it is noise, and
      from the outside — "the test failed" — it is indistinguishable from `RED-CORRECT`. Distinguishing
      the two is most of this stage's job.
-5. **You may not finish this stage while any test is `RED-BROKEN`.** Fix the test and re-run it until
+6. **You may not finish this stage while any test is `RED-BROKEN`.** Fix the test and re-run it until
    it resolves to `RED-CORRECT` or `RED-DEFERRED`. If you cannot produce a compiling, correctly
    fixtured test at all, stop and report exactly which acceptance criterion you're stuck on rather
    than writing `.pipeline/red.md` with a `RED-BROKEN` entry left in it — a `red.md` containing even
    one is an incomplete run, not a passing one, and must not be handed to `dev`.
-6. Compute a SHA-256 content hash of every test file you wrote or touched this stage.
+7. Before finishing, run `node scripts/check-red-quality.mjs` (self-check; `tester` is the
+   authoritative, gating invocation of this same script — see `.sdd/stages/tester.md`). A blocking
+   violation (`duplicate-spec-id`, `no-assertion`, `tautological-only`, `bad-duplicate-declaration`)
+   may not be left in a finished `red.md`, the same rule step 6's `RED-BROKEN` bar already carries —
+   fix the underlying test, or add the missing `duplicateOf`/`justification`/`extends` declaration
+   from step 1, and re-run until it reports `clean` (an advisory, e.g. `twin-file`, may be left as-is
+   and is simply noted, never blocking).
+8. Compute a SHA-256 content hash of every test file you wrote or touched this stage.
+
+`red` writes tests directly into the existing Vitest/pytest test trees CI already runs (e.g.
+`scripts/*.test.mjs`, `services/workers/tests/`) — it never edits `.github/workflows/ci.yml` itself;
+wiring a brand-new suite's own CI step, if one is genuinely needed, is `dev`'s job, not this stage's.
 
 ## Output contract
 
@@ -142,11 +165,11 @@ change which tests you ran or skipped; or explicitly unavailable, naming the con
 - path/to/second.test.ts: <hex digest>
 ```
 
-No `RED-BROKEN` entry may appear anywhere in a finished `red.md` (see step 5 above). `review` later
+No `RED-BROKEN` entry may appear anywhere in a finished `red.md` (see step 6 above). `review` later
 rehashes every file listed under "Content hashes" against this table; an undeclared mismatch fails
 review (see `.sdd/stages/review.md`).
 
-7. Write `.pipeline/red.json` alongside `red.md` — PL-03h round 4's JSON-sidecar contract (see
+9. Write `.pipeline/red.json` alongside `red.md` — PL-03h round 4's JSON-sidecar contract (see
    `scripts/pipeline-contracts.mjs` and `.sdd/pipeline.md`'s Stage sequence). This is what
    `check-red-integrity.mjs` actually reads for the Red-test integrity and Spec trace checks;
    `red.md` remains the human-facing record and is never parsed for a control decision. Exact shape:
@@ -168,17 +191,17 @@ review (see `.sdd/stages/review.md`).
      ] }
    ```
    `classification` must be exactly `"RED-CORRECT"` or `"RED-DEFERRED"` — there is no `"RED-BROKEN"`
-   literal to write here at all (step 5's rule is enforced by this field simply not accepting it).
+   literal to write here at all (step 6's rule is enforced by this field simply not accepting it).
    Every test you authored appears exactly once in `tests`, in the same order as `red.md`'s own
    "Test paths" list; a path may not repeat (two entries for one path is refused, the same
    "fail closed on ambiguity" invariant the old markdown parser used to enforce via duplicate-heading
    detection, now enforced as a duplicate-array-entry check instead). This shape also carries a
-   `stamp` field, attached by step 8 below — omit it when first writing the file.
-8. Run `node scripts/write-stamp.mjs .pipeline/red.json` (equivalently `npm run stamp --
+   `stamp` field, attached by step 10 below — omit it when first writing the file.
+10. Run `node scripts/write-stamp.mjs .pipeline/red.json` (equivalently `npm run stamp --
    .pipeline/red.json`) — attaches the `stamp` field every `.pipeline/*.json` sidecar carries (see
    `.sdd/pipeline.md`'s "Staleness stamps" section and `.sdd/stages/planner.md`'s step 5, which does
    the same thing for `spec.json`). Exit `0` on success; a non-zero exit means `red.json` was not
-   written correctly in step 7 — fix that before finishing this stage.
+   written correctly in step 9 — fix that before finishing this stage.
 
 ## Staleness of required inputs (PL-04)
 

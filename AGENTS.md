@@ -79,7 +79,7 @@ which deliberately runs none of them.
 
 - `/pipeline <ticket>` — the full sequence, planner through security, with routing and loop caps.
 - `/pipeline-gapfill <ticket>` — MVP audit-and-gap-fill (`gap-scout` then gap-scoped stages); see
-  `.sdd/pipeline.md`.
+  `.sdd/entrypoints/pipeline-gapfill.md`.
 - `/gap-scout-only <ticket-id…>` — triage only (gap-scout, then stop).
 - `/spec-only <ticket>` — produce `.pipeline/spec.md` and stop for human review.
 - `/pipeline-status` — report the current pipeline state without changing it.
@@ -88,9 +88,11 @@ which deliberately runs none of them.
   the full sequence; skips every stage above and writes a bypass ledger entry instead — see
   `.sdd/hotfix.md`, the authoritative, runtime-neutral definition of this path.
 
-Each command's exact procedure is defined in `.sdd/pipeline.md`, not here — read it before running
-one. Do not skip a missing stage or let a stage invent a replacement for a missing input; if a
-required `.pipeline/` artifact doesn't exist, say which stage needs to run first. Pipeline artifacts
+Each command's exact procedure lives in `.sdd/entrypoints/<cmd>.md`; `.sdd/pipeline.md` is the
+shared core (stage sequence, routing, loop cap, staleness policy — ≤300 lines). Read the core plus
+exactly one entrypoint file for any given command. Do not skip a missing stage or let a stage invent
+a replacement for a missing input; if a required `.pipeline/` artifact doesn't exist, say which
+stage needs to run first. Pipeline artifacts
 live in `.pipeline/`, which stays gitignored (a run's own working files are scratch, not history) —
 except the one thing that's durable by design:
 `.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}` (plus a copy of

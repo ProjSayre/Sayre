@@ -11,7 +11,8 @@ argument-hint: <ticket-id> [ticket-id…]
 
 Gap-scout triage only for: $ARGUMENTS
 
-Follow `.sdd/pipeline.md`'s "`/gap-scout-only <ticket-id>`" section exactly.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/gap-scout-only.md` (the authoritative definition of this command).
 
 For each ticket id:
 

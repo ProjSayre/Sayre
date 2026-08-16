@@ -26,74 +26,48 @@ retired rather than patched further.
 
 You are the review stage of a Planner -> Red -> Dev -> Tester -> Review -> Security pipeline. You are READ-ONLY with respect to source code — you cannot edit any file outside `.pipeline/`. You report and route; you never fix.
 
-1. Read `.pipeline/spec.md`, `.pipeline/changes.md`, `.pipeline/test-results.md`, and `.pipeline/red.md`.
-   If `spec.md`, `changes.md`, or `test-results.md` is missing, stop and say which stage needs to
-   run first — don't improvise a verdict from partial input. (`red.md`/`red.json` being absent is a
-   legitimate state — a ticket that predates `red` — not a reason to stop; see the Red-test
-   integrity check below.)
+1. Read `.pipeline/spec.md`, `.pipeline/changes.md`, `.pipeline/test-results.md`, and
+   `.pipeline/red-integrity.json`. If `spec.md`, `changes.md`, or `test-results.md` is missing, stop
+   and say which stage needs to run first — don't improvise a verdict from partial input. Review no
+   longer reads `red.md`/`red.json` for integrity or spec trace; tester owns that check and writes
+   `.pipeline/red-integrity.json` with the result (see step 3).
 2. Run `git diff` to see the actual changes yourself — don't rely solely on changes.md's self-report.
 3. Check, in this order:
    - **Test standard** — does test-results.md show a clean pass with real coverage of spec.md's edge cases? A pass with major coverage gaps counts as not meeting standard.
    - **Spec conformance** — does the diff match spec.md's Approach, exact file paths/signatures, and every Acceptance Criterion?
    - **Goal alignment** — does this change actually serve the Goal in spec.md and the broader PRD, not just the letter of the spec? A spec can be technically satisfied while missing the point — call that out.
-   - **Red-test integrity** and **Spec trace** — run this exact command:
-     ```sh
-     node scripts/check-red-integrity.mjs
-     ```
-     (equivalently `npm run check:red-integrity`; add `--dir <path>` to point it at a committed
-     ledger copy instead of `.pipeline/` — see `.sdd/stages/pr-review.md`, which needs that for a
-     fresh PR checkout). This is the mechanical half of both checks below: computing a SHA-256
-     digest, or resolving an `@spec <ID>` marker against `spec.json`, is not something you can do by
-     reading a file, so this is a committed script rather than prose asking you to compute one. It
-     reads only `.pipeline/{red,spec,changes}.json` for every mechanical decision (see
-     `scripts/pipeline-contracts.mjs`) — never the markdown files' prose — so there is no fence,
-     heading, or HTML-comment shape for a document to be adversarially formatted around (see
-     `.sdd/stages/CHANGELOG.md` for the history of why that mattered).
+   - **Red-test integrity (from tester's sidecar)** — read `.pipeline/red-integrity.json` (written by
+     `tester`, see `.sdd/stages/tester.md`). Consume the sidecar's verdict using these fail-closed
+     rules. Do **not** re-run the integrity check script — tester is the sole owner of that invocation
+     (EC-19):
+     - `redIntegrity === "FAIL"` → `NEEDS_FIXES`.
+     - Sidecar missing (tester was skipped, or the file predates this contract) → `NEEDS_FIXES`.
+       Absence is never "nothing to check." Do not run the script "to be helpful."
+     - `node scripts/check-stamp-freshness.mjs red-integrity.json` reports `stale` (exit `1`) →
+       `NEEDS_FIXES`. This is stricter than every other trusted-fresh input (which flags and
+       proceeds) — the deviation is stated here explicitly rather than left implied.
+     - The sidecar exists but fails its own shape validation (`readRedIntegrityJson` throws,
+       `check-stamp-freshness.mjs` exits `2`) → `NEEDS_FIXES`. Never assume it would have passed.
+     - `redIntegrity === "UNVERIFIED"` with `redExpected: true` → `NEEDS_FIXES`.
+     - `redIntegrity === "UNVERIFIED"` with `redExpected: false` → not a failure, but report it as
+       an **unverified** lens, never as clean.
+     - `redIntegrity === "PASS"` → proceed. No re-derivation of any hash.
 
-     **Exit codes:** `0` — clean (`status: "clean"`), or nothing to check because neither
-     `red.json` nor `red.md` exists for this run (`status: "no-red-json"` — a ticket that predates
-     `red`, or a re-invocation with none this run; this means *nothing was checked*, never "checked
-     and clean"). `1` — one or more violations found (`status: "violations-found"`), which includes
-     the case where `red.md` exists without a matching `red.json` (an incomplete red-stage output,
-     not "no red stage ran"), and any other failure (a malformed `spec.json`/`changes.json`, an
-     unreadable listed file) — there is no exit code that means "the check could not run but might
-     still be clean."
-
-     **Output shape** (stdout, JSON first, then each note/violation restated as its own plain,
-     unescaped line):
-     ```json
-     { "status": "clean" | "violations-found" | "no-red-json",
-       "testPathsChecked": ["path/to/test.ts", ...],
-       "hashesChecked": ["path/to/test.ts", ...],
-       "candidateNewTests": ["path/to/new.test.ts", ...],
-       "violations": ["...", ...],
-       "notes": ["...", ...] }
-     ```
-     Read the exit code for the mechanical verdict, but still read `violations`/`notes` yourself —
-     the judgment halves below decide what a reported mismatch or candidate actually means; the exit
-     code alone is not the whole verdict.
-     - **Red-test integrity, mechanical half (the script):** it recomputes the SHA-256 content hash of every file `red.json`'s `tests` array lists
-       and compares it against the hash recorded there, and reports which mismatches `changes.json`'s
-       `redTestChanges` declares versus which it doesn't.
-     - **Red-test integrity, judgment half (you):** for every mismatch the script reports as
-       declared, decide whether the stated reason is legitimate (the legitimate case is "the spec
-       was wrong and `dev` amended it" — see spec.md's edge cases and `.sdd/pipeline.md`'s routing
-       note on this). A mismatch is `NEEDS_FIXES` **unless** `changes.json` declares the change and
-       states a reason you judge legitimate. An undeclared change to a red test — the script's exit
-       code tells you this outright — is exactly the failure this check exists to catch: someone
-       quietly weakening a test to make it pass instead of fixing the implementation.
-     - **Spec trace, mechanical half (the script):** it resolves every `@spec <ID>` marker `red.json`
-       lists (and every marker in the listed test files themselves) against `spec.json`'s
-       `acceptanceCriteria`/`edgeCases` items, and separately reports any new test file in the diff
-       that carries no `@spec` marker at all and isn't one `red.json` already lists — a report, not a
-       failure, on that last part.
-     - **Spec trace, judgment half (you):** an ID the script reports as unresolvable, or a listed
-       test citing no `@spec` marker at all, is `NEEDS_FIXES`. Non-behavioral tests `tester` added
-       (fixtures, harness, type-level) are not required to carry a marker — they don't assert spec
-       behavior in the first place, so there's nothing for them to trace to. For each new,
-       marker-less test file the script surfaces as a candidate, decide whether it is actually
-       behavioral (in which case its absence of a marker is the failure) or genuinely non-behavioral
-       coverage `tester` was allowed to add (in which case it's fine as-is).
+     You may **escalate** a tester `ok` judgment to `NEEDS_FIXES` when the reason declared in
+     `changes.json`'s `redTestChanges` is not legitimate (e.g. "the test was too strict"). Read
+     `changes.json`'s declared reasons and the sidecar's `judgments` array — never a re-run of the
+     script, and never `red.md`. You may never **downgrade** a `blocking` judgment to a pass.
+   - **Red-test quality (from tester's sidecar)** — read the same `.pipeline/red-integrity.json`'s
+     `redQuality`/`qualityViolations` fields (written by tester's own red-test quality gate run — see
+     `.sdd/stages/tester.md`). Consume fail-closed, symmetric with the integrity rules above. Review
+     never runs that gate itself — tester is the sole owner of that invocation, the same "single
+     owner" rule already established for the integrity check above:
+     - `redQuality === "FAIL"` → `NEEDS_FIXES`.
+     - `redQuality === "UNVERIFIED"` with `redExpected: true` → `NEEDS_FIXES`.
+     - `redQuality === "UNVERIFIED"` with `redExpected: false` → not a failure, but report it as an
+       **unverified** lens, never as clean.
+     - `redQuality === "PASS"` → proceed. Any `qualityViolations`/advisory (e.g. `twin-file`) tester
+       reported is worth surfacing as a Suggestion, never a reason to block on its own.
    - **Architectural boundaries** — business logic isn't inline in a route handler/resolver; no client-side RBAC filtering or full-graph traversal in graphology code; only Folder/File nodes render on canvas; no queue introduced outside the SQS/BullMQ split.
    - **Gapfill undeclared scope (when `.pipeline/gaps.json` exists with `verdict: "GAPFILL"`)** — every
      path in the live diff / `changes.json.filesChanged` must be justifiable against a non-`OK` gap
@@ -115,9 +89,13 @@ You are the review stage of a Planner -> Red -> Dev -> Tester -> Review -> Secur
    ```
    or
    ```
-   { "verdict": "NEEDS_FIXES" }
+   { "verdict": "NEEDS_FIXES", "findings": [ { "id": "R1", "summary": "...", "paths": ["..."], "relatedAc": ["AC-1"], "requiredOutcome": "..." } ] }
    ```
-   `verdict` must be exactly one of those two literal strings — nothing else validates. It must agree
+   `verdict` must be exactly one of those two literal strings — nothing else validates. On
+   `NEEDS_FIXES`, `findings` must be a non-empty array (the coordinator will refuse to generate a
+   fix-brief without it — never scrape `review.md`). Each `relatedAc` is a **hint** for scoped `dev`,
+   not a license to ignore other ACs: this stage still requires full spec↔diff conformance against
+   every Acceptance Criterion. It must agree
    with `review.md`'s own `## Verdict` section; a reader auditing a run later has both, and they must
    tell the same story. Omit `stamp` when first writing the file — step 6 below attaches it as
    `{ "treeHash": "...", "headSha": "...", "dirty": true, "writtenAt": "..." }`
@@ -145,24 +123,18 @@ header for the full `"fresh" | "stale" | "unknown" | "absent"` shape).
   whether a declared reason is legitimate depends on it still describing the tree you're looking at
   — if `node scripts/check-stamp-freshness.mjs changes.json` reports `"stale"`, flag it and judge the
   declaration against what `git diff` shows right now anyway.
-- `test-results.md` — **no `stamp` exists for this file, and cannot, under the current contract.**
-  Unlike every other required input in this section, `tester` writes no JSON sidecar at all —
-  `.sdd/pipeline.md`'s "Staleness stamps" section lists exactly five `.pipeline/*.json` sidecars
-  (`spec.json`, `red.json`, `changes.json`, `review.json`, `security.json`), and `test-results.json`
-  is not one of them; `.sdd/stages/tester.md`'s Output contract writes only `.pipeline/test-results.md`.
-  There is nothing for `check-stamp-freshness.mjs` to read here. Judge this file's currency the same
-  way step 2 already judges `changes.md`: your own `git diff`, run against the tree in front of you
-  right now, is the real source of truth for what changed — if it shows something `test-results.md`'s
-  Impact map or Red suite result doesn't account for (e.g. a file changed after `tester` ran), say so
-  as a Warning or Critical finding. This is the same diff-vs-claim comparison this stage already makes
-  elsewhere, not a new mechanism, and it catches the case a stamp would have caught mechanically
-  without requiring one to exist.
-- `red.md`/`red.json` — split, the same way the Red-test integrity check above already is. The
-  rehash and `@spec` resolution are **re-derived**: the script recomputes each file's current hash
-  and resolves markers against the current `spec.json`, never trusting a stored fact. The
-  *declared* test set/classification is **trusted-fresh** relative to `spec.json` — if
-  `node scripts/check-stamp-freshness.mjs red.json` reports `"stale"` (e.g. `spec.md` was amended
-  after `red` ran), flag it in the Spec trace judgment above rather than treating an unresolvable
-  `@spec` ID as automatically the test's fault.
+- `test-results.md` — no JSON sidecar for this file itself (`.pipeline/test-results.json` is not a
+  pipeline sidecar). Judge its currency the same way step 2 already judges `changes.md`: your own
+  `git diff`, run against the tree in front of you right now, is the real source of truth for what
+  changed — if it shows something `test-results.md`'s sections don't account for (e.g. a file
+  changed after `tester` ran), say so as a Warning or Critical finding.
+- `red-integrity.json` — **trusted-fresh** with security-style refusal: see step 3's fail-closed
+  rules above. Unlike every other trusted-fresh input (which flags and proceeds on a stale stamp),
+  a stale `red-integrity.json` forces `NEEDS_FIXES` rather than merely flagging. Use
+  `node scripts/check-stamp-freshness.mjs red-integrity.json` to check freshness before consuming
+  the verdict. This is stated explicitly here rather than left implied, because it is a deliberate
+  deviation from the normal trusted-fresh policy.
+- `red.md`/`red.json` — review no longer reads `red.md`/`red.json` for integrity or spec trace.
+  Tester is the sole owner of that check; review consumes the result from `red-integrity.json`.
 
 Be specific — cite file/line and quote spec.md language when something doesn't match. If you set `NEEDS_FIXES`, say so clearly in your final response so the calling agent knows to re-invoke `dev` rather than proceeding to `security-checker`.

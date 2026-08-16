@@ -1,0 +1,321 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-13T06:17:00.000Z",
+  "completed_at": "2026-08-13T06:25:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "branch": "pipeline-changes-quick-trim",
+    "dirty": true,
+    "environment": "local-static-analysis",
+    "base_urls": [],
+    "changed_paths": [
+      ".claude/skills/dev/SKILL.md",
+      ".claude/skills/gap-scout-only/SKILL.md",
+      ".claude/skills/hotfix/SKILL.md",
+      ".claude/skills/inline-edit/SKILL.md",
+      ".claude/skills/pipeline-gapfill/SKILL.md",
+      ".claude/skills/pipeline-lite/SKILL.md",
+      ".claude/skills/pipeline-status/SKILL.md",
+      ".claude/skills/pipeline/SKILL.md",
+      ".claude/skills/planner/SKILL.md",
+      ".claude/skills/re-gate/SKILL.md",
+      ".claude/skills/red/SKILL.md",
+      ".claude/skills/review/SKILL.md",
+      ".claude/skills/security-recheck/SKILL.md",
+      ".claude/skills/security/SKILL.md",
+      ".claude/skills/spec-only/SKILL.md",
+      ".claude/skills/tester/SKILL.md",
+      ".github/workflows/ci.yml",
+      ".sdd/README.md",
+      ".sdd/entrypoints/dev.md",
+      ".sdd/entrypoints/gap-scout-only.md",
+      ".sdd/entrypoints/hotfix.md",
+      ".sdd/entrypoints/inline-edit.md",
+      ".sdd/entrypoints/pipeline-gapfill.md",
+      ".sdd/entrypoints/pipeline-lite.md",
+      ".sdd/entrypoints/pipeline-status.md",
+      ".sdd/entrypoints/pipeline.md",
+      ".sdd/entrypoints/planner.md",
+      ".sdd/entrypoints/re-gate.md",
+      ".sdd/entrypoints/red.md",
+      ".sdd/entrypoints/review.md",
+      ".sdd/entrypoints/security-recheck.md",
+      ".sdd/entrypoints/security.md",
+      ".sdd/entrypoints/spec-only.md",
+      ".sdd/entrypoints/tester.md",
+      ".sdd/pipeline-history.md",
+      ".sdd/pipeline.md",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "package.json",
+      "scripts/check-pipeline-slim.mjs",
+      "scripts/check-pipeline-slim.test.mjs",
+      "scripts/pipeline-trim-structural.test.mjs",
+      "scripts/sdd-completeness.test.mjs",
+      "scripts/tsconfig.json"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+    "commit_sha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "comparable": false,
+    "selection_reason": "Most recent completed run. Commit 2520ec9 is an ancestor of da97ee2 (two merges back on main), but mode mismatch (REMEDIATION_RECHECK vs PR_DELTA) and branch mismatch (ticket/w7-01 vs pipeline-changes-quick-trim) make the comparison unreliable. All observations marked FIRST_OBSERVATION.",
+    "incompatible_dimensions": [
+      "mode",
+      "branch"
+    ]
+  },
+  "product_progress": {
+    "milestone": "pre-MVP",
+    "phase": "pipeline-methodology-refactor",
+    "source_references": [
+      "docs/product/PRD-V1.md",
+      "docs/product/Ticket-Backlog-by-Feature-2.md",
+      "docs/product/Pipeline-Efficiency-Plan.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check \u2014 applied to every run regardless of surface selection",
+      "rationale": "No persistence writes or graph reads modified by PL-TRIM. tenant-isolation surface unchanged by this PR.",
+      "code_references": []
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "No route handlers, resolvers, or Graph Query Service code modified. RBAC boundary unchanged.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "New scripts and CI steps do not handle secrets. No credential exposure introduced.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs",
+        ".github/workflows/ci.yml",
+        "package.json"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "No webhook handler code changed by this PR.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "No ingestion scratch-clone handling modified.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE mandatory check; scripts/check-pipeline-slim.mjs processes file content strings",
+      "rationale": "New script performs string analysis on repo files. No Cypher, SQL, shell commands, or queue operations. Paths derived from import.meta.url, not user input. No injection surface introduced.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs:55-75",
+        "scripts/check-pipeline-slim.mjs:203-238"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Triggered by changed paths matching scripts/** and .github/** in agent-registry.json trigger_paths",
+      "rationale": "scripts/check-pipeline-slim.mjs and .github/workflows/ci.yml added. Both are read-only against repo structure; no credential exposure.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs",
+        ".github/workflows/ci.yml",
+        "package.json"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Triggered by changed paths matching .github/** and **/package.json in agent-registry.json trigger_paths",
+      "rationale": "CI workflow adds new steps with fixed npm commands, no injection vectors. package.json adds script aliases only.",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "package.json"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface (services/workers/**, packages/graph-schema/**, **/*embedding*, **/*retriev*, **/*prompt*)",
+      "rationale": "Not triggered by PL-TRIM changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-TRIM changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface (services/core/src/mcp/**, **/*mcp*, **/*api-key*)",
+      "rationale": "Not triggered by PL-TRIM changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-TRIM changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-TRIM changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface (apps/web/**, src/**, services/core/src/routes/**, services/core/src/http/**)",
+      "rationale": "Not triggered by PL-TRIM changes.",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-agent-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "5a9313b9fb87c85267bcd26bcd6487f5eeae154c64876e0879af86faf01a5e38"
+    }
+  ],
+  "limitations": [
+    "Static analysis only \u2014 runtime tests not authorized; no dynamic verification of any boundary.",
+    "Worktree is dirty (PL-TRIM changes uncommitted); analysis performed against working-tree files.",
+    "Baseline run 20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4 uses a different mode (REMEDIATION_RECHECK vs PR_DELTA) and branch; all observations classified FIRST_OBSERVATION rather than UNCHANGED/REGRESSED.",
+    "Non-triggered surfaces (llm-rag, model-provider, mcp, websocket-realtime, ingestion-queue-webhook, web-api-client) not examined; their readiness observations are inferred from changed_paths routing, not direct code inspection.",
+    "review.json stamp freshness verified (exit 0); worktree dirtiness noted but does not trigger refusal per stage definition (exit 1 is the refusal trigger)."
+  ]
+}

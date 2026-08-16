@@ -742,7 +742,91 @@ test('[AC-7] scripts/ holds no marketing-site script, and every SDD control-plan
 
   const tsconfig = readJsonc('scripts/tsconfig.json');
   assert.deepEqual(tsconfig.compilerOptions, SCRIPTS_TSCONFIG_COMPILER_OPTIONS, 'scripts/tsconfig.json compilerOptions must be unchanged');
-  assert.deepEqual(tsconfig.include, SCRIPTS_TSCONFIG_INCLUDE, 'scripts/tsconfig.json include must be unchanged — only its rationale comment is corrected');
+  // PL-CI-QUAL / AC-20: this was `assert.deepEqual(tsconfig.include, SCRIPTS_TSCONFIG_INCLUDE, ...)`
+  // — exact equality against the PL-15 baseline array. PL-15's actual guarantee was that the
+  // restructure did not DROP a control-plane script from typechecking; exact equality also forbids
+  // ADDING one, which is not what PL-15 protected and which re-broke this test on every legitimate
+  // future addition to scripts/tsconfig.json's include (twice already on this branch: PL-TRIM's
+  // check-pipeline-slim.*, PL-FIXBRIEF's write-fix-brief.*). Converted to a no-dropped-entries
+  // superset check: every PL-15 baseline entry must still be present, but new, legitimate entries no
+  // longer fail this guard. The constant itself stays the PL-15 baseline, unmodified — AC-16's
+  // generalized enumeration test in sdd-completeness.test.mjs is what owns "no new script silently
+  // escapes typechecking" going forward.
+  for (const entry of SCRIPTS_TSCONFIG_INCLUDE) {
+    assert.ok(
+      tsconfig.include.includes(entry),
+      `"${entry}" was dropped from scripts/tsconfig.json's include — PL-15's guarantee (AC-20)`,
+    );
+  }
+});
+
+// =================================================================================================
+// PL-CI-QUAL — AC-20 / EC-19 / EC-26. Authored from .pipeline/spec.md alone, after PL-15's own
+// suite above (this file is one PL-15 already ships; this section only adds to it, per red.md's
+// "extend, don't clone" convention). Runs THIS SAME FILE as a subprocess, scoped with
+// --test-name-pattern to the exact subtests below — never the whole file — so this test can never
+// recursively re-trigger itself.
+// =================================================================================================
+
+// @spec AC-20 EC-19 EC-26
+test('[AC-20][EC-19][EC-26] the [AC-7] tsconfig-include guard becomes a no-dropped-entries superset check: today\'s extra real entries stop failing it, a removed PL-15 baseline entry still fails it, and tests 14/16/22 stay failing for their real (local-artifact) reasons, never "fixed" by deletion', () => {
+  const NODE = process.execPath;
+  const suitePath = resolve(scriptsDir, 'repo-structure.test.mjs');
+  // NODE_TEST_CONTEXT (set by the outer `node --test` run this very test executes under) makes a
+  // nested `node --test` invocation behave as an IPC-serializing worker instead of a standalone run
+  // — silently producing empty stdout, status 0, and no actual subtest execution. Unset for the
+  // child via the external `env -u` (never a `process.env` read/spread in this file's own source —
+  // scripts/check-secret-access.mjs restricts direct `process.env` access to the central loaders;
+  // `env -u` inherits everything else exactly as a bare spawnSync with no `env` option would).
+  const runNamed = (pattern) => spawnSync('env', ['-u', 'NODE_TEST_CONTEXT', NODE, '--test', `--test-name-pattern=${pattern}`, suitePath], {
+    cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+  });
+
+  // 1) AC-20's main, leading-red claim: PL-TRIM/PL-FIXBRIEF added check-pipeline-slim.* and
+  //    write-fix-brief.* to the real scripts/tsconfig.json's include without updating the PL-15
+  //    baseline constant (SCRIPTS_TSCONFIG_INCLUDE above). Today's assert.deepEqual at test 11 fails
+  //    against exactly that real, unmodified file — so THIS assertion (which requires test 11 to
+  //    PASS) fails today and can only pass once dev converts it to the no-dropped-entries superset
+  //    check AC-20 specifies, over this exact, real, un-mutated tsconfig.json.
+  const before = runNamed('scripts/ holds no marketing-site script');
+  assert.match(before.stdout, /^ok 1 - \[AC-7\] scripts\/ holds no marketing-site script/m,
+    'test 11 must pass once the guard is converted to a no-dropped-entries superset check — today it still fails under exact-equality against the real, unmodified scripts/tsconfig.json (AC-20)');
+
+  // 2) EC-19's removal direction: temporarily drop one PL-15-baseline entry from the real
+  //    scripts/tsconfig.json's include (write-stamp.mjs) and confirm the guard still fails —
+  //    restored via try/finally even if an assertion below throws, so this test never leaves the
+  //    tracked file mutated on disk regardless of outcome.
+  const tsconfigPath = resolve(repoRoot, 'scripts/tsconfig.json');
+  const originalTsconfig = readFileSync(tsconfigPath, 'utf8');
+  try {
+    const mutated = JSON.parse(originalTsconfig);
+    const removedIdx = mutated.include.indexOf('write-stamp.mjs');
+    assert.ok(removedIdx !== -1, 'fixture assumption: write-stamp.mjs is a PL-15 baseline entry currently present in scripts/tsconfig.json\'s include');
+    mutated.include.splice(removedIdx, 1);
+    writeFileSync(tsconfigPath, `${JSON.stringify(mutated, null, 2)}\n`, 'utf8');
+    const withRemoval = runNamed('scripts/ holds no marketing-site script');
+    assert.match(withRemoval.stdout, /not ok 1 - \[AC-7\] scripts\/ holds no marketing-site script/,
+      'removing a PL-15 baseline entry must still fail the guard — true under today\'s equality check, and must remain true once dev converts it to a superset check (EC-19): a guard loosened until it catches nothing is worse than the failing guard it replaced');
+  } finally {
+    writeFileSync(tsconfigPath, originalTsconfig, 'utf8');
+  }
+
+  // 3) EC-26: tests 14/16/22 are caused by untracked local artifacts (a `Design System/` directory
+  //    at the repo root, a gitignored `scripts/.fontcache/`) absent from a clean CI checkout — out of
+  //    this ticket's scope, and must not be "fixed" by deleting them. Confirmed still failing, for
+  //    the same reasons, against the real (unmutated — the try/finally above already restored it)
+  //    tsconfig.json.
+  const stillFailing = runNamed('the loose top-level directories are placed|no emptied directory is left behind|every path a moved script resolves relative');
+  assert.match(stillFailing.stdout, /not ok \d+ - \[AC-8\]\[EC-4\] the loose top-level directories are placed/,
+    'test 14 must still fail — this ticket does not touch it (EC-26)');
+  assert.match(stillFailing.stdout, /Design System\/ must no longer exist at the repo root/,
+    'test 14 must still fail specifically because of the untracked Design System\\ directory, not some other regression (EC-26)');
+  assert.match(stillFailing.stdout, /not ok \d+ - \[EC-18\] no emptied directory is left behind on disk/,
+    'test 16 must still fail — this ticket does not touch it (EC-26)');
+  assert.match(stillFailing.stdout, /not ok \d+ - \[EC-7\] every path a moved script resolves relative to its own location exists at the new location/,
+    'test 22 must still fail — this ticket does not touch it (EC-26)');
+  assert.match(stillFailing.stdout, /the font cache belongs to the moved script, not to the control plane/,
+    'test 22 must still fail specifically because of the untracked scripts\/.fontcache\/ directory, not some other regression (EC-26)');
 });
 
 // @spec EC-8

@@ -423,6 +423,7 @@ export function requireEnum(value, label, field, allowed) {
 }
 
 export const SPEC_ID_PATTERN = /^(?:AC|EC)-\d+[a-z]?$/;
+export const FINDING_ID_PATTERN = /^[RS]\d+[a-z]?$/;
 
 function requireSpecId(value, label, field) {
   requireString(value, label, field);
@@ -430,6 +431,61 @@ function requireSpecId(value, label, field) {
     fail(`${label}: field "${field}" ("${value}") does not match the required AC-n / EC-n shape.`);
   }
   return value;
+}
+
+function requireFindingId(value, label, field) {
+  requireString(value, label, field);
+  if (!FINDING_ID_PATTERN.test(value)) {
+    fail(`${label}: field "${field}" ("${value}") does not match the required finding-id shape ${FINDING_ID_PATTERN} (e.g. "R1", "S2a").`);
+  }
+  return value;
+}
+
+/** Shared Finding object used on review.json, security.json, and fix-brief.json. */
+function validateFinding(item, label, index) {
+  const itemLabel = `${label}: findings[${index}]`;
+  requireObject(item, itemLabel);
+  const id = requireFindingId(item.id, itemLabel, 'id');
+  const summary = requireString(item.summary, itemLabel, 'summary');
+  const paths = requireArray(item.paths, itemLabel, 'paths').map((p, j) =>
+    requireString(p, itemLabel, `paths[${j}]`),
+  );
+  if (paths.length === 0) {
+    fail(`${itemLabel}: field "paths" must be a non-empty array.`);
+  }
+  const seenPaths = new Set();
+  for (const p of paths) {
+    if (seenPaths.has(p)) fail(`${itemLabel}: "paths" lists "${p}" more than once.`);
+    seenPaths.add(p);
+  }
+  const relatedAc = item.relatedAc === undefined
+    ? []
+    : requireArray(item.relatedAc, itemLabel, 'relatedAc').map((idValue, j) =>
+        requireSpecId(idValue, itemLabel, `relatedAc[${j}]`),
+      );
+  const requiredOutcome = requireString(item.requiredOutcome, itemLabel, 'requiredOutcome');
+  return { id, summary, paths, relatedAc, requiredOutcome };
+}
+
+function parseFindingsArray(rawFindings, label, { requiredNonEmpty = false } = {}) {
+  if (rawFindings === undefined) {
+    if (requiredNonEmpty) fail(`${label}: field "findings" must be a non-empty array.`);
+    return [];
+  }
+  const findings = requireArray(rawFindings, label, 'findings').map((item, i) =>
+    validateFinding(item, label, i),
+  );
+  const seenIds = new Set();
+  for (const finding of findings) {
+    if (seenIds.has(finding.id)) {
+      fail(`${label}: "findings" lists "${finding.id}" more than once — every finding id must be unique.`);
+    }
+    seenIds.add(finding.id);
+  }
+  if (requiredNonEmpty && findings.length === 0) {
+    fail(`${label}: field "findings" must be a non-empty array.`);
+  }
+  return findings;
 }
 
 // --- Freshness stamps (PL-04 / A2) ------------------------------------------------------------------
@@ -677,8 +733,21 @@ export function readSpecJson(pipelineDir, { required = true } = {}) {
   // reported unverified downstream — see .sdd/stages/pr-review.md) rather than a malformed document,
   // so this is a lenient optional read, not a `requireString`-with-a-null-fallback.
   const lane = raw.lane === undefined || raw.lane === null ? null : requireString(raw.lane, label, 'lane');
+  // `affectedFiles` (PL-FIXBRIEF) is optional at read time: every spec.json on disk before this
+  // field existed must keep parsing. Absent → []. When present, unique non-empty path strings.
+  let affectedFiles = [];
+  if (raw.affectedFiles !== undefined) {
+    affectedFiles = requireArray(raw.affectedFiles, label, 'affectedFiles').map((item, i) =>
+      requireString(item, label, `affectedFiles[${i}]`),
+    );
+    const seen = new Set();
+    for (const p of affectedFiles) {
+      if (seen.has(p)) fail(`${label}: "affectedFiles" lists "${p}" more than once.`);
+      seen.add(p);
+    }
+  }
   const stamp = readStamp(raw.stamp, label); // PL-04 / A2 — optional, null when absent (back-compat)
-  return { ticket, goal, acceptanceCriteria, edgeCases, lane, stamp };
+  return { ticket, goal, acceptanceCriteria, edgeCases, lane, affectedFiles, stamp };
 }
 
 /** Every AC-n/EC-n id spec.json declares as real — the set an `@spec` marker must resolve against.
@@ -711,6 +780,14 @@ export function knownSpecIds(specJson) {
 
 const RED_CLASSIFICATIONS = ['RED-CORRECT', 'RED-DEFERRED'];
 
+// PL-CI-QUAL (AC-7): three optional fields a red.json test entry may carry, all previously silently
+// dropped by this validator (an unknown key never surfaced to any reader). `duplicateOf` names
+// another entry in this same tests array that a deliberate, declared overlap with; `justification`
+// is required — and must be a non-empty, non-whitespace-only string — whenever `duplicateOf` is
+// present, so an unjustified duplicate can never quietly pass; `extends` names a file this entry
+// extends (independent of the other two) and suppresses check-red-quality.mjs's twin-file advisory.
+// A red.json carrying none of the three parses exactly as it did before this ticket (EC-14) —
+// legacy sidecars and ledger copies are unaffected.
 function validateRedTest(item, label, index) {
   const itemLabel = `${label}: tests[${index}]`;
   requireObject(item, itemLabel);
@@ -722,7 +799,20 @@ function validateRedTest(item, label, index) {
   const specIds = requireArray(item.specIds, itemLabel, 'specIds')
     .map((id, j) => requireSpecId(id, itemLabel, `specIds[${j}]`));
   const classification = requireEnum(item.classification, itemLabel, 'classification', RED_CLASSIFICATIONS);
-  return { path, sha256: sha256.toLowerCase(), specIds, classification };
+  const result = { path, sha256: sha256.toLowerCase(), specIds, classification };
+  if (item.duplicateOf !== undefined) {
+    result.duplicateOf = requireString(item.duplicateOf, itemLabel, 'duplicateOf');
+    if (typeof item.justification !== 'string' || item.justification.trim().length === 0) {
+      fail(`${itemLabel}: field "duplicateOf" is present, so field "justification" must also be a non-empty (not whitespace-only) string — got ${JSON.stringify(item.justification)}.`);
+    }
+    result.justification = item.justification;
+  } else if (item.justification !== undefined) {
+    result.justification = requireString(item.justification, itemLabel, 'justification');
+  }
+  if (item.extends !== undefined) {
+    result.extends = requireString(item.extends, itemLabel, 'extends');
+  }
+  return result;
 }
 
 export function readRedJson(pipelineDir, { required = false } = {}) {
@@ -796,6 +886,75 @@ export function isDeclaredInChanges(changesJson, path) {
   return changesJson.redTestChanges.some((entry) => entry.path === path);
 }
 
+// --- .pipeline/red-integrity.json — written by tester -----------------------------------------------
+//
+// { redIntegrity: "PASS"|"FAIL"|"UNVERIFIED", scriptStatus: "clean"|"violations-found"|"no-red-json"|"error",
+//   redExpected: boolean, violations: [...], judgments: [{path, verdict, reason}], stamp? }
+//
+// `scriptStatus` mirrors check-red-integrity.mjs's own `status` field verbatim (`clean`,
+// `violations-found`, `no-red-json`), with one addition: `"error"`, for the case where the script
+// exited non-zero without emitting a parseable `status` (a malformed spec.json/changes.json, an
+// unreadable listed file, the top-level catch). A tooling failure must never be recorded as either a
+// clean run or a substantive violation.
+//
+// `redIntegrity` is derived, never independently asserted:
+//   PASS   — scriptStatus === "clean" AND no judgments entry has verdict "blocking"
+//   FAIL   — scriptStatus === "violations-found" OR any judgments entry is blocking
+//   UNVERIFIED — scriptStatus is "no-red-json" or "error". Never PASS.
+//
+// `redExpected` is false on exactly the lanes that deliberately skip `red` (see the entrypoints for
+// the lite lane and the spec-first edit lane) and for a ticket that predates the `red` stage; true
+// otherwise. Without it, review cannot distinguish "no red by design" from "red was supposed to run
+// and its artifacts are gone."
+
+export const RED_INTEGRITY_VERDICTS = ['PASS', 'FAIL', 'UNVERIFIED'];
+export const RED_INTEGRITY_SCRIPT_STATUSES = ['clean', 'violations-found', 'no-red-json', 'error'];
+export const RED_INTEGRITY_JUDGMENT_VERDICTS = ['ok', 'blocking'];
+
+function validateJudgmentEntry(item, label, index) {
+  const itemLabel = `${label}: judgments[${index}]`;
+  requireObject(item, itemLabel);
+  const path = requireString(item.path, itemLabel, 'path');
+  const verdict = requireEnum(item.verdict, itemLabel, 'verdict', RED_INTEGRITY_JUDGMENT_VERDICTS);
+  const reason = requireString(item.reason, itemLabel, 'reason');
+  return { path, verdict, reason };
+}
+
+// PL-CI-QUAL (AC-12): `redQuality` / `qualityViolations` carry check-red-quality.mjs's verdict, the
+// same way `redIntegrity`/`violations` above already carry check-red-integrity.mjs's. Both fields
+// are optional at read time — every red-integrity.json on disk before this ticket has neither key —
+// and default to `"UNVERIFIED"` / `[]` respectively (EC-15), the same fail-closed default already
+// established for `redIntegrity` itself, never a throw on a legacy sidecar.
+export const RED_QUALITY_VERDICTS = ['PASS', 'FAIL', 'UNVERIFIED'];
+
+/** @returns {{ redIntegrity: string, scriptStatus: string, redExpected: boolean,
+ *              violations: string[], judgments: {path: string, verdict: string, reason: string}[],
+ *              redQuality: string, qualityViolations: string[], stamp: object|null } | null} */
+export function readRedIntegrityJson(pipelineDir, { required = false } = {}) {
+  const label = '.pipeline/red-integrity.json';
+  const raw = readJsonSidecar(pipelineDir, 'red-integrity.json', label);
+  if (raw === null) {
+    if (required) fail(`${label} does not exist. tester must write it alongside test-results.md — see .sdd/stages/tester.md.`);
+    return null;
+  }
+  requireObject(raw, label);
+  const redIntegrity = requireEnum(raw.redIntegrity, label, 'redIntegrity', RED_INTEGRITY_VERDICTS);
+  const scriptStatus = requireEnum(raw.scriptStatus, label, 'scriptStatus', RED_INTEGRITY_SCRIPT_STATUSES);
+  const redExpected = requireBoolean(raw.redExpected, label, 'redExpected');
+  const violations = requireArray(raw.violations, label, 'violations')
+    .map((item, i) => requireString(item, label, `violations[${i}]`));
+  const judgments = requireArray(raw.judgments, label, 'judgments')
+    .map((item, i) => validateJudgmentEntry(item, label, i));
+  const redQuality = raw.redQuality === undefined
+    ? 'UNVERIFIED'
+    : requireEnum(raw.redQuality, label, 'redQuality', RED_QUALITY_VERDICTS);
+  const qualityViolations = raw.qualityViolations === undefined
+    ? []
+    : requireArray(raw.qualityViolations, label, 'qualityViolations').map((item, i) => requireString(item, label, `qualityViolations[${i}]`));
+  const stamp = readStamp(raw.stamp, label);
+  return { redIntegrity, scriptStatus, redExpected, violations, judgments, redQuality, qualityViolations, stamp };
+}
+
 // --- .pipeline/review.json — written by review ------------------------------------------------------
 //
 // { verdict: "PASS" | "NEEDS_FIXES", stamp? }
@@ -820,9 +979,14 @@ export function readReviewJson(pipelineDir, { required = true } = {}) {
     return null;
   }
   requireObject(raw, label);
+  // AC-21: `verdict` must be parsed before `findings` so requiredNonEmpty can key off it — a
+  // NEEDS_FIXES review.json with a missing/empty findings array now fails here, at the parser layer,
+  // rather than only at write-fix-brief.mjs's own explicit guard (EC-21 keeps that guard too, as
+  // defence in depth). A PASS verdict with findings absent or [] still parses (EC-20).
   const verdict = requireEnum(raw.verdict, label, 'verdict', ['PASS', 'NEEDS_FIXES']);
+  const findings = parseFindingsArray(raw.findings, label, { requiredNonEmpty: verdict !== 'PASS' });
   const stamp = readStamp(raw.stamp, label);
-  return { verdict, stamp };
+  return { verdict, findings, stamp };
 }
 
 // --- .pipeline/security.json — written by security-checker --------------------------------------------
@@ -849,10 +1013,56 @@ export function readSecurityJson(pipelineDir, { required = true } = {}) {
     return null;
   }
   requireObject(raw, label);
+  // AC-21 — same requiredNonEmpty rule as readReviewJson above, parsed before findings for the
+  // same reason: a BLOCKED security.json with a missing/empty findings array fails here now, not
+  // only at write-fix-brief.mjs's own explicit guard (kept, EC-21). PASS still parses with no findings.
   const verdict = requireEnum(raw.verdict, label, 'verdict', ['PASS', 'BLOCKED']);
   const runId = requireString(raw.runId, label, 'runId');
+  const findings = parseFindingsArray(raw.findings, label, { requiredNonEmpty: verdict !== 'PASS' });
   const stamp = readStamp(raw.stamp, label);
-  return { verdict, runId, stamp };
+  return { verdict, runId, findings, stamp };
+}
+
+// --- .pipeline/fix-brief.json — written by scripts/write-fix-brief.mjs (PL-FIXBRIEF) --------------
+//
+// { source: "review"|"security", attempt: >=2, findings: Finding[], allowedPaths: [...],
+//   fullSpecStillGoverns: true, stamp? }
+//
+// Coordinator-written before a fix-loop `dev` invoke. `fullSpecStillGoverns` is the literal boolean
+// `true` only — a `false` value is not a valid brief. `attempt` is the `dev` attempt about to run
+// (first attempt has no brief). `findings` and `allowedPaths` must both be non-empty.
+
+export function readFixBriefJson(pipelineDir, { required = false } = {}) {
+  const label = '.pipeline/fix-brief.json';
+  const raw = readJsonSidecar(pipelineDir, 'fix-brief.json', label);
+  if (raw === null) {
+    if (required) fail(`${label} does not exist. The coordinator must write it via scripts/write-fix-brief.mjs before a fix-loop dev invoke.`);
+    return null;
+  }
+  requireObject(raw, label);
+  const source = requireEnum(raw.source, label, 'source', ['review', 'security']);
+  if (typeof raw.attempt !== 'number' || !Number.isInteger(raw.attempt) || raw.attempt < 2) {
+    fail(`${label}: field "attempt" must be an integer >= 2 — got ${JSON.stringify(raw.attempt)}.`);
+  }
+  const findings = parseFindingsArray(raw.findings, label, { requiredNonEmpty: true });
+  const allowedPaths = requireArray(raw.allowedPaths, label, 'allowedPaths').map((item, i) =>
+    requireString(item, label, `allowedPaths[${i}]`),
+  );
+  if (allowedPaths.length === 0) {
+    fail(`${label}: field "allowedPaths" must be a non-empty array.`);
+  }
+  if (raw.fullSpecStillGoverns !== true) {
+    fail(`${label}: field "fullSpecStillGoverns" must be the literal boolean true — got ${JSON.stringify(raw.fullSpecStillGoverns)}.`);
+  }
+  const stamp = readStamp(raw.stamp, label);
+  return {
+    source,
+    attempt: raw.attempt,
+    findings,
+    allowedPaths,
+    fullSpecStillGoverns: true,
+    stamp,
+  };
 }
 
 // --- .pipeline/gaps.json — written by gap-scout (/pipeline-gapfill) ---------------------------------

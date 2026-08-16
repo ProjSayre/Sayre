@@ -1,0 +1,48 @@
+{
+  "filesChanged": [
+    "scripts/check-red-quality.mjs",
+    "scripts/pipeline-contracts.mjs",
+    "scripts/pipeline-contracts.test.mjs",
+    "scripts/repo-structure.test.mjs",
+    "scripts/tsconfig.json",
+    "scripts/pipeline-trim-structural.test.mjs",
+    "package.json",
+    ".github/workflows/ci.yml",
+    ".sdd/stages/red.md",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/review.md",
+    ".sdd/stages/dev.md",
+    ".sdd/stages/CHANGELOG.md",
+    ".sdd/entrypoints/red.md",
+    ".sdd/entrypoints/tester.md",
+    ".pipeline/README.md",
+    ".sdd/pipeline.md",
+    "scripts/write-fix-brief.mjs",
+    "scripts/check-red-quality.test.mjs",
+    ".pipeline/red.json"
+  ],
+  "redTestChanges": [
+    {
+      "path": "scripts/pipeline-contracts.test.mjs",
+      "reason": "AC-21 makes readReviewJson/readSecurityJson require a non-empty findings array whenever verdict is not PASS. Four pre-existing tests in this file (predating this ticket) built a NEEDS_FIXES/BLOCKED fixture with no findings key, testing verdict/runId/stamp, not findings-optionality. Each was given one minimal, valid Finding object so it keeps testing its real subject under the new contract; no assertion's substance changed. (Unchanged from attempt 1.) Fix-loop attempt 2, R1: three more edits, none altering an existing assertion's substance. (a) The row testing review.json's duplicate-finding-id rejection previously carried a mislabeled \"@spec EC-15\" comment (edge case 15 is the unrelated legacy-red-integrity.json/redQuality-default case, already covered correctly elsewhere in this same file) — the marker is removed, the row is now identical in behavior to its untagged neighbors and runs via the same shared SIDECAR_VALIDATION_CASES loop as before. (b) The inline \"@spec EC-9\"/\"@spec AC-12\" comments on two more SIDECAR_VALIDATION_CASES rows are removed for the same reason check-red-quality.mjs's own no-assertion rule (R3) names: a marker sitting on a data-array row is a segment (by scripts/check-red-quality.mjs's marker-to-next-marker split) that never reaches the shared loop's actual assert.throws() call several lines below, so check-red-quality.mjs correctly read each as an assertion-free stub. (c) Two new, small, directly-asserting tests are added right after the array closes — one tagged @spec EC-9, one tagged @spec AC-12 — each running assert.throws() itself against the same case data the array rows already exercise, so each id now has a real, self-contained assertion independent of the shared loop. No pre-existing assertion's substance changed; two rows lost a marker, two new tests were added."
+    },
+    {
+      "path": "scripts/repo-structure.test.mjs",
+      "reason": "spec.md's AC-20 explicitly directs converting this file's pre-existing [AC-7] assertion (from an earlier ticket, PL-15) from assert.deepEqual(tsconfig.include, SCRIPTS_TSCONFIG_INCLUDE) to a no-dropped-entries superset check — this is spec.md's own named deliverable for AC-20, not incidental drift, and is required for the new [AC-20][EC-19][EC-26] test red authored this round (in the same file, unedited by this stage) to pass. (Unchanged from attempt 1.)"
+    },
+    {
+      "path": "scripts/check-red-quality.test.mjs",
+      "reason": "Fix-loop attempt 2, R1: five of this file's own test bodies (the [AC-3], [EC-5], [EC-6], and two [AC-4] cases under the no-assertion/tautological-only sections) built fixture content as a template-literal string containing the literal marker-comment idiom this project uses to tag a real test, immediately followed by the literal id \"AC\" + \"-4\" — on the very next source line after this file's own real marker for the segment above it. Because this file is itself red-listed in .pipeline/red.json and check-red-quality.mjs's own scan is plain text, not an AST parse (documented in that script's own header), that fixture text was indistinguishable from a second, genuine marker, and prematurely closed the real segment above it before reaching that test's actual assertions further down — producing a false no-assertion/tautological-only finding against this file's own real, behavioral tests. Fixed by introducing one module-level constant, FIXTURE_SPEC_ID = 'AC-4', and interpolating it into those five fixture strings instead of the literal substring, the same pattern this file's own pre-existing cleanSegment(specId) helper already used elsewhere in the file. No fixture file written to a scratch directory at test-run time changes at all (the interpolated value is still exactly 'AC-4'); no assertion, expectation, or test name changed. Declared here per .sdd/stages/dev.md step 3's red-test carve-out."
+    },
+    {
+      "path": ".pipeline/red.json",
+      "reason": "Fix-loop attempt 2, R1: check-red-quality.mjs's cross-file duplicate-spec-id rule (R1) flagged edge case 15 as cited by both scripts/pipeline-contracts.test.mjs's and scripts/sdd-completeness.test.mjs's specIds arrays with no duplicateOf declared. This is not a cloned-twin duplication: pipeline-contracts.test.mjs verifies readRedIntegrityJson's own parsing default for that edge case (an absent redQuality key reads as \"UNVERIFIED\" and never throws), while sdd-completeness.test.mjs verifies that .sdd/stages/review.md's own text documents consuming that same default fail-closed (FAIL/UNVERIFIED+redExpected -> NEEDS_FIXES) — two different, non-redundant angles on the same edge case, exactly the kind of overlap duplicateOf + justification exists to declare rather than force apart. Added duplicateOf: \"scripts/pipeline-contracts.test.mjs\" and a non-empty justification to the sdd-completeness.test.mjs entry (the second-listed entry citing this id, per check-red-quality.mjs's own ordering — its detail message already names pipeline-contracts.test.mjs as the earlier entry). No test path, sha256, specIds membership, or classification changed on either entry; only the two new optional fields were added. This file is outside allowedPaths (scripts/check-red-quality.test.mjs, scripts/pipeline-contracts.test.mjs, scripts/sdd-completeness.test.mjs only) and is not itself one of red.json's own listed test files, so scripts/check-red-integrity.mjs's hash-rehash loop does not check it directly — declared here per .sdd/stages/dev.md step 3's named carve-out (\"this is exactly the kind of case AC-24's restored escape hatch covers\") for transparency and audit trail, as the coordinator's fix-brief instructed."
+    }
+  ],
+  "stamp": {
+    "treeHash": "15f3a8264d3dd55b5b268bae49e0700d1b148ed4700c98b96a05b2cea03cac24",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-16T22:14:59.698Z"
+  }
+}

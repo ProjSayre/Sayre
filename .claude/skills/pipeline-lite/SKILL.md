@@ -7,9 +7,6 @@ argument-hint: <ticket description or path to a ticket file>
 
 Run the lite pipeline lane for this ticket/feature request: $ARGUMENTS
 
-Follow `.sdd/pipeline.md`'s "`/pipeline-lite <ticket>`" section exactly — it is the authoritative,
-runtime-neutral definition of this lane's eligibility gate, procedure, routing/loop-cap reuse, the
-ledger step, and its "Honest limits."
-
-Do not restate or duplicate that procedure here — read it fresh each time this command runs, the
-same way `/pipeline`'s own shim (`.claude/skills/pipeline/SKILL.md`) does for the full sequence.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/pipeline-lite.md` (the authoritative definition of this lane's eligibility gate,
+procedure, routing/loop-cap reuse, the ledger step, and its "Honest limits").

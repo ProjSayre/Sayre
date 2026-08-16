@@ -122,6 +122,14 @@ jobs:
       - name: Red-test integrity check — tests
         run: npm run test:red-integrity
 
+      # PL-CI-QUAL: the mechanical red-test quality/anti-dupe gate (undeclared duplicate @spec
+      # coverage, assertion-free or tautological "tests") — same class as check-red-integrity.mjs
+      # above, so it sits beside it. Only the script's own test suite runs in CI; check:red-quality
+      # itself validates per-run, gitignored .pipeline/ state, with nothing to check against on a
+      # bare CI checkout.
+      - name: Red-test quality gate — tests
+        run: npm run test:red-quality
+
       # PL-04 review pass 2 / Critical 2: scripts/validate-security-audit-agents.mjs and
       # scripts/validate-security-audit-run.mjs are the security stage's own mechanical gates
       # (.sdd/stages/security.md:112,125), but neither had a CI step until this fix — and
@@ -158,6 +166,9 @@ jobs:
       - name: Pipeline JSON-sidecar contract — tests
         run: npm run test:pipeline-contracts
 
+      - name: Fix-brief generator (write-fix-brief.mjs) — tests
+        run: npm run test:fix-brief
+
       # PL-04 review pass 1 / Blocker 1 (C1): buildStamp/stampFreshness (exercised above by
       # test:pipeline-contracts) had zero non-test callers — every stage's own "Exact shape" output
       # contract promised a `stamp` field nothing ever wrote, so `security`'s "refuse on a stale
@@ -185,6 +196,14 @@ jobs:
       # inputs ledger-append.mjs --lite (or a human) supplies.
       - name: Lite-lane eligibility check — tests
         run: npm run test:lite-eligible
+
+      # PL-TRIM: locks the pipeline.md split in place — budget enforcement, per-stub body limit,
+      # entrypoint↔skill bijection, and skill-pointer hygiene. Both the check (against this repo)
+      # and its own test suite run here, so a broken gate reads as a broken gate, not a passing one.
+      - name: Pipeline slimness check — tests
+        run: npm run check:pipeline-slim && npm run test:pipeline-slim
+      - name: Pipeline structural check — tests
+        run: npm run test:pipeline-trim-structural
 
       # PL-03g: this guard is what actually makes review/security-checker read-only, wired as a
       # PreToolUse hook in .claude/settings.json. It matters that CI runs this suite: a hook that

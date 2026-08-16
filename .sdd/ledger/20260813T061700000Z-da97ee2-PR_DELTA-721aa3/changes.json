@@ -1,0 +1,64 @@
+{
+  "filesChanged": [
+    ".sdd/pipeline-history.md",
+    ".sdd/entrypoints/pipeline.md",
+    ".sdd/entrypoints/pipeline-lite.md",
+    ".sdd/entrypoints/pipeline-gapfill.md",
+    ".sdd/entrypoints/gap-scout-only.md",
+    ".sdd/entrypoints/planner.md",
+    ".sdd/entrypoints/spec-only.md",
+    ".sdd/entrypoints/red.md",
+    ".sdd/entrypoints/dev.md",
+    ".sdd/entrypoints/tester.md",
+    ".sdd/entrypoints/review.md",
+    ".sdd/entrypoints/security.md",
+    ".sdd/entrypoints/security-recheck.md",
+    ".sdd/entrypoints/pipeline-status.md",
+    ".sdd/entrypoints/re-gate.md",
+    ".sdd/entrypoints/inline-edit.md",
+    ".sdd/entrypoints/hotfix.md",
+    "scripts/check-pipeline-slim.mjs",
+    "scripts/pipeline-trim-structural.test.mjs",
+    ".sdd/pipeline.md",
+    ".claude/skills/pipeline/SKILL.md",
+    ".claude/skills/pipeline-lite/SKILL.md",
+    ".claude/skills/pipeline-gapfill/SKILL.md",
+    ".claude/skills/gap-scout-only/SKILL.md",
+    ".claude/skills/planner/SKILL.md",
+    ".claude/skills/spec-only/SKILL.md",
+    ".claude/skills/red/SKILL.md",
+    ".claude/skills/dev/SKILL.md",
+    ".claude/skills/tester/SKILL.md",
+    ".claude/skills/review/SKILL.md",
+    ".claude/skills/security/SKILL.md",
+    ".claude/skills/security-recheck/SKILL.md",
+    ".claude/skills/pipeline-status/SKILL.md",
+    ".claude/skills/re-gate/SKILL.md",
+    ".claude/skills/inline-edit/SKILL.md",
+    ".claude/skills/hotfix/SKILL.md",
+    "scripts/check-pipeline-slim.test.mjs",
+    "scripts/sdd-completeness.test.mjs",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "scripts/tsconfig.json",
+    ".sdd/README.md",
+    "CLAUDE.md",
+    "AGENTS.md"
+  ],
+  "redTestChanges": [
+    {
+      "path": "scripts/check-pipeline-slim.test.mjs",
+      "reason": "The spec was wrong: the AC-9 test destructured `{ code }` from `spawnSync()`, but spawnSync returns `{ status }` not `{ code }`. The `code` variable was permanently `undefined`, making the test impossible to pass regardless of implementation. Fixed by changing destructuring to `{ status: code, stdout, stderr }`. This is a RED-BROKEN correction, not a behavioral change to any assertion."
+    },
+    {
+      "path": "scripts/check-pipeline-slim.test.mjs",
+      "reason": "Re-invocation C-1 fix (type-annotation-only): added a JSDoc-typed `pair(key, value)` helper and replaced all `[c, makeXxx(c)]` / `[n, makeYxx(n)]` / inline-literal array pairs inside `new Map([...])` constructs with `pair(...)` calls. TypeScript checkJs cannot infer spread `.map()` returns as `[string, string]` tuples in array spreads, producing TS2769 errors at all 16 affected `new Map([...])` sites. No assertion logic changed."
+    }
+  ],
+  "stamp": {
+    "treeHash": "7b394372e3735c5a97017e8631ca97bbc0148433f2dcef2690ed6c1d9168ffa4",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T06:28:35.507Z"
+  }
+}

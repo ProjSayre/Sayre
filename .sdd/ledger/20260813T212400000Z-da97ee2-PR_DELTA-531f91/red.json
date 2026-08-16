@@ -1,0 +1,68 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "sha256": "d0b2e4d3e5b2621256c1714fd924e2039cb3d40a204153ffcfbc577855bcc167",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AC-20",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-14",
+        "EC-16",
+        "EC-17",
+        "EC-19"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/pipeline-contracts.test.mjs",
+      "sha256": "a7b6d9e28a47e962ac08d1d53669d70a9e61206e79448ac509fc65bc1d7c7ce8",
+      "specIds": [
+        "AC-14"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/check-stamp-freshness.test.mjs",
+      "sha256": "ee8a44875d5546a85d31dfb6f6a36962bc589e4951ffca4d754343be205be53a",
+      "specIds": [
+        "AC-15"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "356d20797250ca3be97378665cf9cf0a32928ab58810b76e9bbc5b119b754c82",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T15:22:12.003Z"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "impactMapPresent": false,
+  "tests": [
+    {
+      "path": "scripts/check-pipeline-slim.test.mjs",
+      "sha256": "03ef5664283fa620827754b3c8e91efaff437ed1af55bedaa80df55f1bafa6a5",
+      "specIds": [
+        "AC-8",
+        "AC-9",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-9",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-16",
+        "EC-17"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/pipeline-trim-structural.test.mjs",
+      "sha256": "b5c958773b1af4c5508ebed722b7dc1be4a9fa1c1c1c56e67a608237b4b25868",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-16",
+        "AC-17",
+        "EC-14",
+        "EC-15"
+      ],
+      "classification": "RED-CORRECT"
+    }
+  ],
+  "stamp": {
+    "treeHash": "7b394372e3735c5a97017e8631ca97bbc0148433f2dcef2690ed6c1d9168ffa4",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T06:28:35.059Z"
+  }
+}

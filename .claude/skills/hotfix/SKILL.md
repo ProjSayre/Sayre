@@ -7,9 +7,11 @@ argument-hint: <what is broken>
 
 Hotfix: $ARGUMENTS
 
-Follow `.sdd/hotfix.md` exactly — it is the authoritative, runtime-neutral definition of this path.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/hotfix.md` (the authoritative definition of this command), which itself defers to
+`.sdd/hotfix.md` for the full, runtime-neutral procedure.
 
-**Before doing anything, check the four gates in that document:**
+**Before doing anything, check the four gates in `.sdd/hotfix.md`:**
 
 1. Is production actually broken, and is the fix small and obvious? Urgency, confidence, and a
    deadline are not qualifying conditions — each is the normal path with impatience attached.

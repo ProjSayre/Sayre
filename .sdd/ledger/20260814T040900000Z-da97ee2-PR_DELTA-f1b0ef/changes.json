@@ -1,0 +1,47 @@
+{
+  "filesChanged": [
+    ".sdd/pipeline.md",
+    ".sdd/stages/dev.md",
+    ".sdd/stages/planner.md",
+    ".sdd/stages/review.md",
+    ".sdd/stages/security.md",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/CHANGELOG.md",
+    ".sdd/entrypoints/pipeline.md",
+    ".sdd/entrypoints/pipeline-lite.md",
+    ".sdd/entrypoints/dev.md",
+    ".sdd/entrypoints/review.md",
+    ".sdd/entrypoints/inline-edit.md",
+    ".sdd/entrypoints/re-gate.md",
+    ".pipeline/README.md",
+    ".claude/skills/dev/SKILL.md",
+    ".claude/skills/pipeline/SKILL.md",
+    "CLAUDE.md",
+    "scripts/pipeline-contracts.mjs",
+    "scripts/pipeline-contracts.test.mjs",
+    "scripts/check-stamp-freshness.mjs",
+    "scripts/check-stamp-freshness.test.mjs",
+    "scripts/sdd-completeness.test.mjs",
+    "package.json",
+    "scripts/tsconfig.json",
+    ".github/workflows/ci.yml",
+    "scripts/write-fix-brief.mjs",
+    "scripts/write-fix-brief.test.mjs"
+  ],
+  "redTestChanges": [
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "reason": "this ticket requires a new script; the PL-12 and INTEGRITY git ls-files --others scripts === [] pins were same-run assertions (converted to content pins). Leftover @spec EC-16/EC-18/EC-19 markers from prior tickets in the same file do not resolve against this spec.json (EC-1–EC-15); recast to AC-15/EC-14/AC-12. Test bodies unchanged."
+    },
+    {
+      "path": "scripts/write-fix-brief.test.mjs",
+      "reason": "AC-19 includes this file in scripts/tsconfig.json (checkJs); added a JSDoc so runCli's { cwd } = {} typechecks. Assertions unchanged."
+    }
+  ],
+  "stamp": {
+    "treeHash": "e9eed598989f9d4a48656513c06ebdef106c08307822eebfda670c33e5b41d8d",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T23:43:27.621Z"
+  }
+}

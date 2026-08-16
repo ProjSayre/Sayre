@@ -1,0 +1,188 @@
+{
+  "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+  "goal": "On NEEDS_FIXES / BLOCKED, the coordinator writes a stamped .pipeline/fix-brief.json (plus a human .pipeline/fix-brief.md and a spec-slice.md) before re-invoking dev. Fix-loop dev reads that brief first, stays inside allowedPaths, and maps Fixes applied 1:1 to finding IDs. Tester, review, and security stay full-ticket gates. Integrity stays in tester (PL-INTEGRITY-TESTER). The 3-attempt cap does not change. First-attempt dev still reads full spec.md.",
+  "lane": "full",
+  "affectedFiles": [
+    ".sdd/pipeline.md",
+    ".sdd/stages/dev.md",
+    ".sdd/stages/planner.md",
+    ".sdd/stages/review.md",
+    ".sdd/stages/security.md",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/CHANGELOG.md",
+    ".sdd/entrypoints/pipeline.md",
+    ".sdd/entrypoints/pipeline-lite.md",
+    ".sdd/entrypoints/dev.md",
+    ".sdd/entrypoints/review.md",
+    ".sdd/entrypoints/inline-edit.md",
+    ".sdd/entrypoints/re-gate.md",
+    ".pipeline/README.md",
+    ".claude/skills/dev/SKILL.md",
+    ".claude/skills/pipeline/SKILL.md",
+    "CLAUDE.md",
+    "scripts/pipeline-contracts.mjs",
+    "scripts/pipeline-contracts.test.mjs",
+    "scripts/check-stamp-freshness.mjs",
+    "scripts/check-stamp-freshness.test.mjs",
+    "scripts/sdd-completeness.test.mjs",
+    "package.json",
+    "scripts/tsconfig.json",
+    ".github/workflows/ci.yml",
+    "scripts/write-fix-brief.mjs",
+    "scripts/write-fix-brief.test.mjs"
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": ".sdd/pipeline.md Routing states that on NEEDS_FIXES / BLOCKED the coordinator writes a fix-brief (via scripts/write-fix-brief.mjs) before re-invoking dev, that a missing or stale brief refuses that invoke, that tester/review/security remain full-ticket, and that planner/red do not re-run. The 3-attempt cap is unchanged. node scripts/check-pipeline-slim.mjs still exits 0 and .sdd/pipeline.md stays at or under 300 lines."
+    },
+    {
+      "id": "AC-2",
+      "text": "scripts/write-fix-brief.mjs exists, implements the CLI in Interfaces, computes allowedPaths as the sorted unique intersection of finding paths with spec.json's affectedFiles, fails closed (exit 1, writes nothing) on an empty intersection, empty/missing findings, wrong source verdict, or unknown relatedAc, and does not open review.md, security-report.md, or spec.md."
+    },
+    {
+      "id": "AC-3",
+      "text": "scripts/pipeline-contracts.mjs exports readFixBriefJson validating the exact fix-brief.json shape in Interfaces (source enum, attempt integer >= 2, non-empty findings, non-empty allowedPaths, fullSpecStillGoverns literally true, optional stamp)."
+    },
+    {
+      "id": "AC-4",
+      "text": "readReviewJson accepts a missing findings field (legacy {verdict, stamp} still parses with findings: []) and, when findings is present, validates it as an array of Finding objects. .sdd/stages/review.md requires writing a non-empty findings array on NEEDS_FIXES."
+    },
+    {
+      "id": "AC-5",
+      "text": "readSecurityJson has the same additive findings contract. .sdd/stages/security.md requires writing a non-empty findings array on BLOCKED."
+    },
+    {
+      "id": "AC-6",
+      "text": "readSpecJson accepts a missing affectedFiles field (legacy spec.json still parses) and, when present, validates a unique array of non-empty path strings. .sdd/stages/planner.md step 4 requires writing affectedFiles as the committed paths from Affected files."
+    },
+    {
+      "id": "AC-7",
+      "text": "scripts/check-stamp-freshness.mjs accepts fix-brief.json as a known sidecar (node scripts/check-stamp-freshness.mjs fix-brief.json no longer exits 2 with \"unrecognized sidecar\"), and its usage banner / READERS comment name seven sidecars."
+    },
+    {
+      "id": "AC-8",
+      "text": ".sdd/stages/dev.md distinguishes first attempt from fix-loop. First attempt ignores leftover fix-brief.json / spec-slice.md and still reads full spec.md. Fix-loop reads fix-brief.json then spec-slice.md first, does not load full spec.md by default, and refuses if the brief is missing, stale, unknown, absent, or malformed."
+    },
+    {
+      "id": "AC-9",
+      "text": "Fix-loop dev may touch only allowedPaths. If a required edit is outside that set, it stops and records the extra paths under Not done / Escalation rather than silently expanding. changes.md's Fixes applied maps 1:1 to finding ids."
+    },
+    {
+      "id": "AC-10",
+      "text": "Fix-loop dev still runs the full red suite locally before writing changes.md (same obligation as today's step 4). The brief does not authorize running only the cited tests."
+    },
+    {
+      "id": "AC-11",
+      "text": ".sdd/stages/tester.md states that .pipeline/fix-brief.json does not shrink this stage: full red suite, impact map when usable, and the integrity check (PL-INTEGRITY-TESTER) still run. Tester does not read the brief to decide which tests to skip."
+    },
+    {
+      "id": "AC-12",
+      "text": ".sdd/stages/review.md still requires full spec↔diff conformance. relatedAc on a finding is documented as a hint, not a license to ignore other ACs. Integrity remains sidecar-consumed (red-integrity.json); this ticket does not reintroduce a red.md read or a check-red-integrity.mjs invocation in review."
+    },
+    {
+      "id": "AC-13",
+      "text": ".sdd/stages/security.md remains a full check. .sdd/pipeline.md / entrypoints state that planner and red do not re-run in the fix loop."
+    },
+    {
+      "id": "AC-14",
+      "text": ".sdd/entrypoints/dev.md (and /pipeline / /pipeline-lite coordinators) run write-fix-brief.mjs immediately before a fix-loop dev invoke, and do not invoke dev if the generator or the freshness check refuses."
+    },
+    {
+      "id": "AC-15",
+      "text": ".sdd/entrypoints/inline-edit.md states this lane does not generate or require a fix-brief (it skips dev; a NEEDS_FIXES routes to another inline edit). .sdd/entrypoints/re-gate.md states /re-gate is a hand-edit path, not a scoped-dev reroute."
+    },
+    {
+      "id": "AC-16",
+      "text": "readFixBriefJson rejects fullSpecStillGoverns that is not the literal boolean true (missing, false, \"true\"). The generator always writes true."
+    },
+    {
+      "id": "AC-17",
+      "text": ".sdd/stages/CHANGELOG.md gains a ## PL-FIXBRIEF entry above ## PL-INTEGRITY-TESTER, naming every stage file amended and that tester/review/security stay full-ticket."
+    },
+    {
+      "id": "AC-18",
+      "text": ".pipeline/README.md's sidecar table gains fix-brief.json / fix-brief.md / spec-slice.md rows, and its Routing paragraph says the coordinator writes a fix-brief before re-invoking dev rather than sending dev at review.md's prose."
+    },
+    {
+      "id": "AC-19",
+      "text": "package.json defines test:fix-brief; scripts/tsconfig.json includes the new script and its test; .github/workflows/ci.yml runs npm run test:fix-brief."
+    },
+    {
+      "id": "AC-20",
+      "text": "write-fix-brief.mjs exit 1 (writes nothing) when any finding relatedAc id is not in knownSpecIds(specJson)."
+    },
+    {
+      "id": "AC-21",
+      "text": ".claude/skills/dev/SKILL.md and .claude/skills/pipeline/SKILL.md name the fix-brief generate-then-invoke sequence; they do not instruct fix-loop dev to start from full spec.md or from scraping review.md."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "Union of finding paths ∩ affectedFiles is empty (including affectedFiles absent or []): generator exit 1, no files written."
+    },
+    {
+      "id": "EC-2",
+      "text": "Source sidecar is NEEDS_FIXES / BLOCKED but findings is missing or []: generator exit 1, no markdown scrape."
+    },
+    {
+      "id": "EC-3",
+      "text": "Fix-loop dev with fix-brief.json missing, stale (check-stamp-freshness exit 1), unknown (no stamp), or failing shape validation: refuse, do not implement."
+    },
+    {
+      "id": "EC-4",
+      "text": "First-attempt dev with leftover fix-brief.json / spec-slice.md on disk: ignore them; load full spec.md."
+    },
+    {
+      "id": "EC-5",
+      "text": "Some finding paths are in affectedFiles and some are not: only the intersection becomes allowedPaths. If that leftover set is empty, same as EC-1."
+    },
+    {
+      "id": "EC-6",
+      "text": "A brief cites relatedAc: [\"AC-3\"] only: tester still runs the full red suite; review still checks every AC/EC. Stage-file text must say this; a test may pin the sentences."
+    },
+    {
+      "id": "EC-7",
+      "text": "Current review.json is NEEDS_FIXES and a leftover security.json is BLOCKED: coordinator --source review for that routing step; do not merge leftover security findings into the brief."
+    },
+    {
+      "id": "EC-8",
+      "text": "--attempt 1 or a non-integer attempt: generator exit 2 (invocation error), writes nothing."
+    },
+    {
+      "id": "EC-9",
+      "text": "write-fix-brief.mjs source contains no fs.readFile / readFileSync of review.md, security-report.md, or spec.md (asserted by its test via reading the script text)."
+    },
+    {
+      "id": "EC-10",
+      "text": "After the Routing edit, .sdd/pipeline.md is still ≤300 lines and check-pipeline-slim.mjs exits 0."
+    },
+    {
+      "id": "EC-11",
+      "text": "Widen-escalation (required path outside allowedPaths) is recorded as Not done / Escalation and counts as one of the three dev attempts; dev does not rewrite allowedPaths."
+    },
+    {
+      "id": "EC-12",
+      "text": "A ledger-shaped { \"verdict\": \"PASS\" } review.json with no findings still parses via readReviewJson (back-compat). Same for { \"verdict\": \"PASS\", \"runId\": \"x\" } security.json and a spec.json with no affectedFiles."
+    },
+    {
+      "id": "EC-13",
+      "text": "--source review against a PASS review.json (or --source security against PASS security.json): generator exit 1."
+    },
+    {
+      "id": "EC-14",
+      "text": "/inline-edit on NEEDS_FIXES still routes to another inline edit, never to scoped-dev and never requires write-fix-brief.mjs to have succeeded."
+    },
+    {
+      "id": "EC-15",
+      "text": "Duplicate finding id in the source sidecar: readReviewJson / readSecurityJson fail closed (same uniqueness rule as red.json test paths)."
+    }
+  ],
+  "stamp": {
+    "treeHash": "cc2bef40d363135aed9209681c063989f43b691f86324e4974c482b1a057d739",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T22:20:51.927Z"
+  }
+}

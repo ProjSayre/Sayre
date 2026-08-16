@@ -60,11 +60,11 @@ After every change, run in this order:
 Run `/pipeline <ticket description or path to ticket file>` to chain the full pipeline. Related commands:
 - `/spec-only <ticket>` — runs just `planner`, stops for human review/editing of `spec.md` before any code is touched
 - `/pipeline-status` — reports which stage a run is currently at, without running anything
-- `/security-recheck` — re-runs just `security-checker` against current disk state, for a fast check after a hand-edit (doesn't redo tester/review)
-- `/pipeline-lite <ticket>` — the proportionate lane for a genuinely small, mechanically-eligible change (a typo, a one-file cleanup, a doc fix): runs `planner` → `dev` → `tester` → `review` → ledger, deliberately skipping `red` and `security` — see `.sdd/pipeline.md`'s `/pipeline-lite` section
-- `/pipeline-gapfill <ticket>` — MVP audit-and-gap-fill for already-shipped Wave 0–4 tickets: `gap-scout` → gap-mode `planner`/`red` → `dev` → `tester` → `review` → `security` → ledger `--gapfill` — see `.sdd/pipeline.md`'s `/pipeline-gapfill` section and `.sdd/mvp-overlays.yml`
-- `/gap-scout-only <ticket-id…>` — triage only: run `gap-scout` for one or more ids and stop (no planner/dev/gates); uses `scripts/extract-ticket.mjs` so agents never load the full backlog
-- `/inline-edit <ticket>` — the sanctioned, spec-first front door for a direct, in-session edit: refuses to let any code change happen before a real, ratified `spec.md`/`spec.json` exists, then runs `tester` → `review` → `security` in full, deliberately skipping `red` and `dev` (no `dev` subagent — the implementation is made directly, inline) — see `.sdd/pipeline.md`'s `/inline-edit` section
+- `/security-recheck` — re-runs just `security-checker` against current disk state (doesn't redo tester/review)
+- `/pipeline-lite <ticket>` — proportionate lane for small changes; skips `red` and `security` — see `.sdd/entrypoints/pipeline-lite.md`
+- `/inline-edit <ticket>` — spec-first in-session edit; skips `red` and `dev`; runs `tester` → `review` → `security` — see `.sdd/entrypoints/inline-edit.md`
+- `/pipeline-gapfill <ticket>` — MVP audit-and-gap-fill lane: `gap-scout` → gap-scoped stages — see `.sdd/entrypoints/pipeline-gapfill.md`
+- `/gap-scout-only <ticket-id…>` — triage only: run `gap-scout` and stop (no planner/dev/gates)
 - `/hotfix <what's broken>` — the sanctioned bypass for a production incident; runs none of the stages above — see `.sdd/hotfix.md`
 
 Feature/ticket work runs through six subagents in sequence, coordinating via shared files in `.pipeline/` (not `.claude/`, gitignored), plus a ledger-append step once a run reaches terminal `PASS`:
@@ -78,7 +78,9 @@ Feature/ticket work runs through six subagents in sequence, coordinating via sha
 
 On a **terminal `PASS`** (review and security both `PASS`), `node scripts/ledger-append.mjs` writes a durable, tracked entry — `.sdd/ledger/<run-id>/{spec.md,spec.json,entry.md,entry.json,security/}` (plus a copy of `red.json`/`changes.json`/`review.json`/`security.json` when present) — and regenerates `.sdd/ledger/index.json`. `entry.json` is the machine-facing, authoritative half; `entry.md` is the human-facing rendering. This is the one thing that survives `.pipeline/` being wiped; see `.sdd/ledger/README.md`.
 
-If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline routes back to `dev` with the fix list, then re-runs the downstream stages — capped at 3 loops before stopping to ask a human. `red` does not re-run in this loop.
+If review returns `NEEDS_FIXES` (or security returns `BLOCKED`), the pipeline writes a fix-brief via `scripts/write-fix-brief.mjs` then routes back to `dev` (scoped to that brief), then re-runs the downstream stages — capped at 3 loops before stopping to ask a human. `red` does not re-run in this loop.
+
+Each command's exact procedure lives in `.sdd/entrypoints/<cmd>.md`; `.sdd/pipeline.md` is the shared core (stage sequence, routing, loop cap, staleness policy — ≤300 lines). Read the core plus exactly one entrypoint file for any given command.
 
 Each stage reads the previous stage's file before starting. Don't skip a stage or let `dev` invent its own spec — if `.pipeline/spec.md` is missing, run `planner` first.
 

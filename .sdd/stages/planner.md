@@ -72,7 +72,8 @@ When invoked:
      "edgeCases": [ { "id": "EC-1", "text": "<the edge case, as plain text>" }, ... ],
      "lane": "<the ticket's declared lane, exactly as it appeared on the issue, or null if the
                ticket declared none — never omit this field, and never guess a lane that wasn't
-               actually declared>" }
+               actually declared>",
+     "affectedFiles": ["<repo-relative path>", ...] }
    ```
    Omit `stamp` when first writing the file — step 5 below attaches it as
    `{ "treeHash": "...", "headSha": "...", "dirty": true, "writtenAt": "..." }`
@@ -87,7 +88,10 @@ When invoked:
    the one field on this object that is genuinely optional (`null` when the ticket declared none) —
    every `spec.json` written before this field existed has no `lane` key at all, so a reader must
    treat an absent key the same as an explicit `null`, never as a validation failure (see
-   `scripts/pipeline-contracts.mjs`'s `readSpecJson`).
+   `scripts/pipeline-contracts.mjs`'s `readSpecJson`). `affectedFiles` is the same path list as
+   spec.md's "Affected files" section — unique repo-relative paths `write-fix-brief.mjs` intersects
+   with finding `paths` on a fix-loop. Write it on every new spec.json; a missing key still parses
+   as `[]` (legacy sidecars) but then any fix-brief generation fails closed on an empty intersection.
 5. Run `node scripts/write-stamp.mjs .pipeline/spec.json` (equivalently `npm run stamp --
    .pipeline/spec.json`). This attaches the `stamp` field every `.pipeline/*.json` sidecar carries
    (`.sdd/pipeline.md`'s "Staleness stamps" section) — a SHA-256 hash of the working tree at the

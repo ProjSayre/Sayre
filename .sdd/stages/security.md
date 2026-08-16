@@ -165,14 +165,16 @@ the human-facing record and is never parsed for either decision anymore. Exact s
 or
 
 ```
-{ "verdict": "BLOCKED", "runId": "<run-id>" }
+{ "verdict": "BLOCKED", "runId": "<run-id>", "findings": [ { "id": "S1", "summary": "...", "paths": ["..."], "relatedAc": ["AC-1"], "requiredOutcome": "..." } ] }
 ```
 
 `verdict` must be exactly one of those two literal strings. `runId` is required in both cases — the
 immutable run directory under `.pipeline/security-history/` is created every time this stage runs,
 win or lose, so there is always a run id to cite, and `ledger-append.mjs` reads this field directly
 with no fallback path (there is no "the field was absent or malformed, so fall back to scanning the
-report's prose" case left to handle). Both fields must agree with what `security-report.md` and
+report's prose" case left to handle). On `BLOCKED`, `"findings"` must be a non-empty array (same
+Finding shape as `review.json`) so the coordinator can write a fix-brief; a `PASS` may omit it.
+This stage remains a full check — a fix-brief does not shrink it. Both fields must agree with what `security-report.md` and
 `report.md`/`manifest.json`/`results.json` under `.pipeline/security-history/<run-id>/` already say —
 a reader auditing a run later has all of them, and they must tell the same story. This shape also
 carries a `stamp` field — omit it when first writing the file, then run
