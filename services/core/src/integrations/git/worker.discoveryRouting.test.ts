@@ -6,7 +6,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-const syncGitMetadata = vi.fn(async () => undefined);
+const syncGitMetadata = vi.fn(async () => ({ status: 'ignored' as const, updatedFiles: 0, unmatchedPaths: [] }));
 const runInstallationDiscovery = vi.fn(async () => ({ status: 'complete' as const, pages: 0, discovered: 0, registered: 0, enqueued: 0, sweep: { outcome: 'not_applicable' as const, revoked: 0 } }));
 
 vi.mock('../../services/gitSyncService', () => ({ syncGitMetadata }));
@@ -20,7 +20,9 @@ const createWorkerMock = vi.fn(
     // Exposes the handler so the test can invoke it directly against fake envelopes,
     // mirroring how BullMQ would call it per received job.
     (createWorkerMock as unknown as { handler: typeof handler }).handler = handler;
-    return { close: vi.fn() };
+    // W3-04's worker.on('failed', ...) registration (GAP-4) runs against whatever this mock
+    // returns, so it needs an `on` even though this test never fires a 'failed' event itself.
+    return { close: vi.fn(), on: vi.fn() };
   },
 );
 vi.mock('../../queue/bullmq', () => ({ createWorker: createWorkerMock }));

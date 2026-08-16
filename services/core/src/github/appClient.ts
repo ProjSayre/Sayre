@@ -14,6 +14,7 @@
 
 import jwt from 'jsonwebtoken';
 import { getConfig, getSecret } from '@sayre/config';
+import { readBoundedJson as sharedReadBoundedJson } from '../http/boundedJson';
 
 export interface InstalledRepo {
   provider_repo_id: string; // GitHub numeric repo id as string
@@ -95,7 +96,6 @@ const REQUEST_TIMEOUT_MS = 10_000;
 // to cover ONE page + its branch lookups, renamed accordingly.
 const PAGE_DISCOVERY_TIMEOUT_MS = 30_000;
 const DEFAULT_BRANCH_LOOKUP_CONCURRENCY = 5;
-const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 
 interface GithubRepoResponse {
   id: number;
@@ -191,48 +191,12 @@ async function githubWebFetch(path: string, init: RequestInit): Promise<Response
   return response;
 }
 
+// W3-04 gapfill (GAP-3): mechanically delegates to the shared reader
+// (services/core/src/http/boundedJson.ts) instead of maintaining a second, independently
+// drifting copy. The error type stays GithubAppApiError via the injected `makeError`, so
+// this client's behavior/tests are unchanged by the extraction.
 async function readBoundedJson<T>(response: Response, context: string): Promise<T> {
-  const contentLength = response.headers.get('content-length');
-  if (contentLength !== null) {
-    const declaredBytes = Number(contentLength);
-    if (!Number.isSafeInteger(declaredBytes) || declaredBytes < 0) {
-      throw new GithubAppApiError(`${context} returned an invalid Content-Length.`);
-    }
-    if (declaredBytes > MAX_JSON_RESPONSE_BYTES) {
-      throw new GithubAppApiError(`${context} returned an oversized response.`);
-    }
-  }
-
-  if (response.body === null) {
-    throw new GithubAppApiError(`${context} returned an empty response.`);
-  }
-
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let receivedBytes = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    receivedBytes += value.byteLength;
-    if (receivedBytes > MAX_JSON_RESPONSE_BYTES) {
-      await reader.cancel();
-      throw new GithubAppApiError(`${context} returned an oversized response.`);
-    }
-    chunks.push(value);
-  }
-
-  const body = new Uint8Array(receivedBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  try {
-    return JSON.parse(new TextDecoder().decode(body)) as T;
-  } catch {
-    throw new GithubAppApiError(`${context} returned invalid JSON.`);
-  }
+  return sharedReadBoundedJson<T>(response, context, (message) => new GithubAppApiError(message));
 }
 
 function encodedRepositoryPath(fullName: string): string {

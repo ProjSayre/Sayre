@@ -28,7 +28,9 @@
       "pusher": {
         "name": "octocat",
         "email": "octocat@example.com"
-      }
+      },
+      "size": null,
+      "distinct_size": null
     }
   }
 }

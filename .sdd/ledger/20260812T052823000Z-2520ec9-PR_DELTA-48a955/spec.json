@@ -1,0 +1,171 @@
+{
+  "ticket": "W3-04 — Git sync integration worker (provider-generic) — gapfill",
+  "goal": "Make W3-04's acceptance sentence literally true and literally measured: a merged PR must be shown to change real File node ownership/recent-edit properties in a real graph inside a pinned 5-second sync target, and a mock fakehub provider must be registrable purely through configuration plus one adapter module, with no edit to the worker, the queue, or the pipeline. Along the way, close the unbounded-provider-call, silent-truncation, silent-drop, and unvalidated-path defects that make the \"updates ownership metadata\" claim conditional today.",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "(GAP-1) A test running against a real Neo4j applies the shipped APPLY_OWNERSHIP_CYPHER for a merged PR and asserts, by reading the node back, that the target File node's primary_owner_name/primary_owner_email/primary_owner_login/primary_owner_provider, last_edited_at, and recent_pr_number/recent_pr_title/recent_pr_url/recent_pr_merged_at all changed to the merged-PR values, and that the OWNS, AUTHORED, and MODIFIED edges exist. No vi.fn() may supply the observed values."
+    },
+    {
+      "id": "AC-2",
+      "text": "(GAP-1) The File nodes that test writes against are seeded by executing the Python ingestion writer's own File query text, read at runtime from services/workers/sayre_workers/ingestion/graph.py. Additionally, a non-infra test asserts the Node MATCH key equals OWNERSHIP_FILE_MATCH_KEYS and that the Python writer sets every one of those properties. Renaming repo_id, ref_name, or path on either side fails a test."
+    },
+    {
+      "id": "AC-3",
+      "text": "(GAP-1) The node CI job gains a neo4j service and a dedicated step that runs the graph-backed git-sync tests with GRAPH_INTEGRATION_REQUIRED: 'true', followed by a zero-skip assertion step. A silently-skipped graph test fails CI."
+    },
+    {
+      "id": "AC-4",
+      "text": "(GAP-1b) When the provider resolves file edits but the graph matches zero File nodes, syncGitMetadata returns status: 'unmatched' (never 'ignored') with the unmatched paths on unmatchedPaths, increments git_sync_unmatched_files_total, and the worker records it. A branch event that legitimately produced no edits still returns 'ignored'. The two are distinguishable by a caller, a log, and a metric."
+    },
+    {
+      "id": "AC-5",
+      "text": "(GAP-2) GIT_SYNC_TARGET_MS = 5_000 exists as a single named constant with a comment citing PRD-V1.md:16/:258; GitSyncResult.durationMs carries a monotonic measurement; a breach increments git_sync_budget_breach_total; and the end-to-end acceptance test asserts the enqueue-to-graph-visible elapsed time is under GIT_SYNC_TARGET_MS by reference to the constant, not a literal."
+    },
+    {
+      "id": "AC-6",
+      "text": "(GAP-3) listPullRequestFiles is bounded on all three axes: at most MAX_PULL_REQUEST_FILE_PAGES pages (exceeding it throws, never silently truncates), every request carries AbortSignal.timeout(GIT_PROVIDER_REQUEST_TIMEOUT_MS) and redirect: 'manual', and the body is read through the shared readBoundedJson. appClient.ts's existing behavior and tests are unchanged by the extraction."
+    },
+    {
+      "id": "AC-7",
+      "text": "(GAP-4) The github-sync enqueue passes GIT_SYNC_JOB_OPTIONS (attempts: 5, exponential backoff, removeOnFail: false), so a transient failure is retried and an exhausted job is durably retained in the failed set rather than deleted. The worker's failed listener records org/provider/delivery/attempt/error-name only — no payload, no credential."
+    },
+    {
+      "id": "AC-8",
+      "text": "(GAP-5) A push payload that is truncated (size > commits.length, or size absent and commits.length >= GITHUB_PUSH_COMMIT_CAP) sets truncated: true, and a force-push (payload.forced === true) sets rebuildRequired: true, both surfaced on GitSyncResult and counted. Neither case is silently reduced to \"we updated everything\"."
+    },
+    {
+      "id": "AC-9",
+      "text": "(GAP-6) Providers are registered from the GIT_PROVIDER_CATALOG configuration value. worker.ts contains no adapter constructor literal, and enabling a different provider requires no edit to worker.ts, bullmq.ts, gitSyncService.ts, or packages/shared-types. The loader fails closed on unknown, duplicate, or malformed entries and on malformed JSON."
+    },
+    {
+      "id": "AC-10",
+      "text": "(GAP-6) A registration marked mockOnly (i.e. fakehub) is refused with a thrown error when NODE_ENV === 'production', so making a mock provider config-registrable does not make it production-registrable."
+    },
+    {
+      "id": "AC-11",
+      "text": "(GAP-7) fakehub ships as a real adapter module under providers/, exported from the package barrel, whose resolveChanges genuinely normalizes both arguments into a ProviderChangeSet (no `void event; void occurredAt;`). An end-to-end test drives the literal second acceptance clause: configuration only -> startGitSyncWorker -> BullMQ github-sync job -> graph write, with the File node's properties asserted afterwards. The prior providerRegistry.test.ts test titled \"registers a second provider through one adapter module without a pipeline switch\" is deleted, and the new test fails if provider registration is hardcoded."
+    },
+    {
+      "id": "AC-12",
+      "text": "(GAP-8) GitProviderContext (provider id, credential ref, resolveCredential) is passed to every adapter factory by the catalog loader, so a config-registered provider can declare and resolve a credential without a code edit. GithubProviderAdapter uses context.resolveCredential() when a credential ref is configured and does not mint an installation token in that case; it falls back to today's minting when no ref is configured."
+    },
+    {
+      "id": "AC-13",
+      "text": "(GAP-9) event.repo.full_name is validated with the shared isValidRepoFullName (services/core/src/github/repoFullName.ts) before any provider API path is built. 'a/../../owner/repo', 'a/b/c', 'owner/', '/name', 'owner//name', '..', and '' are all rejected with GithubGitSyncError before any network call is made, and the error message does not echo the offending value."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "(GAP-1) A File node with the same repo_id/ref_name/path but a different org_id is not touched by the write (structural tenant isolation, verified against real Neo4j)."
+    },
+    {
+      "id": "EC-2",
+      "text": "(GAP-1) A File node with the same org_id/repo_id/path but a different ref_name is not touched (a merge into main must not rewrite a feature branch's ownership)."
+    },
+    {
+      "id": "EC-3",
+      "text": "(GAP-1) Two edits in one change set touching the same path with different authors: the final OWNS edge is single-valued (the prior OWNS is deleted, per the existing OPTIONAL MATCH ... DELETE old_owns clause) and primary_owner_* reflects one author, not both."
+    },
+    {
+      "id": "EC-4",
+      "text": "(GAP-1) Re-delivering the identical merged-PR event a second time is idempotent: node properties and edge counts are unchanged after the second apply (the write is all MERGE/SET)."
+    },
+    {
+      "id": "EC-5",
+      "text": "(GAP-1b) Merged PR resolves N paths, the graph matches zero: status: 'unmatched', unmatchedPaths.length === N, counter incremented, distinguishable from EC-6."
+    },
+    {
+      "id": "EC-6",
+      "text": "(GAP-1b) A branch event (or a non-merged PR close) produces no edits at all: status: 'ignored', unmatchedPaths empty, no repository resolve, no graph call — the existing early return is preserved."
+    },
+    {
+      "id": "EC-7",
+      "text": "(GAP-1b) Partial match: 3 resolved paths, 2 matching File nodes -> status: 'applied', updatedFiles: 2, unmatchedPaths names exactly the third path."
+    },
+    {
+      "id": "EC-8",
+      "text": "(GAP-2) A run that exceeds GIT_SYNC_TARGET_MS still completes and still applies the write; it records the breach rather than aborting mid-write."
+    },
+    {
+      "id": "EC-9",
+      "text": "(GAP-3) The provider endpoint returns a full 100-entry page indefinitely: the loop stops at MAX_PULL_REQUEST_FILE_PAGES and throws GithubGitSyncError; it neither loops forever nor returns a silently truncated list."
+    },
+    {
+      "id": "EC-10",
+      "text": "(GAP-3) A request that never resolves is aborted by the per-request timeout and surfaces as a rejection, so a stalled endpoint cannot hold a worker slot indefinitely (the worker runs at concurrency: 4)."
+    },
+    {
+      "id": "EC-11",
+      "text": "(GAP-3) A response declaring or streaming more than MAX_JSON_RESPONSE_BYTES is rejected before being buffered."
+    },
+    {
+      "id": "EC-12",
+      "text": "(GAP-3) A 3xx from the provider endpoint is not followed (redirect: 'manual'), so an installation token is never replayed to a redirected host."
+    },
+    {
+      "id": "EC-13",
+      "text": "(GAP-4) A transient graph failure on attempt 1 followed by success on attempt 2 ends with the ownership metadata applied exactly once."
+    },
+    {
+      "id": "EC-14",
+      "text": "(GAP-4) All attempts exhausted: the job is present in the queue's failed set (not removed), and the recorded failure carries no payload, path, token, or repository secret."
+    },
+    {
+      "id": "EC-15",
+      "text": "(GAP-4) GitRepositoryNotRegisteredError (repo not registered for this org) still fails the job — it must not be swallowed into a false 'ignored'."
+    },
+    {
+      "id": "EC-16",
+      "text": "(GAP-5) Push with size: 47 and 20 inline commits -> truncated: true; push with size: 3 and 3 commits -> truncated: false; push with no size and exactly 20 commits -> truncated: true (conservative)."
+    },
+    {
+      "id": "EC-17",
+      "text": "(GAP-5) Push with forced: true -> rebuildRequired: true on the result, while the derivable edits are still applied."
+    },
+    {
+      "id": "EC-18",
+      "text": "(GAP-6) GIT_PROVIDER_CATALOG that is malformed JSON / not an array / an empty array / contains an unknown provider id / contains a duplicate provider id / contains an unknown object key / has a non-env:// credentialRef -> the loader throws GitProviderCatalogError and the worker does not start. It must never fall back silently to a github-only registry."
+    },
+    {
+      "id": "EC-19",
+      "text": "(GAP-6) Default (unset) GIT_PROVIDER_CATALOG yields exactly today's behavior: a registry containing github and nothing else."
+    },
+    {
+      "id": "EC-20",
+      "text": "(GAP-6) fakehub enabled while NODE_ENV === 'production' -> refused with a thrown error naming the provider; enabled under test/development -> registers normally."
+    },
+    {
+      "id": "EC-21",
+      "text": "(GAP-7) A fakehub event whose payload is missing files, has an empty files, has a non-string entry in files, or has an unparseable timestamp: the adapter degrades the way the GitHub adapter does (drop the bad entry, fall back to occurredAt) rather than throwing or inventing a path."
+    },
+    {
+      "id": "EC-22",
+      "text": "(GAP-8) A configured credentialRef naming a secret outside SECRET_NAMES, or one that resolves empty, fails closed as GitProviderCredentialError; the error message contains neither the secret value nor the resolved credential."
+    },
+    {
+      "id": "EC-23",
+      "text": "(GAP-8) A provider configured with credentialRef: null and no minting path available fails closed rather than issuing an unauthenticated provider call."
+    },
+    {
+      "id": "EC-24",
+      "text": "(GAP-9) full_name values 'a/../../owner/repo', 'a/b/c', 'owner/', '/name', 'owner//name', '..', '', 'own er/repo', 'owner/re%2Fpo' are each rejected before any fetcher call is made (assert the fetcher was never invoked)."
+    },
+    {
+      "id": "EC-25",
+      "text": "(GAP-9) A legitimate dotted repository name ('acme/my.repo.js') and a legitimate hyphen/underscore name ('acme/my-repo_2') still succeed — the validation must not break real repositories."
+    },
+    {
+      "id": "EC-26",
+      "text": "(GAP-1/GAP-3) Neo4j (or Redis) unreachable: the integration files skip locally and hard fail when GRAPH_INTEGRATION_REQUIRED/MESSAGING_INTEGRATION_REQUIRED is 'true'; CI's zero-skip gate turns a skip into a red build."
+    }
+  ],
+  "lane": null,
+  "stamp": {
+    "treeHash": "2bfeb0419e5053dc6e355129eef8a5a79170e5998876f042e665bb81b89b1d72",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": false,
+    "writtenAt": "2026-08-12T01:37:47.658Z"
+  }
+}

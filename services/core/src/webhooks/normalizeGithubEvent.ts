@@ -106,6 +106,11 @@ function normalizePush(parsed: Record<string, unknown>): NormalizedRepoEvent['pa
     ref: parsed.ref ?? null,
     commits,
     pusher: parsed.pusher ?? null,
+    // W3-04 gapfill (GAP-5): additive passthrough so the git-sync adapter can detect a
+    // truncated push (GitHub caps `commits` at 20 even when `size`/`distinct_size` report
+    // a larger total) — see integrations/git/providers/github.ts's resolvePush.
+    size: parsed.size ?? null,
+    distinct_size: parsed.distinct_size ?? null,
   };
 }
 

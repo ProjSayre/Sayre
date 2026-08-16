@@ -1,0 +1,363 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260812T052823000Z-2520ec9-PR_DELTA-48a955",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-12T05:20:00Z",
+  "completed_at": "2026-08-12T05:45:00Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "branch": "feat/w3-04-git-sync-integration-worker",
+    "dirty": true,
+    "environment": "local-dev checkout; no live CI run for this session. Working tree is dirty with exactly the W3-04 gapfill (GAP-1..GAP-9/1b) file set: `git status --porcelain` shows 22 modified/deleted + 19 untracked files under .github/, infra/, packages/config/, and services/core/src/{github,http,integrations/git,queue/__fixtures__,routes,services,telemetry,webhooks}, plus one confirmed-unrelated pre-existing untracked Documents/ directory (not part of `git diff`, not in changed_paths). Ran the full non-deferred red-listed unit suite directly in this environment (60/60 passing across 7 files: providerCatalog.test.ts, providers/github.test.ts, providers/fakehub.test.ts, boundedJson.test.ts, worker.test.ts, budgets.test.ts, jobPolicy.test.ts) as dynamic verification, plus one additional disposable dynamic repro (see CORE-06 finding below) run via `vite-node`/`tsx` against the OS temp directory only, never against repository source, cleaned up after use. The three integration files requiring live Neo4j/Redis (ownershipGraph.integration.test.ts, w3-04.acceptance.integration.test.ts, jobRetry.integration.test.ts) are RED-DEFERRED and were not dynamically re-run in this local environment (no live Neo4j/Redis reachable) — see Limitations.",
+    "base_urls": [],
+    "changed_paths": [
+      ".github/workflows/ci.yml",
+      "infra/.env.example",
+      "packages/config/src/config.ts",
+      "services/core/src/github/appClient.ts",
+      "services/core/src/integrations/git/__fixtures__/fakehubProvider.ts",
+      "services/core/src/integrations/git/graphOwnershipStore.test.ts",
+      "services/core/src/integrations/git/graphOwnershipStore.ts",
+      "services/core/src/integrations/git/index.ts",
+      "services/core/src/integrations/git/providerRegistry.test.ts",
+      "services/core/src/integrations/git/providerRegistry.ts",
+      "services/core/src/integrations/git/providers/github.test.ts",
+      "services/core/src/integrations/git/providers/github.ts",
+      "services/core/src/integrations/git/types.ts",
+      "services/core/src/integrations/git/worker.ts",
+      "services/core/src/queue/__fixtures__/repo_push.branch-deletion.envelope.json",
+      "services/core/src/queue/__fixtures__/repo_push.envelope.json",
+      "services/core/src/routes/githubWebhook.fixtures.test.ts",
+      "services/core/src/routes/githubWebhook.gapfill.test.ts",
+      "services/core/src/services/gitSyncService.test.ts",
+      "services/core/src/services/gitSyncService.ts",
+      "services/core/src/services/githubWebhookService.ts",
+      "services/core/src/webhooks/normalizeGithubEvent.ts",
+      "services/core/src/http/boundedJson.test.ts",
+      "services/core/src/http/boundedJson.ts",
+      "services/core/src/integrations/git/__tests__/crossServiceFileKey.test.ts",
+      "services/core/src/integrations/git/__tests__/jobRetry.integration.test.ts",
+      "services/core/src/integrations/git/__tests__/ownershipGraph.integration.test.ts",
+      "services/core/src/integrations/git/__tests__/w3-04.acceptance.integration.test.ts",
+      "services/core/src/integrations/git/__tests__/w3-04.ci-wiring.test.ts",
+      "services/core/src/integrations/git/budgets.test.ts",
+      "services/core/src/integrations/git/budgets.ts",
+      "services/core/src/integrations/git/jobPolicy.test.ts",
+      "services/core/src/integrations/git/jobPolicy.ts",
+      "services/core/src/integrations/git/providerCatalog.test.ts",
+      "services/core/src/integrations/git/providerCatalog.ts",
+      "services/core/src/integrations/git/providers/fakehub.test.ts",
+      "services/core/src/integrations/git/providers/fakehub.ts",
+      "services/core/src/integrations/git/providers/index.ts",
+      "services/core/src/integrations/git/worker.test.ts",
+      "services/core/src/services/githubWebhookService.jobOptions.test.ts",
+      "services/core/src/telemetry/gitSyncMetrics.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260812T050037000Z-2520ec9-PR_DELTA-90de4e",
+    "commit_sha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "comparable": true,
+    "selection_reason": "Per audit-contract.md's baseline order, option 1 applies: the calling agent explicitly named this run as the directly comparable prior run on this exact ticket/surface ('load 20260812T050037000Z-2520ec9-PR_DELTA-90de4e as your baseline'). Independently confirmed comparable, not merely accepted on say-so: same target commit_sha (2520ec9d9919eab2498a548efb6321a440693c0b — trivially its own ancestor, `git merge-base --is-ancestor` not needed for an identical commit), same branch, same dirty-working-tree state (the only delta between the two runs is dev's 3-file fix layered as further uncommitted changes on the same pinned commit), same environment, same tenant fixtures, same checklist/agent-hash set (re-verified in this run's agent_versions block — byte-identical to the baseline's), same 41-path changed_paths set, and the same 73-check selection (no new surface implicated by a 3-file fix confined to the provider-catalog/registration surface already selected). Every one of the baseline's 73 observation_keys has a directly comparable current observation.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": "Wave 3 gapfill — W3-04 Git sync integration worker (provider-generic) (GAPFILL: GAP-1/1b/2/3/4/5/6/7/8/9), fix-verification pass for security finding FND-7c51522045f7 (CORE-06 — the closed-manifest git-provider registration lookup did not fail closed for a GIT_PROVIDER_CATALOG provider id naming an inherited Object.prototype member).",
+    "phase": "pre-external-customer MVP (CLAUDE.md / security-multitenancy.md secrets-phase posture: gitignored local .env, no KMS store yet). Unchanged by this fix.",
+    "source_references": [
+      ".pipeline/spec.md",
+      ".pipeline/changes.md",
+      ".pipeline/review.md",
+      ".pipeline/review.json",
+      ".claude/rules/security-multitenancy.md",
+      ".sdd/mvp-overlays.yml",
+      "CLAUDE.md",
+      ".pipeline/security-history/20260812T050037000Z-2520ec9-PR_DELTA-90de4e/report.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": true,
+    "authorized_by": "Pipeline convention (security stage may execute existing, non-destructive local test suites as read-only dynamic verification, and may run a disposable, non-repository dynamic repro against the OS temp directory only — no production source file was modified by this stage; see cleanup notes).",
+    "resource_ceiling": "Local vitest execution of src/integrations/git/providerCatalog.test.ts (27 tests) and the full src/integrations/git/ directory (76 passed, 10 RED-DEFERRED skipped). One additional ad hoc dynamic repro (2 module imports, 13 in-process calls to loadGitProviderRegistry() across 10 reserved/control provider-id cases plus 3 plain-object-literal-registrations cases) run via `tsx` from a script under the OS temp root (/var/folders/dw/y01pxx3n6p370q1gfz24d3200000gn/T/w3-04-sec-recheck-7ab21c/), deleted immediately after use — no network egress, no destructive operation, no state persisted beyond the process, no repository file created/modified/left behind. Also ran `npx tsc --noEmit` and `npx eslint` against the 3 fixed files.",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "org-resolved-1 / org-server-resolved (synthetic, pre-existing Core test fixtures, unmodified by this diff)",
+      "22222222-2222-4222-8222-222222222222 (synthetic, committed Core envelope fixtures)"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-01 is mandatory every run.",
+      "rationale": "Unaffected by the 3-file CORE-06 fix; re-confirmed org_id continues to be resolved server-side only, from the envelope.",
+      "code_references": [
+        "services/core/src/services/gitSyncService.ts:41-118",
+        "services/core/src/integrations/git/graphOwnershipStore.ts:36-85"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-02 is mandatory every run.",
+      "rationale": "Unaffected by the fix; no Graph Query Service, route-level RBAC, or client graphology code touched.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-03 is mandatory every run.",
+      "rationale": "Unaffected by the fix; GAP-8's credential seam (buildContext/resolveCredential) is untouched by the 3-file diff, still a thin wrapper over the same closed getSecret/SECRET_NAMES loader.",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts:87-114",
+        "packages/config/src/secrets.ts:130-144 (unmodified)"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-04 is mandatory every run.",
+      "rationale": "Unaffected by the fix; signature-validation code path untouched.",
+      "code_references": [
+        "services/core/src/services/githubWebhookService.ts:84-91"
+      ]
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE-05 is mandatory every run.",
+      "rationale": "Unaffected by the fix; no services/workers/** path touched.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE-06 is mandatory every run; this is the exact surface the fix under recheck belongs to.",
+      "rationale": "The 3-file fix (providerCatalog.ts hasOwnProperty guard + providers/index.ts Object.create(null) construction + new regression tests) closes FND-7c51522045f7. Independently re-attempted the attack this session (10 provider-id cases, all now throw the documented GitProviderCatalogError) and grepped for a second, unguarded lookup path (none found). GAP-9's full_name path-construction hardening is unaffected by this fix and re-verified unchanged.",
+      "code_references": [
+        "services/core/src/integrations/git/providerCatalog.ts:122-161",
+        "services/core/src/integrations/git/providers/index.ts:1-27"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches this brief's trigger_paths — unchanged from baseline.",
+      "rationale": "Not implicated by this diff or its fix; not inspected in this run.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Path routing floor matches, per the baseline run's rationale — unchanged this run.",
+      "rationale": "No Model Provider Adapter or model-provider secret touched by the fix; unaffected.",
+      "code_references": [
+        "services/core/src/integrations/git/providers/github.ts:135-182"
+      ]
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches this brief's trigger_paths — unchanged from baseline.",
+      "rationale": "Not implicated; not inspected in this run.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed path matches this brief's trigger_paths — unchanged from baseline.",
+      "rationale": "Not implicated; not inspected in this run.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Explicitly named by the calling agent's brief; mechanically triggered — unchanged from baseline selection.",
+      "rationale": "worker.ts/jobPolicy.ts/providerCatalog.ts/providerRegistry.ts remain the core surface; the fix is confined to providerCatalog.ts's lookup and providers/index.ts's manifest construction. ING-04 (sibling path named in the finding's recheck scope) independently re-verified unchanged.",
+      "code_references": [
+        "services/core/src/integrations/git/worker.ts",
+        "services/core/src/integrations/git/jobPolicy.ts",
+        "services/core/src/services/gitSyncService.ts"
+      ]
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Explicitly named by the calling agent's brief; mechanically triggered — unchanged from baseline selection.",
+      "rationale": "WEB-07 (sibling path named in the finding's recheck scope) independently re-verified unchanged; providerCatalog.ts's exactKeys() object-key validation (a related but distinct control from the fixed provider-VALUE lookup) is unaffected by the fix.",
+      "code_references": [
+        "services/core/src/http/boundedJson.ts",
+        "services/core/src/integrations/git/providers/github.ts"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Path routing floor matches, per the baseline run's rationale — unchanged this run.",
+      "rationale": "CI/infra footprint and worker.ts logging are unaffected by the 3-file fix (neither ci.yml, infra/.env.example, nor worker.ts appears in the fix's declared 3-file scope).",
+      "code_references": [
+        ".github/workflows/ci.yml",
+        "infra/.env.example"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Path routing floor matches, per the baseline run's rationale — unchanged this run.",
+      "rationale": "No package.json/lockfile/Dockerfile change; unaffected by the fix.",
+      "code_references": [
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "security-stage-procedure",
+      "source": ".sdd/stages/security.md",
+      "sha256": "6c2e64d54392693409dd9e237c5220d5ea0608cae13e52bde7bd95d46fd53fc0"
+    },
+    {
+      "agent_id": "security-checker-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "llm-rag-poisoning",
+      "source": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "sha256": "fe13ff5545fe124b5e900b3ca4522f28b7cbd0ef346859d6c0040363e094b796"
+    },
+    {
+      "agent_id": "model-provider-egress-ssrf",
+      "source": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "sha256": "310b28e0975c02c5d699947f821863aa7cba669e1e571ec2706f527ec46939fe"
+    },
+    {
+      "agent_id": "mcp-transport-key-lifecycle",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "158b389bfbff77988d5046c9ec8b50708015ce5445bb3053520ed67f8eccca25"
+    },
+    {
+      "agent_id": "websocket-realtime",
+      "source": "security-attacker-agents/websocket-realtime-attacker.md",
+      "sha256": "87b3fd4499643c3ac5cb959c204f37b497fc4a3256aea8ec081ce70424fcbf8e"
+    },
+    {
+      "agent_id": "ingestion-queue-webhook",
+      "source": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "sha256": "a6b52b93f7233cf685cd28e9c84902364723d181f10db6a094f02299c6759db8"
+    },
+    {
+      "agent_id": "web-api-client",
+      "source": "security-attacker-agents/web-api-client-attacker.md",
+      "sha256": "747aa40976763baa979397833be5b35a1c303613a50b48a4128197c9edc5d48c"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "5a9313b9fb87c85267bcd26bcd6487f5eeae154c64876e0879af86faf01a5e38"
+    }
+  ],
+  "limitations": [
+    "The three RED-DEFERRED integration test files (ownershipGraph.integration.test.ts, w3-04.acceptance.integration.test.ts, jobRetry.integration.test.ts) require a live Neo4j and/or Redis, neither reachable in this local environment; unchanged from the baseline run and outside the 3-file fix's scope. ING-13/CORE-01(EC-1..4)-relevant evidence for those specific assertions remains STATIC (Cypher-text and test-source review) rather than DYNAMIC in this run.",
+    "MP-08 (TLS/endpoint authenticity) and MP-10 (circuit-breaker isolation) remain UNVERIFIED: no live TLS-downgrade test was performed against api.github.com, and the shared github-sync worker's concurrency:4 pool (pre-existing, unmodified by this diff or its fix) was not load-tested for cross-provider starvation in this run.",
+    "SEC-06 (secret rotation/cache invalidation) and SEC-14 (alerting-rule existence) remain UNVERIFIED: packages/config/src/secrets.ts's cache-invalidation behavior is pre-existing and unmodified (not re-tested here); no alerting-rule definition exists in this repository's scope to inspect.",
+    "review.json's stamp was present and fresh (check-stamp-freshness.mjs exit 0) before this run started — not an 'unknown' stamp case, noted here only because the procedure asks that case be logged if it occurs."
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "ticket": "W3-04",
+  "overlays": [
+    "base"
+  ],
+  "securityRequired": true,
+  "auditFirst": false,
+  "verdict": "GAPFILL",
+  "items": [
+    {
+      "id": "GAP-1",
+      "status": "UNTESTED",
+      "source": "merging a PR updates File node ownership/recent-edit metadata within the sync target",
+      "evidence": [
+        "services/core/src/integrations/git/graphOwnershipStore.ts:22-71",
+        "services/core/src/integrations/git/graphOwnershipStore.test.ts:54-60",
+        "services/core/src/services/gitSyncService.test.ts:49-50",
+        "services/core/src/services/gitSyncService.test.ts:133-136",
+        "services/workers/sayre_workers/ingestion/graph.py:33-42",
+        "services/core/src/integrations/git/repositoryResolver.ts:25-31",
+        "services/workers/sayre_workers/ingestion/state.py:218-226",
+        ".github/workflows/ci.yml:11-22",
+        ".github/workflows/ci.yml:346-355"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-1b",
+      "status": "MISSING",
+      "source": "merging a PR updates File node ownership/recent-edit metadata within the sync target",
+      "evidence": [
+        "services/core/src/services/gitSyncService.ts:32-48",
+        "services/core/src/integrations/git/worker.ts:26-32"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-2",
+      "status": "MISSING",
+      "source": "merging a PR updates File node ownership/recent-edit metadata within the sync target",
+      "evidence": [
+        "docs/product/PRD-V1.md:16",
+        "docs/product/PRD-V1.md:258",
+        "services/workers/sayre_workers/ingestion/budgets.py:12",
+        "services/workers/tests/test_ingestion_fixture_repo.py:254-257",
+        "services/core/src/services/gitSyncService.ts:31",
+        "services/core/src/graph-write/neo4j.ts:30-56"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-3",
+      "status": "MISSING",
+      "source": "merging a PR updates File node ownership/recent-edit metadata within the sync target",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:107-128",
+        "services/core/src/integrations/git/worker.ts:31",
+        "services/core/src/integrations/git/providers/github.test.ts:36-99",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md:246-264"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-4",
+      "status": "MISSING",
+      "source": "merging a PR updates File node ownership/recent-edit metadata within the sync target",
+      "evidence": [
+        "services/core/src/queue/bullmq.ts:255-256",
+        "services/core/src/integrations/git/repositoryResolver.ts:36-41",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md:162-186"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-5",
+      "status": "NARROWED",
+      "source": "BullMQ-backed worker updating ownership/PR/commit metadata on Graph DB node properties.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:57-79",
+        "services/workers/sayre_workers/ingestion/models.py:279-281",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md:272-301"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-6",
+      "status": "HARDCODED",
+      "source": "a mock \"fakehub\" provider registers via configuration + one adapter module with no pipeline changes",
+      "evidence": [
+        "services/core/src/integrations/git/worker.ts:14-20",
+        "services/core/src/integrations/git/providerRegistry.ts:10-31",
+        "packages/config/src/config.ts"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-7",
+      "status": "MOCKED",
+      "source": "a mock \"fakehub\" provider registers via configuration + one adapter module with no pipeline changes",
+      "evidence": [
+        "services/core/src/integrations/git/__fixtures__/fakehubProvider.ts:7-20",
+        "services/core/src/integrations/git/providerRegistry.test.ts:17-23",
+        "services/core/src/integrations/git/index.ts:1-16",
+        "services/core/src/services/gitSyncService.test.ts:4"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-8",
+      "status": "MISSING",
+      "source": "Provider-generic from v1 (provider field, normalized event schema, pluggable auth) so a second git-hosting provider is a plug-in, not a rewrite.",
+      "evidence": [
+        "services/core/src/integrations/git/types.ts:34-37",
+        "services/core/src/integrations/git/providers/github.ts:135-139",
+        "services/core/src/integrations/git/providers/github.ts:151-155",
+        "services/core/src/integrations/git/worker.ts:14-20"
+      ],
+      "needsTest": true
+    },
+    {
+      "id": "GAP-9",
+      "status": "MISSING",
+      "source": "Provider-generic from v1 (provider field, normalized event schema, pluggable auth) so a second git-hosting provider is a plug-in, not a rewrite.",
+      "evidence": [
+        "services/core/src/integrations/git/providers/github.ts:102-105",
+        "services/core/src/integrations/git/providers/github.ts:113",
+        "services/core/src/github/appClient.ts:225-228",
+        "docs/audits/deep-audit-2026-07-31/audit-04-webhooks-git.md:303-330"
+      ],
+      "needsTest": true
+    }
+  ],
+  "stamp": {
+    "treeHash": "2bfeb0419e5053dc6e355129eef8a5a79170e5998876f042e665bb81b89b1d72",
+    "headSha": "2520ec9d9919eab2498a548efb6321a440693c0b",
+    "dirty": false,
+    "writtenAt": "2026-08-12T01:18:09.647Z"
+  }
+}
