@@ -1,0 +1,60 @@
+{
+  "filesChanged": [
+    "packages/shared-types/src/index.ts",
+    "services/core/src/db/schema.ts",
+    "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql",
+    "services/core/drizzle/meta/_journal.json",
+    "services/core/src/db/mcpKeyStore.ts",
+    "services/core/src/db/ephemeralMcpCredentialStore.ts",
+    "services/core/src/services/ephemeralMcpCredentialService.ts",
+    "services/core/src/services/mcpKeyService.ts",
+    "services/core/src/mcp/toolExecution.ts",
+    "services/core/src/mcp/metrics.ts",
+    "services/core/src/services/mcpKeyService.test.ts",
+    "services/core/src/mcp/gateway.test.ts",
+    "docs/wave0-foundation-contracts.md",
+    "services/core/package.json",
+    "services/core/test/mcp-interop/fixtureGateway.ts",
+    "packages/config/src/config.ts",
+    "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+    ".github/workflows/ci.yml",
+    "services/core/src/db/rls_acceptance.tester.test.ts",
+    "services/core/src/security/ephemeralMcpCredentialMigration.test.ts"
+  ],
+  "redTestChanges": [
+    {
+      "path": "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+      "reason": "Post-PASS CI-remediation hand-edit, declared under /re-gate rather than made by dev. CI's repo-wide gate `npm run check:secret-access` (scripts/check-secret-access.mjs) failed this file at line 39 for direct `process.env.CH01_TEST_DB_NAME` access; that gate bars ALL direct environment reads outside the central loaders, not only secret-class ones, and the local lane never ran it. Line 39 now reads `getConfig(\"CH01_TEST_DB_NAME\")` from @sayre/config, the exact pattern sibling DB suites already use (src/db/rls.test.ts:41 `getConfig(\"RLS_TEST_DB_NAME\")`), with the name and its default `ch01_ephemeral_rls_test` registered in packages/config/src/config.ts's CONFIG_NAMES/DEFAULTS beside RLS_TEST_DB_NAME. Behavior is identical: same default, same env-var override, both verified. No assertion, no test case, and no scope-coverage claim was weakened, added, or removed — the diff is the import line, the constant's right-hand side, and a header comment. The suite was then executed against real Postgres and passes 7/7, up from RED-DEFERRED. EXTENDED in the round-5 rebase: two further comment/title-only edits in this same file, from the migration renumber described in the sibling entry below — the header comment's 'migration 0019' and one test title's '0019 CHECK constraints' both became '0020'. No assertion, no fixture, and no test body changed; the suite still passes 7/7 against real Postgres. EXTENDED AGAIN in the round-6 rebase (second renumber, 0020 -> 0021, forced by main landing W7-01's 0020_w7_01_github_installation_sync at journal idx 20): the same two comment/title-only edits moved forward — the header comment's 'migration 0020' became 'migration 0021' and the '0020 CHECK constraints' test title became '0021 CHECK constraints'. No assertion, no fixture, and no test body changed."
+    },
+    {
+      "path": "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+      "reason": "MIGRATION RENUMBER 0020 -> 0021, forced by main (second renumber round). Round-6 rebase onto origin/main@da97ee2: main's W7-01 landed drizzle/0020_w7_01_github_installation_sync.sql at journal idx 20 / when 1785384400000 — the exact idx AND the exact `when` CH-01's migration held after the round-5 renumber. CH-01's migration was renumbered with `git mv` to drizzle/0021_ch01_ephemeral_mcp_credentials.sql, byte-identical (git blob 0b7fa25b7b46b6ad10a8093e6f0280aea8c43235 on both sides of the rename), and its journal entry moved to idx 21 with `when` 1785384500000 (strictly greater than idx 20's 1785384400000) so journal order and drizzle's apply order agree. This test is the migration's own contract, so it necessarily moves with it: the MIGRATION_URL path, the tag lookup, the expected {idx, when, tag} triple, the describe title, and the header comment. The exact-match discipline is UNCHANGED and deliberately NOT relaxed to a presence check — it still asserts the full entry object, still asserts `journal.entries.at(-1)` equals that entry (strict newest-migration/tip assertion), and still asserts every idx is unique. No SQL text assertion, no security assertion (including the no-credential-vocabulary check), and no test case was added, removed, or weakened. The journal is contiguous idx 0..21 with `when` strictly increasing and CH-01 at tip (mechanically verified this round). Because the DDL is byte-identical to the round-5 migration that WAS live-verified on a fresh throwaway database, and this worktree session cannot open live-DB credential paths, the pre-authorized byte-identical + previously-live-verified fallback applies and is recorded here explicitly; the file-based migration contract suite runs live this round."
+    },
+    {
+      "path": "services/core/src/services/ephemeralMcpCredentialService.test.ts",
+      "reason": "CHECKOUT ARTIFACT — NOT A CONTENT CHANGE. This file was never edited in any round; its git blob is identical across the entire rebase (git rev-parse 3bb4fcf:services/core/src/services/ephemeralMcpCredentialService.test.ts = HEAD:services/core/src/services/ephemeralMcpCredentialService.test.ts = 1f18ae7d40044a93b2c628b634255e6549a5afc6). The raw on-disk SHA-256 (5eb08516dbc2dd74440d8f2729ff40189f6c6df8347920a3a60e6d87023cbbf1) differs from red.json's recorded hash (ee9d83c18b05f9d1da53bbdef49b0b404ea2195025e4277f80315803722f63a1) solely because this Windows worktree materializes the LF-committed file with CRLF line endings (git core.autocrlf behavior); normalizing the working-tree bytes CRLF->LF and rehashing yields ee9d83c18b05f9d1da53bbdef49b0b404ea2195025e4277f80315803722f63a1, byte-for-byte equal to red.json's recorded hash. Declared here per .sdd/stages/review.md's rule that EVERY red-authored file whose on-disk hash differs from red.json must appear in redTestChanges (review round 3, Critical 1); the declaration exists to make the hash divergence auditable, not to record an edit — no assertion, comment, or byte of committed content changed. check-red-integrity.mjs's missing CRLF accommodation is separately tracked (task_6fabb257)."
+    },
+    {
+      "path": "services/core/src/services/mcpCredentialResolution.test.ts",
+      "reason": "CHECKOUT ARTIFACT — NOT A CONTENT CHANGE. This file was never edited in any round; its git blob is identical across the entire rebase (git rev-parse 3bb4fcf:services/core/src/services/mcpCredentialResolution.test.ts = HEAD:services/core/src/services/mcpCredentialResolution.test.ts = 31822fde63687473cc70b6a1ba3fae76a496d139). The raw on-disk SHA-256 (8b8c98eb6af6d8a6868818c0cf8e17d853f89c0db2706048bc828c8d12057508) differs from red.json's recorded hash (84aa499329209b953834bb191475cfc2abe6a1d60a30272b4d681ce9bb6ea6ff) solely because this Windows worktree materializes the LF-committed file with CRLF line endings (git core.autocrlf behavior); normalizing the working-tree bytes CRLF->LF and rehashing yields 84aa499329209b953834bb191475cfc2abe6a1d60a30272b4d681ce9bb6ea6ff, byte-for-byte equal to red.json's recorded hash. Declared here per .sdd/stages/review.md's rule that EVERY red-authored file whose on-disk hash differs from red.json must appear in redTestChanges (review round 3, Critical 1); the declaration exists to make the hash divergence auditable, not to record an edit — no assertion, comment, or byte of committed content changed. check-red-integrity.mjs's missing CRLF accommodation is separately tracked (task_6fabb257)."
+    },
+    {
+      "path": "services/core/src/db/mcpKeyStoreKind.test.ts",
+      "reason": "CHECKOUT ARTIFACT — NOT A CONTENT CHANGE. This file was never edited in any round; its git blob is identical across the entire rebase (git rev-parse 3bb4fcf:services/core/src/db/mcpKeyStoreKind.test.ts = HEAD:services/core/src/db/mcpKeyStoreKind.test.ts = 355e2273a51c79aa24e5e1819ad1e48a1855107e). The raw on-disk SHA-256 (5bfb2884041a87982298729798ef93ed3cbbd6dc0459e6469814282d8029974b) differs from red.json's recorded hash (c94350b06054dfdb8fdcc95aa9efccbf74568905b43bb3e5f66734ffe4ad1a8a) solely because this Windows worktree materializes the LF-committed file with CRLF line endings (git core.autocrlf behavior); normalizing the working-tree bytes CRLF->LF and rehashing yields c94350b06054dfdb8fdcc95aa9efccbf74568905b43bb3e5f66734ffe4ad1a8a, byte-for-byte equal to red.json's recorded hash. Declared here per .sdd/stages/review.md's rule that EVERY red-authored file whose on-disk hash differs from red.json must appear in redTestChanges (review round 3, Critical 1); the declaration exists to make the hash divergence auditable, not to record an edit — no assertion, comment, or byte of committed content changed. check-red-integrity.mjs's missing CRLF accommodation is separately tracked (task_6fabb257)."
+    },
+    {
+      "path": "services/core/src/mcp/ephemeralMcpGateway.test.ts",
+      "reason": "CHECKOUT ARTIFACT — NOT A CONTENT CHANGE. This file was never edited in any round; its git blob is identical across the entire rebase (git rev-parse 3bb4fcf:services/core/src/mcp/ephemeralMcpGateway.test.ts = HEAD:services/core/src/mcp/ephemeralMcpGateway.test.ts = 368c1c70c95b58ff1d7b2d0d73dc86f318000595). The raw on-disk SHA-256 (2f476af3ae161afa468494e91079460f64d1bd2f8a2fe201585b38cf8cd16705) differs from red.json's recorded hash (f8b22b3083ca6616dbd0efd9463dded6a48587c78c4ac86b3631818e6a02a222) solely because this Windows worktree materializes the LF-committed file with CRLF line endings (git core.autocrlf behavior); normalizing the working-tree bytes CRLF->LF and rehashing yields f8b22b3083ca6616dbd0efd9463dded6a48587c78c4ac86b3631818e6a02a222, byte-for-byte equal to red.json's recorded hash. Declared here per .sdd/stages/review.md's rule that EVERY red-authored file whose on-disk hash differs from red.json must appear in redTestChanges (review round 3, Critical 1); the declaration exists to make the hash divergence auditable, not to record an edit — no assertion, comment, or byte of committed content changed. check-red-integrity.mjs's missing CRLF accommodation is separately tracked (task_6fabb257)."
+    },
+    {
+      "path": "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+      "reason": "CHECKOUT ARTIFACT — NOT A CONTENT CHANGE. This file was never edited in any round; its git blob is identical across the entire rebase (git rev-parse 3bb4fcf:services/core/src/security/ch01UnmodifiedSurfaces.test.ts = HEAD:services/core/src/security/ch01UnmodifiedSurfaces.test.ts = 6de1ac90e0d91ee61f7f6fbf1a1cf7e91028ceb2). The raw on-disk SHA-256 (a0339acd991824e23b9f85feb5cd8546635a527b0a6d19efc7c577728bd65e4e) differs from red.json's recorded hash (5313221bdc1ebe7ebcf9e185046b6d4dda92d6a45961da90a2b6acbc6101a23c) solely because this Windows worktree materializes the LF-committed file with CRLF line endings (git core.autocrlf behavior); normalizing the working-tree bytes CRLF->LF and rehashing yields 5313221bdc1ebe7ebcf9e185046b6d4dda92d6a45961da90a2b6acbc6101a23c, byte-for-byte equal to red.json's recorded hash. Declared here per .sdd/stages/review.md's rule that EVERY red-authored file whose on-disk hash differs from red.json must appear in redTestChanges (review round 3, Critical 1); the declaration exists to make the hash divergence auditable, not to record an edit — no assertion, comment, or byte of committed content changed. check-red-integrity.mjs's missing CRLF accommodation is separately tracked (task_6fabb257)."
+    }
+  ],
+  "stamp": {
+    "treeHash": "ab0b87d6d2747090a2ddf196119e1163e7c754093e215a32286cf6ed12bc80ce",
+    "headSha": "186624ba7e2a87e55eed25ed4c073ad6f489a8ae",
+    "dirty": false,
+    "writtenAt": "2026-08-15T03:40:19.699Z"
+  }
+}

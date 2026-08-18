@@ -1,0 +1,1206 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+  "baseline_run_id": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+  "generated_at": "2026-08-15T04:05:30.696Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 20,
+      "NOT_APPLICABLE": 21,
+      "FAIL": 1,
+      "UNVERIFIED": 4
+    },
+    "result_transitions": {
+      "UNCHANGED": 44,
+      "FIRST_OBSERVATION": 2
+    },
+    "coverage_transitions": {
+      "UNCHANGED": 44,
+      "NOT_COMPARABLE": 2
+    },
+    "finding_statuses": {
+      "OPEN": 1
+    },
+    "surface_readiness": {
+      "IMPLEMENTED": 14
+    },
+    "readiness_transitions": {
+      "UNCHANGED": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK, mandatory core check: re-verified org_id is stamped server-side only on every ephemeral-credential write/read, and that this round's rebase (da97ee2, pulling in W7-01) introduces no path that lets org_id be client-supplied.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts services/core/src/db/ephemeralMcpCredentialStore.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "Direct read of ephemeralMcpCredentialService.ts confirms mintEphemeralMcpCredential/listEphemeralMcpCredentialAudit/sweepExpiredEphemeralMcpCredentials still take org_id only from ctx.orgId (AuthContext), never from the input object; ephemeralMcpCredentialStore.ts still wraps every write in withOrgContext/withOrg.",
+        "W7-01 interaction check (fresh scope): github_installation_sync (main's own new table, migration 0020_w7_01_github_installation_sync.sql) has its own org_id-stamped RLS policy (org_isolation, FORCE ROW LEVEL SECURITY) and is written by installationDiscoveryDispatcher.ts, a module CH-01 never imports or is imported by (`git diff da97ee2..HEAD -- services/core/src/services/installationDiscoveryDispatcher.ts services/core/src/db/githubInstallationSyncStore.ts services/core/src/queue/` empty). No shared write path with CH-01's own tenant-scoped tables.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (git diff 3f5311c..HEAD on both production files above is empty); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]",
+        "Live RLS re-verification (org A / org B cross-tenant probe) not re-run this session -- DATABASE_ADMIN_URL / sayre-postgres access is off-limits for this run per this run's own hard constraints (shared dev-fleet database; no drops, no writes). Cited: baseline's own dynamic run (test:rls:ephemeral:ci 7/7, test:rls:acceptance:ci 65/65, tenantIsolation.penetration.test.ts 17/17) against byte-identical production code and a byte-identical migration blob (0b7fa25b..., verified this run) is the substitute evidence per this run's explicit \"Live-DB re-verification NOT required where byte-identity holds\" instruction."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No source touched. Verification commands: `git diff 3f5311c HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts services/core/src/db/ephemeralMcpCredentialStore.ts`, `git diff da97ee2 HEAD -- services/core/src/services/installationDiscoveryDispatcher.ts services/core/src/db/githubInstallationSyncStore.ts services/core/src/queue/`. Nothing created; nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/drizzle/0020_w7_01_github_installation_sync.sql"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|services/core/graph-query-permissions|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/graph-query-permissions",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK, mandatory core check: confirmed this delta introduces no node-level access-control or graph-traversal logic outside the Graph Query Service, and that AC-11's protected-surface set is still untouched after the renumber.",
+      "evidence": [
+        "graph-query/permissions.ts is genuinely absent from this delta: `git diff --name-only da97ee2..HEAD -- services/core/src/graph-query/permissions.ts services/core/src/mcp/handlers/ services/core/src/mcp/gateway.ts services/core/src/auth/context.ts` returns empty, re-run fresh this session.",
+        "ch01UnmodifiedSurfaces.test.ts (per-file LF-normalized content-hash pin) re-run fresh this session: 2/2 pass.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (permissions.ts, gateway.ts, auth/context.ts, and every mcp/handlers/* file are all outside this round's changed-path set, confirmed by the same git diff above extended back to 3f5311c); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/security/ch01UnmodifiedSurfaces.test.ts` from services/core. No fixture created.",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts (unmodified)",
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK, mandatory core check: re-verified the pepper is resolved only through getSecret, no raw secret/token reaches a persisted column/log/error/metric, and that this round's own six changed files add no new secret-shaped literal.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts packages/config/src/config.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "Read all six files this round actually changed vs. the cited baseline (.github/workflows/ci.yml, drizzle/meta/_journal.json, ephemeralMcpCredentials.rls.test.ts, rls_acceptance.tester.test.ts, ephemeralMcpCredentialMigration.test.ts, db/schema.ts) end to end: every edit is either a `0020`->`0021` numeral/tag/comment substitution or (schema.ts, rls_acceptance.tester.test.ts) main's own additive W7-01 sweep-marker columns/pin -- zero new literal resembling a credential, connection string, or API key.",
+        "The one pre-existing literal-looking value in the touched CI region (`DATABASE_ADMIN_URL: postgresql://sayre_dev:changeme_local_only@localhost:5432/sayre_dev` on the RLS-isolation step) is unchanged by this round (only the adjacent comment's migration number moved) and is the same already-audited disposable CI-service-container credential every prior round covered -- confirmed non-secret (self-labeled `changeme_local_only`, scoped to the ephemeral GitHub Actions Postgres service, not a real credential store entry).",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (config.ts and ephemeralMcpCredentialService.ts (the pepper-resolution call site) are byte-identical to 3f5311c); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`grep -n raw_key|plaintext|token|secret` already run programmatically as part of ephemeralMcpCredentialMigration.test.ts; independently re-read the six changed files by hand this session. Nothing created; nothing to clean up.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "packages/config/src/config.ts",
+        ".github/workflows/ci.yml:317-320"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|services/core/webhook-receivers|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/webhook-receivers",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK, mandatory core check: checked whether this delta (or the newly-pulled-in W7-01 rebase content) touches any webhook receiver, SQS producer, or BullMQ job type CH-01 itself authors.",
+      "evidence": [
+        "FRESH this run: `git diff --name-only da97ee2..HEAD -- services/core/src/webhooks/ services/core/src/routes/ services/core/src/queue/ services/workers/` returns empty -- CH-01's own 3 commits touch none of them.",
+        "W7-01 itself (main's own work, pulled in by the rebase) does add a webhook-adjacent surface (github_installation_sync + installationDiscoveryDispatcher.ts + a SECURITY DEFINER dispatcher boundary modelled on the existing 0012 outbox pattern), but auditing main's own already-merged ticket is MILESTONE/FULL scope, not this ticket-scoped REMEDIATION_RECHECK -- same judgment round 5 applied to the W1-02 webhook pull-in."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|services/workers/ingestion|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers/ingestion",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK, mandatory core check: checked whether this delta touches the Python ingestion worker or any scratch-clone lifecycle code.",
+      "evidence": [
+        "FRESH this run: `git diff --name-only da97ee2..HEAD -- services/workers/` returns empty (0 files) -- confirmed directly this session."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|services/core/mcp-client-keys-store|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-client-keys-store",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK, mandatory core check: re-checked every SQL-touching path this delta could plausibly affect for string-concatenated/unparameterized use of externally influenced input, including the renumbered migration.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/db/mcpKeyStore.ts services/core/src/db/ephemeralMcpCredentialStore.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "The migration itself (0021_ch01_ephemeral_mcp_credentials.sql) is hand-authored, parameter-free DDL (no runtime input concatenated into it); its SQL body is byte-identical to the already-audited 0020 blob (0b7fa25b..., verified this run via `git rev-parse` on both sides of the rename).",
+        "mcpKeyStore.ts / ephemeralMcpCredentialStore.ts continue to use Drizzle's query builder (`eq(...)`, `and(...)`) exclusively for every WHERE clause touched by this ticket -- confirmed by direct re-read; no raw `sql`...`` string interpolates caller-controlled data.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (both store files are byte-identical to 3f5311c); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/db/mcpKeyStore.ts",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-01|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-01",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed gateway.ts's origin allowlist/DNS-rebinding protection is present, unmodified, and unaffected by this round's delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (gateway.ts is byte-identical to 3f5311c and to da97ee2 (never in CH-01's changed-path set)); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "ch01UnmodifiedSurfaces.test.ts pin re-run (see CORE-02).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:68-96,275-296"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-02|mcp|services/core/mcp-key-service:resolveMcpCredential|v1",
+      "check_id": "MCPT-02",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-key-service:resolveMcpCredential",
+      "attack_path_version": "v1",
+      "attempt": "REMEDIATION_RECHECK: re-ran the persisting FAIL observation, its bypass variants, and sibling paths against the current tree, per this stage's REMEDIATION_RECHECK instruction.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/mcpKeyService.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "Direct re-read of resolveMcpCredential (lines 276-303) this session: the short-circuiting disjunction is unchanged -- every fast-reject branch (unknown prefix, wrong family, revoked, expired, wrong pepper version, deleted issuer, wrong kind) returns before mcpSecretHmac/hmacMatches is reached; only a shape-valid row with the wrong secret pays that cost. This remains a static code-path timing-oracle risk, not exploited by any test.",
+        "FRESH this run: `npx vitest run src/services/mcpCredentialResolution.test.ts src/mcp/ephemeralMcpGateway.test.ts` from services/core -- 12/12 and 3/3 (15/15 total), identical counts to the cited baseline -- confirms the non-timing dimensions (body, status, content-type, error message, log level) remain byte-identical across every rejection reason (EC-3/4/5/6/7/8, AC-3/EC-1).",
+        "No empirical wall-clock latency sampling was performed this run either (still STATIC-only for the timing dimension specifically) -- unchanged limitation from every prior round.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (mcpKeyService.ts is byte-identical to 3f5311c; finding carried forward with the same finding_id, not re-derived from prose); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "BOTH",
+      "result": "FAIL",
+      "previous_result": "FAIL",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "single_point_of_failure": false,
+      "finding": {
+        "finding_id": "FND-c8951999637a",
+        "status": "OPEN",
+        "first_seen_run_id": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
+        "first_seen_commit": "ee496aa4985fc4145afbadf34c54de9cf3e9910a",
+        "last_seen_run_id": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+        "last_seen_commit": "186624ba7e2a87e55eed25ed4c073ad6f489a8ae",
+        "owner": null,
+        "due_at": null,
+        "remediation_reference": "task_mcpt02_timing_side_channel (tracked separately; non-blocking per this stage's mandatory-gate rule -- MEDIUM, not tenant-isolation/RBAC, not CRITICAL/HIGH, not a regression)",
+        "risk_acceptance": null
+      },
+      "reproduction_and_cleanup": "`npx vitest run src/services/mcpCredentialResolution.test.ts src/mcp/ephemeralMcpGateway.test.ts` from services/core, run this session. No live timing measurement taken; no fixture created or left behind.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts:276-303",
+        "services/core/src/services/mcpCredentialResolution.test.ts",
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts:270-293"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-03|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-03",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a session-ID concept; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (unchanged surface; MCP transport here is stateless bearer-token auth per request, no session-ID concept exists to attack); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-04|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-04",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a replayable request/stream ID; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (unchanged surface); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-05|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-05",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for SSE resumption/Last-Event-ID/replay support; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (unchanged surface; no SSE resumption implemented); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-06|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-06",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for lifecycle/protocol-version confusion; gateway.ts unmodified by this delta and still not independently fuzzed by any run in this worktree.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "No lifecycle/version-confusion fuzzing was performed this run either -- carried-forward limitation, unchanged since the first PR_DELTA run."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-07|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-07",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for JSON-RPC validation gaps; gateway.ts unmodified by this delta and still not independently fuzzed.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "No JSON-RPC fuzzing performed this run either -- carried-forward limitation."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-08|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-08",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for streaming/long-lived-connection resource exhaustion; gateway.ts unmodified by this delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/mcp/gateway.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (unchanged surface; no SSE/streaming transport implemented to exhaust); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-09|mcp|services/core/src/mcp/toolExecution.ts (metering-subject isolation re-checked against this round's new main delta: W7-01's github_installation_sync/installationDiscoveryDispatcher.ts/BullMQ dispatcher)|v5",
+      "check_id": "MCPT-09",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/mcp/toolExecution.ts (metering-subject isolation re-checked against this round's new main delta: W7-01's github_installation_sync/installationDiscoveryDispatcher.ts/BullMQ dispatcher)",
+      "attack_path_version": "v5",
+      "attempt": "This round's rebase (2520ec9 -> da97ee2) pulls in W7-01 -- a new BullMQ-dispatched job type (`github-sync`) and a new SECURITY DEFINER dispatcher boundary. Re-checked whether that new surface shares any namespace, module, or Redis/rate-limit key space with CH-01's `chat:<userId>` metering subject.",
+      "evidence": [
+        "Direct read of installationDiscoveryDispatcher.ts: the enqueued job name is the literal `'github-sync'` (BullMQ job/queue namespace), an entirely different key space from toolExecution.ts's rate-limiter/metrics bucket key (`credential.meteringSubject`, `chat:<userId>` or an agent key prefix) -- one is a BullMQ job type string, the other is a Redis rate-limiter/OTel metric attribute; they are never compared, concatenated, or looked up against each other anywhere in the codebase.",
+        "FRESH this run: `git diff --name-only da97ee2..HEAD -- services/core/src/services/installationDiscoveryDispatcher.ts services/core/src/db/githubInstallationSyncStore.ts services/core/src/queue/` is empty -- CH-01's own commits touch none of W7-01's new dispatcher/queue code.",
+        "toolExecution.ts / metrics.ts are byte-identical to the cited baseline (3f5311c) and to 3bb4fcf -- confirmed via `git diff` this run."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No source touched; `git diff`/`git log`/direct read only. No fixture created.",
+      "code_references": [
+        "services/core/src/mcp/toolExecution.ts",
+        "services/core/src/services/installationDiscoveryDispatcher.ts:82",
+        "services/core/src/db/schema.ts:425-486"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-10|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-10",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed the minted credential's ceiling can never exceed the issuing user's own live scope; production code and the ceiling-intersection logic unchanged by this delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "FRESH this run: full 8-file CH-01 vitest suite (50/50) includes ephemeralMcpCredentialService.test.ts's ceiling/intersection assertions -- re-run this session, all pass.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (mintEphemeralMcpCredential/intersectReadScopes call sites byte-identical to 3f5311c); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run src/services/ephemeralMcpCredentialService.test.ts` from services/core, run this session.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-11|mcp|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "MCPT-11",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed TTL bounds (service + DB CHECK, no clock-skew bypass) and the SECURITY DEFINER/REVOKE-GRANT re-issue state.",
+      "evidence": [
+        "Read 0021_ch01_ephemeral_mcp_credentials.sql in full this session: `mcp_client_keys_ephemeral_ttl_check` (600s ceiling), DROP-then-CREATE of resolve_mcp_client_key, REVOKE ALL FROM PUBLIC / GRANT EXECUTE TO sayre_app all present and byte-identical (SQL body diff empty across the rename, verified this run) to the already-audited 0020 blob.",
+        "Live DB re-verification of the CHECK constraint / privilege state (EC-20, EC-23) not re-run this session (dev-fleet Postgres off-limits for this run); cited per byte-identity.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (migration blob 0b7fa25b... identical on both sides of the rename); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|MCPT-12|mcp|services/core/mcp-gateway|v1",
+      "check_id": "MCPT-12",
+      "surface_id": "mcp",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-gateway",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked unauthorized responses, audit reads, and metric attributes for leaked key material; production code unchanged by this delta.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts services/core/src/mcp/metrics.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (listEphemeralMcpCredentialAudit's returned shape and metrics.ts's doc-comment-only field are unchanged); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts",
+        "services/core/src/mcp/metrics.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|scripts/check-secret-access.mjs (SOURCE_EXTENSION widened to .mts/.cts)|v4",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "scripts/check-secret-access.mjs (SOURCE_EXTENSION widened to .mts/.cts)",
+      "attack_path_version": "v4",
+      "attempt": "Re-checked whether scripts/check-secret-access.mjs or scripts/check-org-secret-access.mjs changed again in this round's new main delta (da97ee2, W7-01) beyond what v4 already audited.",
+      "evidence": [
+        "FRESH this run: `git diff 2520ec9..da97ee2 -- scripts/check-secret-access.mjs scripts/check-org-secret-access.mjs` is empty -- W7-01 makes no further edit to either script.",
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- scripts/check-secret-access.mjs scripts/check-org-secret-access.mjs` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "FRESH this run: `npm run check:secret-access` and `npm run check:org-secret-access` both exit 0 against the widened guard."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npm run check:secret-access && npm run check:org-secret-access`, run this session, exit 0 both.",
+      "code_references": [
+        "scripts/check-secret-access.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Inspected this round's own new/changed content (the six delta files) for a hardcoded live-looking secret.",
+      "evidence": [
+        "Read all six changed files end to end this session: every edit is a numeral/tag renumber or an additive column-pin/comment -- no new literal of any kind besides digits and identifiers."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|apps/web|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "apps/web",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether any server-only secret from this delta could reach a browser bundle.",
+      "evidence": [
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (apps/web is outside CH-01's changed-path set in every round including this one; `git diff --name-only da97ee2..HEAD -- apps/web/` empty, re-run this session); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-exercised success and failure paths for secret/tenant-data leakage into logs/metrics/traces; underlying service code unchanged.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts services/core/src/mcp/toolExecution.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "FRESH: full 8-file CH-01 vitest suite re-run this session (50/50); ephemeralMcpCredentialService.test.ts and gateway/toolExecution-adjacent suites include no-console-call assertions, all pass."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run` on the 8 CH-01 vitest files, run this session.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|services/core/src/db/rls_acceptance.tester.test.ts|v2",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/src/db/rls_acceptance.tester.test.ts",
+      "attack_path_version": "v2",
+      "attempt": "This round's rebase adds a second pin addition to this file (main's own W7-01 sweep-marker columns on `repositories`) on top of CH-01's own kind/conversation_id pin -- re-verified the exact-match discipline is preserved end to end, not merely re-asserted.",
+      "evidence": [
+        "FRESH this run: read the full diff `git diff 3f5311c HEAD -- services/core/src/db/rls_acceptance.tester.test.ts` -- exactly two hunks: (1) main's own `last_discovery_run_id`/`last_discovery_at` pin on `repositories` (already present in origin/main, confirmed via `git diff origin/main HEAD` showing only the CH-01 kind/conversation_id hunk, meaning this repositories hunk is main's pre-existing content surviving the rebase, not new CH-01 authorship); (2) CH-01's own comment renumber (`drizzle/0020_*` -> `drizzle/0021_*`) on the kind/conversation_id pin comment. No column pin was removed, loosened, or made non-exact anywhere in the file.",
+        "This is a coverage GAIN for the tenant-isolation acceptance pin, not a regression: the schema-drift trap now also covers W7-01's two new `repositories` columns, closing a gap that would otherwise have let an un-pinned column ship silently.",
+        "Live re-execution of this DB-dependent acceptance suite not performed this session (dev-fleet Postgres off-limits); cited per byte-identity of the pinning logic's own exact-match code (unchanged), only its literal data grew."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/db/rls_acceptance.tester.test.ts:138-141,228-241"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|services/core/mcp-key-service|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/mcp-key-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed a rotated pepper version still invalidates already-issued ephemeral credentials on next use; mcpKeyService.ts unchanged.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/mcpKeyService.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (row.pepperVersion !== deps.getPepperVersion() clause unchanged, line 291); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/services/mcpKeyService.ts:291"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|services/workers|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/workers",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this delta touches Python worker/sandbox code.",
+      "evidence": [
+        "FRESH this run: `git diff --name-only da97ee2..HEAD -- services/workers/` empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|.github|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github",
+      "attack_path_version": "v1",
+      "attempt": "Re-tested the CH-01 CI step (unchanged mechanism, comment-only renumber this round) for fork/PR boundary exposure, artifact uploads, test snapshots, debug output, or dependency-script access to protected secrets.",
+      "evidence": [
+        "FRESH this run: read `git diff 3f5311c HEAD -- .github/workflows/ci.yml` -- single-line comment change (`migration 0020` -> `migration 0021`); the step itself (`run:`, `env:`, trigger conditions) is byte-identical.",
+        "Step still runs on push/PR to the same trusted branches with the same disposable CI-service-container `DATABASE_ADMIN_URL` (not a repository secret), no artifact upload, no debug flag, no third-party action added."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        ".github/workflows/ci.yml:311-320"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-verified the audit read still records actor, tenant, target, and time for every ephemeral credential; listEphemeralMcpCredentialAudit unchanged.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/services/ephemeralMcpCredentialService.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "FRESH: 50/50 CH-01 vitest suite re-run this session includes the audit-read scoping assertions (EC-24)."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npx vitest run` on the 8 CH-01 vitest files.",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for tamper-evidence/append-only enforcement on the audit trail; unaffected by this delta.",
+      "evidence": [
+        "No append-only/tamper-evidence mechanism exists for the ephemeral-credential audit trail, unchanged from every prior round -- pre-existing, non-CH-01-specific product gap (surface_readiness PARTIAL, carried forward)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-store|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-store",
+      "attack_path_version": "v1",
+      "attempt": "Re-traced deletion of an expired ephemeral credential and its ceiling rows across org boundaries, and the issuing-user-deletion cascade.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/src/db/ephemeralMcpCredentialStore.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "Live re-execution against real Postgres not performed this session (dev-fleet off-limits); cited per byte-identity of deleteExpired's org-scoped, kind-scoped, single-transaction implementation.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (deleteExpired unchanged since 3f5311c); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": [
+        "services/core/src/db/ephemeralMcpCredentialStore.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|infra/backups|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/backups",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this delta touches backup/restore configuration or policy.",
+      "evidence": [
+        "FRESH this run: `git diff --name-only da97ee2..HEAD -- infra/` empty."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|services/core (CH-01 diff)|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a data-deletion/right-to-erasure surface implicated by this delta.",
+      "evidence": [
+        "No such surface is touched by CH-01's own delta or this round's renumber -- unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|services/core/ephemeral-mcp-credential-service|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/ephemeral-mcp-credential-service",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for alerting on repeated ephemeral-credential authentication failures; unaffected by this delta.",
+      "evidence": [
+        "No alerting mechanism exists, unchanged from every prior round -- pre-existing, non-CH-01-specific product gap."
+      ],
+      "evidence_type": "STATIC",
+      "result": "UNVERIFIED",
+      "previous_result": "UNVERIFIED",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "LOW",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|services/core/package.json|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/package.json",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this round added/changed a dependency.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- services/core/package.json` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "[CITED: baseline 20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110 (commit 3f5311c), same observation_key -- target artifact re-verified byte-identical this run (package.json byte-identical to 3f5311c; test:rls:ephemeral script wiring predates this round); baseline's own evidence entries for this key are not repeated, transformed, or restamped here, only cited by provenance.]"
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a new third-party GitHub Action or a pinned-version regression.",
+      "evidence": [
+        "FRESH: `git diff 3f5311c HEAD -- .github/workflows/ci.yml` is a single comment-line change; no action/uses: line touched."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|services/core (CH-01 diff)|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a build/postinstall script addition.",
+      "evidence": [
+        "None added; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked the CI job's permissions/least-privilege posture around the touched step.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- .github/workflows/ci.yml` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "Only the comment line changed; job-level `permissions:` blocks (not touched by this delta in either round) remain as previously audited."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether the new/changed CI step could execute untrusted PR-authored code with secret access.",
+      "evidence": [
+        "Step runs `npm --prefix services/core run test:rls:ephemeral:ci` only, against an ephemeral CI-local Postgres service container, same as every prior round; no `pull_request_target`, no external checkout."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|.github/workflows/ci.yml|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a new caching mechanism introducing a poisoning vector.",
+      "evidence": [
+        "None added; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|infra/docker-compose|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/docker-compose",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked whether this delta touches infra/docker-compose image pins.",
+      "evidence": [
+        "FRESH this run: `git diff --name-only da97ee2..HEAD -- infra/` empty; `docker ps` confirms the already-running local stack (sayre-postgres pgvector/pgvector:pg16, sayre-redis, sayre-neo4j, sayre-localstack, sayre-prometheus) is unrelated infrastructure this ticket does not touch, inspected read-only (no container created, stopped, or modified)."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|infra/docker-compose|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/docker-compose",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for exposed ports/default credentials introduced by this delta.",
+      "evidence": [
+        "None; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|infra/iam|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/iam",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for an IAM/role-policy change.",
+      "evidence": [
+        "None; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|.github/workflows/ci.yml+packages/config/src/config.ts|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": ".github/workflows/ci.yml+packages/config/src/config.ts",
+      "attack_path_version": "v1",
+      "attempt": "Re-confirmed CH01_TEST_DB_NAME remains config-only (non-secret) and the CI step's env var resolves it correctly; both files' relevant content byte-identical to the cited baseline.",
+      "evidence": [
+        "FRESH this run: `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD -- packages/config/src/config.ts` returns zero output -- byte-identical to the cited baseline's own audited state.",
+        "FRESH this run: `npm run check:secret-access` and `npm run check:org-secret-access` exit 0."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": "PASS",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "`npm run check:secret-access && npm run check:org-secret-access`.",
+      "code_references": [
+        "packages/config/src/config.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|infra/tls|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/tls",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a TLS/termination config change.",
+      "evidence": [
+        "None; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|infra/availability|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "infra/availability",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for an availability/DoS-relevant infra change.",
+      "evidence": [
+        "None; unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql+meta/_journal.json (second forced renumber, 0020->0021, across a genuine migration-index collision with W7-01's own 0020_w7_01_github_installation_sync.sql)|v4",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql+meta/_journal.json (second forced renumber, 0020->0021, across a genuine migration-index collision with W7-01's own 0020_w7_01_github_installation_sync.sql)",
+      "attack_path_version": "v4",
+      "attempt": "This round's rebase (base 2520ec9 -> da97ee2) caused a SECOND genuine migration-index collision: main's own W7-01 landed drizzle/0020_w7_01_github_installation_sync.sql at journal idx 20, the exact slot CH-01's own migration held after round 5's renumber. Verified the renumber (0020_ch01_* -> 0021_ch01_*) independently, end to end.",
+      "evidence": [
+        "FRESH this run: `git rev-parse 3bb4fcf:services/core/drizzle/0020_ch01_ephemeral_mcp_credentials.sql` and `git rev-parse HEAD:services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql` both equal `0b7fa25b7b46b6ad10a8093e6f0280aea8c43235` -- byte-identical blob across the rename, confirmed by direct hash comparison, not merely a reported diff.",
+        "FRESH this run: direct read of `services/core/drizzle/meta/_journal.json` -- 22 entries, idx 0..21 contiguous (no gaps, no duplicates), `when` strictly increasing across all 22, tip = `{idx: 21, when: 1785384500000, tag: \"0021_ch01_ephemeral_mcp_credentials\", breakpoints: true}`; idx 20 = main's own `0020_w7_01_github_installation_sync` (when 1785384400000, confirmed unmodified by this branch via `git diff origin/main HEAD -- services/core/drizzle/meta/_journal.json` showing only the appended idx-21 entry).",
+        "FRESH this run: `node scripts/check-red-integrity.mjs` -- status \"clean\", 0 violations, 7 notes (one per red-authored test file, each resolving to a changes.json declaration) -- re-ran this session, exit 0.",
+        "FRESH this run: independently diffed `ephemeralMcpCredentialMigration.test.ts` and `ephemeralMcpCredentials.rls.test.ts` (`git diff 3bb4fcf HEAD` on each) -- both are exclusively `0020`->`0021` numeral/tag/title/comment substitutions; every assertion (`toEqual` full-object equality, `journal.entries.at(-1)` tip equality, idx-uniqueness, the no-credential-vocabulary check) is byte-identical in structure and strictness to the pre-renumber version.",
+        "FRESH this run: `npx vitest run` on all 8 CH-01 vitest files (50/50) and the two renumbered files' own suites individually (ephemeralMcpCredentialMigration.test.ts 4/4, part of the 50) -- all pass against the renumbered tree.",
+        "Live-DB migration-ordering proof (applying idx-20 W7-01 then idx-21 CH-01 on a fresh database) not re-run this session -- dev-fleet Postgres off-limits for this run. Cited: the SQL body is proven byte-identical to the blob round 5 already proved installs cleanly from a fresh database (test:rls:ephemeral:ci 7/7, test:rls:acceptance:ci 65/65 against a from-scratch migrate-through-idx-20 run), and this round adds no new SQL, only a journal-position/idx move -- \"Live-DB re-verification NOT required where byte-identity holds,\" per this run's own instruction."
+      ],
+      "evidence_type": "BOTH",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "FIRST_OBSERVATION",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No source touched. Verification commands: `git rev-parse 3bb4fcf:...0020...sql`, `git rev-parse HEAD:...0021...sql`, direct read of `_journal.json`, `node scripts/check-red-integrity.mjs`, `npx vitest run` (8 files). No fixture created.",
+      "code_references": [
+        "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql",
+        "services/core/drizzle/meta/_journal.json:139-158",
+        "services/core/src/security/ephemeralMcpCredentialMigration.test.ts"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|services/core (CH-01 diff)|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "IMPLEMENTED",
+      "target_asset": "services/core (CH-01 diff)",
+      "attack_path_version": "v1",
+      "attempt": "Re-checked for a new external network egress target introduced by this delta.",
+      "evidence": [
+        "None; unchanged -- this ticket is entirely Postgres + service-layer, no new provider/egress call."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": "NOT_APPLICABLE",
+      "result_transition": "UNCHANGED",
+      "coverage_transition": "UNCHANGED",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "No fixture created.",
+      "code_references": []
+    }
+  ]
+}

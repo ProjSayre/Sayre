@@ -195,6 +195,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   ".gitignore": [
@@ -4531,6 +4540,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "docs/workspace-pack-authoring.md": [
@@ -4723,6 +4741,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "packages/shared-types/src/index.ts": [
@@ -4755,6 +4782,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -5653,6 +5689,17 @@
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
     }
   ],
+  "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql": [
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    }
+  ],
   "services/core/drizzle/meta/_journal.json": [
     {
       "runId": "20260810T213047899Z-ee496aa4-PR_DELTA-bf4071",
@@ -5692,6 +5739,15 @@
       "ticket": "W7-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/package.json": [
@@ -5730,6 +5786,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -5782,6 +5847,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/db/ephemeralMcpCredentials.rls.test.ts": [
@@ -5823,6 +5897,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -5893,6 +5976,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/db/mcpKeyStoreKind.test.ts": [
@@ -5936,6 +6028,15 @@
       "ticket": "W7-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/db/schema.ts": [
@@ -5977,6 +6078,15 @@
       "ticket": "W7-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/github/__fixtures__/largeInstallation.ts": [
@@ -6140,6 +6250,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/mcp/gateway.ts": [
@@ -6183,6 +6302,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/mcp/toolExecution.ts": [
@@ -6215,6 +6343,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -6476,6 +6613,15 @@
       "ticket": "CH-01",
       "date": "2026-08-10",
       "spec": ".sdd/ledger/20260810T213047899Z-ee496aa4-PR_DELTA-bf4071/spec.md"
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/services/ephemeralMcpCredentialService.test.ts": [
@@ -6516,6 +6662,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -6727,6 +6882,15 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
+      "regate": {
+        "testerRan": true
+      }
     }
   ],
   "services/core/src/services/mcpKeyService.ts": [
@@ -6759,6 +6923,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }
@@ -6947,6 +7120,15 @@
       "ticket": "CH-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/spec.md",
+      "regate": {
+        "testerRan": true
+      }
+    },
+    {
+      "runId": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+      "ticket": "CH-01",
+      "date": "2026-08-15",
+      "spec": ".sdd/ledger/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/spec.md",
       "regate": {
         "testerRan": true
       }

@@ -1,0 +1,341 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757",
+  "mode": "REMEDIATION_RECHECK",
+  "status": "COMPLETE",
+  "started_at": "2026-08-15T03:55:18.060Z",
+  "completed_at": "2026-08-15T04:05:30.697Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre.git",
+    "working_path": "C:/Users/splat/OneDrive/Desktop/Sayre-worktrees/ch01-regate"
+  },
+  "target": {
+    "commit_sha": "186624ba7e2a87e55eed25ed4c073ad6f489a8ae",
+    "branch": "ticket/ch-01-ephemeral-mcp-credentials",
+    "dirty": false,
+    "environment": "local-dev worktree; docker-compose services already running locally (sayre-postgres/pgvector:pg16, sayre-redis, sayre-neo4j, sayre-localstack, sayre-prometheus) on localhost -- not shared, not production",
+    "base_urls": [],
+    "changed_paths": [
+      ".github/workflows/ci.yml",
+      "docs/wave0-foundation-contracts.md",
+      "packages/config/src/config.ts",
+      "packages/shared-types/src/index.ts",
+      "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql",
+      "services/core/drizzle/meta/_journal.json",
+      "services/core/package.json",
+      "services/core/src/db/ephemeralMcpCredentialStore.ts",
+      "services/core/src/db/ephemeralMcpCredentials.rls.test.ts",
+      "services/core/src/db/mcpKeyStore.ts",
+      "services/core/src/db/mcpKeyStoreKind.test.ts",
+      "services/core/src/db/rls_acceptance.tester.test.ts",
+      "services/core/src/db/schema.ts",
+      "services/core/src/mcp/ephemeralMcpGateway.test.ts",
+      "services/core/src/mcp/gateway.test.ts",
+      "services/core/src/mcp/metrics.ts",
+      "services/core/src/mcp/toolExecution.ts",
+      "services/core/src/security/ch01UnmodifiedSurfaces.test.ts",
+      "services/core/src/security/ephemeralMcpCredentialMigration.test.ts",
+      "services/core/src/services/ephemeralMcpCredentialService.test.ts",
+      "services/core/src/services/ephemeralMcpCredentialService.ts",
+      "services/core/src/services/mcpCredentialResolution.test.ts",
+      "services/core/src/services/mcpKeyService.test.ts",
+      "services/core/src/services/mcpKeyService.ts",
+      "services/core/test/mcp-interop/fixtureGateway.ts"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110",
+    "commit_sha": "3f5311cfecfbeb6b4e7aa499a18329268386f679",
+    "comparable": true,
+    "selection_reason": "Explicitly named by the calling agent as this run's prior-PASS baseline, and independently verified: (1) the immutable run directory .sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/ exists with a matching security.json (verdict PASS, headSha 3f5311cfecfbeb6b4e7aa499a18329268386f679), and was restored byte-for-byte into .pipeline/security-history/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/ this run (three-file diff against the ledger copy: identical) so this run's own validator can load it. (2) `git merge-base --is-ancestor 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD` FAILS -- two rebases occurred since (base 2520ec9, unchanged from the baseline's own base, moved to da97ee2 for W7-01). CONTENT EQUIVALENCE VERIFIED DIRECTLY as the substitute, per audit-contract.md §2 order item 1 (human-specified compatible run): `git diff --name-status 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD` restricted to every production/test file relevant to CH-01's own security surface (14 files: the 3 store/service .ts files, mcpKeyStore.ts, toolExecution.ts, metrics.ts, gateway.ts, permissions.ts, auth/context.ts, shared-types/index.ts, config.ts, package.json, fixtureGateway.ts, schema.ts) returns exactly ONE file (schema.ts), and that file's diff is main's own additive W7-01 columns plus a comment-only renumber -- confirmed by direct read this run. A second targeted diff over the 5 test/CI/journal files most likely to carry the renumber (ci.yml, _journal.json, ephemeralMcpCredentials.rls.test.ts, rls_acceptance.tester.test.ts, ephemeralMcpCredentialMigration.test.ts) confirms exactly those 5 changed, each judged individually legitimate (value-only renumber or additive W7-01 pin). Every other CH-01-declared path, including all 5 red-authored CRLF-flagged files, is byte-identical back to the cited baseline (verified via direct `git diff 3f5311cfecfbeb6b4e7aa499a18329268386f679 HEAD` on each, not merely chained through an intermediate commit). Same repository, same environment class (docker-compose stack unchanged, confirmed via `docker ps` this run), same tenant-fixture pattern (unchanged files), same registry/contract/orchestrator/brief/schema/this-checker-definition content hashes re-hashed this run.",
+    "incompatible_dimensions": []
+  },
+  "product_progress": {
+    "milestone": null,
+    "phase": "MVP, pre-external-customer (local .env-based secrets posture confirmed still active in code: ephemeralMcpCredentialService.ts still resolves the pepper via getSecret('env://MCP_TOKEN_PEPPER'), zero-line diff since the cited baseline; this round's changes are the second forced migration renumber plus main's own W7-01 three-way unions, not a runtime/secrets-posture change)",
+    "source_references": [
+      ".claude/rules/security-multitenancy.md",
+      "CLAUDE.md",
+      ".pipeline/spec.md",
+      ".pipeline/review.md (loop iteration 4, this run's gating PASS)",
+      ".pipeline/changes.md (second reconstruction, provenance-bannered)"
+    ],
+    "documentation_code_drift": [
+      "spec.md/spec.json still read \"migration 0019\" throughout (unchanged since every prior round; changes.json/changes.md fully account for the mechanical renumber to 0021, no AC/EC content affected)."
+    ]
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": "This run's calling agent explicitly scoped live-DB access as off-limits (shared dev-fleet sayre-postgres; no drops, no writes, sayre_dev off-limits) -- a stricter posture than prior rounds. Static analysis, byte-identity verification, and fake-backed (non-DB) test suites were authorized and performed; live Postgres/RLS suites and services/workers broker suites were not attempted, consistent with this run's explicit instruction that byte-identity substitutes for live-DB re-verification where it holds.",
+    "resource_ceiling": "No database created, dropped, or written to. `docker ps` (read-only) confirms sayre-postgres/-redis/-neo4j/-localstack/-prometheus already running (5-day uptime for most), not touched. Only non-DB vitest suites were executed (8 CH-01-specific files, 50/50; sibling MCPT-02 files, 15/15) plus static gates (check:secret-access, check:org-secret-access, check:security-audit-agents, check-red-integrity.mjs, check-stamp-freshness.mjs).",
+    "credential_references": [],
+    "tenant_fixtures": [
+      "Org A / Org B synthetic orgs seeded by ephemeralMcpCredentials.rls.test.ts's seedOrg() helper (org A: repoId-scoped allow(src)/deny(src/secret) permissions rows)",
+      "MEMBER / ADMIN / OWNER / AGENT synthetic AuthContext fixtures across ephemeralMcpCredentialService.test.ts, mcpCredentialResolution.test.ts, ephemeralMcpGateway.test.ts"
+    ]
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-01); always executed. This round's own delta (schema.ts, rls_acceptance.tester.test.ts) directly touches tenant-scoped tables/pins.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (CORE-01).",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/drizzle/0020_w7_01_github_installation_sync.sql"
+      ]
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-02); always executed regardless of routing.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (CORE-02).",
+      "code_references": [
+        "services/core/src/graph-query/permissions.ts (unmodified)",
+        "services/core/src/security/ch01UnmodifiedSurfaces.test.ts"
+      ]
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-03); always executed regardless of routing.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (CORE-03).",
+      "code_references": [
+        "services/core/src/services/ephemeralMcpCredentialService.ts:187-236",
+        "packages/config/src/config.ts",
+        ".github/workflows/ci.yml:317-320"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-04); always executed regardless of routing.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (CORE-04).",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-05); always executed regardless of routing.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (CORE-05).",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Mandatory core check (CORE-06); always executed. The renumbered migration is a direct target asset.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (CORE-06).",
+      "code_references": [
+        "services/core/src/db/mcpKeyStore.ts",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts",
+        "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No target asset in this delta or in this round's new main pull-in (W7-01); trigger paths (services/workers/**, embedding/retrieval/prompt globs) match zero changed file.",
+      "rationale": "Not selected this run -- no target asset in scope (see selection_reason). Consistent with every prior REMEDIATION_RECHECK round on this ticket.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No target asset: CH-01 makes no model-provider/egress call; trigger path services/core/** matches only by an overbroad floor, judged not implicated (same judgment every prior round applied).",
+      "rationale": "Not selected this run -- no target asset in scope (see selection_reason). Consistent with every prior REMEDIATION_RECHECK round on this ticket.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Directly implicated: this ticket is an MCP credential-family addition; services/core/src/mcp/** and **/*mcp* both match.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (MCPT-01, MCPT-02, MCPT-03, MCPT-04, MCPT-05, MCPT-06, MCPT-07, MCPT-08, MCPT-09, MCPT-10, MCPT-11, MCPT-12).",
+      "code_references": [
+        "services/core/src/mcp/gateway.ts:68-96,275-296",
+        "services/core/src/services/mcpKeyService.ts:276-303",
+        "services/core/src/services/mcpCredentialResolution.test.ts",
+        "services/core/src/mcp/ephemeralMcpGateway.test.ts:270-293",
+        "services/core/src/mcp/gateway.ts",
+        "services/core/src/mcp/toolExecution.ts",
+        "services/core/src/services/installationDiscoveryDispatcher.ts:82",
+        "services/core/src/db/schema.ts:425-486",
+        "services/core/src/services/ephemeralMcpCredentialService.ts",
+        "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql",
+        "services/core/src/mcp/metrics.ts"
+      ]
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No target asset: services/gateway/** untouched, no realtime/websocket file in this delta or in the new W7-01 pull-in.",
+      "rationale": "Not selected this run -- no target asset in scope (see selection_reason). Consistent with every prior REMEDIATION_RECHECK round on this ticket.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No target asset: this round's new main pull-in (W7-01) adds a BullMQ dispatcher and a webhook-adjacent surface, but CH-01's own three commits touch none of services/workers/**, **/*queue*, **/*webhook*, **/*integration*, **/*bullmq* (confirmed empty diff, fresh this run); auditing W7-01 itself is MILESTONE/FULL scope, not this REMEDIATION_RECHECK.",
+      "rationale": "Not selected this run -- no target asset in scope (see selection_reason). Consistent with every prior REMEDIATION_RECHECK round on this ticket.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No target asset: apps/web/**, services/core/src/routes/**, services/core/src/http/** all empty in this delta (fresh this run).",
+      "rationale": "Not selected this run -- no target asset in scope (see selection_reason). Consistent with every prior REMEDIATION_RECHECK round on this ticket.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Directly implicated: .github/workflows/ci.yml changed (comment), packages/config/src/config.ts is CH-01's secret-adjacent config surface, and the migration security-contract test is audit-relevant.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08, SEC-09, SEC-10, SEC-11, SEC-12, SEC-13, SEC-14).",
+      "code_references": [
+        "scripts/check-secret-access.mjs",
+        "services/core/src/db/rls_acceptance.tester.test.ts:138-141,228-241",
+        "services/core/src/services/mcpKeyService.ts:291",
+        ".github/workflows/ci.yml:311-320",
+        "services/core/src/services/ephemeralMcpCredentialService.ts",
+        "services/core/src/db/ephemeralMcpCredentialStore.ts"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "IMPLEMENTED",
+      "previous_readiness": "IMPLEMENTED",
+      "readiness_transition": "UNCHANGED",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Directly implicated: .github/workflows/ci.yml and drizzle/meta/_journal.json (supply-chain/build-provenance-adjacent) both changed this round.",
+      "rationale": "Re-derived fresh this run against HEAD 186624ba7e2a87e55eed25ed4c073ad6f489a8ae. See results.json observations for this surface's check-level evidence (SC-01, SC-02, SC-03, SC-04, SC-05, SC-06, SC-07, SC-08, SC-09, SC-10, SC-11, SC-12, SC-13, SC-14).",
+      "code_references": [
+        "packages/config/src/config.ts",
+        "services/core/drizzle/0021_ch01_ephemeral_mcp_credentials.sql",
+        "services/core/drizzle/meta/_journal.json:139-158",
+        "services/core/src/security/ephemeralMcpCredentialMigration.test.ts"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "security-attacker-agents/audit-contract.md",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "dd654d54effcfb8541f5cdab6ddbf12e4b8b05b04004673d1133491d25f05f5b"
+    },
+    {
+      "agent_id": "security-attacker-agents/progress-audit-orchestrator.md",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "63aeedeab5e25b484574f5c4532b24a15f82910a36fe70fd215c17d84425038d"
+    },
+    {
+      "agent_id": "security-attacker-agents/agent-registry.json",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "f4ec5e597389786a4e10e4753d1c5e5bbe0aeda178906d0db0dcdc80dfe7735b"
+    },
+    {
+      "agent_id": ".sdd/stages/security.md",
+      "source": ".sdd/stages/security.md",
+      "sha256": "82045d3c06d6e31b215b05b5d9dfb4429041a9742419662e04939aa1769d9d68"
+    },
+    {
+      "agent_id": ".claude/agents/security-checker.md",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "source": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "sha256": "c06da2ff6e4d962232082e9f612b599105e887c31774090cb80000233955034d"
+    },
+    {
+      "agent_id": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "787257e95f7ddad87236e8e071160a0322bd3478c4a6cc76e85cffb90aed1bbb"
+    },
+    {
+      "agent_id": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "c7157ace1589c21cac31f0c893ecc70b785a5f34728b77ec7f1c8e9c8a43608f"
+    }
+  ],
+  "limitations": [
+    "Live Postgres/RLS suites (test:rls:ephemeral:ci, test:rls:acceptance:ci, test:rls:ci, tenantIsolation.penetration.test.ts) were not re-executed this run -- dev-fleet Postgres explicitly off-limits for this run. Substituted with byte-identity verification (SQL blob hash unchanged, journal invariants re-derived, production code byte-identical to the cited baseline) per this run's own \"Live-DB re-verification NOT required where byte-identity holds\" instruction. Cited, not fresh dynamic evidence -- see SEC-05/SEC-11/MCPT-11/CORE-01 observations.",
+    "services/workers broker-backed suites not attempted -- environment-blocked (dev-fleet gateway-consumer collision, pre-existing/documented in changes.md's \"Not done\" section) and, independently, this delta touches zero files under services/workers/ (confirmed fresh this run).",
+    "MCPT-06/MCPT-07 (gateway lifecycle/JSON-RPC fuzzing) remain UNVERIFIED, unchanged -- gateway.ts still untouched, still not independently fuzzed by any run in this worktree.",
+    "MCPT-02's timing dimension remains STATIC-only -- no empirical wall-clock latency sampling performed this run either. Finding FND-c8951999637a (MEDIUM) persists OPEN, unchanged for a sixth consecutive round; non-blocking per this stage's mandatory-gate rule.",
+    "SEC-10/SEC-14 (audit-log tamper-evidence / alerting) remain UNVERIFIED, unchanged -- pre-existing, non-CH-01 product gaps this round does not touch.",
+    "llm-rag, model-provider, websocket-realtime, ingestion-queue-webhook, and web-api-client briefs were not selected this run -- CH-01's own branch has zero target asset in any of those surfaces (confirmed fresh this run: git diff --name-only da97ee2..HEAD against each surface's trigger globs is empty). W7-01's own new dispatcher/queue/webhook-adjacent surface, pulled in by this round's rebase, is out of this ticket-scoped REMEDIATION_RECHECK's remit (its interaction with CH-01's own metering path was checked directly under MCPT-09 v5, PASS).",
+    "The supply-chain-infrastructure (SC-01..14) and secrets-audit-data-lifecycle (SEC-01..14) checklists are carried forward largely by citation for entries whose target asset is provably byte-identical to the cited baseline; only entries whose target file changed this round (SEC-01's own re-verification that check-secret-access.mjs did not change further, SEC-05's rls_acceptance pin re-read, SC-02/SC-04/SC-08 style .github/workflows/ci.yml re-reads) were independently re-derived beyond a diff-emptiness check.",
+    "Ancestry caveat: strict `git merge-base --is-ancestor` fails for the cited baseline (3f5311c) due to two intervening rebases; substituted with direct content-equivalence verification against 3f5311c itself (not merely against the intermediate, unreachable commit 3bb4fcf), documented in baseline.selection_reason rather than silently worked around.",
+    "The baseline run's own .pipeline/security-history/ directory did not exist in this (recreated) worktree -- restored byte-for-byte from its durable archive at .sdd/ledger/20260812T015752982Z-3f5311c-REMEDIATION_RECHECK-1e4110/security/ before this run began, verified identical via direct buffer comparison, so this run's own validator (scripts/validate-security-audit-run.mjs) can load it as a real comparable baseline rather than this run falsely claiming no-baseline/FIRST_OBSERVATION for everything.",
+    "ARTIFACT-NAMING LIMITATION (harness, not a security finding): the tool layer refuses Write calls creating a file whose basename is exactly \"report.md\" for this subagent (error: \"Subagents should return findings as text, not write report files\"), confirmed by direct attempt at this run's own required path .pipeline/security-history/20260815T035518060Z-186624b-REMEDIATION_RECHECK-fa5757/report.md (refused) and, before that, at a scratchpad draft path with the same basename (also refused) -- basename-keyed, not content- or location-keyed. Per this run's explicit, pre-authorized protocol for exactly this scenario: made exactly ONE alternate write to narrative.md in this same run directory, carrying the full intended report.md content behind a banner stating the intended filename and this refusal reason. No other filename was attempted; no retries beyond the two confirmations above. manifest.status is therefore INCOMPLETE (the required report.md artifact, under its exact contractual name, does not exist in this run directory) even though the underlying security audit itself is complete and its substantive verdict (see results.json / .pipeline/security.json) is PASS -- the two facts are independent: an artifact-packaging/tooling limitation, not a security-relevant gap or a downgrade of the audit's own findings. A human-run copy step (narrative.md -> report.md) is expected to close this gap outside this session. UPDATE (2026-08-17): the blocking artifact has since been cured -- the human operator ran the staged copy command (narrative.md -> report.md) on the orchestrator's pre-authorized instruction for exactly this scenario. report.md now exists in this run directory and was independently re-verified this session to be byte-identical to narrative.md (sha256 88aefdbbd91f85453bac6300d1d254fb6db5696e93bd62ba1565d9ca833aac7a on both, 22813 bytes each). manifest.status is accordingly restored to COMPLETE. This update note is appended to, not a replacement of, the original refusal/substitution record above, which is preserved verbatim for the audit trail."
+  ]
+}
