@@ -1,0 +1,246 @@
+{
+  "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+  "goal": "Land the last part of the Pipeline Efficiency Plan: a mechanical red-test quality gate (scripts/check-red-quality.mjs) that blocks undeclared duplicate @spec coverage and assertion-free / tautological \"tests\", wire it into red (self-check) and tester (authoritative gate, consumed by review), close the remaining CI-wiring gaps — in particular the scripts/tsconfig.json include hole that let scripts/pipeline-trim-structural.test.mjs ship with an unsurfaced TypeScript error — and repair five verified defects left on this branch by PL-TRIM / PL-INTEGRITY-TESTER / PL-FIXBRIEF, one of which is failing CI today.",
+  "lane": "full",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "scripts/check-red-quality.mjs exists and runs as a CLI accepting --json, --dir, and --cwd. It exits 0 for status \"clean\" or \"no-red-json\", 1 for \"violations-found\", and 2 for \"error\". It reads .pipeline/red.json through pipeline-contracts.mjs's readRedJson, never by parsing red.md or any other markdown, and never re-reads spec.md."
+    },
+    {
+      "id": "AC-2",
+      "text": "A spec id cited by two or more red.json test entries is a blocking duplicate-spec-id violation (exit 1) unless every entry after the first declares duplicateOf naming another entry that also cites that id and a non-empty justification. With a valid declaration on every later entry, the same input exits 0."
+    },
+    {
+      "id": "AC-3",
+      "text": "A @spec segment containing no match of ASSERTION_PATTERNS is a blocking no-assertion violation whose detail names the file, the segment's @spec ids, and its start line."
+    },
+    {
+      "id": "AC-4",
+      "text": "A @spec segment whose every assertion match is also a TAUTOLOGY_PATTERNS match is a blocking tautological-only violation. A segment with at least one non-tautological assertion is not flagged."
+    },
+    {
+      "id": "AC-5",
+      "text": "A listed test file that is new in this run (absent from HEAD), whose directory holds another test file sharing its stem, and whose entry declares no extends, produces a twin-file entry in advisories — and status stays \"clean\" with exit 0. Declaring extends suppresses it. When git is unavailable, R5 is skipped and a notes line says so."
+    },
+    {
+      "id": "AC-6",
+      "text": "With no .pipeline/red.json present, the check reports status: \"no-red-json\" and exits 0 — never a fabricated \"clean\" — so the /pipeline-lite and /inline-edit lanes are not falsely credited with a passing quality gate."
+    },
+    {
+      "id": "AC-7",
+      "text": "scripts/pipeline-contracts.mjs's validateRedTest accepts and passes through optional duplicateOf, justification, and extends on a red.json test entry; duplicateOf present without a non-empty justification fails validation with a message naming both fields; a red.json carrying none of the three parses exactly as it does today."
+    },
+    {
+      "id": "AC-8",
+      "text": ".sdd/stages/red.md requires, before authoring, a search of the existing test tree for the symbols under test and nearby @spec ids, and requires extending an existing file (recording extends) or citing existing coverage rather than cloning a twin; it documents duplicateOf + justification for a deliberate overlap; and it requires running node scripts/check-red-quality.mjs before finishing, with a blocking violation barred from a finished red.md the same way RED-BROKEN is."
+    },
+    {
+      "id": "AC-9",
+      "text": ".sdd/stages/red.md states that red writes product tests into the existing Vitest / pytest trees CI already runs and never edits .github/workflows/ci.yml."
+    },
+    {
+      "id": "AC-10",
+      "text": ".sdd/stages/tester.md names check-red-quality.mjs as a tester-owned run, documents its exit codes and stdout shape inline, and specifies writing redQuality and qualityViolations onto .pipeline/red-integrity.json derived from the run's status (clean→PASS, violations-found→FAIL, no-red-json→UNVERIFIED, error→UNVERIFIED), stating that redQuality !== \"PASS\" means the run is not clean for review and that advisories are reported but never promoted to FAIL."
+    },
+    {
+      "id": "AC-11",
+      "text": ".sdd/stages/review.md consumes redQuality from the sidecar fail-closed — \"FAIL\" → NEEDS_FIXES; \"UNVERIFIED\" with redExpected: true → NEEDS_FIXES; \"UNVERIFIED\" with redExpected: false → reported as unverified, not clean; \"PASS\" → proceed — and states that review never invokes check-red-quality.mjs itself. review.md contains no invocation of that script or of npm run check:red-quality."
+    },
+    {
+      "id": "AC-12",
+      "text": "readRedIntegrityJson accepts optional redQuality (enum \"PASS\"|\"FAIL\"|\"UNVERIFIED\") and qualityViolations (string[]), returning \"UNVERIFIED\" and [] respectively when the keys are absent, and throwing on a present-but-invalid value."
+    },
+    {
+      "id": "AC-13",
+      "text": "package.json declares check:red-quality and test:red-quality, and .github/workflows/ci.yml runs npm run test:red-quality. No other product or workspace CI step is added, moved, or removed by this ticket."
+    },
+    {
+      "id": "AC-14",
+      "text": "scripts/tsconfig.json's include contains pipeline-trim-structural.test.mjs, check-red-quality.mjs, and check-red-quality.test.mjs, and the array is sorted ascending with no duplicates."
+    },
+    {
+      "id": "AC-15",
+      "text": "npm run typecheck:scripts exits 0 with the widened include, with the TS2339 at scripts/pipeline-trim-structural.test.mjs:617 fixed by typing the pattern/label array as Array<[RegExp, string]> — not by casting at the call site, deleting the assertion, or narrowing what that test checks."
+    },
+    {
+      "id": "AC-16",
+      "text": "scripts/sdd-completeness.test.mjs gains a generalized test that enumerates every scripts/*.mjs file on disk and asserts each is either listed in scripts/tsconfig.json's include or present in a declared exclusion allowlist carrying a reason string; it additionally asserts every include entry names a file that exists on disk, and that include is sorted and duplicate-free. This test fails on the current tree (pipeline-trim-structural.test.mjs is neither included nor excluded) and passes after AC-14."
+    },
+    {
+      "id": "AC-17",
+      "text": "scripts/sdd-completeness.test.mjs gains [red-quality]-tagged structural tests pinning AC-8 through AC-11 and AC-13's wiring, following the file's existing [fixbrief] / [integrity-tester] naming convention."
+    },
+    {
+      "id": "AC-18",
+      "text": ".sdd/stages/CHANGELOG.md gains a PL-CI-QUAL entry positioned above the PL-FIXBRIEF entry, and .pipeline/README.md's sidecar table / red-integrity paragraph names redQuality and identifies tester as its sole producer."
+    },
+    {
+      "id": "AC-19",
+      "text": ".sdd/pipeline.md's stage-4 (tester) line names the red-quality run, and .sdd/entrypoints/red.md and .sdd/entrypoints/tester.md each name it for their stage; npm run check:pipeline-slim still exits 0 and npm run test:pipeline-trim-structural still passes (the 300-line budget, the ≤30-line Stage-sequence limit, and the ≤8-line stub limit all still hold)."
+    },
+    {
+      "id": "AC-20",
+      "text": "node --test scripts/repo-structure.test.mjs test 11 ([AC-7] scripts/ holds no marketing-site script…) passes. The assert.deepEqual(tsconfig.include, SCRIPTS_TSCONFIG_INCLUDE, …) at line ~745 becomes a no-dropped-entries superset assertion over the PL-15 baseline constant, with an inline comment recording that equality forbade legitimate additions and had already broken twice on this branch. The constant itself is not re-synced to today's array, and the guard still fails if any baseline entry is removed from include."
+    },
+    {
+      "id": "AC-21",
+      "text": "readReviewJson and readSecurityJson in scripts/pipeline-contracts.mjs pass { requiredNonEmpty: verdict !== 'PASS' } to parseFindingsArray, so a NEEDS_FIXES review.json or a BLOCKED security.json with a missing or empty findings array fails validation at the parser layer — the contract .sdd/stages/review.md and .sdd/stages/security.md already state. A PASS verdict with findings absent or empty still parses."
+    },
+    {
+      "id": "AC-22",
+      "text": "requireFindingId's failure message names the shape FINDING_ID_PATTERN (/^[RS]\\d+[a-z]?$/) actually accepts (R1 / S2a), not the hyphenated R-n / S-n form that regex rejects."
+    },
+    {
+      "id": "AC-23",
+      "text": ".sdd/stages/dev.md's header comment cites the correct current step numbers: the re-invocation-paths reference points at step 3 (the fix-loop step), and the changes.md file-list reference points at step 8. No other prose in that comment changes."
+    },
+    {
+      "id": "AC-24",
+      "text": ".sdd/stages/dev.md reconciles the allowedPaths restriction (step 3) with the red-test amendment escape hatch its own redTestChanges contract (step 9) still documents: a red test file may be amended during a fix-loop even when outside allowedPaths, only when declared in changes.json's redTestChanges with a reason, with tester's existing declared-vs-undeclared integrity judgment remaining the gate. scripts/write-fix-brief.mjs gains a header note that allowedPaths (finding paths ∩ spec.json affectedFiles) does not normally contain a red-authored test path — because planner writes affectedFiles before red authors tests — and points at that carve-out. No change to the allowedPaths computation itself."
+    },
+    {
+      "id": "AC-25",
+      "text": ".sdd/pipeline.md's **Never:** skip a stage… rule regains a scope qualifier stating it governs automatic routing within a lane, not a human's explicit choice to run a single stage via the per-stage commands (or /re-gate, which by design never runs planner) — resolving its current contradiction with the Entry points section listing six single-stage commands."
+    },
+    {
+      "id": "AC-26",
+      "text": ".sdd/pipeline.md's ledger step documents the two refusal conditions scripts/ledger-append.mjs enforces but nothing in .sdd/ currently states: the cited security run must exist, be complete, and be independently confirmed PASS by its own security-history/<run-id>/{manifest.json,results.json}; and an existing .sdd/ledger/<run-id>/ (or <run-id>/security/) target directory is refused rather than overwritten."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "No .pipeline/red.json at all (/pipeline-lite, /inline-edit): status: \"no-red-json\", exit 0, and tester records redQuality: \"UNVERIFIED\" alongside the existing redExpected: false. Never reported as PASS."
+    },
+    {
+      "id": "EC-2",
+      "text": "red.json present but malformed (invalid JSON, missing tests, a bad classification): exit 2, status: \"error\", stderr names the contract failure. Never \"clean\"."
+    },
+    {
+      "id": "EC-3",
+      "text": "A path listed in red.json that cannot be read (deleted, renamed, permission error): exit 2, status: \"error\" — the quality verdict genuinely cannot be computed. This is not reported as a quality violation; check-red-integrity.mjs separately reports the missing file as an integrity violation, and the two must not double-count it."
+    },
+    {
+      "id": "EC-4",
+      "text": "A listed test file containing zero @spec markers: no segments, so R3/R4 produce nothing; the file still appears in filesChecked and a notes entry records the marker-less file. It is not a check-red-quality violation — check-red-integrity.mjs owns \"cites no @spec marker at all\"."
+    },
+    {
+      "id": "EC-5",
+      "text": "One @spec marker followed by several test blocks: the segment runs to the next marker, so R3 is satisfied by any one assertion inside it and an assertion-free block later in the same segment is not caught. Documented as a known limitation in the script header and in .sdd/stages/red.md's instruction to mark every test individually — never presented as full per-test coverage."
+    },
+    {
+      "id": "EC-6",
+      "text": "An assertion token appearing only inside a comment or a string literal (e.g. a test that asserts on the text \"expect(\"): counted as an assertion, so R3 can be satisfied spuriously. Documented as a known false-negative in the script header rather than claimed as airtight."
+    },
+    {
+      "id": "EC-7",
+      "text": "One entry listing the same spec id twice in its own specIds array: blocking duplicate-spec-id, with a detail distinguishing it from the cross-file case."
+    },
+    {
+      "id": "EC-8",
+      "text": "duplicateOf naming a path not present in red.json, or naming an entry sharing no spec id with the declarer: blocking bad-duplicate-declaration, and the underlying duplicate-spec-id violation is still reported — a bad declaration never suppresses the finding it claims to explain."
+    },
+    {
+      "id": "EC-9",
+      "text": "duplicateOf present with justification absent, empty, or whitespace-only: rejected by readRedJson (contracts-level), so the check exits 2 rather than silently accepting an unjustified duplicate."
+    },
+    {
+      "id": "EC-10",
+      "text": "extends naming a file that does not exist on disk: the twin-file advisory is not suppressed, and a notes line records the dangling extends."
+    },
+    {
+      "id": "EC-11",
+      "text": "git missing from PATH, or the working directory is not a git repository: R5 is skipped, a notes line says so explicitly, and the exit code is unaffected. A rule that could not run is disclosed, never silently treated as passing."
+    },
+    {
+      "id": "EC-12",
+      "text": "Python test files under services/workers/: # @spec AC-3 markers and bare assert statements are recognized by specSegments and ASSERTION_PATTERNS; a bare assert True is caught by R4."
+    },
+    {
+      "id": "EC-13",
+      "text": "An unrecognized CLI flag: exit 2 with a usage line, matching check-pipeline-slim.mjs's assertKnownFlags behavior. Never a silent default run."
+    },
+    {
+      "id": "EC-14",
+      "text": "A legacy red.json or a ledger-copied red.json with none of duplicateOf / justification / extends: parses and evaluates exactly as before this ticket."
+    },
+    {
+      "id": "EC-15",
+      "text": "A legacy red-integrity.json with no redQuality key: readRedIntegrityJson returns \"UNVERIFIED\" (never throws), and review's redExpected: true branch turns that into NEEDS_FIXES. This is the deliberate fail-closed choice — symmetric with the existing redIntegrity: \"UNVERIFIED\" rule — and its consequence (an in-flight run whose tester predates this ticket must re-run tester) is accepted rather than softened."
+    },
+    {
+      "id": "EC-16",
+      "text": "scripts/tsconfig.json gains a new scripts/*.mjs file that is neither included nor in the exclusion allowlist: AC-16's enumeration test fails by name, which is exactly the gap pipeline-trim-structural.test.mjs fell into. Conversely, an include entry pointing at a deleted/renamed file also fails — tsc itself is silent about a dead include entry."
+    },
+    {
+      "id": "EC-17",
+      "text": "A check-red-quality run inside a temp fixture repo with no .git directory: R5's git probe must fail soft (EC-11), so the script's own test suite can run in mkdtemp fixtures the way check-red-integrity.test.mjs does."
+    },
+    {
+      "id": "EC-18",
+      "text": "Advisory-only result (twin-file present, no blocking violation): ok: true, status: \"clean\", exit 0, and tester records redQuality: \"PASS\" while still surfacing the advisory text in test-results.md. An advisory must never silently disappear, and must never block."
+    },
+    {
+      "id": "EC-19",
+      "text": "AC-20's superset assertion must still fail when a baseline entry is removed from scripts/tsconfig.json's include (that is PL-15's actual guarantee), while a legitimate future addition no longer breaks it. Both directions need a test — a guard loosened until it catches nothing is worse than the failing guard it replaced."
+    },
+    {
+      "id": "EC-20",
+      "text": "review.json / security.json with verdict PASS and findings absent, or []: still parses cleanly under AC-21. The non-empty rule is conditional on the verdict, never blanket — a passing review has nothing to report and must not be forced to invent a finding."
+    },
+    {
+      "id": "EC-21",
+      "text": "AC-21 changes where an empty-findings NEEDS_FIXES/BLOCKED sidecar is rejected: previously only write-fix-brief.mjs's own explicit guard (its line ~214) caught it; now readReviewJson/readSecurityJson throw a SidecarError first, which write-fix-brief.mjs already converts to failRefuse (exit 1). The existing suite cases (\"NEEDS_FIXES review.json with missing findings exits 1\", \"…empty findings array exits 1\") must still pass; if either asserts on stderr text, update the assertion to the new message rather than loosening it. The explicit guard stays — defence in depth, not dead code."
+    },
+    {
+      "id": "EC-22",
+      "text": "After AC-22, R-1 (hyphenated) is still rejected by FINDING_ID_PATTERN, and the failure message must not name it as a valid shape; R1, S2, S2a are accepted. The fix is to the message only — the regex is unchanged."
+    },
+    {
+      "id": "EC-23",
+      "text": "AC-24's carve-out must not open a hole: an undeclared red-test edit during a fix-loop still fails tester's integrity check (undeclared hash mismatch → blocking), exactly as it does today. Only a redTestChanges-declared amendment is permitted outside allowedPaths, and review may still escalate an illegitimate declared reason."
+    },
+    {
+      "id": "EC-24",
+      "text": "AC-25's and AC-26's additions to .sdd/pipeline.md must keep it under check-pipeline-slim.mjs's 300-line budget (it is 213 today) and must not push the Stage sequence section past pipeline-trim-structural.test.mjs's ≤30-non-blank-line limit or any ### /cmd stub past ≤8 non-blank lines. If a qualifier cannot fit inside the budget, it belongs in the matching .sdd/entrypoints/*.md with a pointer, not dropped again."
+    },
+    {
+      "id": "EC-25",
+      "text": "AC-26's ledger refusal conditions must not contradict what ledger-append.mjs actually enforces, and must not be duplicated into .sdd/pipeline-history.md (which is archaeology, not procedure). The documented text is checked against the script's real refusal sites, not written from memory."
+    },
+    {
+      "id": "EC-26",
+      "text": "repo-structure.test.mjs tests 14, 16, and 22 fail on this working copy both before and after this ticket, caused by untracked local artifacts (Design System/ at the repo root, gitignored scripts/.fontcache/) absent from a clean checkout. They are out of scope: not to be \"fixed\" by deleting local directories, and not to be counted as a regression introduced here. Only test 11's transition from failing to passing is this ticket's claim."
+    }
+  ],
+  "affectedFiles": [
+    "scripts/check-red-quality.mjs",
+    "scripts/check-red-quality.test.mjs",
+    "scripts/pipeline-contracts.mjs",
+    "scripts/pipeline-contracts.test.mjs",
+    "scripts/pipeline-trim-structural.test.mjs",
+    "scripts/repo-structure.test.mjs",
+    "scripts/sdd-completeness.test.mjs",
+    "scripts/write-fix-brief.mjs",
+    "scripts/write-fix-brief.test.mjs",
+    "scripts/tsconfig.json",
+    "package.json",
+    ".github/workflows/ci.yml",
+    ".sdd/pipeline.md",
+    ".sdd/stages/red.md",
+    ".sdd/stages/dev.md",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/review.md",
+    ".sdd/stages/CHANGELOG.md",
+    ".sdd/entrypoints/red.md",
+    ".sdd/entrypoints/tester.md",
+    ".pipeline/README.md"
+  ],
+  "stamp": {
+    "treeHash": "75b62c5e66ccc677ca6871b41e717320538fe2a0e053c41f35cbc2d946924d0b",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-14T04:53:05.873Z"
+  }
+}

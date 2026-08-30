@@ -1,0 +1,175 @@
+{
+  "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+  "goal": "Make tester the single owner of red-test integrity and @spec trace: it runs scripts/check-red-integrity.mjs, applies the judgment rules review applies today, and publishes the outcome in a new .pipeline/red-integrity.json sidecar. review stops reading red.md and stops running the script; it consumes the sidecar's verdict and blocks on anything that is not a clean PASS. The gate's strength is unchanged — only its owner is.",
+  "lane": "full",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": ".sdd/stages/tester.md's Procedure requires running `node scripts/check-red-integrity.mjs` after the red suite, and documents its exit codes (0 = clean or no-red-json; 1 = violations found, an incomplete red-stage output, or any other failure) and its stdout shape (status/testPathsChecked/hashesChecked/candidateNewTests/violations/notes)."
+    },
+    {
+      "id": "AC-2",
+      "text": ".sdd/stages/tester.md carries the judgment rules that live in .sdd/stages/review.md today, substantively intact: (a) a declared hash mismatch is judged against the reason in changes.json, with \"the spec was wrong and dev amended it\" as the legitimate case; (b) an undeclared hash mismatch is blocking; (c) an unresolvable @spec ID, or a listed test citing no marker at all, is blocking; (d) a marker-less new test file the script surfaces as a candidate is judged behavioral (blocking) or genuinely non-behavioral (fine as-is)."
+    },
+    {
+      "id": "AC-3",
+      "text": ".sdd/stages/tester.md's Output contract adds a Red-test integrity section to test-results.md reporting the script's status, every violation, and every judgment with its reason. An empty result is stated as a checked-and-clear claim, never left blank."
+    },
+    {
+      "id": "AC-4",
+      "text": ".sdd/stages/tester.md specifies writing .pipeline/red-integrity.json with exactly the shape and derivation rules in the spec's Interfaces / signatures section (redIntegrity PASS|FAIL|UNVERIFIED, scriptStatus clean|violations-found|no-red-json|error, redExpected boolean, violations array, judgments array of {path, verdict ok|blocking, reason}, optional stamp), then running `node scripts/write-stamp.mjs .pipeline/red-integrity.json` as its last step for that file."
+    },
+    {
+      "id": "AC-5",
+      "text": ".sdd/stages/tester.md's Result section states that a red-suite failure OR redIntegrity !== \"PASS\" means this run is not clean for review to treat as green."
+    },
+    {
+      "id": "AC-6",
+      "text": ".sdd/stages/tester.md states that on /pipeline-lite and /inline-edit, where red is deliberately skipped, the sidecar records scriptStatus \"no-red-json\", redIntegrity \"UNVERIFIED\", redExpected false, and that this is disclosed in test-results.md — never written or reported as a PASS."
+    },
+    {
+      "id": "AC-7",
+      "text": ".sdd/stages/review.md has zero required read of red.md/red.json for integrity or spec trace, and contains no invocation of check-red-integrity.mjs (no `node scripts/check-red-integrity.mjs`, no `npm run check:red-integrity`). Its required-input list names spec.md, changes.md, test-results.md, and .pipeline/red-integrity.json."
+    },
+    {
+      "id": "AC-8",
+      "text": ".sdd/stages/review.md specifies fail-closed handling of the sidecar without re-deriving any hash: redIntegrity \"FAIL\" -> NEEDS_FIXES; sidecar missing -> NEEDS_FIXES; `node scripts/check-stamp-freshness.mjs red-integrity.json` reporting stale (exit 1) -> NEEDS_FIXES; sidecar present but failing shape validation (exit 2) -> NEEDS_FIXES; redIntegrity \"UNVERIFIED\" with redExpected true -> NEEDS_FIXES; redIntegrity \"UNVERIFIED\" with redExpected false -> not a failure, but reported as an unverified lens, never as clean."
+    },
+    {
+      "id": "AC-9",
+      "text": ".sdd/stages/review.md states that review may escalate a tester \"ok\" judgment to NEEDS_FIXES when the reason declared in changes.json is not legitimate, and may never downgrade a \"blocking\" judgment to a pass. Escalation reads changes.json's declared reasons and the sidecar — never a re-run of the script, and never red.md."
+    },
+    {
+      "id": "AC-10",
+      "text": ".sdd/stages/review.md's \"Staleness of required inputs\" section no longer claims tester writes no JSON sidecar; it documents red-integrity.json's policy per AC-8 and drops the red.md/red.json input bullet."
+    },
+    {
+      "id": "AC-11",
+      "text": ".sdd/stages/dev.md's \"Red-test changes\" bullet attributes the rehash to tester and the resulting NEEDS_FIXES to review reading tester's result; it no longer says review rehashes."
+    },
+    {
+      "id": "AC-12",
+      "text": ".sdd/pipeline.md's Stage sequence entry 4 states tester runs the integrity check and writes .pipeline/red-integrity.json; entry 5 states review consumes that result and no longer reads red.md. `node scripts/check-pipeline-slim.mjs` exits 0 and the file stays at or under 300 lines."
+    },
+    {
+      "id": "AC-13",
+      "text": ".pipeline/README.md's sidecar table has a red-integrity.json row (written by tester; read by review and check-stamp-freshness.mjs), and its \"Red-test integrity / spec trace\" paragraph names tester as the runner and review as the consumer."
+    },
+    {
+      "id": "AC-14",
+      "text": "scripts/pipeline-contracts.mjs exports readRedIntegrityJson plus RED_INTEGRITY_VERDICTS, RED_INTEGRITY_SCRIPT_STATUSES, and RED_INTEGRITY_JUDGMENT_VERDICTS, validating strictly: unknown/absent redIntegrity, scriptStatus, or judgment verdict values fail; a non-boolean redExpected fails; a non-array violations/judgments fails; a judgment entry missing path or reason fails; stamp is optional and read via the existing readStamp."
+    },
+    {
+      "id": "AC-15",
+      "text": "scripts/check-stamp-freshness.mjs accepts red-integrity.json as a known sidecar (`node scripts/check-stamp-freshness.mjs red-integrity.json` no longer exits 2 with \"unrecognized sidecar\"), and its usage banner and READERS comment name six sidecars rather than five."
+    },
+    {
+      "id": "AC-16",
+      "text": ".sdd/entrypoints/tester.md (step 2 names the integrity run; step 3 reports the sidecar), .sdd/entrypoints/review.md (step 1 requires the sidecar and drops the red.md caveat), .sdd/entrypoints/pipeline.md (step 6's artifact list gains red-integrity.json), and .sdd/entrypoints/re-gate.md (step 3 states the --gates-only consequence in EC-11) are updated."
+    },
+    {
+      "id": "AC-17",
+      "text": "Neither `git diff --name-only HEAD -- .sdd/stages` allowlist loop remains in scripts/sdd-completeness.test.mjs (the PL-11 and PL-12 tests, currently around lines 1026 and 1315). Each is replaced by content assertions pinning the same underlying guarantee, following the precedent already recorded in that file for PL-14/A1. `npm run test:sdd-completeness` passes with this ticket's own uncommitted edits to .sdd/stages/tester.md, review.md, and dev.md present in the working tree."
+    },
+    {
+      "id": "AC-18",
+      "text": "scripts/sdd-completeness.test.mjs's \".sdd/stages/review.md checks red-test integrity and spec trace\" test is rewritten to assert the new ownership: tester.md carries the mechanical run and both judgment halves; review.md consumes the sidecar, names NEEDS_FIXES for FAIL/missing/stale, and contains no check-red-integrity.mjs invocation."
+    },
+    {
+      "id": "AC-19",
+      "text": ".sdd/stages/CHANGELOG.md gains a \"## PL-INTEGRITY-TESTER\" entry above \"## PL-12\", naming every stage file amended, the corrected review.md staleness claim, and AC-17's retirement."
+    },
+    {
+      "id": "AC-20",
+      "text": ".github/workflows/ci.yml, package.json, scripts/tsconfig.json, scripts/check-red-integrity.mjs, scripts/ledger-append.mjs, .sdd/stages/pr-review.md, and .sdd/runtimes.yml are unmodified, and no new file is added under scripts/ (`git ls-files --others --exclude-standard scripts` stays empty — an existing assertion in scripts/sdd-completeness.test.mjs depends on it)."
+    },
+    {
+      "id": "AC-21",
+      "text": "All of these pass locally: npm run test:sdd-completeness, npm run test:pipeline-contracts, npm run test:stamp-freshness, npm run test:red-integrity, npm run test:write-stamp, npm run test:pipeline-slim, npm run test:pipeline-trim-structural, npm run check:pipeline-slim, and npm run typecheck:scripts."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "The script exits 1 because of a tooling failure rather than a substantive violation (malformed spec.json/changes.json, an unreadable listed file, its top-level catch). Tester records scriptStatus \"error\", redIntegrity \"UNVERIFIED\", violations [], and states the failure in test-results.md; review treats it as NEEDS_FIXES when redExpected is true. A gate that could not run must never read as a gate that passed."
+    },
+    {
+      "id": "EC-2",
+      "text": "red.md exists but red.json does not. The script reports violations-found (an incomplete red-stage output, not \"no red stage ran\"); tester records FAIL, review returns NEEDS_FIXES."
+    },
+    {
+      "id": "EC-3",
+      "text": "A hash mismatch that IS declared in changes.json's redTestChanges with a legitimate reason. Script exits 0 with a note; tester records verdict \"ok\" with the reason it judged, and redIntegrity \"PASS\"."
+    },
+    {
+      "id": "EC-4",
+      "text": "A hash mismatch that is declared but whose reason is not legitimate (e.g. \"the test was too strict\"). Script exits 0; tester's judgment is \"blocking\", so redIntegrity is FAIL even though the script itself was clean — the case that proves the judgment really moved rather than being replaced by the exit code."
+    },
+    {
+      "id": "EC-5",
+      "text": "/pipeline-lite or /inline-edit with a leftover red.json from an earlier run on disk. The script runs against the leftover and may report anything; tester must set redExpected false and state in test-results.md that the result describes a leftover artifact, not a red stage that ran this round."
+    },
+    {
+      "id": "EC-6",
+      "text": ".pipeline/red-integrity.json does not exist when review runs (tester was skipped, or the file predates this contract). NEEDS_FIXES — review does not run the script \"to be helpful,\" and absence is never read as \"nothing to check.\""
+    },
+    {
+      "id": "EC-7",
+      "text": "The sidecar exists but is stale: the tree moved after tester wrote it (a hand-edit, a later dev pass). check-stamp-freshness exits 1; review returns NEEDS_FIXES. This is stricter than every other trusted-fresh input (which flags and proceeds), and the deviation must be stated explicitly in review.md rather than left implied."
+    },
+    {
+      "id": "EC-8",
+      "text": "The sidecar exists but fails shape validation (hand-edited, truncated, duplicate key). check-stamp-freshness exits 2 and readRedIntegrityJson throws; review returns NEEDS_FIXES, never \"assume it would have passed.\""
+    },
+    {
+      "id": "EC-9",
+      "text": "The script surfaces a marker-less new test file as a candidate that is genuinely non-behavioral coverage tester itself added (a fixture, a harness). Tester records verdict \"ok\" with the reason; it is not a violation. Tester judging its own addition is the honest cost of the move and must be stated as such in the judgment reason."
+    },
+    {
+      "id": "EC-10",
+      "text": "`node scripts/write-stamp.mjs .pipeline/red-integrity.json` exits non-zero. Tester must not finish claiming a stamped sidecar — fix the sidecar and re-run, exactly as every other stage handles its own write-stamp failure."
+    },
+    {
+      "id": "EC-11",
+      "text": "/re-gate --gates-only deliberately skips tester, so no fresh sidecar exists and the stale one describes the pre-hand-edit tree. Review returns NEEDS_FIXES per EC-7. re-gate.md must say so at step 3: with red artifacts present for the ticket, --gates-only now forfeits the integrity lens, and the resolution is to run tester (re-gate without --gates-only)."
+    },
+    {
+      "id": "EC-12",
+      "text": "A ticket that genuinely predates the red stage on the full lane. scriptStatus \"no-red-json\", redIntegrity \"UNVERIFIED\", redExpected false; review reports the lens as unverified and does not block on it — the same latitude review has today, expressed in the sidecar rather than inferred from a missing file."
+    },
+    {
+      "id": "EC-13",
+      "text": "/pipeline-gapfill: gaps.json handling and review's undeclared-scope check are untouched by this ticket. Integrity behaves exactly as on the full lane."
+    },
+    {
+      "id": "EC-14",
+      "text": "pr-review on a fresh PR checkout, with no .pipeline/ and no ledger copy of red-integrity.json (this ticket adds none). Unchanged: it runs check-red-integrity.mjs itself against .pipeline/ or --dir .sdd/ledger/<run-id>, and reports the lens Unverified when neither source exists. The single-owner rule must not be worded so broadly that it forbids this."
+    },
+    {
+      "id": "EC-15",
+      "text": "Tester runs on the haiku tier while review runs on sonnet, so the judgment moves to a cheaper model. Mitigated by AC-9's one-way ratchet (review may escalate, never downgrade) and by AC-2's requirement that the judgment rules move substantively intact rather than being compressed."
+    },
+    {
+      "id": "EC-16",
+      "text": "The new wording must not break scripts/sdd-completeness.test.mjs's existing 400-character co-occurrence windows in tester.md: lite<->red.md and lite<->state/say inside Required inputs item 1, and the inline-edit<->\"no red suite\" pairing inside the \"Red suite result\" bullet. Add new material as new items/bullets rather than inside those two windows."
+    },
+    {
+      "id": "EC-17",
+      "text": "Section anchors other suites slice on must survive: tester.md's \"## Required inputs\", \"## Procedure\", \"## Output contract\", \"## Staleness of required inputs\" (in that order), and review.md's \"- **Critical**\" / \"- **Warning**\" bullets. Renaming any of them silently breaks an assertion elsewhere in the suite."
+    },
+    {
+      "id": "EC-18",
+      "text": "red must extend the three existing test files rather than create a new scripts/*.test.mjs: a new file would be untracked and would fail the existing `git ls-files --others --exclude-standard scripts` assertion, and would additionally require package.json/ci.yml/tsconfig.json wiring this ticket declares out of scope."
+    },
+    {
+      "id": "EC-19",
+      "text": "Two stages could each believe the other owns the script. The contract is explicit in both directions: tester.md says it runs the script; review.md says it must not. Neither file may be edited to leave the run unowned."
+    }
+  ],
+  "stamp": {
+    "treeHash": "9802f30ee22d986a548001015980304561ecae1df62a79550adc7454850f52b2",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T13:49:20.946Z"
+  }
+}

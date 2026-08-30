@@ -323,51 +323,42 @@ test('.sdd/stages/tester.md is rewritten off changes.md per D-018, and does not 
   assert.ok(tester.includes('Affected-test regression results'), 'tester.md\'s Output contract must have a dedicated section for the impact resolver\'s regression run (the half of TDAD tester now performs)');
 });
 
+// @spec AC-18 (PL-INTEGRITY-TESTER): this test was rewritten to assert the new ownership.
+// Before PL-INTEGRITY-TESTER, it checked that review.md ran check-red-integrity.mjs and had
+// mechanical/judgment-half bullets inline. Those are now tester.md's responsibility; review.md
+// consumes the sidecar. See .sdd/stages/CHANGELOG.md's PL-INTEGRITY-TESTER entry.
 test('.sdd/stages/review.md checks red-test integrity and spec trace', () => {
   const review = read('.sdd/stages/review.md');
-  assert.ok(review.includes('Red-test integrity'), 'review.md must check red-test integrity');
-  assert.ok(review.includes('Spec trace'), 'review.md must check the @spec trace');
+  const tester = read('.sdd/stages/tester.md');
 
-  // PL-03h moved the content-hash table out of red.md's prose and into red.json, because reading
-  // a control input out of a markdown document is the defect that ticket exists to remove. The
-  // assertion's intent is unchanged — review must still recompute hashes over the full set red
-  // recorded. Structural (PL-04): rather than pinning the exact sentence "recomputes the SHA-256
-  // content hash of every file `red.json`'s `tests` array lists", scope to the mechanical-half
-  // bullet and require the load-bearing concepts (SHA-256, red.json, its `tests` array, hashing)
-  // to all appear there.
-  const mechanicalHalf = sectionBetween(review, 'Red-test integrity, mechanical half (the script):', 'Red-test integrity, judgment half (you):');
-  assert.match(mechanicalHalf, /SHA-256/, 'review.md\'s Red-test integrity mechanical half must name the SHA-256 hash algorithm');
-  assert.match(mechanicalHalf, /red\.json/, 'review.md\'s Red-test integrity mechanical half must name red.json as the source of the file list');
-  assert.match(mechanicalHalf, /`tests`/, 'review.md\'s Red-test integrity mechanical half must name red.json\'s `tests` array specifically');
-  assert.match(mechanicalHalf, /\bhash\b/i, 'review.md\'s Red-test integrity mechanical half must describe hashing, not just listing, those files');
+  // NEW OWNERSHIP (PL-INTEGRITY-TESTER / AC-18): tester.md carries the mechanical run and both
+  // judgment halves; review.md consumes the sidecar.
+  assert.ok(tester.includes('check-red-integrity.mjs'),
+    'tester.md must name check-red-integrity.mjs — tester is now the sole owner of that run (AC-18)');
+  assert.ok(!review.includes('check-red-integrity.mjs'),
+    'review.md must not invoke check-red-integrity.mjs — that is tester\'s job (AC-7, AC-18)');
 
-  // AC 3 / AC 4: both checks must be wired to the fail-closed verdict, not left as an observation
-  // with no consequence — an undeclared hash mismatch or an unresolvable @spec ID must produce
-  // NEEDS_FIXES, and the passing exception (declared in changes.json) must be named explicitly.
-  // Structural (PL-04): co-occurrence of the verdict literal, the exception keyword, and
-  // changes.json's declaration mechanism within the judgment-half bullet, rather than the exact
-  // original sentence.
-  const judgmentHalf = sectionBetween(review, 'Red-test integrity, judgment half (you):', 'Spec trace, mechanical half (the script):');
-  assert.match(judgmentHalf, /NEEDS_FIXES/, 'review.md\'s Red-test integrity judgment half must name the NEEDS_FIXES verdict');
-  assert.match(judgmentHalf, /\bunless\b/i, 'review.md\'s Red-test integrity judgment half must name the declared-in-changes.json exception');
-  assert.match(judgmentHalf, /changes\.json/, 'review.md\'s Red-test integrity judgment half must name changes.json as where the exception is declared');
-  assert.match(judgmentHalf, /\bdeclar(e|es|ed|ation)\b/i, 'review.md\'s Red-test integrity judgment half must require the change to be declared, not merely present');
+  // Judgment rules: tester.md carries all four (moved from review.md).
+  assert.ok(coOccurs(tester, /hash.*mismatch|mismatch.*hash/, /changes\.json/, 500),
+    'tester.md must carry the hash-mismatch judgment rule (checks changes.json) — AC-2(a), AC-18');
+  assert.ok(coOccurs(tester, /undeclared/, /blocking/, 300),
+    'tester.md must carry the undeclared-mismatch-is-blocking rule — AC-2(b), AC-18');
+  assert.ok(coOccurs(tester, /@spec/, /blocking/, 400),
+    'tester.md must carry the unresolvable-@spec-is-blocking rule — AC-2(c), AC-18');
 
-  // The uncited/unresolvable @spec case must force NEEDS_FIXES. Structural (PL-04): co-occurrence
-  // of the verdict literal, the @spec marker, and an unresolvable/uncited concept within the
-  // spec-trace judgment bullet.
-  const specTraceJudgment = sectionBetween(review, 'Spec trace, judgment half (you):', '- **Architectural boundaries**');
-  assert.match(specTraceJudgment, /@spec/, 'review.md\'s Spec trace judgment half must reference the @spec marker');
-  assert.match(specTraceJudgment, /\bunresolvable\b/i, 'review.md\'s Spec trace judgment half must name an unresolvable @spec ID as a failure');
-  assert.match(specTraceJudgment, /NEEDS_FIXES/, 'review.md\'s Spec trace judgment half must name the NEEDS_FIXES verdict');
+  // review.md consumes the sidecar and routes on it.
+  assert.ok(review.includes('red-integrity.json'),
+    'review.md must name red-integrity.json as its required input for integrity (AC-7, AC-18)');
+  assert.ok(coOccurs(review, /red-integrity\.json/, /NEEDS_FIXES/, 500),
+    'review.md must name NEEDS_FIXES for a FAIL red-integrity.json — AC-8, AC-18');
+  assert.ok(coOccurs(review, /stale/, /NEEDS_FIXES/, 400),
+    'review.md must return NEEDS_FIXES when the sidecar is stale — AC-8, EC-7, AC-18');
 
-  // review.md's Critical list must name the uncited/unresolvable @spec case explicitly, not just
-  // describe the mechanism above — same "pin both halves" defense used elsewhere in this file.
+  // The Critical bullet still names the uncited/unresolvable @spec case — the finding still reaches
+  // review via the sidecar, even though the mechanical check moved to tester.
   const criticalBullet = sectionBetween(review, '- **Critical**', '- **Warning**');
-  assert.match(criticalBullet, /@spec/, 'review.md\'s Critical list must reference @spec');
-  assert.match(criticalBullet, /\b(uncited|unresolvable)\b/i, 'review.md\'s Critical list must name the uncited/unresolvable @spec case explicitly');
-
-  assert.ok(review.includes('@spec'), 'review.md must reference the @spec marker convention');
+  assert.match(criticalBullet, /@spec/, 'review.md\'s Critical list must still reference @spec (findings arrive from the sidecar)');
+  assert.match(criticalBullet, /\b(uncited|unresolvable)\b/i, 'review.md\'s Critical list must still name the uncited/unresolvable @spec case');
 });
 
 test('.sdd/stages/planner.md requires stable AC-*/EC-* IDs, in presentation order, for both Acceptance criteria and Edge cases', () => {
@@ -477,9 +468,11 @@ test('.sdd/pipeline.md documents the six-stage sequence and the ledger step', ()
 test('.sdd/pipeline.md documents /hotfix as an entry point, pointing at .sdd/hotfix.md and the --hotfix ledger flag', () => {
   const pipeline = read('.sdd/pipeline.md');
   assert.match(pipeline, /### `\/hotfix/, 'expected a dedicated /hotfix entry-point section');
-  assert.ok(pipeline.includes('.sdd/hotfix.md'), 'the /hotfix section must point at .sdd/hotfix.md as the authoritative definition');
-  assert.ok(pipeline.includes('ledger-append.mjs --hotfix'), 'the /hotfix section must name the ledger flag that writes its bypass entry');
-  assert.ok(pipeline.includes('follow-up ticket'), 'the /hotfix section must restate the non-negotiable follow-up ticket requirement');
+  assert.ok(pipeline.includes('.sdd/hotfix.md'), 'the /hotfix stub must point at .sdd/hotfix.md as the authoritative definition');
+  // Full procedure (ledger flag and follow-up requirement) lives in the entrypoint file per PL-TRIM.
+  const hotfixEp = read('.sdd/entrypoints/hotfix.md');
+  assert.ok(hotfixEp.includes('ledger-append.mjs --hotfix'), 'the /hotfix entrypoint must name the ledger flag that writes its bypass entry');
+  assert.ok(hotfixEp.includes('follow-up ticket'), 'the /hotfix entrypoint must restate the non-negotiable follow-up ticket requirement');
 });
 
 // --- PL-03d/PL-03i: pr-review is registered as a real stage, not just documented -----------------
@@ -787,10 +780,10 @@ test('every "check:<suffix>" script in package.json has a matching "test:<suffix
 //     `.github/workflows/ci.yml`), so `/^foo:$/m` silently never matches — the `\r` sits between
 //     `foo:` and the line end.
 
-/** The authoritative section for the lane, sliced by its own heading — placed between
- * `### `/pipeline <ticket>`` and `### Per-stage entry points` per spec.md's Interfaces section. */
+/** The authoritative definition of the /pipeline-lite lane — reads the entrypoint file directly
+ * now that .sdd/pipeline.md only carries a short stub per PL-TRIM. */
 function pipelineLiteSection() {
-  return sectionBetween(read('.sdd/pipeline.md'), '### `/pipeline-lite', '### Per-stage entry points');
+  return read('.sdd/entrypoints/pipeline-lite.md');
 }
 
 // @spec AC-1
@@ -832,10 +825,10 @@ test('[lite] .sdd/pipeline.md defines /pipeline-lite runtime-neutrally: the elig
 // @spec AC-1
 test('[lite] /pipeline-lite is listed in .sdd/pipeline.md\'s intro paragraph and its Entry points preamble, not only in its own section', () => {
   const pipeline = read('.sdd/pipeline.md');
-  const intro = sectionBetween(pipeline, '# Pipeline — stage sequence, routing, and loop caps', '## Staleness stamps');
+  const intro = sectionBetween(pipeline, '# Pipeline', '## Staleness stamps');
   assert.ok(intro.includes('/pipeline-lite'), 'a lane nobody can find from the top of the file is a lane that gets reinvented as a hand-edit');
 
-  const entryPointsPreamble = sectionBetween(pipeline, '## Entry points', '### `/pipeline <ticket>`');
+  const entryPointsPreamble = sectionBetween(pipeline, '## Entry points', '### `/pipeline`');
   assert.ok(entryPointsPreamble.includes('/pipeline-lite'), 'the Entry points list must name every entry point, including this one');
 });
 
@@ -933,23 +926,27 @@ test('[lite] .claude/skills/pipeline-lite/SKILL.md exists, is thin, and matches 
   assert.match(skill, /^description: \S.*\r?$/m);
   assert.match(skill, /^disable-model-invocation: true[ \t]*\r?$/m, 'this command takes real actions — it is invoked explicitly, never auto-triggered');
   assert.match(skill, /^argument-hint: \S.*\r?$/m);
-  assert.ok(skill.includes('.sdd/pipeline.md'), 'the body must point at the authoritative, runtime-neutral definition');
+  assert.ok(skill.includes('.sdd/pipeline.md'), 'the body must point at pipeline.md as the core (stage sequence, routing, loop cap, staleness)');
+  // PL-TRIM: the shim now also names its own entrypoint file — accepting the entrypoint pointer.
+  assert.ok(skill.includes('.sdd/entrypoints/pipeline-lite.md'), 'the body must point at the entrypoint file that carries the full procedure');
 
   // Thin: a shim that restates the procedure is a second copy of it, and the two will drift.
   assert.ok(skill.split('\n').length < 60, 'the shim must stay a pointer, not a second copy of the lane\'s procedure');
 });
 
 // @spec AC-13
-test('[lite] every `### `/<command>`` section in .sdd/pipeline.md has a matching .claude/skills/<command>/SKILL.md', () => {
-  const pipeline = read('.sdd/pipeline.md');
-  const commands = [...pipeline.matchAll(/^### `\/([a-z][a-z0-9-]*)/gm)].map((match) => match[1]);
-  assert.ok(commands.length >= 10, `expected pipeline.md's entry-point sections to be discoverable; found ${commands.length}`);
+test('[lite] every .sdd/entrypoints/<command>.md has a matching .claude/skills/<command>/SKILL.md', () => {
+  // PL-TRIM: enumeration now comes from .sdd/entrypoints/*.md rather than ### /cmd headings in pipeline.md.
+  const commands = readdirSync(resolve(repoRoot, '.sdd', 'entrypoints'))
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => f.slice(0, -3)); // strip .md
+  assert.ok(commands.length >= 10, `expected .sdd/entrypoints/ to contain entry-point files; found ${commands.length}`);
   assert.ok(commands.includes('pipeline-lite'), 'the generalized check is only meaningful once it actually covers the new command');
 
   for (const command of new Set(commands)) {
     assert.ok(
       existsSync(resolve(repoRoot, '.claude', 'skills', command, 'SKILL.md')),
-      `.sdd/pipeline.md documents /${command} but .claude/skills/${command}/SKILL.md does not exist — a documented entry point with no runtime shim is a command a person cannot actually run`,
+      `.sdd/entrypoints/${command}.md exists but .claude/skills/${command}/SKILL.md does not — a documented entry point with no runtime shim is a command a person cannot actually run`,
     );
   }
 });
@@ -1013,16 +1010,19 @@ test('[lite] .sdd/stages/CHANGELOG.md records the PL-11 round, and no other stag
   const section = sectionBetween(changelog, '## PL-11', '\n## ');
   assert.ok(section.includes('tester'), 'the PL-11 entry must name which stage file it amended');
 
-  // Mechanical half of "no other stage file's procedure is changed". This only sees UNCOMMITTED
-  // edits, which is exactly the state this suite runs in during a pipeline run; the durable half is
-  // the per-stage marker assertions earlier in this file, which would fail if a guarantee were
-  // silently dropped from planner.md/red.md/dev.md/review.md/security.md at any point.
-  const changedStageFiles = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', '.sdd/stages'], { cwd: repoRoot, encoding: 'utf8' })
-    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const allowed = new Set(['.sdd/stages/tester.md', '.sdd/stages/CHANGELOG.md']);
-  for (const file of changedStageFiles) {
-    assert.ok(allowed.has(file), `${file} was modified, but this ticket amends only tester.md (plus the changelog)`);
-  }
+  // CONVERTED from a `git diff --name-only HEAD` loop (PL-INTEGRITY-TESTER / AC-17): a live-diff
+  // assertion was a correct pin only during PL-11's own run — as a permanent test it fails on ANY
+  // later, legitimate uncommitted edit to .sdd/stages/* (including PL-INTEGRITY-TESTER's own edits).
+  // Content assertions pin the same underlying guarantee by keying on tokens unique to PL-11's feature.
+  // Whether an unrelated ticket may touch other stage files is that ticket's own review/bounds question
+  // (PL-14 spec EC-9 precedent).
+  const testerForPl11 = read('.sdd/stages/tester.md');
+  assert.ok(
+    coOccurs(testerForPl11, /lite/i, /(?:red\.md|absent|missing)/i, 400),
+    'tester.md must still carry the lite-lane awareness PL-11 added (Required inputs item 1) — content pin replacing the old git-diff loop',
+  );
+  const changelogForPl11 = read('.sdd/stages/CHANGELOG.md');
+  assert.match(changelogForPl11, /^## PL-11/m, 'the PL-11 CHANGELOG entry must remain — it is the permanent record of what PL-11 changed');
 });
 
 // @spec AC-18
@@ -1072,13 +1072,12 @@ test('[lite] the lane is discoverable from .sdd/hotfix.md, CLAUDE.md, and .sdd/R
 // what it forces (a ratified spec before any edit), what it gave up (`red`, `dev`), and what is
 // still owed at every stop. An undocumented inline lane and a hand-edit are the same artifact.
 
-/** The authoritative section for the lane, sliced by its own heading. A NEW helper alongside
- * `pipelineLiteSection()` — deliberately never a widening of it (EC-20b): `pipelineLiteSection()`
- * slices '### `/pipeline-lite' ... '### Per-stage entry points', so a new section placed inside that
- * range would silently widen every existing `[lite]` assertion's search window. The `/re-gate` ->
- * `/hotfix` placement this file asserts below is what keeps the two windows disjoint. */
+/** The authoritative definition of the /inline-edit lane — reads the entrypoint file directly
+ * now that .sdd/pipeline.md only carries a short stub per PL-TRIM. A companion to pipelineLiteSection();
+ * neither widens the other's search window since they are now independent files. The ordering
+ * assertion (/re-gate → /inline-edit → /hotfix) still verifies the stub order in core pipeline.md. */
 function inlineEditSection() {
-  return sectionBetween(read('.sdd/pipeline.md'), '### `/inline-edit', '### `/hotfix');
+  return read('.sdd/entrypoints/inline-edit.md');
 }
 
 // @spec AC-1
@@ -1156,7 +1155,7 @@ test('[inline] the section states the obligations checklist at five named stops,
   assert.ok(section.includes('skippedStages'), 'the exact field name is the contract — pinned, not paraphrased');
 });
 
-// @spec AC-3 EC-18
+// @spec AC-15
 test('[inline] the section states the abnormal-stop obligation: an abandoned lane leaves an unrecorded hand-edit, discharged only by finishing or reverting', () => {
   const section = inlineEditSection();
 
@@ -1225,10 +1224,10 @@ test('[inline] the section carries a "not this lane" routing table, including th
 test('[inline] /inline-edit is named in .sdd/pipeline.md\'s opening paragraph and its Entry points preamble, not only inside its own section', () => {
   const pipeline = read('.sdd/pipeline.md');
 
-  const intro = sectionBetween(pipeline, '# Pipeline — stage sequence, routing, and loop caps', '## Staleness stamps');
+  const intro = sectionBetween(pipeline, '# Pipeline', '## Staleness stamps');
   assert.ok(intro.includes('/inline-edit'), 'a lane nobody can find from the top of the file is a lane that gets reinvented as an unrecorded hand-edit');
 
-  const entryPointsPreamble = sectionBetween(pipeline, '## Entry points', '### `/pipeline <ticket>`');
+  const entryPointsPreamble = sectionBetween(pipeline, '## Entry points', '### `/pipeline`');
   assert.ok(entryPointsPreamble.includes('/inline-edit'), 'the Entry points preamble must name every entry point, including this one');
 });
 
@@ -1243,7 +1242,9 @@ test('[inline] .claude/skills/inline-edit/SKILL.md exists, is thin, and matches 
   assert.match(skill, /^description: \S.*\r?$/m);
   assert.match(skill, /^disable-model-invocation: true[ \t]*\r?$/m, 'this command takes real actions — it is invoked explicitly, never auto-triggered');
   assert.match(skill, /^argument-hint: \S.*\r?$/m);
-  assert.ok(skill.includes('.sdd/pipeline.md'), 'the body must point at the authoritative, runtime-neutral definition');
+  assert.ok(skill.includes('.sdd/pipeline.md'), 'the body must point at pipeline.md as the core (stage sequence, routing, loop cap, staleness)');
+  // PL-TRIM: the shim now also names its own entrypoint file — accepting the entrypoint pointer.
+  assert.ok(skill.includes('.sdd/entrypoints/inline-edit.md'), 'the body must point at the entrypoint file that carries the full procedure');
 
   // The refusals most easily lost, restated here and nowhere else duplicated.
   assert.ok(coOccurs(skill, /(?:never|do not|don't)/i, /(?:edit|change)[\s\S]{0,80}(?:before|until)/i, 300),
@@ -1278,7 +1279,7 @@ test('[inline] .sdd/ledger/README.md documents the inline-edit entry shape, why 
     'and why a leftover is never copied into it — copying one would manufacture evidence of a stage that never ran');
 });
 
-// @spec AC-9 EC-20
+// @spec AC-6
 test('[inline] .sdd/stages/tester.md names the /inline-edit lane alongside /pipeline-lite, and CHANGELOG.md records PL-12 as amending only tester.md', () => {
   const tester = read('.sdd/stages/tester.md');
   const requiredInputs = sectionBetween(tester, '## Required inputs', '## Procedure');
@@ -1304,13 +1305,18 @@ test('[inline] .sdd/stages/tester.md names the /inline-edit lane alongside /pipe
   const pl12 = sectionBetween(changelog, '## PL-12', '\n## ');
   assert.ok(pl12.includes('tester'), 'the PL-12 entry must name which stage file it amended');
 
-  // EC-20a, mechanical half: this ticket may not exceed the same two-file allowlist PL-11 used.
-  const changedStageFiles = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', '.sdd/stages'], { cwd: repoRoot, encoding: 'utf8' })
-    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const allowed = new Set(['.sdd/stages/tester.md', '.sdd/stages/CHANGELOG.md']);
-  for (const file of changedStageFiles) {
-    assert.ok(allowed.has(file), `${file} was modified, but this ticket amends only tester.md (plus the changelog)`);
-  }
+  // CONVERTED from a `git diff --name-only HEAD` loop (PL-INTEGRITY-TESTER / AC-17): a live-diff
+  // assertion was a correct pin only during PL-12's own run — as a permanent test it fails on ANY
+  // later, legitimate uncommitted edit to .sdd/stages/* (including PL-INTEGRITY-TESTER's own edits).
+  // Content assertions pin the same underlying guarantee by keying on tokens unique to PL-12's feature
+  // (PL-14 / A1 precedent).
+  const testerForPl12 = read('.sdd/stages/tester.md');
+  assert.ok(
+    coOccurs(testerForPl12, /inline[- ]edit/i, /(?:red\.md|absent|missing)/i, 400),
+    'tester.md must still carry the inline-edit lane awareness PL-12 added (Required inputs item 1) — content pin replacing the old git-diff loop',
+  );
+  const changelogForPl12 = read('.sdd/stages/CHANGELOG.md');
+  assert.match(changelogForPl12, /^## PL-12/m, 'the PL-12 CHANGELOG entry must remain — it is the permanent record of what PL-12 changed');
 });
 
 // @spec AC-10
@@ -1328,7 +1334,7 @@ test('[inline] the lane is discoverable from CLAUDE.md and both .sdd/README.md s
   assert.ok(skillsParagraph.includes('inline-edit'), '.sdd/README.md\'s .claude/skills/*/SKILL.md paragraph must name the new shim');
 });
 
-// @spec EC-19
+// @spec EC-14
 test('[inline] the section reuses the existing routing and 3-attempt loop cap, routing a NEEDS_FIXES/BLOCKED back to another inline edit rather than to /dev', () => {
   const section = inlineEditSection();
 
@@ -1341,7 +1347,7 @@ test('[inline] the section reuses the existing routing and 3-attempt loop cap, r
     'red still never runs, and specifically must not be authored after the fix — that would be the D-018 inversion wearing a spec-first label');
 });
 
-// @spec EC-20
+// @spec AC-15
 test('[inline] the new section sits OUTSIDE pipelineLiteSection()\'s window, and every existing [lite] anchor still resolves', () => {
   // (b) The one placement mistake that would silently weaken the whole [lite] block rather than fail
   // it loudly: a section inside '### `/pipeline-lite' .. '### Per-stage entry points' widens every
@@ -1380,13 +1386,12 @@ test('[inline] coverage and wiring: [inline]-tagged cases in the three existing 
   assert.ok(read('scripts/build-ledger-index.mjs').includes('readInlineField'),
     'and build-ledger-index.mjs must actually read the inline field the [inline] cases assert it carries');
 
-  // No new script file — which is precisely why package.json, ci.yml and scripts/tsconfig.json need
-  // no edit. Asserting the absence of the wiring without also asserting the absence of the thing that
-  // would require it would be a rule with no reason behind it.
-  const untrackedScripts = execFileSync('git', ['ls-files', '--others', '--exclude-standard', 'scripts'], { cwd: repoRoot, encoding: 'utf8' })
-    .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  assert.deepEqual(untrackedScripts, [],
-    'PL-12 adds flags to two existing scripts; a new scripts/ file would need package.json/ci.yml/tsconfig wiring this ticket states it does not need');
+  // CONVERTED (PL-FIXBRIEF): this used to assert `git ls-files --others scripts === []`, a same-run
+  // pin. PL-FIXBRIEF adds scripts/write-fix-brief.mjs. Pin instead that PL-12 added no inline-named
+  // script file — the content pins below still forbid inline wiring.
+  const scriptFiles = readdirSync(resolve(repoRoot, 'scripts'));
+  assert.ok(!scriptFiles.some((name) => /inline/i.test(name)),
+    'PL-12 added no inline-named script file under scripts/; a new scripts/ file for /inline-edit would need package.json/ci.yml/tsconfig wiring that ticket stated it does not need');
 
   // CONVERTED from a `git diff --name-only HEAD` loop (PL-14 / A1): a live-diff assertion was a
   // correct pin only during PL-12's own run — as a permanent test it failed on ANY later,
@@ -1426,4 +1431,713 @@ test('[inline] coverage and wiring: [inline]-tagged cases in the three existing 
   const prd = read('docs/product/Ticket-Backlog-by-Feature-2.md');
   assert.ok(!prd.includes('inline-edit'), 'docs/product/Ticket-Backlog-by-Feature-2.md must not be edited by this run — the ticket forbids it');
   assert.ok(!prd.includes('PL-12'), 'PL-12 is deliberately not registered in docs/product/Ticket-Backlog-by-Feature-2.md by this run');
+});
+
+// =================================================================================================
+// [integrity-tester] PL-INTEGRITY-TESTER — move red-test integrity from review to tester
+// =================================================================================================
+//
+// Authored by the `red` stage from .pipeline/spec.md alone, before dev runs. Each test below
+// will FAIL on a clean checkout (dev has not yet implemented PL-INTEGRITY-TESTER) and PASS once
+// dev makes its required changes. The goal: npm run test:sdd-completeness passes with
+// .sdd/stages/{tester,review,dev}.md all having uncommitted edits in the working tree (AC-17).
+//
+// Structural convention: tests use `includes` / `coOccurs` directly on file contents rather than
+// `sectionBetween` for NEW content that does not yet exist in the current files — sectionBetween
+// throws if the startAnchor is absent, which would be RED-BROKEN (import-time failure), not
+// RED-CORRECT (behavior absent). Tests use sectionBetween only for section anchors that already
+// exist today and will survive dev's edits (EC-17).
+
+// @spec AC-1
+test('[integrity-tester] tester.md Procedure requires running check-red-integrity.mjs with exit-code and stdout-shape documentation', () => {
+  const tester = read('.sdd/stages/tester.md');
+  assert.ok(tester.includes('check-red-integrity.mjs'),
+    'tester.md must name the check-red-integrity.mjs run in its Procedure (AC-1)');
+  // Exit codes: the spec says 0 = clean or no-red-json; 1 = violations or failure
+  assert.ok(coOccurs(tester, /check-red-integrity/, /exit\s*code|\bexit\b.*\b0\b/, 600),
+    'tester.md must document the exit codes for check-red-integrity.mjs near its invocation (AC-1)');
+  // stdout shape: the script outputs status/violations/candidateNewTests fields
+  assert.ok(coOccurs(tester, /check-red-integrity/, /(?:status|violations|candidateNewTests)/, 600),
+    'tester.md must document the stdout shape (at minimum status/violations) for check-red-integrity.mjs (AC-1)');
+});
+
+// @spec AC-2
+test('[integrity-tester] tester.md carries the four judgment rules substantively intact from review.md', () => {
+  const tester = read('.sdd/stages/tester.md');
+  // Rule (a): declared hash mismatch judged against changes.json reason
+  assert.ok(coOccurs(tester, /hash.*mismatch|mismatch.*hash/, /changes\.json/, 500),
+    'tester.md judgment rule (a): a declared hash mismatch is judged against changes.json (AC-2)');
+  // Rule (b): undeclared hash mismatch is blocking
+  assert.ok(coOccurs(tester, /undeclared/, /blocking/, 300),
+    'tester.md judgment rule (b): an undeclared hash mismatch is blocking (AC-2)');
+  // Rule (c): unresolvable @spec ID is blocking
+  assert.ok(coOccurs(tester, /@spec/, /blocking/, 400),
+    'tester.md judgment rule (c): an unresolvable @spec ID is blocking (AC-2)');
+  // Rule (d): marker-less new test file judged behavioral (blocking) or non-behavioral (ok)
+  assert.ok(coOccurs(tester, /candidate|marker.less|no.*marker/, /behavioral/, 500),
+    'tester.md judgment rule (d): a marker-less new test file is judged behavioral vs non-behavioral (AC-2)');
+});
+
+// @spec AC-3 AC-4 AC-5
+test('[integrity-tester] tester.md Output contract adds a Red-test integrity section, specifies red-integrity.json with exact shape, and names the NEEDS_FIXES consequence', () => {
+  const tester = read('.sdd/stages/tester.md');
+  // AC-3: Red-test integrity section in test-results.md
+  assert.ok(tester.includes('Red-test integrity'),
+    'tester.md Output contract must have a Red-test integrity section (AC-3)');
+  assert.ok(coOccurs(tester, /Red-test integrity/, /test-results\.md/, 500),
+    'tester.md must document writing the Red-test integrity section to test-results.md (AC-3)');
+  // AC-4: red-integrity.json with the exact required shape
+  assert.ok(tester.includes('red-integrity.json'),
+    'tester.md must specify writing .pipeline/red-integrity.json (AC-4)');
+  assert.ok(coOccurs(tester, /red-integrity\.json/, /redIntegrity/, 400),
+    'tester.md must name the redIntegrity field in the red-integrity.json shape (AC-4)');
+  assert.ok(coOccurs(tester, /red-integrity\.json/, /redExpected/, 400),
+    'tester.md must name the redExpected field — the field review needs to distinguish "no red by design" from "red went missing" (AC-4)');
+  assert.ok(coOccurs(tester, /red-integrity\.json/, /write-stamp/, 500),
+    'tester.md must run node scripts/write-stamp.mjs on red-integrity.json as its last step for that file (AC-4)');
+  // AC-5: Result section names the NEEDS_FIXES consequence
+  assert.ok(coOccurs(tester, /redIntegrity/, /(?:not clean|NEEDS_FIXES|green)/, 500),
+    'tester.md must state that redIntegrity !== PASS means the run is not clean for review (AC-5)');
+});
+
+// @spec AC-6 EC-5 EC-12
+test('[integrity-tester] tester.md handles /pipeline-lite and /inline-edit lanes: records UNVERIFIED/no-red-json/redExpected false, never PASS', () => {
+  const tester = read('.sdd/stages/tester.md');
+  // AC-6: on lite and inline-edit, the sidecar records scriptStatus "no-red-json", redIntegrity "UNVERIFIED", redExpected false
+  assert.ok(coOccurs(tester, /no-red-json/, /UNVERIFIED/, 200),
+    'tester.md must name scriptStatus "no-red-json" alongside redIntegrity "UNVERIFIED" for lite/inline-edit (AC-6)');
+  assert.ok(coOccurs(tester, /redExpected/, /false/, 300),
+    'tester.md must record redExpected: false on lanes that deliberately skip red (AC-6)');
+  // EC-5: leftover red.json on a lite/inline run must not mislead
+  assert.ok(coOccurs(tester, /(?:leftover|earlier run|prior run)/, /redExpected/, 600),
+    'tester.md must address a leftover red.json from an earlier run: redExpected is false, not shaped by the leftover (EC-5)');
+});
+
+// @spec AC-7
+test('[integrity-tester] review.md has zero invocation of check-red-integrity.mjs and its required-input list names red-integrity.json', () => {
+  const review = read('.sdd/stages/review.md');
+  // AC-7: no invocation of the script
+  assert.ok(!review.includes('check-red-integrity.mjs'),
+    'review.md must not invoke check-red-integrity.mjs — tester now owns the script run (AC-7)');
+  assert.ok(!review.includes('check:red-integrity'),
+    'review.md must not reference npm run check:red-integrity — tester owns the run (AC-7)');
+  // AC-7: required inputs include red-integrity.json
+  assert.ok(review.includes('red-integrity.json'),
+    'review.md must name .pipeline/red-integrity.json as a required input (AC-7)');
+});
+
+// @spec AC-8 EC-6 EC-7 EC-8
+test('[integrity-tester] review.md specifies fail-closed handling of the red-integrity.json sidecar', () => {
+  const review = read('.sdd/stages/review.md');
+  // FAIL → NEEDS_FIXES
+  assert.ok(coOccurs(review, /red-integrity\.json/, /NEEDS_FIXES/, 500),
+    'review.md must name NEEDS_FIXES for a red-integrity.json with redIntegrity FAIL (AC-8)');
+  // missing → NEEDS_FIXES (EC-6)
+  assert.ok(coOccurs(review, /(?:missing|absent|does not exist)/, /NEEDS_FIXES/, 500),
+    'review.md must return NEEDS_FIXES when red-integrity.json is absent — absence is never "nothing to check" (AC-8, EC-6)');
+  // stale → NEEDS_FIXES (EC-7) — this is stricter than other trusted-fresh inputs
+  assert.ok(coOccurs(review, /stale/, /NEEDS_FIXES/, 400),
+    'review.md must return NEEDS_FIXES when the sidecar is stale — stricter than other trusted-fresh inputs (AC-8, EC-7)');
+  // UNVERIFIED with redExpected true → NEEDS_FIXES
+  assert.ok(coOccurs(review, /UNVERIFIED/, /NEEDS_FIXES/, 400),
+    'review.md must return NEEDS_FIXES for UNVERIFIED when redExpected is true (AC-8)');
+  // UNVERIFIED with redExpected false → not a failure, but reported as unverified
+  assert.ok(coOccurs(review, /UNVERIFIED/, /(?:unverified|redExpected.*false|false.*redExpected)/, 400),
+    'review.md must handle UNVERIFIED with redExpected false as unverified (not a failure), never as PASS (AC-8, EC-12)');
+});
+
+// @spec AC-9
+test('[integrity-tester] review.md states the one-way escalation ratchet: may escalate ok to NEEDS_FIXES, may never downgrade blocking', () => {
+  const review = read('.sdd/stages/review.md');
+  assert.ok(coOccurs(review, /escalat/, /(?:ok|tester)/, 400),
+    'review.md must state that review may escalate a tester "ok" judgment to NEEDS_FIXES (AC-9)');
+  assert.ok(coOccurs(review, /never.*downgrad|downgrad.*never/, /blocking/, 400),
+    'review.md must state that review may never downgrade a blocking judgment (AC-9)');
+  // Escalation reads changes.json, never re-runs the script, never reads red.md
+  assert.ok(coOccurs(review, /escalat/, /changes\.json/, 500),
+    'review.md must state escalation reads changes.json — never a re-run of the script, never red.md (AC-9)');
+});
+
+// @spec AC-10
+test('[integrity-tester] review.md Staleness section no longer falsely claims tester writes no JSON sidecar', () => {
+  const review = read('.sdd/stages/review.md');
+  const stalenessSection = sectionBetween(review, '## Staleness of required inputs', '');
+  // The old false claim was "tester writes no JSON sidecar at all"
+  assert.ok(!stalenessSection.includes('tester writes no JSON sidecar'),
+    'review.md Staleness section must not contain the old false claim that tester writes no JSON sidecar (AC-10)');
+  // The corrected text should document red-integrity.json policy
+  assert.ok(stalenessSection.includes('red-integrity.json'),
+    'review.md Staleness section must document red-integrity.json\'s staleness policy (AC-10)');
+});
+
+// @spec AC-11
+test('[integrity-tester] dev.md Red-test changes bullet attributes the rehash to tester, not review', () => {
+  const dev = read('.sdd/stages/dev.md');
+  const redTestBullet = sectionBetween(dev, '**Red-test changes**', '- **');
+  assert.ok(!redTestBullet.includes('review` rehashes') && !redTestBullet.includes('review rehashes'),
+    'dev.md Red-test changes bullet must not say review rehashes — tester now owns the rehash (AC-11)');
+  assert.ok(coOccurs(redTestBullet, /tester/, /rehash/, 400),
+    'dev.md Red-test changes bullet must attribute the rehash to tester (AC-11)');
+  assert.ok(coOccurs(redTestBullet, /red-integrity\.json/, /review/, 400),
+    'dev.md must state that review reads tester\'s red-integrity.json to enforce the consequence (AC-11)');
+});
+
+// @spec AC-12
+test('[integrity-tester] pipeline.md Stage sequence entries 4 and 5 reflect the new ownership; file stays at or under 300 lines', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  const lineCount = pipeline.split('\n').length;
+  assert.ok(lineCount <= 300, `pipeline.md must stay at or under 300 lines after this ticket; currently ${lineCount} lines (AC-12)`);
+  // Entry 4: tester runs integrity check and writes red-integrity.json
+  const stageSeq = sectionBetween(pipeline, '## Stage sequence', '## ');
+  assert.ok(coOccurs(stageSeq, /\btester\b/, /red-integrity\.json/, 400),
+    'pipeline.md stage 4 (tester) must name red-integrity.json as tester\'s output (AC-12)');
+  // Entry 5: review consumes that result, no longer reads red.md for integrity
+  assert.ok(coOccurs(stageSeq, /\breview\b/, /red-integrity\.json/, 400),
+    'pipeline.md stage 5 (review) must name red-integrity.json as its input for integrity (AC-12)');
+});
+
+// @spec AC-13
+test('[integrity-tester] .pipeline/README.md sidecar table has a red-integrity.json row and names tester as the runner', () => {
+  const readme = read('.pipeline/README.md');
+  assert.ok(readme.includes('red-integrity.json'),
+    '.pipeline/README.md must have a red-integrity.json row in its sidecar table (AC-13)');
+  assert.ok(coOccurs(readme, /red-integrity\.json/, /tester/, 400),
+    '.pipeline/README.md\'s red-integrity.json row must name tester as the writer (AC-13)');
+  assert.ok(coOccurs(readme, /red-integrity\.json/, /review/, 400),
+    '.pipeline/README.md\'s red-integrity.json row must name review as a reader (AC-13)');
+  // The "Red-test integrity / spec trace" paragraph must name tester as runner, review as consumer
+  assert.ok(coOccurs(readme, /Red-test integrity/, /tester/, 500),
+    '.pipeline/README.md\'s Red-test integrity paragraph must name tester as the runner (AC-13)');
+});
+
+// @spec AC-16 EC-11
+test('[integrity-tester] entrypoints for tester, review, pipeline, and re-gate are updated', () => {
+  // tester.md entrypoint: step 2 names the integrity run; step 3 reports the sidecar
+  const testerEntry = read('.sdd/entrypoints/tester.md');
+  assert.ok(testerEntry.includes('red-integrity.json'),
+    '.sdd/entrypoints/tester.md must name red-integrity.json (AC-16)');
+  // review.md entrypoint: step 1 requires the sidecar, drops the red.md caveat
+  const reviewEntry = read('.sdd/entrypoints/review.md');
+  assert.ok(reviewEntry.includes('red-integrity.json'),
+    '.sdd/entrypoints/review.md must name red-integrity.json as a required input (AC-16)');
+  // pipeline.md entrypoint: artifact list gains red-integrity.json
+  const pipelineEntry = read('.sdd/entrypoints/pipeline.md');
+  assert.ok(pipelineEntry.includes('red-integrity.json'),
+    '.sdd/entrypoints/pipeline.md artifact list must name red-integrity.json (AC-16)');
+  // re-gate.md entrypoint: step 3 states the --gates-only consequence (EC-11)
+  const regateEntry = read('.sdd/entrypoints/re-gate.md');
+  assert.ok(coOccurs(regateEntry, /gates.only/, /(?:NEEDS_FIXES|red-integrity|forfeits)/, 500),
+    '.sdd/entrypoints/re-gate.md must state that --gates-only forfeits the integrity lens (AC-16, EC-11)');
+});
+
+// @spec AC-17
+test('[integrity-tester] PL-11 test has no git-diff allowlist loop — replaced by content assertions that pass when later tickets legitimately modify stage files', () => {
+  // CONVERTED pattern (PL-14 / A1): a live-diff assertion was correct only during PL-11's own run.
+  // It fails on any later, legitimate uncommitted edit to .sdd/stages/* (including this ticket's own
+  // edits to tester.md, review.md, dev.md). The content assertion below checks the test file itself.
+  const testFile = read('scripts/sdd-completeness.test.mjs');
+  const pl11Block = sectionBetween(
+    testFile,
+    "[lite] .sdd/stages/CHANGELOG.md records the PL-11 round",
+    "\ntest(",
+  );
+  assert.ok(
+    !pl11Block.includes("'diff', '--name-only', 'HEAD', '--', '.sdd/stages'"),
+    "PL-11 test must not use a git diff --name-only HEAD -- .sdd/stages loop: " +
+    "this fails when later tickets (like PL-INTEGRITY-TESTER) legitimately modify stage files (AC-17)",
+  );
+});
+
+// @spec AC-17
+test('[integrity-tester] PL-12 test has no git-diff allowlist loop — replaced by content assertions that pass when later tickets legitimately modify stage files', () => {
+  const testFile = read('scripts/sdd-completeness.test.mjs');
+  const pl12Block = sectionBetween(
+    testFile,
+    "[inline] .sdd/stages/tester.md names the /inline-edit lane alongside /pipeline-lite",
+    "\ntest(",
+  );
+  assert.ok(
+    !pl12Block.includes("'diff', '--name-only', 'HEAD', '--', '.sdd/stages'"),
+    "PL-12 test must not use a git diff --name-only HEAD -- .sdd/stages loop: " +
+    "this fails when later tickets (like PL-INTEGRITY-TESTER) legitimately modify stage files (AC-17)",
+  );
+});
+
+// @spec AC-18
+test('[integrity-tester] .sdd/stages/review.md consumes the red-integrity.json sidecar (written by tester) and contains no check-red-integrity.mjs invocation', () => {
+  const review = read('.sdd/stages/review.md');
+  // AC-18 / AC-7: review.md must NOT invoke the script
+  assert.ok(!review.includes('check-red-integrity.mjs'),
+    'review.md must not invoke check-red-integrity.mjs — tester now owns the script run (AC-7, AC-18)');
+  // AC-18: tester.md must carry the mechanical run (the positive half)
+  const tester = read('.sdd/stages/tester.md');
+  assert.ok(tester.includes('check-red-integrity.mjs'),
+    'tester.md must name the check-red-integrity.mjs run — tester is the new owner (AC-1, AC-18)');
+  // AC-18: review.md consumes the sidecar and names NEEDS_FIXES for FAIL/missing/stale
+  assert.ok(review.includes('red-integrity.json'),
+    'review.md must name red-integrity.json as its required input for integrity (AC-8, AC-18)');
+  assert.ok(coOccurs(review, /FAIL.*NEEDS_FIXES|NEEDS_FIXES.*FAIL/, /red-integrity/, 500) ||
+    coOccurs(review, /red-integrity/, /FAIL.*NEEDS_FIXES|NEEDS_FIXES.*FAIL/, 500),
+    'review.md must map redIntegrity FAIL to NEEDS_FIXES (AC-8, AC-18)');
+});
+
+// @spec AC-19
+test('[integrity-tester] .sdd/stages/CHANGELOG.md has a PL-INTEGRITY-TESTER entry above PL-12', () => {
+  const changelog = read('.sdd/stages/CHANGELOG.md');
+  assert.match(changelog, /^## PL-INTEGRITY-TESTER/m,
+    'CHANGELOG.md must have a ## PL-INTEGRITY-TESTER entry (AC-19)');
+  const itIdx = changelog.indexOf('## PL-INTEGRITY-TESTER');
+  const pl12Idx = changelog.indexOf('## PL-12');
+  assert.ok(itIdx !== -1 && pl12Idx !== -1 && itIdx < pl12Idx,
+    'PL-INTEGRITY-TESTER entry must appear above ## PL-12 — newest first (AC-19)');
+  const itSection = sectionBetween(changelog, '## PL-INTEGRITY-TESTER', '\n## ');
+  // The entry must name every stage file amended
+  assert.ok(itSection.includes('tester.md'), 'CHANGELOG PL-INTEGRITY-TESTER entry must name tester.md (AC-19)');
+  assert.ok(itSection.includes('review.md'), 'CHANGELOG PL-INTEGRITY-TESTER entry must name review.md (AC-19)');
+  assert.ok(itSection.includes('dev.md'), 'CHANGELOG PL-INTEGRITY-TESTER entry must name dev.md (AC-19)');
+  // The entry must name AC-17's retirement of the git-diff loops
+  assert.ok(coOccurs(itSection, /AC-17|git.diff|allowlist/, /(?:retire|replac|remov)/, 500),
+    'CHANGELOG entry must record AC-17\'s retirement of the git-diff loops (AC-19)');
+});
+
+// @spec AC-20
+test('[integrity-tester] specified files are unmodified and no new file was added under scripts/', () => {
+  // These files must be untouched by PL-INTEGRITY-TESTER.
+  // Content assertions that will fail if THIS ticket's specific additions appear in out-of-scope files.
+  // ci.yml already carries `check:red-integrity` from a prior ticket; the test checks that no NEW
+  // step wiring for PL-INTEGRITY-TESTER was added (the sidecar name is the uniquely-new token).
+  assert.ok(!read('.github/workflows/ci.yml').includes('red-integrity.json'),
+    '.github/workflows/ci.yml must not reference red-integrity.json — no new CI wiring for this ticket (AC-20)');
+  assert.ok(!read('scripts/check-red-integrity.mjs').includes('red-integrity.json'),
+    'scripts/check-red-integrity.mjs must not be modified — it is explicitly out of scope (AC-20)');
+  // CONVERTED (PL-FIXBRIEF): the `git ls-files --others scripts === []` pin was a same-run
+  // assertion. PL-FIXBRIEF adds write-fix-brief.mjs. Keep the content pins: INTEGRITY's own new
+  // sidecar name still must not appear in the out-of-scope check-red-integrity script (above) or
+  // as a new CI token, and runtimes.yml still has no integrity-tester stage.
+  assert.ok(!read('.sdd/runtimes.yml').includes('integrity-tester'),
+    '.sdd/runtimes.yml must not be modified — no model-tier change this ticket (AC-20)');
+});
+
+// @spec EC-1
+test('[integrity-tester] tester.md documents scriptStatus "error" for a tooling failure — a gate that could not run must never read as a gate that passed', () => {
+  const tester = read('.sdd/stages/tester.md');
+  assert.ok(tester.includes('"error"') || tester.includes("'error'") || tester.includes('scriptStatus.*error') ||
+    coOccurs(tester, /scriptStatus/, /error/, 200),
+    'tester.md must document scriptStatus "error" for a tooling failure (exit 1 without parseable status) (EC-1)');
+  assert.ok(coOccurs(tester, /error/, /UNVERIFIED/, 300),
+    'tester.md must set redIntegrity "UNVERIFIED" for the scriptStatus "error" case (EC-1)');
+});
+
+// @spec EC-2
+test('[integrity-tester] tester.md or review.md documents the red.md-exists-but-red.json-missing case as violations-found / FAIL', () => {
+  // EC-2: red.md exists but red.json does not → script reports violations-found → tester records FAIL
+  const tester = read('.sdd/stages/tester.md');
+  const review = read('.sdd/stages/review.md');
+  const combinedDocs = tester + review;
+  assert.ok(
+    coOccurs(combinedDocs, /red\.md.*red\.json|red\.json.*red\.md/, /violations.found|FAIL/, 600),
+    'tester.md or review.md must document that red.md existing without red.json produces violations-found / FAIL (EC-2)',
+  );
+});
+
+// @spec AC-12
+test('[integrity-tester] ownership is explicit in both directions: tester.md names running the script; review.md states it must not', () => {
+  const tester = read('.sdd/stages/tester.md');
+  const review = read('.sdd/stages/review.md');
+  assert.ok(tester.includes('check-red-integrity.mjs'),
+    'tester.md must explicitly name running check-red-integrity.mjs — the "single owner" requirement needs both halves (EC-19)');
+  assert.ok(!review.includes('check-red-integrity.mjs'),
+    'review.md must explicitly NOT invoke check-red-integrity.mjs — the ownership contract needs the negative half too (EC-19)');
+  // review.md must say it reads the sidecar, not runs the script
+  assert.ok(coOccurs(review, /red-integrity\.json/, /(?:reads?|consumes?|sidecar)/, 400),
+    'review.md must state that it reads the sidecar rather than running the script (EC-19)');
+});
+
+// =================================================================================================
+// PL-FIXBRIEF — scoped fix-loop dev; gates stay full
+// =================================================================================================
+
+// @spec AC-1 EC-10 AC-13
+test('[fixbrief] pipeline.md Routing writes a fix-brief before re-invoking dev, keeps the 3-attempt cap, and stays slim', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.ok(pipeline.includes('write-fix-brief.mjs'),
+    'pipeline.md Routing must name scripts/write-fix-brief.mjs (AC-1)');
+  assert.match(pipeline, /fix-brief/,
+    'pipeline.md Routing must name the fix-brief (AC-1)');
+  assert.match(pipeline, /3.attempt|three.attempt/i,
+    'the 3-attempt cap must remain (AC-1)');
+  assert.ok(coOccurs(pipeline, /planner|red/, /do not re-run|not re-run/i, 800)
+    || /planner[\s\S]{0,400}red[\s\S]{0,200}(?:do not|does not) re-run/i.test(pipeline),
+    'pipeline.md must state planner and red do not re-run in the fix loop (AC-13)');
+  const slim = spawnSync(process.execPath, [resolve(repoRoot, 'scripts/check-pipeline-slim.mjs')], {
+    encoding: 'utf8',
+    cwd: repoRoot,
+  });
+  assert.equal(slim.status, 0, `check-pipeline-slim must still exit 0 (EC-10): ${slim.stderr}`);
+  const lineCount = pipeline.split('\n').length;
+  assert.ok(lineCount <= 300, `.sdd/pipeline.md is ${lineCount} lines, over the 300-line budget (EC-10)`);
+});
+
+// @spec AC-8 EC-3 EC-4
+test('[fixbrief] dev.md distinguishes first attempt from fix-loop: leftover brief ignored; missing/stale brief refuses', () => {
+  const dev = read('.sdd/stages/dev.md');
+  assert.match(dev, /fix-brief\.json/,
+    'dev.md must name fix-brief.json (AC-8)');
+  assert.ok(coOccurs(dev, /first attempt|first-attempt/i, /spec\.md/i, 600),
+    'first attempt still reads full spec.md (AC-8, EC-4)');
+  assert.ok(coOccurs(dev, /leftover|ignore/, /fix-brief/i, 800),
+    'first attempt ignores a leftover fix-brief (EC-4)');
+  assert.ok(coOccurs(dev, /fix-brief/, /stale|refuse|missing/i, 800),
+    'fix-loop refuses a missing/stale brief (AC-8, EC-3)');
+  assert.ok(coOccurs(dev, /spec-slice/, /fix-brief/i, 800),
+    'fix-loop reads spec-slice after the brief, not full spec.md by default (AC-8)');
+});
+
+// @spec AC-9 EC-11
+test('[fixbrief] dev.md: touch only allowedPaths; escalate rather than widen; Fixes applied maps 1:1 to finding ids', () => {
+  const dev = read('.sdd/stages/dev.md');
+  assert.match(dev, /allowedPaths/,
+    'dev.md must name allowedPaths (AC-9)');
+  assert.ok(coOccurs(dev, /allowedPaths|widen/, /Escalation|Not done|escalate/i, 800),
+    'required edits outside allowedPaths are recorded as Not done / Escalation, not silently expanded (AC-9, EC-11)');
+  assert.ok(coOccurs(dev, /Fixes applied/, /finding/i, 600),
+    'Fixes applied maps 1:1 to finding ids (AC-9)');
+});
+
+// @spec AC-10
+test('[fixbrief] fix-loop dev still runs the full red suite before writing changes.md', () => {
+  const dev = read('.sdd/stages/dev.md');
+  assert.ok(coOccurs(dev, /fix-brief/, /full red suite/i, 800),
+    'fix-loop dev still runs the full red suite (AC-10) — must co-occur with fix-brief, not merely the first-attempt red-suite bullet');
+});
+
+// @spec AC-11 EC-6
+test('[fixbrief] tester.md: a fix-brief on disk does not shrink the stage — full red suite + integrity still run', () => {
+  const tester = read('.sdd/stages/tester.md');
+  assert.match(tester, /fix-brief/,
+    'tester.md must mention fix-brief.json so the "gates stay full" rule is explicit (AC-11)');
+  assert.ok(coOccurs(tester, /fix-brief/, /does not shrink|not shrink|full red suite/i, 600),
+    'tester.md must state the brief does not shrink this stage (AC-11, EC-6)');
+});
+
+// @spec AC-12 EC-6
+test('[fixbrief] review.md keeps full spec↔diff, treats relatedAc as a hint, and does not reintroduce red.md integrity', () => {
+  const review = read('.sdd/stages/review.md');
+  assert.ok(!review.includes('check-red-integrity.mjs'),
+    'review.md must not reintroduce check-red-integrity.mjs (AC-12)');
+  assert.match(review, /findings/,
+    'review.md must document writing findings[] on NEEDS_FIXES (AC-4, AC-12)');
+  assert.ok(coOccurs(review, /relatedAc/, /hint/i, 500)
+    || coOccurs(review, /relatedAc/, /not a license|not license/i, 500),
+    'relatedAc is a hint, not a license to ignore other ACs (AC-12, EC-6)');
+});
+
+// @spec AC-4
+test('[fixbrief] review.md requires a non-empty findings array on NEEDS_FIXES', () => {
+  const review = read('.sdd/stages/review.md');
+  assert.ok(coOccurs(review, /NEEDS_FIXES/, /findings/i, 800),
+    'review.md must require findings on NEEDS_FIXES (AC-4)');
+});
+
+// @spec AC-5
+test('[fixbrief] security.md requires a non-empty findings array on BLOCKED and remains a full check', () => {
+  const security = read('.sdd/stages/security.md');
+  assert.match(security, /"findings"/,
+    'security.md output contract must name the JSON "findings" field (AC-5)');
+  assert.ok(coOccurs(security, /BLOCKED/, /"findings"/, 1200),
+    'security.md must require findings on BLOCKED (AC-5)');
+});
+
+// @spec AC-6
+test('[fixbrief] planner.md step 4 requires writing affectedFiles on spec.json', () => {
+  const planner = read('.sdd/stages/planner.md');
+  assert.match(planner, /affectedFiles/,
+    'planner.md must name affectedFiles on spec.json (AC-6)');
+});
+
+// @spec AC-14
+test('[fixbrief] /dev and /pipeline coordinators run write-fix-brief.mjs before a fix-loop dev invoke', () => {
+  const devEp = read('.sdd/entrypoints/dev.md');
+  const pipelineEp = read('.sdd/entrypoints/pipeline.md');
+  const liteEp = read('.sdd/entrypoints/pipeline-lite.md');
+  assert.ok(devEp.includes('write-fix-brief.mjs'),
+    'entrypoints/dev.md must run write-fix-brief.mjs before fix-loop dev (AC-14)');
+  assert.ok(pipelineEp.includes('write-fix-brief.mjs'),
+    'entrypoints/pipeline.md must run write-fix-brief.mjs before re-invoking dev (AC-14)');
+  assert.ok(liteEp.includes('write-fix-brief.mjs'),
+    'entrypoints/pipeline-lite.md reuses the same generate-then-invoke sequence (AC-14)');
+});
+
+// @spec AC-15 EC-14
+test('[fixbrief] inline-edit does not require a fix-brief; re-gate is not a scoped-dev reroute', () => {
+  const inline = read('.sdd/entrypoints/inline-edit.md');
+  const regate = read('.sdd/entrypoints/re-gate.md');
+  assert.ok(/fix-brief/.test(inline) && /does not|do not|never|skips? `?dev/i.test(inline),
+    'inline-edit.md must state it does not generate/require a fix-brief (AC-15, EC-14)');
+  assert.ok(/fix-brief/.test(regate) || /not a scoped/i.test(regate),
+    're-gate.md must state it is a hand-edit path, not a scoped-dev reroute (AC-15)');
+});
+
+// @spec AC-17
+test('[fixbrief] CHANGELOG.md gains a PL-FIXBRIEF entry above PL-INTEGRITY-TESTER', () => {
+  const changelog = read('.sdd/stages/CHANGELOG.md');
+  const fixIdx = changelog.indexOf('## PL-FIXBRIEF');
+  const integrityIdx = changelog.indexOf('## PL-INTEGRITY-TESTER');
+  assert.ok(fixIdx !== -1, 'CHANGELOG.md must have ## PL-FIXBRIEF (AC-17)');
+  assert.ok(integrityIdx !== -1, 'CHANGELOG.md still has ## PL-INTEGRITY-TESTER');
+  assert.ok(fixIdx < integrityIdx, '## PL-FIXBRIEF must appear above ## PL-INTEGRITY-TESTER (AC-17)');
+});
+
+// @spec AC-18
+test('[fixbrief] .pipeline/README.md table and Routing paragraph name the fix-brief', () => {
+  const readme = read('.pipeline/README.md');
+  assert.match(readme, /fix-brief\.json/,
+    'README sidecar table must name fix-brief.json (AC-18)');
+  assert.match(readme, /spec-slice\.md/,
+    'README sidecar table must name spec-slice.md (AC-18)');
+  assert.ok(coOccurs(readme, /Routing/, /fix-brief/i, 800),
+    'README Routing paragraph must name the fix-brief rather than sending dev at review.md prose (AC-18)');
+});
+
+// @spec AC-19
+test('[fixbrief] package.json, tsconfig.json, and ci.yml wire test:fix-brief', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert.equal(typeof pkg.scripts['test:fix-brief'], 'string',
+    'package.json must define test:fix-brief (AC-19)');
+  const tsconfig = JSON.parse(read('scripts/tsconfig.json'));
+  assert.ok(tsconfig.include.includes('write-fix-brief.mjs'),
+    'scripts/tsconfig.json must include write-fix-brief.mjs (AC-19)');
+  assert.ok(tsconfig.include.includes('write-fix-brief.test.mjs'),
+    'scripts/tsconfig.json must include write-fix-brief.test.mjs (AC-19)');
+  const ci = read('.github/workflows/ci.yml');
+  assert.match(ci, /test:fix-brief/,
+    'ci.yml must run npm run test:fix-brief (AC-19)');
+});
+
+// @spec AC-21
+test('[fixbrief] pipeline and dev skills name generate-then-invoke; they do not send fix-loop dev at full spec.md or review.md scrape', () => {
+  const pipelineSkill = read('.claude/skills/pipeline/SKILL.md');
+  const devSkill = read('.claude/skills/dev/SKILL.md');
+  assert.match(pipelineSkill, /fix-brief/,
+    'pipeline SKILL.md must name the fix-brief generate-then-invoke sequence (AC-21)');
+  assert.match(devSkill, /fix-brief/,
+    'dev SKILL.md must name the fix-brief (AC-21)');
+});
+
+// @spec AC-12
+test('[fixbrief] review.md still consumes red-integrity.json and does not read red.md for integrity', () => {
+  const review = read('.sdd/stages/review.md');
+  assert.match(review, /red-integrity\.json/,
+    'integrity remains sidecar-consumed (AC-12)');
+  assert.ok(!review.includes('check-red-integrity.mjs'),
+    'review.md must not invoke check-red-integrity.mjs (AC-12)');
+});
+
+// =================================================================================================
+// [red-quality] PL-CI-QUAL — check-red-quality.mjs wired into red (self-check) and tester
+// (authoritative gate, consumed by review), plus the five carry-over defect fixes.
+//
+// Authored by `red` from .pipeline/spec.md alone. Follows this file's existing structural-assertion
+// discipline (see its header and the [fixbrief]/[integrity-tester] sections above): scope to a real
+// heading/bold-label/file, require the load-bearing concepts to co-occur, tolerant of wording; a
+// literal (a filename, a JSON field, a command, a line count) is pinned exactly.
+// =================================================================================================
+
+// @spec AC-8 AC-9 AC-17
+test('[red-quality] red.md requires searching before authoring, extending rather than cloning, documenting a deliberate duplicateOf/justification overlap, running check-red-quality.mjs before finishing with no blocking violation left, and states red never edits ci.yml', () => {
+  const red = read('.sdd/stages/red.md');
+  assert.ok(coOccurs(red, /search|grep/i, /@spec/i, 400),
+    'red.md must require searching the existing test tree / nearby @spec ids before authoring (AC-8)');
+  assert.ok(coOccurs(red, /extend/i, /clon/i, 400) || coOccurs(red, /extend/i, /twin/i, 400),
+    'red.md must require extending an existing file (or citing existing coverage) rather than cloning a twin (AC-8)');
+  assert.match(red, /duplicateOf/, 'red.md must name duplicateOf for a declared deliberate overlap (AC-8)');
+  assert.match(red, /justification/, 'red.md must name justification alongside duplicateOf (AC-8)');
+  assert.ok(red.includes('check-red-quality.mjs'),
+    'red.md must require running node scripts/check-red-quality.mjs before finishing (AC-8)');
+  assert.ok(coOccurs(red, /check-red-quality/, /RED-BROKEN|blocking/i, 500),
+    'a blocking check-red-quality violation must be barred from a finished red.md the same way RED-BROKEN is (AC-8)');
+  assert.ok(coOccurs(red, /Vitest|existing test tree|test trees CI/i, /never edits?|does not edit|never touch/i, 600),
+    'red.md must state it writes into the existing Vitest/pytest trees CI already runs (AC-9)');
+  assert.ok(!/red[\s\S]{0,80}edits?[\s\S]{0,40}ci\.yml/i.test(red) || /never edits?[\s\S]{0,60}ci\.yml|does not edit[\s\S]{0,60}ci\.yml/i.test(red),
+    'red.md must explicitly state it never edits .github/workflows/ci.yml (AC-9)');
+  assert.match(red, /\.github\/workflows\/ci\.yml/, 'red.md must name ci.yml by path when stating it never edits it (AC-9)');
+});
+
+// @spec AC-10
+test('[red-quality] tester.md names check-red-quality.mjs as a tester-owned run, documents its exit codes/stdout shape inline, and writes redQuality/qualityViolations derived from status', () => {
+  const tester = read('.sdd/stages/tester.md');
+  assert.ok(tester.includes('check-red-quality.mjs'), 'tester.md must name check-red-quality.mjs (AC-10)');
+  assert.ok(coOccurs(tester, /check-red-quality/, /clean.*violations-found.*no-red-json|violations-found/i, 800),
+    'tester.md must document check-red-quality.mjs\'s exit codes / status values inline (AC-10)');
+  assert.match(tester, /"redQuality"/, 'tester.md must specify writing the JSON field "redQuality" (AC-10)');
+  assert.match(tester, /"qualityViolations"/, 'tester.md must specify writing the JSON field "qualityViolations" (AC-10)');
+  assert.ok(coOccurs(tester, /clean/i, /PASS/, 300) && coOccurs(tester, /violations-found/i, /FAIL/, 300)
+    && coOccurs(tester, /no-red-json/i, /UNVERIFIED/, 300),
+    'tester.md must derive redQuality from scriptStatus: clean->PASS, violations-found->FAIL, no-red-json->UNVERIFIED (AC-10)');
+  assert.ok(coOccurs(tester, /redQuality/, /not clean|!== "PASS"|!= "PASS"/i, 500),
+    'tester.md must state redQuality !== "PASS" means the run is not clean for review (AC-10)');
+  assert.ok(coOccurs(tester, /advisor/i, /never.*FAIL|not.*FAIL|never promoted/i, 400),
+    'tester.md must state advisories are reported but never promoted to FAIL (AC-10)');
+});
+
+// @spec AC-11 EC-15
+test('[red-quality] review.md consumes redQuality fail-closed (FAIL/UNVERIFIED+redExpected/PASS) and states it never invokes check-red-quality.mjs itself', () => {
+  const review = read('.sdd/stages/review.md');
+  assert.match(review, /redQuality/, 'review.md must name redQuality (AC-11)');
+  assert.ok(coOccurs(review, /redQuality.*FAIL|"FAIL"/i, /NEEDS_FIXES/, 300),
+    'review.md must state redQuality === "FAIL" -> NEEDS_FIXES (AC-11)');
+  assert.ok(coOccurs(review, /UNVERIFIED/, /redExpected.*true/i, 400) && coOccurs(review, /redExpected.*true/i, /NEEDS_FIXES/i, 300),
+    'review.md must state UNVERIFIED with redExpected: true -> NEEDS_FIXES (AC-11)');
+  assert.ok(coOccurs(review, /redExpected.*false/i, /unverified/i, 400),
+    'review.md must state UNVERIFIED with redExpected: false is reported as unverified, not clean (AC-11)');
+  assert.ok(!review.includes('check-red-quality.mjs') && !review.includes('npm run check:red-quality'),
+    'review.md must contain no invocation of check-red-quality.mjs or npm run check:red-quality — tester is the sole owner (AC-11)');
+});
+
+// @spec AC-13
+test('[red-quality] package.json declares check:red-quality/test:red-quality and ci.yml runs test:red-quality', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert.equal(typeof pkg.scripts['check:red-quality'], 'string', 'package.json must define check:red-quality (AC-13)');
+  assert.equal(typeof pkg.scripts['test:red-quality'], 'string', 'package.json must define test:red-quality (AC-13)');
+  assert.match(pkg.scripts['check:red-quality'], /check-red-quality\.mjs/, 'check:red-quality must run check-red-quality.mjs (AC-13)');
+  assert.match(pkg.scripts['test:red-quality'], /check-red-quality\.test\.mjs/, 'test:red-quality must run check-red-quality.test.mjs (AC-13)');
+  const ci = read('.github/workflows/ci.yml');
+  assert.match(ci, /test:red-quality/, 'ci.yml must run npm run test:red-quality (AC-13)');
+});
+
+// @spec AC-15
+test('[red-quality] npm run typecheck:scripts exits 0 — the widened include, and the pipeline-trim-structural.test.mjs:617 TS2339 fixed by an explicit tuple type', () => {
+  const result = spawnSync('npm', ['run', 'typecheck:scripts', '--silent'], { cwd: repoRoot, encoding: 'utf8' });
+  assert.equal(result.status, 0,
+    `npm run typecheck:scripts must exit 0 (AC-15): ${result.stdout}\n${result.stderr}`);
+  assert.ok(!/pipeline-trim-structural\.test\.mjs\(617/.test(`${result.stdout}${result.stderr}`),
+    'the TS2339 at pipeline-trim-structural.test.mjs:617 must be gone (AC-15)');
+});
+
+// @spec AC-14 AC-16 EC-16
+test('[red-quality] every scripts/*.mjs file on disk is in scripts/tsconfig.json\'s include or a known, pre-existing exclusion — AC-16\'s generalized guarantee, and AC-14\'s three specific additions', () => {
+  // The 13 scripts/*.mjs files this ticket does not touch and does not add to `include` — the real,
+  // current exclusion set spec.md's own Approach section enumerates (minus pipeline-trim-structural.
+  // test.mjs, which THIS ticket moves into `include` via AC-14, and minus check-red-quality.{mjs,
+  // test.mjs}, which do not pre-exist as an "excluded" case at all — they are new, and land directly
+  // in `include`).
+  const KNOWN_PRE_EXISTING_EXCLUSIONS = new Set([
+    'check-org-secret-access.mjs', 'check-org-secret-access.test.mjs',
+    'check-secret-access.mjs', 'check-secret-access.test.mjs',
+    'extract-ticket.mjs', 'extract-ticket.test.mjs',
+    'generate-secret-denylist.mjs', 'generate-secret-denylist.test.mjs',
+    'dependency-baseline.test.mjs', 'dependency-install.test.mjs',
+    'repo-structure-verify.mjs', 'repo-structure.test.mjs',
+    'test-product-workspace-ux.mjs',
+  ]);
+  const tsconfig = JSON.parse(read('scripts/tsconfig.json'));
+  const includeSet = new Set(tsconfig.include);
+  const onDisk = readdirSync(resolve(repoRoot, 'scripts')).filter((n) => n.endsWith('.mjs'));
+  const unaccounted = onDisk.filter((n) => !includeSet.has(n) && !KNOWN_PRE_EXISTING_EXCLUSIONS.has(n));
+  assert.deepEqual(unaccounted, [],
+    `every scripts/*.mjs file must be included or in the known, named exclusion set — currently unaccounted for: ${unaccounted.join(', ')} (AC-16, EC-16)`);
+
+  for (const name of ['pipeline-trim-structural.test.mjs', 'check-red-quality.mjs', 'check-red-quality.test.mjs']) {
+    assert.ok(includeSet.has(name), `scripts/tsconfig.json's include must contain ${name} (AC-14)`);
+  }
+  assert.deepEqual(tsconfig.include, [...tsconfig.include].sort(), 'include must be sorted ascending (AC-14)');
+  assert.equal(new Set(tsconfig.include).size, tsconfig.include.length, 'include must be duplicate-free (AC-14)');
+  for (const entry of tsconfig.include) {
+    assert.ok(existsSync(resolve(repoRoot, 'scripts', entry)), `include entry "${entry}" must name a file that exists on disk (AC-16)`);
+  }
+});
+
+// @spec AC-18
+test('[red-quality] CHANGELOG.md gains a PL-CI-QUAL entry above PL-FIXBRIEF, and .pipeline/README.md names redQuality with tester as its sole producer', () => {
+  const changelog = read('.sdd/stages/CHANGELOG.md');
+  const ciQualIdx = changelog.indexOf('## PL-CI-QUAL');
+  const fixbriefIdx = changelog.indexOf('## PL-FIXBRIEF');
+  assert.ok(ciQualIdx !== -1, 'CHANGELOG.md must have ## PL-CI-QUAL (AC-18)');
+  assert.ok(fixbriefIdx !== -1, 'CHANGELOG.md still has ## PL-FIXBRIEF');
+  assert.ok(ciQualIdx < fixbriefIdx, '## PL-CI-QUAL must appear above ## PL-FIXBRIEF (AC-18)');
+
+  const readme = read('.pipeline/README.md');
+  assert.match(readme, /redQuality/, '.pipeline/README.md must name redQuality (AC-18)');
+  assert.ok(coOccurs(readme, /redQuality/, /tester/i, 400),
+    '.pipeline/README.md must identify tester as redQuality\'s sole producer (AC-18)');
+});
+
+// @spec AC-19 EC-24
+test('[red-quality] pipeline.md stage-4 names the red-quality run, both entrypoints name it, and pipeline.md/pipeline-trim-structural.test.mjs\'s budgets still hold', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.ok(coOccurs(pipeline, /tester/i, /check-red-quality|red-quality/i, 400),
+    'pipeline.md\'s stage-4 (tester) line must name the red-quality run (AC-19)');
+  const redEp = read('.sdd/entrypoints/red.md');
+  const testerEp = read('.sdd/entrypoints/tester.md');
+  assert.match(redEp, /check-red-quality/, 'entrypoints/red.md must name check-red-quality.mjs (AC-19)');
+  assert.match(testerEp, /check-red-quality/, 'entrypoints/tester.md must name check-red-quality.mjs (AC-19)');
+
+  const slim = spawnSync(process.execPath, [resolve(repoRoot, 'scripts/check-pipeline-slim.mjs')], { encoding: 'utf8', cwd: repoRoot });
+  assert.equal(slim.status, 0, `check-pipeline-slim must still exit 0 after AC-19/AC-25/AC-26's additions (AC-19, EC-24): ${slim.stderr}`);
+  const lineCount = pipeline.split('\n').length;
+  assert.ok(lineCount <= 300, `.sdd/pipeline.md is ${lineCount} lines, over the 300-line budget (AC-19, EC-24)`);
+  const trimStructural = spawnSync(process.execPath, ['--test', resolve(repoRoot, 'scripts/pipeline-trim-structural.test.mjs')], { encoding: 'utf8', cwd: repoRoot });
+  assert.equal(trimStructural.status, 0, `npm run test:pipeline-trim-structural must still pass — Stage-sequence <=30 lines, stub bodies <=8 lines (AC-19, EC-24): ${trimStructural.stdout}\n${trimStructural.stderr}`);
+});
+
+// @spec AC-23
+test('[red-quality] dev.md\'s header comment cites the correct current step numbers: re-invocation paths at step 3, changes.md file-list at step 8', () => {
+  const dev = read('.sdd/stages/dev.md');
+  assert.ok(coOccurs(dev, /re-invocation paths?/i, /step 3/i, 200),
+    'dev.md\'s header must point the re-invocation-paths reference at step 3, the fix-loop step (AC-23)');
+  assert.ok(!coOccurs(dev, /re-invocation paths?/i, /step 2\b/i, 200),
+    'dev.md\'s header must no longer cite step 2 for the re-invocation-paths reference (AC-23)');
+  assert.ok(coOccurs(dev, /changes\.md\/changes\.json declares/i, /step 8/i, 200),
+    'dev.md\'s header must point the changes.md file-list reference at step 8 (AC-23)');
+  assert.ok(!coOccurs(dev, /changes\.md\/changes\.json declares/i, /step 7\b/i, 200),
+    'dev.md\'s header must no longer cite step 7 for the changes.md file-list reference (AC-23)');
+});
+
+// @spec AC-24 EC-23
+test('[red-quality] dev.md reconciles allowedPaths with the redTestChanges escape hatch, and write-fix-brief.mjs gains a header note pointing at it', () => {
+  const dev = read('.sdd/stages/dev.md');
+  assert.ok(coOccurs(dev, /allowedPaths/, /redTestChanges/, 800),
+    'dev.md\'s allowedPaths step must be reconciled with the redTestChanges carve-out (AC-24)');
+  assert.ok(coOccurs(dev, /red test file may be amended|amend.*red test/i, /outside allowedPaths/i, 400),
+    'dev.md must state a red test file may be amended outside allowedPaths only when declared (AC-24)');
+  assert.ok(coOccurs(dev, /redTestChanges/, /declared/i, 400) && coOccurs(dev, /undeclared/i, /fails?|blocking/i, 400),
+    'dev.md must keep tester\'s declared-vs-undeclared integrity judgment as the gate — an undeclared edit still fails (AC-24, EC-23)');
+
+  const fixBrief = read('scripts/write-fix-brief.mjs');
+  assert.ok(coOccurs(fixBrief, /allowedPaths/, /red[\s-]?(?:authored )?test/i, 500),
+    'write-fix-brief.mjs must gain a header note that allowedPaths does not normally contain a red-authored test path (AC-24)');
+  assert.ok(coOccurs(fixBrief, /affectedFiles/i, /before.*red authors|red authors tests/i, 500),
+    'write-fix-brief.mjs\'s header note must explain planner writes affectedFiles before red authors tests (AC-24)');
+});
+
+// @spec AC-25
+test('[red-quality] pipeline.md\'s "Never: skip a stage" rule regains a scope qualifier limiting it to automatic routing within a lane, not a human\'s explicit single-stage invocation', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.ok(coOccurs(pipeline, /Never.*skip a stage/i, /automatic routing|within a lane/i, 500),
+    'pipeline.md\'s Never-skip-a-stage rule must state it governs automatic routing within a lane (AC-25)');
+  assert.ok(coOccurs(pipeline, /Never.*skip a stage/i, /per-stage commands?|single.stage|re-gate/i, 500),
+    'pipeline.md\'s Never-skip-a-stage rule must reconcile with a human\'s explicit choice to run one stage via the per-stage commands or /re-gate (AC-25)');
+});
+
+// @spec AC-26 EC-25
+test('[red-quality] pipeline.md\'s ledger step documents the two real ledger-append.mjs refusal conditions: an independently-confirmed-PASS security run, and refusing an existing target directory', () => {
+  const pipeline = read('.sdd/pipeline.md');
+  assert.ok(coOccurs(pipeline, /ledger/i, /manifest\.json.*results\.json|results\.json.*manifest\.json/i, 600),
+    'pipeline.md\'s ledger step must name manifest.json/results.json as the independent confirmation source (AC-26)');
+  assert.ok(coOccurs(pipeline, /independently confirmed|independently verif/i, /PASS/, 400),
+    'pipeline.md must state the cited security run is independently confirmed PASS (AC-26)');
+  assert.ok(coOccurs(pipeline, /already exists|existing/i, /refus/i, 400),
+    'pipeline.md must state an existing ledger target directory is refused rather than overwritten (AC-26)');
+
+  // EC-25: the documented text must match ledger-append.mjs's own real refusal sites, not be written
+  // from memory — grounded here against the two actual fail(...) call sites this spec cites.
+  const ledgerAppend = read('scripts/ledger-append.mjs');
+  assert.match(ledgerAppend, /manifest\.json.*results\.json|manifest or results\.json/i,
+    'sanity: ledger-append.mjs\'s real findCompletedSecurityRun must still require manifest.json/results.json (EC-25)');
+  assert.match(ledgerAppend, /already exists — refusing to overwrite/,
+    'sanity: ledger-append.mjs\'s real target-directory guard must still refuse rather than overwrite (EC-25)');
+
+  const pipelineHistory = read('.sdd/pipeline-history.md');
+  assert.ok(!coOccurs(pipelineHistory, /manifest\.json.*results\.json/i, /independently confirmed/i, 400),
+    'the two refusal conditions belong in pipeline.md (procedure), not duplicated into pipeline-history.md (archaeology) (EC-25)');
 });

@@ -1,0 +1,155 @@
+{
+  "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+  "goal": "Cut what a /pipeline coordinator must read at the start of every run from ~950 lines to the core file plus one small per-command file, by splitting .sdd/pipeline.md into a short core (stage sequence, routing, loop cap, staleness table, entry-point stubs), one .sdd/entrypoints/<cmd>.md per command, and one .sdd/pipeline-history.md for the archaeology no agent needs in order to run a stage — with a CI check that locks the split in place.",
+  "lane": "full",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": ".sdd/pipeline.md is at most 300 lines and retains, in order: an intro naming every entry point, a condensed JSON-sidecar note, a Staleness stamps section presenting the three-way policy as a compact table, a Stage sequence section whose **planner**/**red**/**dev**/**tester**/**review**/**security** markers appear in that order and which names ledger-append.mjs and terminal PASS, a Routing section with the 3-attempt loop cap, a Review persistence contract, a \"Running stages in a single context\" section, and an Entry points section."
+    },
+    {
+      "id": "AC-2",
+      "text": ".sdd/entrypoints/<cmd>.md exists for exactly these 16 commands: pipeline, pipeline-lite, pipeline-gapfill, gap-scout-only, planner, spec-only, red, dev, tester, review, security, security-recheck, pipeline-status, re-gate, inline-edit, hotfix — and no others."
+    },
+    {
+      "id": "AC-3",
+      "text": "Each entrypoint file carries its command's full body from .sdd/pipeline.md, substance unchanged: every numbered step, every \"Not this lane\"/\"Not /x\" routing item, every \"Honest limits\" list, and every named ledger command survives the move."
+    },
+    {
+      "id": "AC-4",
+      "text": "No entrypoint file requires reading another entrypoint file, except spec-only.md and security-recheck.md, which are aliases and defer to planner.md/security.md respectively and say so explicitly."
+    },
+    {
+      "id": "AC-5",
+      "text": ".sdd/pipeline.md carries a `### `/<cmd>`` stub for each of AC-2's 16 commands, each with at most 8 non-blank body lines and each naming .sdd/entrypoints/<cmd>.md."
+    },
+    {
+      "id": "AC-6",
+      "text": ".sdd/pipeline-history.md exists, opens by stating it is history rather than procedure and that no stage or command needs it in order to run, carries the JSON-sidecar archaeology, the staleness-stamp rationale beyond the table, the review-persistence backstory, and the per-stage entry-point \"observed gap\" essay, and records PL-TRIM's own round."
+    },
+    {
+      "id": "AC-7",
+      "text": "Each of the 16 pipeline SKILL.md files names .sdd/pipeline.md as core, names exactly its own .sdd/entrypoints/<cmd>.md (plus, for the two aliases, their canonical target), contains no \"follow .sdd/pipeline.md's /x section\" pointer, keeps its existing frontmatter keys, and stays under 60 lines."
+    },
+    {
+      "id": "AC-8",
+      "text": "scripts/check-pipeline-slim.mjs exists, exports PIPELINE_LINE_BUDGET (=300), STUB_BODY_LINE_BUDGET (=8), EXEMPT_SKILLS, ALIAS_ENTRYPOINTS, SLIM_VIOLATION_KINDS, evaluatePipelineSlimness, and checkPipelineSlim, enforces all six rules named in the spec's Interfaces section, supports --json, and exits 0/1/2 per that contract."
+    },
+    {
+      "id": "AC-9",
+      "text": "scripts/check-pipeline-slim.mjs exits 0 against this repository after the split."
+    },
+    {
+      "id": "AC-10",
+      "text": "The check is wired: package.json has check:pipeline-slim and test:pipeline-slim; .github/workflows/ci.yml runs both npm run check:pipeline-slim and npm run test:pipeline-slim; scripts/tsconfig.json's include lists both new filenames; npm run typecheck:scripts exits 0."
+    },
+    {
+      "id": "AC-11",
+      "text": "Every .sdd/pipeline.md-anchored assertion in scripts/sdd-completeness.test.mjs is retargeted rather than deleted or weakened, specifically: pipelineLiteSection() and inlineEditSection() read their entrypoint files; the /hotfix entry-point test reads .sdd/entrypoints/hotfix.md for .sdd/hotfix.md, ledger-append.mjs --hotfix, and \"follow-up ticket\"; the `### `/<command>`` -> skill enumeration becomes an enumeration of .sdd/entrypoints/*.md with its >= 10 floor intact; the two \"named in the intro paragraph and the Entry points preamble\" discoverability tests still read .sdd/pipeline.md; the two SKILL.md shim tests accept the entrypoint pointer; and the /re-gate -> /inline-edit -> /hotfix ordering assertion becomes an ordering assertion over core's stubs."
+    },
+    {
+      "id": "AC-12",
+      "text": "npm run test:sdd-completeness, npm run test:pipeline-slim, npm run test:ledger-append, and npm run test:lite-eligible all pass."
+    },
+    {
+      "id": "AC-13",
+      "text": "git diff --name-only HEAD -- .sdd/stages is empty: no stage file is modified, so stage agents are unchanged and still read only .sdd/stages/<stage>.md."
+    },
+    {
+      "id": "AC-14",
+      "text": "A /pipeline coordinator can run the full sequence from .sdd/pipeline.md plus .sdd/entrypoints/pipeline.md alone — those two files together state the stage sequence, the routing and loop cap, the staleness policy, the spec-reuse prompt, the Open-Questions stop, the ledger step, and the final report contents, with no other entrypoint file required."
+    },
+    {
+      "id": "AC-15",
+      "text": "No behavior change to scripts/ledger-append.mjs, check-lite-eligible.mjs, check-bounds.mjs, pipeline-contracts.mjs, write-stamp.mjs, check-stamp-freshness.mjs, or check-red-integrity.mjs; their existing .sdd/pipeline.md-section pointers still resolve, via core's stubs, to a real section naming the command."
+    },
+    {
+      "id": "AC-16",
+      "text": ".sdd/README.md's directory map lists entrypoints/ and pipeline-history.md, still names /pipeline-lite and /inline-edit, its \"read this first\" paragraph names the core-plus-one-entrypoint reading order, and its .claude/skills/*/SKILL.md paragraph says each skill points at its own entrypoint file."
+    },
+    {
+      "id": "AC-17",
+      "text": "CLAUDE.md's Agent pipeline section and AGENTS.md's \"The pipeline\" section both state that a command's exact procedure lives in .sdd/entrypoints/<cmd>.md, with .sdd/pipeline.md as the shared core; CLAUDE.md's \"Related commands:\" list still names every command it names today."
+    }
+  ],
+  "edgeCases": [
+    {
+      "id": "EC-1",
+      "text": "A skill directory with no matching entrypoint file (e.g. a new command shimmed but never documented) -> missing-entrypoint, exit 1, naming the skill and the path it expected."
+    },
+    {
+      "id": "EC-2",
+      "text": "An entrypoint file with no matching skill -> orphan-entrypoint, exit 1."
+    },
+    {
+      "id": "EC-3",
+      "text": ".sdd/pipeline.md at exactly 300 lines passes; at 301 lines -> budget, exit 1, with the actual count and the budget in the message."
+    },
+    {
+      "id": "EC-4",
+      "text": "pr-review and workspace-pack-author have no entrypoint file and must not be reported — neither is a pipeline entry point (pr-review runs outside the per-ticket sequence and points at .sdd/stages/pr-review.md; workspace-pack-author is unrelated R&D)."
+    },
+    {
+      "id": "EC-5",
+      "text": "spec-only/security-recheck reference both their own entrypoint and their canonical target; that is permitted for exactly those two, and referencing any third entrypoint is not."
+    },
+    {
+      "id": "EC-6",
+      "text": "A skill naming two unrelated entrypoints -> skill-pointer, exit 1."
+    },
+    {
+      "id": "EC-7",
+      "text": "A stub section that grows a real body back into core (>8 non-blank lines) -> stub-body, exit 1, even while total line count is still under budget."
+    },
+    {
+      "id": "EC-8",
+      "text": "A stub that exists but names no entrypoint path -> stub-body, exit 1."
+    },
+    {
+      "id": "EC-9",
+      "text": ".sdd/entrypoints/ missing entirely, or .sdd/pipeline.md unreadable, or .claude/skills/ missing -> exit 2 (cannot perform), never exit 0 and never exit 1."
+    },
+    {
+      "id": "EC-10",
+      "text": "An unknown CLI flag -> exit 2 with a usage message, matching check-lite-eligible.mjs's assertKnownFlags posture."
+    },
+    {
+      "id": "EC-11",
+      "text": "CRLF: every file in this working tree uses CRLF. Line counting must use split(/\\r?\\n/); no assertion or script regex may use a $ anchor against these documents, and any literal newline match must be \\r?\\n."
+    },
+    {
+      "id": "EC-12",
+      "text": "Non-.md files or a nested directory under .sdd/entrypoints/ are ignored by the orphan and unstubbed rules rather than reported, so an editor swap file cannot fail CI."
+    },
+    {
+      "id": "EC-13",
+      "text": "--json on a passing run prints { \"ok\": true, ..., \"violations\": [] } and exits 0; on a failing run prints the same shape with a populated violations array and exits 1. The JSON goes to stdout on both."
+    },
+    {
+      "id": "EC-14",
+      "text": "An entrypoint body left carrying a pointer to a pipeline.md section that no longer holds a body (a dangling \"see .sdd/pipeline.md's /re-gate section\" inside inline-edit.md) must be rewritten to .sdd/entrypoints/re-gate.md during the move."
+    },
+    {
+      "id": "EC-15",
+      "text": "A moved body whose coOccurs-pinned halves drift apart (e.g. reflowing /pipeline-lite's Honest limits so red and after/order exceed 300 characters apart) fails an existing guarantee — treat any such failure as a bad move, not as a stale assertion to widen."
+    },
+    {
+      "id": "EC-16",
+      "text": "Two skills naming the same entrypoint are reported for both (skill-pointer on the one that does not own it), so a copy-paste shim cannot silently shadow another command."
+    },
+    {
+      "id": "EC-17",
+      "text": ".sdd/ledger/** must be excluded from every walk the new script does — a historical ledger entry quoting a pipeline.md section is not a skill and not an entrypoint."
+    },
+    {
+      "id": "EC-18",
+      "text": "The leftover .pipeline/ artifacts on disk from an earlier, unrelated run (red.json, changes.json, review.json, security.json all predate this spec) must not be treated as this run's own; the coordinator should clear or ignore them before red runs, and no downstream stage may read them as evidence for PL-TRIM."
+    }
+  ],
+  "stamp": {
+    "treeHash": "522974b3f8a350d23d5249b33f2ebabceabe966d37de64ce2e076d5b83f1e6f7",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T04:35:30.169Z"
+  }
+}

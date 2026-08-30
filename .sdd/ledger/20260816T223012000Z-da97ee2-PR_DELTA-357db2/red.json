@@ -1,0 +1,94 @@
+{
+  "impactMapPresent": true,
+  "tests": [
+    {
+      "path": "scripts/check-red-quality.test.mjs",
+      "sha256": "7512bd3d5de9a0380e55ced3467103678d465cbf4c2e705a8586e3a35408087c",
+      "specIds": [
+        "AC-1",
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "EC-1",
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5",
+        "EC-6",
+        "EC-7",
+        "EC-8",
+        "EC-10",
+        "EC-11",
+        "EC-12",
+        "EC-13",
+        "EC-17",
+        "EC-18"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/pipeline-contracts.test.mjs",
+      "sha256": "ac220c18cf0bc145b5b2281f4e2fa77ee8fd12a3c9393b279c6f09576e10c9c4",
+      "specIds": [
+        "AC-7",
+        "AC-12",
+        "AC-21",
+        "AC-22",
+        "EC-9",
+        "EC-14",
+        "EC-15",
+        "EC-20",
+        "EC-21",
+        "EC-22"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/repo-structure.test.mjs",
+      "sha256": "a1a4e54a281de8e334f98d76f0e408849a7f9ab665e5388c8d8c09904ebbbe90",
+      "specIds": [
+        "AC-20",
+        "EC-19",
+        "EC-26"
+      ],
+      "classification": "RED-CORRECT"
+    },
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "sha256": "71c67664acd86bf63b92188e933d8ac93802d7fd7b10bd2653bef62a138f20ac",
+      "specIds": [
+        "AC-8",
+        "AC-9",
+        "AC-10",
+        "AC-11",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AC-23",
+        "AC-24",
+        "AC-25",
+        "AC-26",
+        "EC-15",
+        "EC-16",
+        "EC-23",
+        "EC-24",
+        "EC-25"
+      ],
+      "classification": "RED-CORRECT",
+      "duplicateOf": "scripts/pipeline-contracts.test.mjs",
+      "justification": "Both files genuinely test edge case 15 (readRedIntegrityJson's redQuality-default fail-closed behavior) but from different layers, not as a cloned twin: scripts/pipeline-contracts.test.mjs verifies the parser's own default (an absent redQuality reads as \"UNVERIFIED\" and never throws), while scripts/sdd-completeness.test.mjs verifies that .sdd/stages/review.md's own text actually documents consuming that default fail-closed (FAIL/UNVERIFIED+redExpected -> NEEDS_FIXES). Declared via PL-CI-QUAL fix-loop attempt 2, R1, per .sdd/stages/dev.md's AC-24 red-listed-file carve-out; see .pipeline/changes.json's redTestChanges for the corresponding dev-stage declaration."
+    }
+  ],
+  "stamp": {
+    "treeHash": "8fd951e1a6526005c54d8a70aa0009892424b2726e1b8a2357267a0467ac6b94",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-14T06:01:31.850Z"
+  }
+}

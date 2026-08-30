@@ -1,0 +1,36 @@
+{
+  "ticket": "PL-INTEGRITY-TESTER",
+  "summary": "Move red-test integrity (mechanical check + judgment) from review to tester. tester now runs scripts/check-red-integrity.mjs, applies the judgment rules, and writes .pipeline/red-integrity.json (plus stamp). review stops reading red.md/red.json directly and consumes the sidecar fail-closed.",
+  "filesChanged": [
+    "scripts/pipeline-contracts.mjs",
+    "scripts/pipeline-contracts.test.mjs",
+    "scripts/check-stamp-freshness.mjs",
+    "scripts/sdd-completeness.test.mjs",
+    ".sdd/stages/tester.md",
+    ".sdd/stages/review.md",
+    ".sdd/stages/dev.md",
+    ".sdd/pipeline.md",
+    ".pipeline/README.md",
+    ".sdd/entrypoints/tester.md",
+    ".sdd/entrypoints/review.md",
+    ".sdd/entrypoints/pipeline.md",
+    ".sdd/entrypoints/re-gate.md",
+    ".sdd/stages/CHANGELOG.md"
+  ],
+  "redTestChanges": [
+    {
+      "path": "scripts/sdd-completeness.test.mjs",
+      "reason": "AC-17 and AC-18 in spec.md explicitly require replacing the git-diff-based PL-11 and PL-12 test loops with content assertions, and rewriting the review.md integrity test to assert the new tester-owns-integrity ownership. The spec was correct and these are core deliverables of this ticket. In this fix-loop pass, leftover @spec EC-20 markers (non-existent in this ticket's spec, EC-1 through EC-19 only) were neutralized: line ~1282 recast to @spec AC-6 (covering lite/inline as no-red lanes), line ~1350 recast to @spec EC-16 (covering not breaking existing pipelineLiteSection windows). Only the @spec comment lines were changed; no test assertions or logic were altered."
+    },
+    {
+      "path": "scripts/pipeline-contracts.test.mjs",
+      "reason": "A test string contained the literal text '@spec AC-77' which the check-red-integrity.mjs extractor matched as a real spec citation against this ticket's spec.json. AC-77 does not exist in this ticket's spec (AC-1 through AC-21 only). The example string was rephrased so it no longer contains the '@spec ' prefix pattern. A // @spec AC-14 marker was also added (AC-14 is the spec item this test covers: readRedIntegrityJson + three constant arrays exported). Only the example string and the @spec marker line were changed; the actual assertion logic is untouched."
+    }
+  ],
+  "stamp": {
+    "treeHash": "980776c8afcb8402616d7483e68546cedf80d2c6406f9af21a52fd56db53162a",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T15:49:35.061Z"
+  }
+}

@@ -7,7 +7,7 @@ argument-hint: <ticket description or path to ticket file>
 
 Run only the planning stage for: $ARGUMENTS
 
-Follow `.sdd/pipeline.md`'s "`/planner <ticket>`" section exactly — it is the authoritative,
-runtime-neutral definition of this command. Invoke the `planner` subagent for the planning step;
-do not continue to `red`, `dev`, `tester`, `review`, or `security-checker` — this command stops
-after planning, on purpose.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/planner.md` (the authoritative definition of this command). Invoke the `planner`
+subagent for the planning step; do not continue to `red`, `dev`, `tester`, `review`, or
+`security-checker` — this command stops after planning, on purpose.

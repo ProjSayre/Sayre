@@ -7,8 +7,9 @@ argument-hint: (no arguments)
 
 Run only the tester stage.
 
-Follow `.sdd/pipeline.md`'s "`/tester`" section exactly — it is the authoritative, runtime-neutral
-definition of this command. Invoke the `tester` subagent; it writes `.pipeline/test-results.md`
-directly. Require `.pipeline/spec.md` and `.pipeline/red.md` to exist first — if either is missing,
-say which of planner/red needs to run instead of improvising. Do not continue to `review` or
-`security-checker` — this command stops after tester, on purpose.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/tester.md` (the authoritative definition of this command). Invoke the `tester`
+subagent; it writes `.pipeline/test-results.md` directly. Require `.pipeline/spec.md` and
+`.pipeline/red.md` to exist first — if either is missing, say which of planner/red needs to run
+instead of improvising. Do not continue to `review` or `security-checker` — this command stops
+after tester, on purpose.

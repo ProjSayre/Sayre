@@ -199,3 +199,74 @@ test('[unknown-flag] a second positional argument exits 2 rather than silently u
   assert.equal(result.status, 2);
   assert.match(result.stderr, /unexpected extra argument "security\.json"/);
 });
+
+// =================================================================================================
+// .pipeline/red-integrity.json — AC-15 (PL-INTEGRITY-TESTER)
+// =================================================================================================
+//
+// These tests will FAIL on a clean checkout (red-integrity.json is not yet in READERS) with
+// RED-CORRECT classification: the behavior (accepting the new sidecar name) does not yet exist.
+// After dev adds red-integrity.json to the READERS map, they pass.
+
+// @spec AC-15
+test('check-stamp-freshness accepts "red-integrity.json" as a known sidecar — reports "absent" and exits 0 when the file does not exist (not "unrecognized sidecar")', () => {
+  // Use a plain temp dir without git init — gitFixtureRepo() would fail in the sandbox (git init
+  // creates hooks which are blocked). For this assertion, freshness is irrelevant: we just need to
+  // verify the CLI accepts the sidecar name, which happens at argument-parsing time before any git
+  // operation. An absent sidecar in a non-git dir exits 0 with "absent"; an unrecognized sidecar
+  // name exits 2 with "unrecognized sidecar" — the two cases are distinguishable by exit code alone.
+  const tmpDir = mkdtempSync(resolve(tmpdir(), 'sayre-ac15-'));
+  roots.push(tmpDir);
+  const dir = join(tmpDir, '.pipeline');
+  mkdirSync(dir, { recursive: true });
+  const result = runCli(['red-integrity.json', '--dir', dir]);
+  assert.equal(
+    result.status,
+    0,
+    `expected exit 0 (absent), got exit ${result.status}: ${result.stderr.trim()} — before AC-15 this exits 2 with "unrecognized sidecar"`,
+  );
+  const parsed = parseReport(result.stdout);
+  assert.equal(parsed.file, 'red-integrity.json');
+  assert.equal(parsed.status, 'absent',
+    'red-integrity.json not yet written → "absent", not an unrecognized-sidecar error (AC-15)');
+});
+
+// @spec AC-15
+test('check-stamp-freshness usage banner names red-integrity.json — the READERS comment and error message list six sidecars', () => {
+  // Running with no sidecar-name argument exits 2 and lists the known sidecars.
+  // Before AC-15: the list is the original five; "red-integrity.json" is absent.
+  // After AC-15: the list contains "red-integrity.json" (the sixth).
+  const result = runCli([]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /red-integrity\.json/,
+    'the missing-argument error must name red-integrity.json in its list of known sidecars (AC-15)');
+});
+
+// =================================================================================================
+// .pipeline/fix-brief.json — AC-7 (PL-FIXBRIEF)
+// =================================================================================================
+
+// @spec AC-7
+test('check-stamp-freshness accepts "fix-brief.json" as a known sidecar — reports "absent" and exits 0 when the file does not exist (not "unrecognized sidecar")', () => {
+  const tmpDir = mkdtempSync(resolve(tmpdir(), 'sayre-ac7-fixbrief-'));
+  roots.push(tmpDir);
+  const dir = join(tmpDir, '.pipeline');
+  mkdirSync(dir, { recursive: true });
+  const result = runCli(['fix-brief.json', '--dir', dir]);
+  assert.equal(
+    result.status,
+    0,
+    `expected exit 0 (absent), got exit ${result.status}: ${result.stderr.trim()} — before AC-7 this exits 2 with "unrecognized sidecar"`,
+  );
+  const parsed = parseReport(result.stdout);
+  assert.equal(parsed.file, 'fix-brief.json');
+  assert.equal(parsed.status, 'absent');
+});
+
+// @spec AC-7
+test('check-stamp-freshness usage banner names fix-brief.json — seven known sidecars', () => {
+  const result = runCli([]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /fix-brief\.json/,
+    'the missing-argument error must name fix-brief.json in its list of known sidecars (AC-7)');
+});

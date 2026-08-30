@@ -9,7 +9,7 @@
 // reading a file.
 //
 // Usage:
-//   node scripts/check-stamp-freshness.mjs <spec.json|red.json|changes.json|review.json|security.json>
+//   node scripts/check-stamp-freshness.mjs <spec.json|red.json|changes.json|review.json|security.json|red-integrity.json|fix-brief.json>
 //   node scripts/check-stamp-freshness.mjs <sidecar> --dir <path>
 //   node scripts/check-stamp-freshness.mjs <sidecar> --cwd <path>
 //
@@ -51,6 +51,8 @@ import {
   STAMP_FRESH,
   STAMP_STALE,
   readChangesJson,
+  readFixBriefJson,
+  readRedIntegrityJson,
   readRedJson,
   readReviewJson,
   readSecurityJson,
@@ -61,17 +63,19 @@ import {
 const scriptsDir = resolve(fileURLToPath(import.meta.url), '..');
 const repoRoot = resolve(scriptsDir, '..');
 
-/** One reader per sidecar this contract covers — deliberately the same five names
- * `.sdd/pipeline.md`'s "Staleness stamps" section lists, no more. `required: false` throughout: an
- * absent file is this script's own `"absent"` status, not a thrown error, and a `red.json`/
- * `changes.json` that legitimately doesn't exist yet (a ticket predating `red`, a re-invocation with
- * no dev pass yet) must read the same way. */
+/** One reader per sidecar this contract covers — the original five plus `red-integrity.json`
+ * (PL-INTEGRITY-TESTER) and `fix-brief.json` (PL-FIXBRIEF): seven known sidecars. `required: false`
+ * throughout: an absent file is this script's own `"absent"` status, not a thrown error, and a
+ * `red.json` / `changes.json` / `red-integrity.json` / `fix-brief.json` that legitimately doesn't
+ * exist yet must read the same way. */
 const READERS = {
   'spec.json': (dir) => readSpecJson(dir, { required: false }),
   'red.json': (dir) => readRedJson(dir, { required: false }),
   'changes.json': (dir) => readChangesJson(dir, { required: false }),
   'review.json': (dir) => readReviewJson(dir, { required: false }),
   'security.json': (dir) => readSecurityJson(dir, { required: false }),
+  'red-integrity.json': (dir) => readRedIntegrityJson(dir, { required: false }),
+  'fix-brief.json': (dir) => readFixBriefJson(dir, { required: false }),
 };
 
 function parseArgs(argv) {

@@ -130,6 +130,79 @@ out of a stage file is about removing *dated narration*, never about removing a 
   must resolve to the unfenced (`full`) lane, and no touched file may match `.sdd/bounds.yml`'s
   `hotfix_barred_paths` list.
 
+## PL-CI-QUAL
+
+New `scripts/check-red-quality.mjs`: a mechanical red-test quality/anti-dupe gate blocking an
+undeclared duplicate `@spec` (`duplicate-spec-id`, `bad-duplicate-declaration`) and an
+assertion-free or tautological "test" (`no-assertion`, `tautological-only`), plus a non-blocking
+`twin-file` advisory. `red` self-runs it before finishing; `tester` is the sole, authoritative
+gating invocation, writing `redQuality`/`qualityViolations` onto `.pipeline/red-integrity.json`;
+`review` consumes that verdict fail-closed and never runs the gate itself. `red.json` test entries
+gain three optional fields (`duplicateOf`, `justification`, `extends`) for declaring a deliberate
+overlap or a legitimately extended file.
+
+Also repairs five verified defects left on this branch by PL-TRIM/PL-INTEGRITY-TESTER/PL-FIXBRIEF:
+`repo-structure.test.mjs`'s `scripts/tsconfig.json`-include guard converted from exact equality to
+a no-dropped-entries superset check (the exact-equality shape had already broken CI twice on
+legitimate additions); `readReviewJson`/`readSecurityJson` now enforce their own documented
+non-empty `findings` rule on a non-`PASS` verdict, at the parser layer; `requireFindingId`'s error
+message corrected to name the finding-id shape its own regex actually accepts; `dev.md`'s header
+comment's two stale step-number cross-references fixed; the fix-loop red-test amendment escape
+hatch (`allowedPaths` reconciled with the `redTestChanges` carve-out) restored; and two documentation
+sections `.sdd/pipeline.md` had lost — the `Never: skip a stage` rule's scope qualifier, and the
+ledger step's two undocumented refusal conditions — restored.
+
+**Stage files amended by this round:** `red.md` (search-before-authoring, extend-don't-clone,
+`duplicateOf`/`justification`/`extends`, mandatory self-run before finishing, states it never edits
+`ci.yml`), `tester.md` (owns the gating run, documents its exit codes/shape inline, writes
+`redQuality`/`qualityViolations`), `review.md` (consumes `redQuality` fail-closed, never invokes the
+gate itself), `dev.md` (the two step-number fixes, the `redTestChanges` carve-out reconciled with
+`allowedPaths`).
+
+## PL-FIXBRIEF
+
+Scoped fix-loop `dev`: on `NEEDS_FIXES` / `BLOCKED` the coordinator writes `.pipeline/fix-brief.json`
+(via `scripts/write-fix-brief.mjs`) before re-invoking `dev`. Fix-loop `dev` stays inside
+`allowedPaths`; tester/review/security stay full-ticket. Planner writes `affectedFiles` on
+`spec.json`; review/security write a non-empty `findings` array on the failing verdict.
+
+**Stage files amended by this round:** `dev.md` (first attempt vs fix-loop; refuse missing/stale
+brief; `allowedPaths`; escalate rather than widen), `planner.md` (`affectedFiles`), `review.md`
+(`findings` on `NEEDS_FIXES`; `relatedAc` is a hint), `security.md` (`"findings"` on `BLOCKED`),
+`tester.md` (a fix-brief does not shrink the stage).
+
+## PL-INTEGRITY-TESTER
+
+Moves red-test integrity (mechanical check + judgment) from `review` to `tester`. `tester` now
+runs `scripts/check-red-integrity.mjs`, applies all four judgment rules, and writes
+`.pipeline/red-integrity.json` (with `write-stamp.mjs`). `review` stops reading `red.md`/`red.json`
+for integrity or spec trace; it consumes the sidecar fail-closed per AC-8 (FAIL/missing/stale/
+malformed → `NEEDS_FIXES`; UNVERIFIED with `redExpected: false` → unverified lens, not a failure).
+
+**Stage files amended by this round:** `tester.md` (gains the script run, judgment rules, Output
+contract Red-test integrity section, and `red-integrity.json` sidecar write), `review.md` (loses
+the `check-red-integrity.mjs` invocation and all four judgment bullets; gains the fail-closed
+sidecar-consumption rules; gains the one-way escalation ratchet per AC-9; corrects the false
+staleness claim that "tester writes no JSON sidecar at all"), and `dev.md` (one wording fix:
+the rehash is now attributed to `tester` and `red-integrity.json`, not to `review`).
+
+**Corrected false claim in `review.md`'s Staleness section (PL-INTEGRITY-TESTER):** the previous
+text said "tester writes no JSON sidecar at all" and "there is nothing for `check-stamp-freshness.mjs`
+to read here." Both were false once this ticket lands. The corrected text documents
+`red-integrity.json`'s staleness policy (security-style refusal, not flag-and-proceed) and drops
+the `red.md`/`red.json` input bullet entirely.
+
+**AC-17 (git-diff allowlist loops retired):** the two `git diff --name-only HEAD -- .sdd/stages`
+allowlist loops in `scripts/sdd-completeness.test.mjs` (the PL-11 test and the PL-12 test) were
+correct pins only during their own ticket's run — they fail on any later, legitimate uncommitted
+edit to `.sdd/stages/*`. Both are replaced by content assertions following the precedent recorded
+for PL-14 / A1.
+
+**Scripts added to `scripts/pipeline-contracts.mjs`:** `readRedIntegrityJson` plus the three
+constant arrays (`RED_INTEGRITY_VERDICTS`, `RED_INTEGRITY_SCRIPT_STATUSES`,
+`RED_INTEGRITY_JUDGMENT_VERDICTS`). **`scripts/check-stamp-freshness.mjs`:** registers
+`red-integrity.json` as the sixth known sidecar.
+
 ## PL-12
 
 New `/inline-edit` lane (`.sdd/pipeline.md`'s own `### `/inline-edit <ticket>`` section is the

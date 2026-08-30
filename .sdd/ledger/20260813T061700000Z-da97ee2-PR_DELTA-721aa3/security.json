@@ -1,0 +1,10 @@
+{
+  "verdict": "PASS",
+  "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+  "stamp": {
+    "treeHash": "7b394372e3735c5a97017e8631ca97bbc0148433f2dcef2690ed6c1d9168ffa4",
+    "headSha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "dirty": true,
+    "writtenAt": "2026-08-13T06:28:35.655Z"
+  }
+}

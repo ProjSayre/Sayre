@@ -1,0 +1,298 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+  "mode": "PR_DELTA",
+  "status": "COMPLETE",
+  "started_at": "2026-08-16T22:30:12.000Z",
+  "completed_at": "2026-08-16T23:05:00.000Z",
+  "repository": {
+    "canonical_id": "projsayre/sayre",
+    "remote": "https://github.com/ProjSayre/Sayre",
+    "working_path": "/Users/chiemeka/SayreProjects/Sayre"
+  },
+  "target": {
+    "commit_sha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "branch": "pipeline-changes-quick-trim",
+    "dirty": true,
+    "environment": "local-static-analysis",
+    "base_urls": [],
+    "changed_paths": [
+      "scripts/check-red-quality.mjs",
+      "scripts/check-red-quality.test.mjs",
+      "scripts/pipeline-contracts.mjs",
+      "scripts/pipeline-contracts.test.mjs",
+      "scripts/repo-structure.test.mjs",
+      "scripts/tsconfig.json",
+      "scripts/pipeline-trim-structural.test.mjs",
+      "scripts/write-fix-brief.mjs",
+      "package.json",
+      ".github/workflows/ci.yml",
+      ".sdd/stages/red.md",
+      ".sdd/stages/tester.md",
+      ".sdd/stages/review.md",
+      ".sdd/stages/dev.md",
+      ".sdd/stages/CHANGELOG.md",
+      ".sdd/entrypoints/red.md",
+      ".sdd/entrypoints/tester.md",
+      ".pipeline/README.md",
+      ".sdd/pipeline.md",
+      ".pipeline/red.json"
+    ]
+  },
+  "baseline": {
+    "run_id": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+    "commit_sha": "da97ee2ed2b435e849fc407eb08d4be528eb8564",
+    "comparable": false,
+    "selection_reason": "Newest complete run in .pipeline/security-history/ (PL-FIXBRIEF) \u2014 same branch/commit (da97ee2, dirty) as this run, chosen over any newer ledger-only entry per the audit contract's baseline-source ordering (immutable .pipeline/security-history/ before any other record). Not comparable: this run's target commit is identical rather than a strict ancestor, the two runs audit different, non-overlapping ticket diffs on top of the same dirty tree, and PL-CI-QUAL's red-quality-gate/findings-enforcement/fix-loop-carve-out surface has no analog in PL-FIXBRIEF's observation set.",
+    "incompatible_dimensions": [
+      "dirty-delta",
+      "ticket-scope"
+    ]
+  },
+  "product_progress": {
+    "milestone": "pre-MVP",
+    "phase": "pipeline-methodology-refactor",
+    "source_references": [
+      "docs/product/PRD-V1.md",
+      "docs/product/Pipeline-Efficiency-Plan.md"
+    ],
+    "documentation_code_drift": []
+  },
+  "authorization": {
+    "runtime_tests_authorized": false,
+    "authorized_by": null,
+    "resource_ceiling": null,
+    "credential_references": [],
+    "tenant_fixtures": []
+  },
+  "surface_inventory": [
+    {
+      "surface_id": "tenant-isolation",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "PL-CI-QUAL is meta-tooling: a new red-quality static-analysis gate, JSON-sidecar contract fixes, and .sdd/*.md prose. No services/core, services/workers, services/gateway, apps/web, or packages/graph-schema file is touched. No persistence write or graph read is introduced.",
+      "code_references": []
+    },
+    {
+      "surface_id": "rbac-boundary",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "No route handler, resolver, Graph Query Service, or client-side graphology code touched by this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "secret-handling",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "scripts/** and package.json/ci.yml changed. New check-red-quality.mjs and the pipeline-contracts.mjs findings-enforcement change touch no credential loader, env var, or secret store; confirmed by direct grep of every new/changed file in this ticket's diff for credential-shaped tokens (api key/secret/token/password/bearer/credential/AKIA/BEGIN) \u2014 no match beyond the English word \"token\" used generically in comments/test names.",
+      "code_references": [
+        "scripts/check-red-quality.mjs",
+        "scripts/pipeline-contracts.mjs",
+        "scripts/write-fix-brief.mjs"
+      ]
+    },
+    {
+      "surface_id": "webhook-trust",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "No webhook receiver, BullMQ, or SQS code touched by this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-ephemerality",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": true,
+      "selection_reason": "CORE mandatory check",
+      "rationale": "No ingestion worker or scratch-clone code touched by this diff.",
+      "code_references": []
+    },
+    {
+      "surface_id": "injection-boundaries",
+      "brief_path": ".claude/agents/security-checker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "CORE mandatory check; check-red-quality.mjs shells out to git and parses test-file text",
+      "rationale": "check-red-quality.mjs's only external-process call is execFileSync('git', ['ls-tree','-r','--name-only','HEAD'], {cwd}) \u2014 a fixed argv array, no shell, no string interpolation of file content or CLI flags into the command. It reads every listed test file with readFileSync and treats the content purely as data for regex matching (specSegments/ASSERTION_PATTERNS/TAUTOLOGY_PATTERNS) and Map storage \u2014 never eval, new Function, vm, JSON.parse of untrusted-as-code text, or a second child-process spawn keyed off file content. pipeline-contracts.mjs's JSON parsing is unchanged strict-parser code; the new parseFindingsArray/requireFindingId are pure validation over already-parsed JSON values, not string concatenation into any interpreter.",
+      "code_references": [
+        "scripts/check-red-quality.mjs",
+        "scripts/pipeline-contracts.mjs"
+      ]
+    },
+    {
+      "surface_id": "secrets-audit-data-lifecycle",
+      "brief_path": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Triggered by changed paths matching scripts/** and .github/** in agent-registry.json trigger_paths",
+      "rationale": "New CLI script + one new CI step running an existing local `node --test` suite; no credential loader, log line, artifact upload, or export path touched.",
+      "code_references": [
+        "scripts/check-red-quality.mjs",
+        ".github/workflows/ci.yml",
+        "package.json"
+      ]
+    },
+    {
+      "surface_id": "supply-chain-infrastructure",
+      "brief_path": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": true,
+      "selected": true,
+      "selection_reason": "Triggered by package.json and .github/workflows/ci.yml changes (AC-13's wiring)",
+      "rationale": "package.json gains check:red-quality/test:red-quality/test:fix-brief/check:pipeline-slim/test:pipeline-slim/test:pipeline-trim-structural script entries only \u2014 no new dependency, no lockfile change. ci.yml gains four new `run: npm run <existing-or-new-script>` steps beside existing ones; no new trigger, no permissions change, no third-party action added.",
+      "code_references": [
+        "package.json",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "surface_id": "llm-rag",
+      "brief_path": "security-attacker-agents/llm-rag-poisoning-attacker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-CI-QUAL's changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "model-provider",
+      "brief_path": "security-attacker-agents/model-provider-egress-ssrf-attacker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-CI-QUAL's changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "mcp",
+      "brief_path": "security-attacker-agents/mcp-transport-key-lifecycle-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-CI-QUAL's changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "websocket-realtime",
+      "brief_path": "security-attacker-agents/websocket-realtime-attacker.md",
+      "readiness": "ABSENT",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-CI-QUAL's changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "ingestion-queue-webhook",
+      "brief_path": "security-attacker-agents/ingestion-queue-webhook-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-CI-QUAL's changes.",
+      "code_references": []
+    },
+    {
+      "surface_id": "web-api-client",
+      "brief_path": "security-attacker-agents/web-api-client-attacker.md",
+      "readiness": "PARTIAL",
+      "previous_readiness": null,
+      "readiness_transition": "NOT_COMPARABLE",
+      "changed": false,
+      "selected": false,
+      "selection_reason": "No changed paths match trigger_paths for this surface",
+      "rationale": "Not triggered by PL-CI-QUAL's changes.",
+      "code_references": []
+    }
+  ],
+  "agent_versions": [
+    {
+      "agent_id": "audit-contract",
+      "source": "security-attacker-agents/audit-contract.md",
+      "sha256": "083c663312b5f6c9c179b223da7b1e5b9e90fb57a13c99d1cdad697863551345"
+    },
+    {
+      "agent_id": "agent-registry",
+      "source": "security-attacker-agents/agent-registry.json",
+      "sha256": "a001e47e8d3d016141012f47db4019c84b8bc69463f1d0e71fd4708035d349d5"
+    },
+    {
+      "agent_id": "progress-audit-orchestrator",
+      "source": "security-attacker-agents/progress-audit-orchestrator.md",
+      "sha256": "2dd4062b8e12650b4f3c3fb61e31479d26a09cc7ce04032479c094535c3cc05a"
+    },
+    {
+      "agent_id": "security-checker",
+      "source": ".sdd/stages/security.md",
+      "sha256": "db704cb0a8a88ed2dfb6e74b403d0a045f135700fcebcee6c77ead3fde695084"
+    },
+    {
+      "agent_id": "security-checker-agent-shim",
+      "source": ".claude/agents/security-checker.md",
+      "sha256": "83692646ea2442a9ec86e99ca917ccdc0f26fb197cfefd375ca472d779380e4b"
+    },
+    {
+      "agent_id": "secrets-audit-data-lifecycle",
+      "source": "security-attacker-agents/secrets-audit-data-lifecycle-attacker.md",
+      "sha256": "9cf47a9585cd95ce79994c596105ef61662e7f3bc3f67895f7644f497371e06c"
+    },
+    {
+      "agent_id": "supply-chain-infrastructure",
+      "source": "security-attacker-agents/supply-chain-infrastructure-attacker.md",
+      "sha256": "5a9313b9fb87c85267bcd26bcd6487f5eeae154c64876e0879af86faf01a5e38"
+    }
+  ],
+  "limitations": [
+    "Static analysis only \u2014 runtime tests not authorized; no dynamic verification of any boundary.",
+    "Worktree is dirty (PL-TRIM + PL-INTEGRITY-TESTER + PL-FIXBRIEF + PL-CI-QUAL uncommitted on this branch); analysis is against working-tree file content for this ticket's paths, cross-checked with `git diff`/`git status`.",
+    "Baseline run 20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef (PL-FIXBRIEF) is same branch/commit but dirty-delta/ticket-scope incompatible; all observations classified NOT_COMPARABLE / FIRST_OBSERVATION rather than a fabricated trend.",
+    "Non-triggered surfaces (llm-rag, model-provider, mcp, websocket-realtime, ingestion-queue-webhook, web-api-client) not examined beyond routing \u2014 no changed path implicates them.",
+    "review.json stamp freshness verified fresh (node scripts/check-stamp-freshness.mjs review.json, exit 0) before this run began.",
+    "check-red-quality.mjs's own documented false-positive/false-negative limitations (EC-5/EC-6, a plain-text scan rather than an AST parse) are a product-quality property of the gate, not a security boundary, and are out of this audit's scope beyond confirming the scan never executes the text it matches.",
+    "check-red-quality.mjs (and the pre-existing check-red-integrity.mjs it shares a design with) reads file paths from .pipeline/red.json's `path`/`extends` fields without path-traversal sanitization before readFileSync; this is an inherited, unregressed design (identical in check-red-integrity.mjs, already shipped and previously security-reviewed) rather than something this ticket introduces, and `.pipeline/red.json` is pipeline-internal state written by trusted `red`/`dev` stage invocations, not external/attacker-facing input in this product's threat model \u2014 noted here for completeness, not raised as a finding."
+  ]
+}

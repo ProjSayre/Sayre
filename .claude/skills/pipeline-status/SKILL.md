@@ -5,6 +5,7 @@ disable-model-invocation: true
 argument-hint: (no arguments)
 ---
 
-Follow `.sdd/pipeline.md`'s "`/pipeline-status`" section exactly — it is the authoritative,
-runtime-neutral definition of this command. Take no action beyond reading `.pipeline/` files and
-reporting: don't invoke any subagent, don't write anything.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/pipeline-status.md` (the authoritative definition of this command). Take no
+action beyond reading `.pipeline/` files and reporting: don't invoke any subagent, don't write
+anything.

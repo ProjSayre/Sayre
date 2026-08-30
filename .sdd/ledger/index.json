@@ -39,12 +39,140 @@
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
     }
   ],
+  ".claude/skills/dev/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/gap-scout-only/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/hotfix/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
   ".claude/skills/inline-edit/SKILL.md": [
     {
       "runId": "20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759",
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/pipeline-gapfill/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".claude/skills/pipeline-lite/SKILL.md": [
@@ -53,6 +181,30 @@
       "ticket": "PL-11",
       "date": "2026-08-08",
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".claude/skills/pipeline-status/SKILL.md": [
@@ -61,6 +213,30 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".claude/skills/pipeline/SKILL.md": [
@@ -69,6 +245,134 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/planner/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/re-gate/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/red/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/review/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".claude/skills/security-recheck/SKILL.md": [
@@ -77,6 +381,56 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/security/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".claude/skills/spec-only/SKILL.md": [
@@ -85,6 +439,56 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".claude/skills/tester/SKILL.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".claude/skills/workspace-pack-author/SKILL.md": [
@@ -170,6 +574,30 @@
           "base"
         ]
       }
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".gitignore": [
@@ -307,6 +735,24 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".playwright-mcp/page-2026-08-06T21-11-49-004Z.yml": [
@@ -391,6 +837,30 @@
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/bounds.md": [
@@ -413,6 +883,422 @@
       "ticket": "PL-11",
       "date": "2026-08-08",
       "spec": ".sdd/ledger/20260808T221219423Z-fe1d2b326985-REMEDIATION_RECHECK-728516/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/dev.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/gap-scout-only.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/hotfix.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/inline-edit.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/pipeline-gapfill.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/pipeline-lite.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/pipeline-status.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/pipeline.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/planner.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/re-gate.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/red.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/review.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/security-recheck.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/security.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/spec-only.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/entrypoints/tester.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/hotfix.md": [
@@ -547,6 +1433,468 @@
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/changes.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/entry.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/entry.md": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/red.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/review.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/security.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/security/manifest.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/security/report.md": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/security/results.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.json": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/changes.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/entry.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/entry.md": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/red.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/review.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/security.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/security/manifest.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/security/report.md": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/security/results.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.json": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/changes.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/entry.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/entry.md": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/red.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/review.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/security.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/security/manifest.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/security/report.md": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/security/results.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.json": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
   ".sdd/ledger/README.md": [
     {
       "runId": "20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea",
@@ -579,6 +1927,50 @@
       "ticket": "ARCH-02",
       "date": "2026-08-07",
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/pipeline-history.md": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/pipeline.md": [
@@ -599,6 +1991,30 @@
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/runtimes.yml": [
@@ -621,6 +2037,24 @@
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/stages/dev.md": [
@@ -629,6 +2063,24 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/stages/planner.md": [
@@ -637,6 +2089,26 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  ".sdd/stages/red.md": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/stages/review.md": [
@@ -645,6 +2117,24 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/stages/security.md": [
@@ -653,6 +2143,18 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   ".sdd/stages/tester.md": [
@@ -673,6 +2175,24 @@
       "ticket": "PL-12",
       "date": "2026-08-09",
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "AGENTS.md": [
@@ -690,6 +2210,30 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "CLAUDE.md": [
@@ -719,6 +2263,30 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "DEPENDENCIES.md": [
@@ -4419,6 +5987,30 @@
       "ticket": "W7-01",
       "date": "2026-08-12",
       "spec": ".sdd/ledger/20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4/spec.md"
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "docs/product/SAYRE_FRONTEND_SPEC.md": [
@@ -4640,6 +6232,30 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "packages/config/src/config.ts": [
@@ -5251,6 +6867,74 @@
       "spec": ".sdd/ledger/20260807T184910201Z-e7d473d-PR_DELTA-bc1062/spec.md"
     }
   ],
+  "scripts/check-pipeline-slim.mjs": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/check-pipeline-slim.test.mjs": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/check-red-quality.mjs": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/check-red-quality.test.mjs": [
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
   "scripts/check-secret-access.mjs": [
     {
       "runId": "20260806T212025975Z-e7d473d-PR_DELTA-4d53ce",
@@ -5325,6 +7009,46 @@
       }
     }
   ],
+  "scripts/check-stamp-freshness.mjs": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/check-stamp-freshness.test.mjs": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
   "scripts/dependency-baseline.test.mjs": [
     {
       "runId": "20260804T055818422Z-e7d473db5a-PR_DELTA-d441aa",
@@ -5394,6 +7118,72 @@
       "spec": ".sdd/ledger/20260809T015417496Z-a537e98a7c24-PR_DELTA-1bf759/spec.md"
     }
   ],
+  "scripts/pipeline-contracts.mjs": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/pipeline-contracts.test.mjs": [
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/pipeline-trim-structural.test.mjs": [
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
   "scripts/repo-structure-verify.mjs": [
     {
       "runId": "20260809T120125162Z-17e2299ac5f2-REMEDIATION_RECHECK-0f908e",
@@ -5414,6 +7204,12 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "scripts/sdd-completeness.test.mjs": [
@@ -5446,6 +7242,30 @@
           "dev"
         ]
       }
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "scripts/test-product-workspace-ux.mjs": [
@@ -5477,6 +7297,30 @@
       "regate": {
         "testerRan": true
       }
+    },
+    {
+      "runId": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+      "ticket": "PL-TRIM — drastically slim `.sdd/pipeline.md` into core + per-command entrypoints",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T061700000Z-da97ee2-PR_DELTA-721aa3/spec.md"
+    },
+    {
+      "runId": "20260813T212400000Z-da97ee2-PR_DELTA-531f91",
+      "ticket": "PL-INTEGRITY-TESTER — move red-test integrity (mechanical check + judgment) from review to tester",
+      "date": "2026-08-13",
+      "spec": ".sdd/ledger/20260813T212400000Z-da97ee2-PR_DELTA-531f91/spec.md"
+    },
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "scripts/validate-security-audit-agents.mjs": [
@@ -5501,6 +7345,34 @@
       "ticket": "PL-03a",
       "date": "2026-07-31",
       "spec": ".sdd/ledger/20260731T230940936Z-90330fb19231-PR_DELTA-bf73ea/spec.md"
+    }
+  ],
+  "scripts/write-fix-brief.mjs": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
+    }
+  ],
+  "scripts/write-fix-brief.test.mjs": [
+    {
+      "runId": "20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef",
+      "ticket": "PL-FIXBRIEF — scoped `dev` on reroute (gates stay full)",
+      "date": "2026-08-14",
+      "spec": ".sdd/ledger/20260814T040900000Z-da97ee2-PR_DELTA-f1b0ef/spec.md"
+    },
+    {
+      "runId": "20260816T223012000Z-da97ee2-PR_DELTA-357db2",
+      "ticket": "PL-CI-QUAL — red quality / anti-dupe gate + the remaining CI suites",
+      "date": "2026-08-16",
+      "spec": ".sdd/ledger/20260816T223012000Z-da97ee2-PR_DELTA-357db2/spec.md"
     }
   ],
   "services/core/drizzle/0020_w7_01_github_installation_sync.sql": [

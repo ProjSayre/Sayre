@@ -11,9 +11,9 @@ argument-hint: <ticket-id or path to ticket text> [--prior-ledger <run-id>]
 
 Run the gapfill pipeline lane for this MVP ticket: $ARGUMENTS
 
-Follow `.sdd/pipeline.md`'s "`/pipeline-gapfill <ticket>`" section exactly — it is the authoritative,
-runtime-neutral definition of this lane's eligibility, stage sequence, overlay loading, routing,
-loop caps, ledger step, and Honest limits.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/pipeline-gapfill.md` (the authoritative definition of this lane's eligibility,
+stage sequence, overlay loading, routing, loop caps, ledger step, and Honest limits).
 
 This file only maps that procedure onto Claude Code's subagents:
 
@@ -30,5 +30,4 @@ This file only maps that procedure onto Claude Code's subagents:
 
 Before starting, load ticket context with:
 `node scripts/extract-ticket.mjs <id> --with-overlays`
-only — never Read the full backlog or cheat sheet. Do not restate `.sdd/pipeline.md`'s
-procedure here — read it fresh each time.
+only — never Read the full backlog or cheat sheet.

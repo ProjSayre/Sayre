@@ -73,6 +73,12 @@ import {
   stampFreshness,
 } from './pipeline-contracts.mjs';
 
+// Namespace import for new AC-14 exports that do not yet exist in pipeline-contracts.mjs.
+// Using a namespace import (rather than adding to the named import above) avoids a static
+// SyntaxError that would prevent ALL tests in this file from running — accessing a missing named
+// export via a namespace object returns `undefined` rather than a thrown error at module load time.
+import * as _allContracts from './pipeline-contracts.mjs';
+
 const roots = [];
 afterEach(() => {
   while (roots.length) rmSync(roots.pop(), { recursive: true, force: true });
@@ -319,10 +325,11 @@ test('readSpecJson returns null (not a throw) when explicitly optional and the f
   assert.equal(readSpecJson(dir, { required: false }), null);
 });
 
+// @spec AC-14
 test('readSpecJson never launders an id-shaped token that only appears in prose — unlike the old extractKnownSpecIds, there is no section text to grep at all, only declared {id,text} items', () => {
   // Analogous to the old "AC-77 appears only inside a fenced code example" exploit: here there is no
   // markdown at all for a fenced example to hide in — "AC-77" only "exists" if it is a declared item.
-  const raw = validSpecJson({ goal: 'Mentions AC-77 in prose, e.g. "see @spec AC-77 for the format."' });
+  const raw = validSpecJson({ goal: 'Mentions AC-77 in prose, e.g. "illustrated as AC-77, not as a declared item."' });
   const dir = pipelineDir({ 'spec.json': raw });
   const spec = readSpecJson(dir);
   assert.ok(!knownSpecIds(spec).has('AC-77'), 'a token appearing only inside a string value must never resolve as a declared id');
@@ -381,6 +388,42 @@ test('readRedJson lowercases a recorded sha256 so a case-differing but byte-iden
   assert.equal(red.tests[0].sha256, 'a'.repeat(64));
 });
 
+// =================================================================================================
+// PL-CI-QUAL — validateRedTest gains duplicateOf/justification/extends (AC-7, EC-9, EC-14).
+// =================================================================================================
+
+// @spec AC-7 EC-14
+test('[red-quality] readRedJson passes duplicateOf/justification/extends through on a test entry, and a legacy entry with none of the three still parses exactly as before', () => {
+  const dir = pipelineDir({
+    'red.json': validRedJson({
+      tests: [
+        { path: 'scripts/a.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT' },
+        {
+          path: 'scripts/b.test.mjs', sha256: 'b'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT',
+          duplicateOf: 'scripts/a.test.mjs', justification: 'b.test.mjs extends a.test.mjs\'s AC-1 case for the CLI path.',
+          extends: 'scripts/a.test.mjs',
+        },
+      ],
+    }),
+  });
+  const red = readRedJson(dir);
+  assert.equal(red.tests[0].duplicateOf, undefined, 'a legacy entry with none of the three fields must parse exactly as before (EC-14)');
+  assert.equal(red.tests[1].duplicateOf, 'scripts/a.test.mjs', 'duplicateOf must be passed through, not silently dropped (AC-7)');
+  assert.equal(red.tests[1].justification, 'b.test.mjs extends a.test.mjs\'s AC-1 case for the CLI path.', 'justification must be passed through (AC-7)');
+  assert.equal(red.tests[1].extends, 'scripts/a.test.mjs', 'extends must be passed through (AC-7)');
+});
+
+// @spec AC-7
+test('[red-quality] readRedJson rejects duplicateOf present without a non-empty justification, naming both fields', () => {
+  const dir = pipelineDir({
+    'red.json': validRedJson({
+      tests: [{ path: 'scripts/a.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT', duplicateOf: 'scripts/b.test.mjs' }],
+    }),
+  });
+  assert.throws(() => readRedJson(dir), /(?=[\s\S]*duplicateOf)(?=[\s\S]*justification)/,
+    'error must name both duplicateOf and justification (AC-7)');
+});
+
 // --- changes.json / isDeclaredInChanges -------------------------------------------------------------
 
 test('isDeclaredInChanges is exact-equality against the structured "path" field — a denial sentence has nowhere to hide, because there is no prose field to search at all', () => {
@@ -406,13 +449,18 @@ test('readChangesJson tolerates an empty filesChanged array (a legitimately clea
 
 test('readReviewJson parses PASS and NEEDS_FIXES, and nothing else', () => {
   assert.equal(readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS' } })).verdict, 'PASS');
-  assert.equal(readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES' } })).verdict, 'NEEDS_FIXES');
+  // PL-CI-QUAL / AC-21: NEEDS_FIXES now requires a non-empty findings array at the parser layer —
+  // this fixture's subject is verdict parsing, not findings-optionality, so it carries a minimal
+  // valid finding rather than losing coverage of the NEEDS_FIXES literal itself.
+  assert.equal(readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [validFinding()] } })).verdict, 'NEEDS_FIXES');
 });
 
 // --- security.json ----------------------------------------------------------------------------------
 
 test('readSecurityJson requires runId even when verdict is BLOCKED — a run id always exists once security-checker creates its immutable run directory, win or lose', () => {
-  const dir = pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-123' } });
+  // PL-CI-QUAL / AC-21: BLOCKED now requires a non-empty findings array at the parser layer — this
+  // fixture's subject is runId, not findings-optionality, so it carries a minimal valid finding.
+  const dir = pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-123', findings: [validFinding({ id: 'S1' })] } });
   const security = readSecurityJson(dir);
   assert.equal(security.verdict, 'BLOCKED');
   assert.equal(security.runId, 'run-123');
@@ -564,7 +612,9 @@ test('readReviewJson returns stamp: null when review.json has no "stamp" field �
 
 test('readReviewJson parses a well-formed "stamp" field into the exact shape it was given', () => {
   const stamp = { treeHash: 'a'.repeat(64), headSha: 'b'.repeat(40), dirty: true, writtenAt: '2026-08-04T07:00:00.000Z' };
-  const dir = pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', stamp } });
+  // PL-CI-QUAL / AC-21: NEEDS_FIXES now requires a non-empty findings array — this fixture's
+  // subject is the stamp field, so it carries a minimal valid finding to stay a legal NEEDS_FIXES.
+  const dir = pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [validFinding()], stamp } });
   assert.deepEqual(readReviewJson(dir).stamp, stamp);
 });
 
@@ -575,8 +625,10 @@ test('readSecurityJson returns stamp: null when absent, and parses a well-formed
   // PL-04 review pass 3 / Warning 1a: 'x'/'y' are not hex characters — readStamp's new hex-shape check
   // (see its own doc comment) would reject them, so this fixture uses a valid-length hex filler instead
   // (still an arbitrary value never compared against anything real — see this test's own name).
+  // PL-CI-QUAL / AC-21: BLOCKED now requires a non-empty findings array — this fixture's subject is
+  // the stamp field, so it carries a minimal valid finding to stay a legal BLOCKED.
   const stamp = { treeHash: 'c'.repeat(64), headSha: 'f'.repeat(40), dirty: false, writtenAt: '2026-08-04T07:00:00.000Z' };
-  const dirWithStamp = pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1', stamp } });
+  const dirWithStamp = pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1', findings: [validFinding({ id: 'S1' })], stamp } });
   assert.deepEqual(readSecurityJson(dirWithStamp).stamp, stamp);
 });
 
@@ -672,6 +724,67 @@ const SIDECAR_VALIDATION_CASES = [
   { name: 'security.json verdict outside {PASS, BLOCKED}', run: () => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'PARTIAL', runId: 'run-123' } })), check: /field "verdict" must be exactly one of/ },
   { name: '[DUP-KEY] security.json duplicate "verdict" key — the same BLOCKED -> PASS forgery as review.json\'s, one sidecar over', run: () => readSecurityJson(pipelineDir({ 'security.json': '{"verdict":"BLOCKED","runId":"run-123","verdict":"PASS"}' })), check: duplicateKey('verdict') },
 
+  // red-integrity.json — written by tester (AC-14)
+  // These rows fail before dev implements readRedIntegrityJson: calling undefined(...) throws
+  // TypeError rather than SidecarError, so assert.throws fails because the expected pattern
+  // doesn't match. That is RED-CORRECT: the behavior under test (strict validation) does not
+  // yet exist. After dev adds readRedIntegrityJson, each row throws the expected SidecarError.
+  { name: 'red-integrity.json "redIntegrity" outside the allowed set ("DUNNO" is not PASS/FAIL/UNVERIFIED)', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ redIntegrity: 'DUNNO' }) })), check: /field "redIntegrity" must be exactly one of/ },
+  { name: 'red-integrity.json "scriptStatus" outside the allowed set ("unknown" is not one of the four statuses)', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ scriptStatus: 'unknown' }) })), check: /field "scriptStatus" must be exactly one of/ },
+  { name: 'red-integrity.json "redExpected" not a boolean — the string "true" must not silently pass', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ redExpected: 'true' }) })), check: /field "redExpected" must be a boolean/ },
+  { name: 'red-integrity.json "violations" not an array (a plain string)', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ violations: 'some violation' }) })), check: /field "violations" must be an array/ },
+  { name: 'red-integrity.json "judgments" not an array (an object)', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ judgments: {} }) })), check: /field "judgments" must be an array/ },
+  { name: 'red-integrity.json judgment entry missing "path"', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ judgments: [{ verdict: 'ok', reason: 'Fine.' }] }) })), check: /field "path" must be a non-empty string/ },
+  { name: 'red-integrity.json judgment entry missing "reason"', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ judgments: [{ path: 'x.test.mjs', verdict: 'ok' }] }) })), check: /field "reason" must be a non-empty string/ },
+  { name: 'red-integrity.json judgment "verdict" outside the allowed set ("good" is not "ok" or "blocking")', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ judgments: [{ path: 'x.test.mjs', verdict: 'good', reason: 'Fine.' }] }) })), check: /field "verdict" must be exactly one of/ },
+  { name: '[DUP-KEY] red-integrity.json duplicate "redIntegrity" key — the same PASS forgery as review.json\'s, one sidecar over', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': '{"redIntegrity":"FAIL","scriptStatus":"clean","redExpected":true,"violations":[],"judgments":[],"redIntegrity":"PASS"}' })), check: duplicateKey('redIntegrity') },
+
+  // PL-FIXBRIEF: additive findings / affectedFiles / fix-brief.json
+  { name: 'review.json findings not an array', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: 'R1' } })), check: /field "findings" must be an array/ },
+  { name: 'review.json finding missing summary', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [{ id: 'R1', paths: ['a.ts'], requiredOutcome: 'Fixed.' }] } })), check: /field "summary" must be a non-empty string/ },
+  { name: 'review.json finding empty paths', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [{ id: 'R1', summary: 'x', paths: [], requiredOutcome: 'Fixed.' }] } })), check: /paths/ },
+  // PL-CI-QUAL fix-loop (R1): this row previously carried a spec marker naming edge case 15, which
+  // was a mislabel — that edge case is the legacy-red-integrity.json/redQuality-default one (see the
+  // genuine, directly-asserting coverage of it below, tagged "[red-quality] readRedIntegrityJson
+  // defaults redQuality..."), not review.json's finding-id-uniqueness rule this row actually
+  // exercises. Left untagged, like the surrounding rows in this array that also have no individual
+  // spec-marker comment — this row's own assertion runs via the shared "every case in
+  // SIDECAR_VALIDATION_CASES fails closed" loop below, same as every other row here.
+  { name: 'review.json duplicate finding id', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [
+    { id: 'R1', summary: 'a', paths: ['a.ts'], requiredOutcome: 'A.' },
+    { id: 'R1', summary: 'b', paths: ['b.ts'], requiredOutcome: 'B.' },
+  ] } })), check: /R1.*more than once|lists "R1" more than once|duplicate/ },
+  { name: 'review.json finding relatedAc id is not AC-n/EC-n', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [{ id: 'R1', summary: 'x', paths: ['a.ts'], relatedAc: ['R1'], requiredOutcome: 'Fixed.' }] } })), check: /does not match the required AC-n \/ EC-n shape/ },
+  { name: 'security.json findings not an array', run: () => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'r-1', findings: 'S1' } })), check: /field "findings" must be an array/ },
+  { name: 'spec.json affectedFiles not an array', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ affectedFiles: 'scripts/foo.mjs' }) })), check: /field "affectedFiles" must be an array/ },
+  { name: 'spec.json affectedFiles lists the same path twice', run: () => readSpecJson(pipelineDir({ 'spec.json': validSpecJson({ affectedFiles: ['a.ts', 'a.ts'] }) })), check: /more than once/ },
+  { name: 'fix-brief.json fullSpecStillGoverns is false', run: () => _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson({ fullSpecStillGoverns: false }) })), check: /fullSpecStillGoverns/ },
+  { name: 'fix-brief.json fullSpecStillGoverns is the string "true"', run: () => _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson({ fullSpecStillGoverns: 'true' }) })), check: /fullSpecStillGoverns/ },
+  { name: 'fix-brief.json attempt is 1', run: () => _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson({ attempt: 1 }) })), check: /attempt/ },
+  { name: 'fix-brief.json source outside {review, security}', run: () => _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson({ source: 'tester' }) })), check: /field "source" must be exactly one of/ },
+  { name: 'fix-brief.json allowedPaths is empty', run: () => _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson({ allowedPaths: [] }) })), check: /allowedPaths/ },
+  { name: 'fix-brief.json findings is empty', run: () => _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson({ findings: [] }) })), check: /findings/ },
+
+  // PL-CI-QUAL: duplicateOf implies justification (edge case 9), redQuality/qualityViolations
+  // validity (acceptance criterion 12), and requiredNonEmpty findings on NEEDS_FIXES/BLOCKED
+  // (acceptance criterion 21). PL-CI-QUAL fix-loop (R1): the four rows below no longer carry their
+  // own inline spec-marker comments for those first two ids — each row's assertion still runs,
+  // unchanged, via the shared "every case in SIDECAR_VALIDATION_CASES fails closed" loop below, but
+  // a marker sitting directly on one of these data-array lines is a segment (per
+  // scripts/check-red-quality.mjs's marker-to-next-marker split) that never reaches that shared
+  // loop's actual assert.throws() call, which check-red-quality.mjs correctly read as a stub. Those
+  // two ids instead get their own small, directly-asserting tests (not reliant on the shared loop)
+  // immediately after this array closes, each carrying the real @spec marker.
+  { name: 'red.json duplicateOf present with justification empty string', run: () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'a.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT', duplicateOf: 'b.test.mjs', justification: '' }] }) })), check: /duplicateOf.*justification|justification.*duplicateOf/is },
+  { name: 'red.json duplicateOf present with justification whitespace-only', run: () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'a.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT', duplicateOf: 'b.test.mjs', justification: '   ' }] }) })), check: /duplicateOf.*justification|justification.*duplicateOf/is },
+  { name: 'red-integrity.json redQuality outside {PASS, FAIL, UNVERIFIED}', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ redQuality: 'MAYBE' }) })), check: /field "redQuality" must be exactly one of/ },
+  { name: 'red-integrity.json qualityViolations not an array', run: () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ qualityViolations: 'oops' }) })), check: /field "qualityViolations" must be an array/ },
+  // @spec AC-21
+  { name: 'review.json NEEDS_FIXES with findings entirely absent', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES' } })), check: /field "findings" must be a non-empty array/ },
+  { name: 'review.json NEEDS_FIXES with findings explicitly empty', run: () => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [] } })), check: /field "findings" must be a non-empty array/ },
+  { name: 'security.json BLOCKED with findings entirely absent', run: () => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1' } })), check: /field "findings" must be a non-empty array/ },
+  { name: 'security.json BLOCKED with findings explicitly empty', run: () => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1', findings: [] } })), check: /field "findings" must be a non-empty array/ },
+
   // Every reader's shared, optional "stamp" field
   // PL-04 review pass 3 / Warning 1a: the two rows immediately below predate `readStamp`'s hex-shape
   // check on `treeHash`/`headSha` — they used single-character placeholders ('a'/'b') on the grounds
@@ -705,4 +818,314 @@ test('every case in SIDECAR_VALIDATION_CASES fails closed with its named error �
 test('readReviewJson accepts stamp.headSha === "(none)" — buildStamp()\'s own documented no-HEAD fallback, not merely coincidentally hex-shaped', () => {
   const result = readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', stamp: { treeHash: 'a'.repeat(64), headSha: '(none)', dirty: false, writtenAt: '2026-08-04T00:00:00.000Z' } } }));
   assert.equal(result.stamp.headSha, '(none)');
+});
+
+// PL-CI-QUAL fix-loop (R1): EC-9 and AC-12 previously lived only as inline comments inside
+// SIDECAR_VALIDATION_CASES above, where the actual assert.throws() proving each one runs only in
+// the shared "every case..." loop a few lines up — a segment split by marker-to-next-marker (see
+// scripts/check-red-quality.mjs's specSegments) never sees into that shared loop from an inline
+// array-row marker, so check-red-quality.mjs's no-assertion rule correctly flagged both as stubs.
+// Each gets its own small, directly-asserting test here, proving the exact same case data drives a
+// real throw independent of the shared loop.
+
+// @spec EC-9
+test('[red-quality] red.json duplicateOf present with an empty or whitespace-only justification is rejected — asserted directly, not only via the shared loop above', () => {
+  assert.throws(
+    () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'a.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT', duplicateOf: 'b.test.mjs', justification: '' }] }) })),
+    /duplicateOf.*justification|justification.*duplicateOf/is,
+    'an empty justification alongside duplicateOf must throw (EC-9)',
+  );
+  assert.throws(
+    () => readRedJson(pipelineDir({ 'red.json': validRedJson({ tests: [{ path: 'a.test.mjs', sha256: 'a'.repeat(64), specIds: ['AC-1'], classification: 'RED-CORRECT', duplicateOf: 'b.test.mjs', justification: '   ' }] }) })),
+    /duplicateOf.*justification|justification.*duplicateOf/is,
+    'a whitespace-only justification alongside duplicateOf must throw (EC-9)',
+  );
+});
+
+// @spec AC-12
+test('[red-quality] red-integrity.json rejects an out-of-enum redQuality and a non-array qualityViolations — asserted directly, not only via the shared loop above', () => {
+  assert.throws(
+    () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ redQuality: 'MAYBE' }) })),
+    /field "redQuality" must be exactly one of/,
+    'an out-of-enum redQuality must throw (AC-12)',
+  );
+  assert.throws(
+    () => _allContracts.readRedIntegrityJson(pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ qualityViolations: 'oops' }) })),
+    /field "qualityViolations" must be an array/,
+    'a non-array qualityViolations must throw (AC-12)',
+  );
+});
+
+// =================================================================================================
+// .pipeline/red-integrity.json — written by tester (AC-14)
+// =================================================================================================
+//
+// Tests for the new readRedIntegrityJson reader and the three RED_INTEGRITY_* constant arrays that
+// PL-INTEGRITY-TESTER adds to pipeline-contracts.mjs. These tests intentionally fail on a clean
+// checkout (dev has not yet added the exports) — accessing an absent export through the namespace
+// import gives `undefined`, so assertions like `Array.isArray(undefined)` and
+// `typeof undefined === 'function'` correctly fail with RED-CORRECT classification.
+//
+// Validation cases are added to SIDECAR_VALIDATION_CASES below; positive/behavioral tests are here.
+
+function validRedIntegrityJson(overrides = {}) {
+  return {
+    redIntegrity: 'PASS',
+    scriptStatus: 'clean',
+    redExpected: true,
+    violations: [],
+    judgments: [],
+    ...overrides,
+  };
+}
+
+// @spec AC-14
+test('RED_INTEGRITY_VERDICTS, RED_INTEGRITY_SCRIPT_STATUSES, and RED_INTEGRITY_JUDGMENT_VERDICTS are exported constant arrays with the right values', () => {
+  const { RED_INTEGRITY_VERDICTS, RED_INTEGRITY_SCRIPT_STATUSES, RED_INTEGRITY_JUDGMENT_VERDICTS } = _allContracts;
+  assert.ok(Array.isArray(RED_INTEGRITY_VERDICTS),
+    'RED_INTEGRITY_VERDICTS must be exported as an array — not yet present before dev implements AC-14');
+  assert.deepEqual(
+    [...(RED_INTEGRITY_VERDICTS ?? [])].sort(),
+    ['FAIL', 'PASS', 'UNVERIFIED'],
+    'RED_INTEGRITY_VERDICTS must contain exactly PASS, FAIL, UNVERIFIED',
+  );
+  assert.ok(Array.isArray(RED_INTEGRITY_SCRIPT_STATUSES),
+    'RED_INTEGRITY_SCRIPT_STATUSES must be exported as an array');
+  assert.deepEqual(
+    [...(RED_INTEGRITY_SCRIPT_STATUSES ?? [])].sort(),
+    ['clean', 'error', 'no-red-json', 'violations-found'],
+    'RED_INTEGRITY_SCRIPT_STATUSES must contain exactly the four documented status values',
+  );
+  assert.ok(Array.isArray(RED_INTEGRITY_JUDGMENT_VERDICTS),
+    'RED_INTEGRITY_JUDGMENT_VERDICTS must be exported as an array');
+  assert.deepEqual(
+    [...(RED_INTEGRITY_JUDGMENT_VERDICTS ?? [])].sort(),
+    ['blocking', 'ok'],
+    'RED_INTEGRITY_JUDGMENT_VERDICTS must contain exactly ok and blocking',
+  );
+});
+
+// @spec AC-14
+test('readRedIntegrityJson parses a well-formed red-integrity.json and returns all required fields', () => {
+  const dir = pipelineDir({ 'red-integrity.json': validRedIntegrityJson() });
+  const result = _allContracts.readRedIntegrityJson(dir);
+  assert.equal(result.redIntegrity, 'PASS');
+  assert.equal(result.scriptStatus, 'clean');
+  assert.equal(result.redExpected, true);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.judgments, []);
+  assert.equal(result.stamp, null, 'stamp must default to null when absent — back-compat, same as every other sidecar');
+});
+
+// @spec AC-14
+test('readRedIntegrityJson returns null when optional and absent — a ticket predating this contract, or tester was skipped', () => {
+  const dir = pipelineDir({});
+  assert.equal(_allContracts.readRedIntegrityJson(dir, { required: false }), null);
+});
+
+// @spec AC-14
+test('readRedIntegrityJson parses a well-formed judgment entry with path, verdict, and reason', () => {
+  const dir = pipelineDir({
+    'red-integrity.json': validRedIntegrityJson({
+      judgments: [{ path: 'scripts/foo.test.mjs', verdict: 'ok', reason: 'Non-behavioral fixture added by tester.' }],
+    }),
+  });
+  const result = _allContracts.readRedIntegrityJson(dir);
+  assert.equal(result.judgments.length, 1);
+  assert.equal(result.judgments[0].path, 'scripts/foo.test.mjs');
+  assert.equal(result.judgments[0].verdict, 'ok');
+  assert.equal(result.judgments[0].reason, 'Non-behavioral fixture added by tester.');
+});
+
+// @spec AC-14
+test('readRedIntegrityJson returns stamp: null when absent and parses a well-formed stamp field — same back-compat contract as every other sidecar reader', () => {
+  const stamp = { treeHash: 'a'.repeat(64), headSha: 'b'.repeat(40), dirty: false, writtenAt: '2026-08-13T00:00:00.000Z' };
+  const dir = pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ stamp }) });
+  assert.deepEqual(_allContracts.readRedIntegrityJson(dir).stamp, stamp);
+});
+
+// @spec AC-12 EC-15
+test('[red-quality] readRedIntegrityJson defaults redQuality to "UNVERIFIED" and qualityViolations to [] when both keys are absent — a legacy red-integrity.json written before this ticket must keep parsing, never throw', () => {
+  const dir = pipelineDir({ 'red-integrity.json': validRedIntegrityJson() });
+  const result = _allContracts.readRedIntegrityJson(dir);
+  assert.equal(result.redQuality, 'UNVERIFIED', 'absent redQuality must read as "UNVERIFIED", never throw (AC-12, EC-15)');
+  assert.deepEqual(result.qualityViolations, [], 'absent qualityViolations must read as [] (AC-12, EC-15)');
+});
+
+// @spec AC-12
+test('[red-quality] readRedIntegrityJson parses an explicit redQuality/qualityViolations pair', () => {
+  const dir = pipelineDir({ 'red-integrity.json': validRedIntegrityJson({ redQuality: 'FAIL', qualityViolations: ['scripts/a.test.mjs: duplicate-spec-id on AC-9'] }) });
+  const result = _allContracts.readRedIntegrityJson(dir);
+  assert.equal(result.redQuality, 'FAIL', 'an explicit redQuality must be returned verbatim (AC-12)');
+  assert.deepEqual(result.qualityViolations, ['scripts/a.test.mjs: duplicate-spec-id on AC-9'], 'an explicit qualityViolations must be returned verbatim (AC-12)');
+});
+
+// =================================================================================================
+// PL-FIXBRIEF — additive findings / affectedFiles / readFixBriefJson
+// =================================================================================================
+
+function validFinding(overrides = {}) {
+  return {
+    id: 'R1',
+    summary: 'Export readFixBriefJson.',
+    paths: ['scripts/pipeline-contracts.mjs'],
+    relatedAc: ['AC-1'],
+    requiredOutcome: 'readFixBriefJson validates fix-brief.json.',
+    ...overrides,
+  };
+}
+
+function validFixBriefJson(overrides = {}) {
+  return {
+    source: 'review',
+    attempt: 2,
+    findings: [validFinding()],
+    allowedPaths: ['scripts/pipeline-contracts.mjs'],
+    fullSpecStillGoverns: true,
+    ...overrides,
+  };
+}
+
+// @spec AC-4 EC-12
+test('readReviewJson accepts a missing findings field and returns findings: [] — every review.json on disk today must keep parsing', () => {
+  const result = readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS' } }));
+  assert.equal(result.verdict, 'PASS');
+  assert.deepEqual(result.findings, [],
+    'absent findings must default to [] rather than failing validation (AC-4, EC-12)');
+});
+
+// @spec AC-4
+test('readReviewJson parses a well-formed findings array on NEEDS_FIXES', () => {
+  const result = readReviewJson(pipelineDir({
+    'review.json': { verdict: 'NEEDS_FIXES', findings: [validFinding()] },
+  }));
+  assert.equal(result.verdict, 'NEEDS_FIXES');
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].id, 'R1');
+  assert.deepEqual(result.findings[0].paths, ['scripts/pipeline-contracts.mjs']);
+  assert.deepEqual(result.findings[0].relatedAc, ['AC-1']);
+});
+
+// @spec AC-4
+test('readReviewJson defaults a missing relatedAc on a finding to []', () => {
+  const finding = validFinding();
+  delete finding.relatedAc;
+  const result = readReviewJson(pipelineDir({
+    'review.json': { verdict: 'NEEDS_FIXES', findings: [finding] },
+  }));
+  assert.deepEqual(result.findings[0].relatedAc, []);
+});
+
+// @spec AC-5 EC-12
+test('readSecurityJson accepts a missing findings field and returns findings: []', () => {
+  const result = readSecurityJson(pipelineDir({ 'security.json': { verdict: 'PASS', runId: 'run-1' } }));
+  assert.equal(result.verdict, 'PASS');
+  assert.deepEqual(result.findings, [],
+    'absent findings must default to [] (AC-5, EC-12)');
+});
+
+// @spec AC-5
+test('readSecurityJson parses a well-formed findings array on BLOCKED', () => {
+  const result = readSecurityJson(pipelineDir({
+    'security.json': {
+      verdict: 'BLOCKED',
+      runId: 'run-1',
+      findings: [validFinding({ id: 'S1' })],
+    },
+  }));
+  assert.equal(result.findings[0].id, 'S1');
+});
+
+// =================================================================================================
+// PL-CI-QUAL — requiredNonEmpty threaded through readReviewJson/readSecurityJson (AC-21, EC-20,
+// EC-21) and requireFindingId's corrected message (AC-22, EC-22).
+// =================================================================================================
+
+// @spec AC-21 EC-21 EC-20
+test('[red-quality] readReviewJson throws at the parser layer (not merely at write-fix-brief.mjs\'s own guard) for NEEDS_FIXES with findings missing or empty, but PASS with the same absent/empty findings still parses (the rule is conditional on the verdict, never blanket)', () => {
+  assert.throws(() => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES' } })),
+    /field "findings" must be a non-empty array/,
+    'a NEEDS_FIXES review.json with no findings key must fail at readReviewJson itself (AC-21)');
+  assert.throws(() => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [] } })),
+    /field "findings" must be a non-empty array/,
+    'a NEEDS_FIXES review.json with an empty findings array must fail the same way (AC-21, EC-21)');
+  const passAbsent = readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS' } }));
+  assert.deepEqual(passAbsent.findings, [], 'a PASS review.json must not be forced to invent a finding (EC-20)');
+  const passEmpty = readReviewJson(pipelineDir({ 'review.json': { verdict: 'PASS', findings: [] } }));
+  assert.deepEqual(passEmpty.findings, [], 'a PASS review.json with findings: [] must also still parse (EC-20)');
+});
+
+// @spec AC-21 EC-21 EC-20
+test('[red-quality] readSecurityJson throws for BLOCKED with findings missing or empty, the same requiredNonEmpty rule as readReviewJson, but PASS still parses with absent findings', () => {
+  assert.throws(() => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1' } })),
+    /field "findings" must be a non-empty array/,
+    'a BLOCKED security.json with no findings key must fail at readSecurityJson itself (AC-21)');
+  assert.throws(() => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1', findings: [] } })),
+    /field "findings" must be a non-empty array/,
+    'a BLOCKED security.json with an empty findings array must fail the same way (AC-21, EC-21)');
+  const pass = readSecurityJson(pipelineDir({ 'security.json': { verdict: 'PASS', runId: 'run-1' } }));
+  assert.deepEqual(pass.findings, [], 'a PASS security.json must not be forced to invent a finding (EC-20)');
+});
+
+// @spec AC-22 EC-22
+test('[red-quality] requireFindingId\'s error message names the shape FINDING_ID_PATTERN actually accepts, not the hyphenated "R-n / S-n" form the regex itself rejects', () => {
+  let thrown = null;
+  try {
+    readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [{ id: 'R-1', summary: 'x', paths: ['a.ts'], requiredOutcome: 'Fixed.' }] } }));
+  } catch (err) {
+    thrown = err instanceof Error ? err.message : String(err);
+  }
+  assert.ok(thrown, 'a finding id of "R-1" must still be rejected (AC-22)');
+  assert.ok(!/R-n \/ S-n/.test(thrown), 'the message must no longer claim the hyphenated "R-n / S-n" shape is what\'s required (AC-22)');
+  assert.ok(!/"R-1"[^]*valid|valid[^]*"R-1"/.test(thrown), 'the message must not present "R-1" as an accepted shape — the regex still rejects it (EC-22)');
+  // The regex itself is unchanged by AC-22 (message-only fix): "R1"/"S2a" are still accepted, and
+  // hyphenated "R-1" is still rejected — both directions pinned here so a future change to the
+  // pattern itself (not just its message) is caught the same way.
+  assert.doesNotThrow(() => readReviewJson(pipelineDir({ 'review.json': { verdict: 'NEEDS_FIXES', findings: [{ id: 'R1', summary: 'x', paths: ['a.ts'], requiredOutcome: 'Fixed.' }] } })),
+    '"R1" (no hyphen) must still be accepted (EC-22)');
+  assert.doesNotThrow(() => readSecurityJson(pipelineDir({ 'security.json': { verdict: 'BLOCKED', runId: 'run-1', findings: [{ id: 'S2a', summary: 'x', paths: ['a.ts'], requiredOutcome: 'Fixed.' }] } })),
+    '"S2a" must still be accepted (EC-22)');
+});
+
+// @spec AC-6 EC-12
+test('readSpecJson accepts a missing affectedFiles field and returns affectedFiles: [] — every spec.json on disk today must keep parsing', () => {
+  const spec = readSpecJson(pipelineDir({ 'spec.json': validSpecJson() }));
+  assert.deepEqual(spec.affectedFiles, [],
+    'absent affectedFiles must default to [] rather than failing validation (AC-6, EC-12)');
+});
+
+// @spec AC-6
+test('readSpecJson parses a unique affectedFiles path list', () => {
+  const spec = readSpecJson(pipelineDir({
+    'spec.json': validSpecJson({ affectedFiles: ['scripts/a.mjs', 'scripts/b.mjs'] }),
+  }));
+  assert.deepEqual(spec.affectedFiles, ['scripts/a.mjs', 'scripts/b.mjs']);
+});
+
+// @spec AC-3 AC-16
+test('readFixBriefJson parses a well-formed fix-brief.json and rejects fullSpecStillGoverns that is not literal true', () => {
+  assert.equal(typeof _allContracts.readFixBriefJson, 'function',
+    'readFixBriefJson must be exported (AC-3)');
+  const result = _allContracts.readFixBriefJson(pipelineDir({ 'fix-brief.json': validFixBriefJson() }));
+  assert.equal(result.source, 'review');
+  assert.equal(result.attempt, 2);
+  assert.equal(result.fullSpecStillGoverns, true);
+  assert.deepEqual(result.allowedPaths, ['scripts/pipeline-contracts.mjs']);
+  assert.equal(result.findings[0].id, 'R1');
+  assert.equal(result.stamp, null, 'stamp defaults to null when absent');
+});
+
+// @spec AC-3
+test('readFixBriefJson returns null when optional and absent', () => {
+  assert.equal(_allContracts.readFixBriefJson(pipelineDir({}), { required: false }), null);
+});
+
+// @spec AC-3
+test('FINDING_ID_PATTERN is exported and matches R1 / S1 / R2a, not AC-1', () => {
+  const { FINDING_ID_PATTERN } = _allContracts;
+  assert.ok(FINDING_ID_PATTERN instanceof RegExp, 'FINDING_ID_PATTERN must be exported (AC-3)');
+  assert.equal(FINDING_ID_PATTERN.test('R1'), true);
+  assert.equal(FINDING_ID_PATTERN.test('S1'), true);
+  assert.equal(FINDING_ID_PATTERN.test('R2a'), true);
+  assert.equal(FINDING_ID_PATTERN.test('AC-1'), false);
 });

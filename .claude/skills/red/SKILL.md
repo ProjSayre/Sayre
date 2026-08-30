@@ -7,8 +7,9 @@ argument-hint: (no arguments)
 
 Run only the red stage against the current spec.
 
-Follow `.sdd/pipeline.md`'s "`/red`" section exactly — it is the authoritative, runtime-neutral
-definition of this command. Invoke the `red` subagent; it writes `.pipeline/red.md`/`red.json`
-directly. Require `.pipeline/spec.md` to exist first — if it doesn't, say planner needs to run
-(`/planner <ticket>`) instead of improvising a spec. Do not continue to `dev`, `tester`, `review`,
-or `security-checker` — this command stops after red, on purpose.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/red.md` (the authoritative definition of this command). Invoke the `red` subagent;
+it writes `.pipeline/red.md`/`red.json` directly. Require `.pipeline/spec.md` to exist first — if
+it doesn't, say planner needs to run (`/planner <ticket>`) instead of improvising a spec. Do not
+continue to `dev`, `tester`, `review`, or `security-checker` — this command stops after red, on
+purpose.

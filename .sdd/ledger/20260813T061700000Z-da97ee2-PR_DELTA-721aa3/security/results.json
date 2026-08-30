@@ -1,0 +1,890 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "20260813T061700000Z-da97ee2-PR_DELTA-721aa3",
+  "baseline_run_id": "20260812T235133733Z-2520ec9-REMEDIATION_RECHECK-899ef4",
+  "generated_at": "2026-08-13T06:25:00.000Z",
+  "verdict": "PASS",
+  "summary": {
+    "results": {
+      "PASS": 12,
+      "FAIL": 0,
+      "UNVERIFIED": 0,
+      "NOT_APPLICABLE": 22
+    },
+    "result_transitions": {
+      "NOT_COMPARABLE": 34
+    },
+    "coverage_transitions": {
+      "NOT_COMPARABLE": 34
+    },
+    "finding_statuses": {},
+    "surface_readiness": {
+      "PARTIAL": 11,
+      "ABSENT": 3
+    },
+    "readiness_transitions": {
+      "NOT_COMPARABLE": 14
+    }
+  },
+  "observations": [
+    {
+      "observation_key": "projsayre/sayre|CORE-01|tenant-isolation|persistence-and-query-boundaries|v1",
+      "check_id": "CORE-01",
+      "surface_id": "tenant-isolation",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "persistence-and-query-boundaries",
+      "attack_path_version": "v1",
+      "attempt": "Inspect all changed paths for new persistence writes or graph reads lacking org_id stamping or server-side injection.",
+      "evidence": [
+        "Changed paths are entirely .sdd/**, .claude/skills/**, scripts/check-pipeline-slim.mjs, .github/workflows/ci.yml, package.json, AGENTS.md, CLAUDE.md.",
+        "No services/core, services/workers, services/gateway, apps/web, or packages/graph-schema files modified.",
+        "No new persistence writes, graph reads, or database-touching code paths introduced."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no executable tenant-isolation boundary in scope for this delta.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-02|rbac-boundary|graph-query-service|v1",
+      "check_id": "CORE-02",
+      "surface_id": "rbac-boundary",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "graph-query-service",
+      "attack_path_version": "v1",
+      "attempt": "Inspect changed paths for route handlers, resolvers, or client-side graphology code that might perform node-level access control or graph traversal outside the Graph Query Service.",
+      "evidence": [
+        "No services/core/src/routes, services/core/src/http, apps/web, or graph-schema files changed.",
+        "PL-TRIM is a methodology doc restructuring; no product API or client code modified."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no RBAC boundary executable surface in scope for this delta.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-03|secret-handling|scripts-and-ci|v1",
+      "check_id": "CORE-03",
+      "surface_id": "secret-handling",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "scripts-and-ci",
+      "attack_path_version": "v1",
+      "attempt": "Inspect all new/modified scripts and CI steps for hardcoded credentials, direct environment variable reads outside the approved loader, or secret exposure paths.",
+      "evidence": [
+        "scripts/check-pipeline-slim.mjs: imports only node:fs, node:path, node:url \u2014 no process.env reads, no secrets, no network calls.",
+        "scripts/check-pipeline-slim.test.mjs, scripts/pipeline-trim-structural.test.mjs, scripts/sdd-completeness.test.mjs: test files with no credential access.",
+        ".github/workflows/ci.yml adds: 'npm run check:pipeline-slim && npm run test:pipeline-slim' and 'npm run test:pipeline-trim-structural' \u2014 both are read-only filesystem checks with no secrets: block.",
+        "package.json adds script aliases; no secrets referenced.",
+        ".sdd/ and .claude/skills/ files are pure methodology docs; no credentials present."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of all new/modified files. No artifacts created.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs:1-30",
+        ".github/workflows/ci.yml:186-200",
+        "package.json:43-46"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-04|webhook-trust|webhook-receivers|v1",
+      "check_id": "CORE-04",
+      "surface_id": "webhook-trust",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "webhook-receivers",
+      "attack_path_version": "v1",
+      "attempt": "Inspect changed paths for new or modified webhook receiver code lacking payload authentication.",
+      "evidence": [
+        "No services/core/**/*webhook*, services/workers/**, or BullMQ integration job files changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no webhook receiver code in scope for this delta.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-05|ingestion-ephemerality|ingestion-scratch-clones|v1",
+      "check_id": "CORE-05",
+      "surface_id": "ingestion-ephemerality",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ingestion-scratch-clones",
+      "attack_path_version": "v1",
+      "attempt": "Inspect changed paths for new or modified ingestion scratch-clone handling.",
+      "evidence": [
+        "No services/workers/**, ingestion, or scratch-clone management code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no ingestion code in scope for this delta.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|CORE-06|injection-boundaries|check-pipeline-slim-script|v1",
+      "check_id": "CORE-06",
+      "surface_id": "injection-boundaries",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "check-pipeline-slim-script",
+      "attack_path_version": "v1",
+      "attempt": "Inspect scripts/check-pipeline-slim.mjs for injection risks: does it pass file content or derived strings to shell commands, Cypher queries, SQL, or queue operations without parameterization?",
+      "evidence": [
+        "check-pipeline-slim.mjs performs only: readFileSync, readdirSync, statSync, String.prototype operations, and RegExp.exec on file contents.",
+        "No child_process, exec, spawn, Cypher queries, SQL queries, or queue submissions anywhere in the file.",
+        "repoRoot is derived from import.meta.url (line 262: resolve(fileURLToPath(import.meta.url), '..', '..')), not from argv or user input.",
+        "File paths constructed via join(repoRoot, ...) \u2014 no path concatenation from untrusted content.",
+        "ENTRYPOINT_REF_RE regex executed against skill body strings for reporting only; result never becomes a shell argument or query parameter."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of scripts/check-pipeline-slim.mjs. No artifacts created.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs:203-238",
+        "scripts/check-pipeline-slim.mjs:256-293"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-01|secrets-audit-data-lifecycle|secret-loaders-and-scripts|v1",
+      "check_id": "SEC-01",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "secret-loaders-and-scripts",
+      "attack_path_version": "v1",
+      "attempt": "Search all changed scripts and CI steps for direct secret reads or alternate credential paths outside the designated loader.",
+      "evidence": [
+        "scripts/check-pipeline-slim.mjs: no process.env access, no secret loader calls, no credential access.",
+        "All three test files: no env var access for secrets.",
+        "scripts/sdd-completeness.test.mjs changes: added assertions for entrypoint structure \u2014 no credential access.",
+        "CI steps invoke npm run scripts only; no secret env var injections added."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of all changed script and CI files.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs:1-30",
+        ".github/workflows/ci.yml:186-200"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-02|secrets-audit-data-lifecycle|tracked-files-and-ci|v1",
+      "check_id": "SEC-02",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "tracked-files-and-ci",
+      "attack_path_version": "v1",
+      "attempt": "Inspect all new tracked files, .sdd/ docs, .claude/skills/ files, and CI config for hardcoded credentials, tokens, keys, or sensitive values.",
+      "evidence": [
+        "16 .sdd/entrypoints/*.md files: pure pipeline methodology documentation. No credentials.",
+        ".sdd/pipeline-history.md: historical methodology notes. No credentials.",
+        ".sdd/pipeline.md: rewritten core. No credentials.",
+        ".sdd/README.md, CLAUDE.md, AGENTS.md: documentation updates. No credentials.",
+        "16 .claude/skills/*/SKILL.md: skill retargeting. No credentials.",
+        "scripts/check-pipeline-slim.mjs: no sensitive values.",
+        ".github/workflows/ci.yml diff: adds two new 'run:' steps with fixed npm commands. No secrets injected.",
+        "package.json: adds three script aliases. No sensitive values."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of all 45 changed files. No artifacts created.",
+      "code_references": [
+        ".sdd/entrypoints/",
+        ".sdd/pipeline.md",
+        ".claude/skills/",
+        "scripts/check-pipeline-slim.mjs"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-03|secrets-audit-data-lifecycle|frontend-bundles|v1",
+      "check_id": "SEC-03",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "frontend-bundles",
+      "attack_path_version": "v1",
+      "attempt": "Check whether any changed files can flow server-only secrets into browser bundles, rendered HTML, or API error payloads.",
+      "evidence": [
+        "No apps/web/ or Next.js client files changed. PL-TRIM changes are entirely methodology docs, CI tooling, and Node scripts that run server-side only."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no frontend code in scope for this delta.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-04|secrets-audit-data-lifecycle|scripts-stdout-stderr|v1",
+      "check_id": "SEC-04",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "scripts-stdout-stderr",
+      "attack_path_version": "v1",
+      "attempt": "Verify that scripts/check-pipeline-slim.mjs and CI steps do not emit secrets or tenant data to stdout/stderr.",
+      "evidence": [
+        "check-pipeline-slim.mjs stdout: 'check-pipeline-slim: ok \u2014 .sdd/pipeline.md is N/M lines, all rules pass' or JSON with {ok, lineCount, budget, violations:[]}.",
+        "check-pipeline-slim.mjs stderr: violation descriptions of the form '[kind] .path: detail' \u2014 all derived from repo structure filenames and line counts, not from secret values.",
+        "No external network calls; no credential values could appear in output.",
+        "CI 'run:' steps capture only these fixed-format outputs."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of scripts/check-pipeline-slim.mjs output paths (lines 274-285).",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs:274-286"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-05|secrets-audit-data-lifecycle|storage-access|v1",
+      "check_id": "SEC-05",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "storage-access",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified storage access patterns (database, graph, vector) in changed files.",
+      "evidence": [
+        "No database, graph, or vector store access code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no storage access code in scope for this delta.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-06|secrets-audit-data-lifecycle|rotation-and-cache|v1",
+      "check_id": "SEC-06",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "rotation-and-cache",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified secret rotation or cache invalidation code.",
+      "evidence": [
+        "No rotation or cache invalidation code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-07|secrets-audit-data-lifecycle|worker-sandbox|v1",
+      "check_id": "SEC-07",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "worker-sandbox",
+      "attack_path_version": "v1",
+      "attempt": "Inspect check-pipeline-slim.mjs for environment variable exposure, temp directory creation, subprocess spawning, or child process argument leakage.",
+      "evidence": [
+        "No child_process, exec, spawn, or subprocess invocations in check-pipeline-slim.mjs.",
+        "No process.env reads beyond what Node's module system uses internally.",
+        "No temp directory creation; the script only reads existing repo paths.",
+        "When run in CI (ubuntu-latest), file reads are scoped to the checked-out repo workspace only.",
+        "realpathSync usage at line 291 is for the guard comparison only (is this script being imported or run directly) \u2014 not for following symlinks into sensitive areas."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection. No artifacts created.",
+      "code_references": [
+        "scripts/check-pipeline-slim.mjs:20-30",
+        "scripts/check-pipeline-slim.mjs:288-293"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-08|secrets-audit-data-lifecycle|ci-workflow-fork-pr|v1",
+      "check_id": "SEC-08",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-workflow-fork-pr",
+      "attack_path_version": "v1",
+      "attempt": "Verify the new CI steps do not introduce additional secret exposure on fork/PR workflow runs. The workflow already triggers on 'pull_request:' (forks receive read-only token by default in GitHub Actions).",
+      "evidence": [
+        "ci.yml on: block is 'push' and 'pull_request' (no filter). This pre-existed PL-TRIM.",
+        "New steps: 'npm run check:pipeline-slim && npm run test:pipeline-slim' and 'npm run test:pipeline-trim-structural'.",
+        "These commands read only from the checked-out workspace (readFileSync on .sdd/, .claude/skills/). No ${{ secrets.* }} references in these steps.",
+        "No artifacts uploaded, no write-token access, no environment deployments triggered.",
+        "Fork PRs run these steps with the fork's code \u2014 the check reads the PR branch's .sdd/pipeline.md and skill files, which is the intended behavior (enforce slimness on proposed changes).",
+        "No escalation path: check-pipeline-slim.mjs cannot access CI secrets even if a malicious fork modified the script, because GitHub Actions restricts secret access on fork PRs by default."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of .github/workflows/ci.yml diff.",
+      "code_references": [
+        ".github/workflows/ci.yml:186-200"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-09|secrets-audit-data-lifecycle|audit-log-completeness|v1",
+      "check_id": "SEC-09",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "audit-log-completeness",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified audit-log code paths.",
+      "evidence": [
+        "No audit-log implementation changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-10|secrets-audit-data-lifecycle|audit-log-tampering|v1",
+      "check_id": "SEC-10",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "audit-log-tampering",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified audit-log write paths that could allow tampering or repudiation.",
+      "evidence": [
+        "No audit-log write paths changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-11|secrets-audit-data-lifecycle|tenant-deletion|v1",
+      "check_id": "SEC-11",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "tenant-deletion",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified tenant deletion or offboarding code.",
+      "evidence": [
+        "No tenant deletion code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-12|secrets-audit-data-lifecycle|backup-restore|v1",
+      "check_id": "SEC-12",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "backup-restore",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified backup/restore code.",
+      "evidence": [
+        "No backup or restore code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-13|secrets-audit-data-lifecycle|export-support|v1",
+      "check_id": "SEC-13",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "export-support",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified export or support tooling code.",
+      "evidence": [
+        "No export or support tooling code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SEC-14|secrets-audit-data-lifecycle|detection-response|v1",
+      "check_id": "SEC-14",
+      "surface_id": "secrets-audit-data-lifecycle",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "detection-response",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified detection and alerting code.",
+      "evidence": [
+        "No detection or alerting code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-01|supply-chain-infrastructure|package-json-lockfiles|v1",
+      "check_id": "SC-01",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "package-json-lockfiles",
+      "attack_path_version": "v1",
+      "attempt": "Inspect package.json changes for new dependencies, floating versions, or altered registries.",
+      "evidence": [
+        "package.json diff adds only three entries to the 'scripts' object: check:pipeline-slim, test:pipeline-slim, test:pipeline-trim-structural.",
+        "No new dependencies added to dependencies or devDependencies.",
+        "No registry or install configuration changed.",
+        "check-pipeline-slim.mjs uses only Node built-ins (node:fs, node:path, node:url) \u2014 no npm packages imported."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of package.json diff and scripts/check-pipeline-slim.mjs imports.",
+      "code_references": [
+        "package.json:43-46",
+        "scripts/check-pipeline-slim.mjs:20-22"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-02|supply-chain-infrastructure|install-build-scripts|v1",
+      "check_id": "SC-02",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "install-build-scripts",
+      "attack_path_version": "v1",
+      "attempt": "Verify new package.json scripts do not run on npm install, and inspect new scripts for code execution from untrusted inputs.",
+      "evidence": [
+        "New scripts check:pipeline-slim and test:pipeline-slim are not lifecycle hooks (not 'preinstall', 'install', 'postinstall', 'prepare', etc.).",
+        "check-pipeline-slim.mjs CLI guard (line 291): realpathSync(process.argv[1]) === fileURLToPath(import.meta.url) \u2014 only runs CLI when directly invoked, not when imported.",
+        "No generated code, no eval, no dynamic require from untrusted paths."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of package.json and scripts/check-pipeline-slim.mjs.",
+      "code_references": [
+        "package.json:43-46",
+        "scripts/check-pipeline-slim.mjs:288-293"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-03|supply-chain-infrastructure|dependency-vuln-scanning|v1",
+      "check_id": "SC-03",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "dependency-vuln-scanning",
+      "attack_path_version": "v1",
+      "attempt": "Check whether PL-TRIM adds new dependencies requiring vulnerability scanning.",
+      "evidence": [
+        "No new npm or Python dependencies added. Dependency scanning coverage is unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A \u2014 no dependency changes in scope.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-04|supply-chain-infrastructure|ci-triggers-and-permissions|v1",
+      "check_id": "SC-04",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-triggers-and-permissions",
+      "attack_path_version": "v1",
+      "attempt": "Inspect ci.yml changes for new triggers, permissions escalation, or expanded secret access.",
+      "evidence": [
+        "Diff adds two 'name:' / 'run:' step pairs only \u2014 no new 'on:' triggers, no 'permissions:' blocks, no 'env:' referencing secrets, no 'uses:' reusable workflow calls.",
+        "Existing 'on: push' and 'on: pull_request' triggers unchanged.",
+        "New steps run fixed npm commands. No write-token usage, no environment deployment, no artifact upload."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of .github/workflows/ci.yml diff.",
+      "code_references": [
+        ".github/workflows/ci.yml:186-200"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-05|supply-chain-infrastructure|ci-workflow-injection|v1",
+      "check_id": "SC-05",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "ci-workflow-injection",
+      "attack_path_version": "v1",
+      "attempt": "Test whether new CI 'run:' steps interpolate attacker-controlled values (branch names, commit messages, matrix values, PR titles) into shell commands.",
+      "evidence": [
+        "New steps use literal strings: 'npm run check:pipeline-slim && npm run test:pipeline-slim' and 'npm run test:pipeline-trim-structural'.",
+        "No ${{ github.* }}, ${{ matrix.* }}, ${{ env.* }}, or other expression syntax in the new run blocks.",
+        "No shell expansion from external sources."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of .github/workflows/ci.yml diff.",
+      "code_references": [
+        ".github/workflows/ci.yml:186-200"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-06|supply-chain-infrastructure|action-and-artifact-pinning|v1",
+      "check_id": "SC-06",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "action-and-artifact-pinning",
+      "attack_path_version": "v1",
+      "attempt": "Check whether PL-TRIM introduces new third-party actions or unpinned action refs.",
+      "evidence": [
+        "No 'uses:' entries added by the diff. Both new steps use only 'run:' with npm commands.",
+        "Existing third-party actions (e.g. actions/checkout) are unchanged."
+      ],
+      "evidence_type": "STATIC",
+      "result": "PASS",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "Static inspection of .github/workflows/ci.yml diff.",
+      "code_references": [
+        ".github/workflows/ci.yml:186-200"
+      ]
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-07|supply-chain-infrastructure|container-hardening|v1",
+      "check_id": "SC-07",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "container-hardening",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified container configuration.",
+      "evidence": [
+        "No Dockerfile, docker-compose, or container configuration changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-08|supply-chain-infrastructure|network-exposure|v1",
+      "check_id": "SC-08",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "network-exposure",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified network service configuration.",
+      "evidence": [
+        "No network service or port configuration changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-09|supply-chain-infrastructure|iam-least-privilege|v1",
+      "check_id": "SC-09",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "iam-least-privilege",
+      "attack_path_version": "v1",
+      "attempt": "Check for IAM role or credential scope changes.",
+      "evidence": [
+        "No IAM or cloud credential configuration changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-10|supply-chain-infrastructure|environment-separation|v1",
+      "check_id": "SC-10",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "environment-separation",
+      "attack_path_version": "v1",
+      "attempt": "Check for environment configuration crossover introduced by CI changes.",
+      "evidence": [
+        "No environment configuration, queue names, database URLs, or environment-specific settings changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-11|supply-chain-infrastructure|config-tls-posture|v1",
+      "check_id": "SC-11",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "config-tls-posture",
+      "attack_path_version": "v1",
+      "attempt": "Check for TLS, certificate, or security posture configuration changes.",
+      "evidence": [
+        "No TLS or security posture configuration changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-12|supply-chain-infrastructure|availability-recovery|v1",
+      "check_id": "SC-12",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "availability-recovery",
+      "attack_path_version": "v1",
+      "attempt": "Check for changes to availability, autoscaling, or recovery configuration.",
+      "evidence": [
+        "No availability or recovery configuration changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-13|supply-chain-infrastructure|migration-privilege|v1",
+      "check_id": "SC-13",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "migration-privilege",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified database or graph migration code.",
+      "evidence": [
+        "No migration code changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    },
+    {
+      "observation_key": "projsayre/sayre|SC-14|supply-chain-infrastructure|patch-exception-lifecycle|v1",
+      "check_id": "SC-14",
+      "surface_id": "supply-chain-infrastructure",
+      "surface_readiness": "PARTIAL",
+      "target_asset": "patch-exception-lifecycle",
+      "attack_path_version": "v1",
+      "attempt": "Check for new or modified patch/exception lifecycle tooling.",
+      "evidence": [
+        "No patch exception lifecycle tooling changed."
+      ],
+      "evidence_type": "STATIC",
+      "result": "NOT_APPLICABLE",
+      "previous_result": null,
+      "result_transition": "NOT_COMPARABLE",
+      "coverage_transition": "NOT_COMPARABLE",
+      "severity": "NONE",
+      "confidence": "HIGH",
+      "single_point_of_failure": false,
+      "finding": null,
+      "reproduction_and_cleanup": "N/A.",
+      "code_references": []
+    }
+  ]
+}

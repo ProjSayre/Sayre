@@ -6,11 +6,13 @@ terminal `PASS`. Any AI coding tool that can read files in this repository — C
 Cursor, or anything else — reads the same methodology from here. There is no second, tool-specific
 copy of *what each stage does*.
 
-If you've never touched this pipeline before, read `.sdd/pipeline.md` first (the stage sequence and
-the ways to invoke it, including the sanctioned `/hotfix` bypass — see `.sdd/hotfix.md`), then
-whichever `.sdd/stages/*.md` file matches the stage you're running. That's genuinely enough — these
-files are written to be understandable without knowing what a Claude Code subagent, hook, or Codex
-sandbox is.
+If you've never touched this pipeline before, read `.sdd/pipeline.md` first (the core: stage
+sequence, routing, loop cap, and staleness policy — short, ≤300 lines), then read the one
+`.sdd/entrypoints/<cmd>.md` file for the command you're actually running (full procedure, all
+routing items, honest limits). Together those two files are everything you need for that command —
+no other entrypoint file is required. Then whichever `.sdd/stages/*.md` file matches the stage
+you're running. For archaeology and rationale (why stamps exist, the JSON-sidecar rounds, etc.),
+see `.sdd/pipeline-history.md` — but no stage or command needs it to run.
 
 ## Why this exists
 
@@ -62,10 +64,19 @@ has none now.
 ```
 .sdd/
   README.md          — this file
-  pipeline.md         — stage sequence, routing, loop caps, and the entry-point commands (PL-04:
-                        the full sequence, six per-stage commands, a status check, /re-gate,
-                        /pipeline-lite, /pipeline-gapfill, /gap-scout-only, /inline-edit, and /hotfix — see pipeline.md's own Entry
-                        points section for the current count)
+  pipeline.md         — core: stage sequence, routing, loop caps, staleness policy, and a short stub
+                        for each of the 16 entry-point commands: the full sequence (/pipeline), six
+                        per-stage commands (/planner through /security), /spec-only, /security-recheck,
+                        /pipeline-status, /re-gate, /pipeline-lite, /pipeline-gapfill, /gap-scout-only,
+                        /inline-edit, and /hotfix (PL-TRIM: ≤300 lines)
+  pipeline-history.md — archaeology and rationale (JSON-sidecar rounds, staleness backstory, etc.) —
+                        no stage or command needs this to run
+  entrypoints/        — one .md file per entry-point command, carrying the full procedure that used
+                        to live in pipeline.md; read core + this file for any given command
+    pipeline.md, pipeline-lite.md, pipeline-gapfill.md, gap-scout-only.md,
+    planner.md, spec-only.md, red.md, dev.md, tester.md, review.md,
+    security.md, security-recheck.md, pipeline-status.md, re-gate.md,
+    inline-edit.md, hotfix.md
   runtimes.yml         — per-stage tool grants / model tier / hook wiring for .claude/
   bounds.md            — named lane vocabulary, enforced by scripts/check-bounds.mjs (PL-03d)
   hotfix.md            — the sanctioned bypass (D-005 #3), the one entry point that runs no stage
@@ -135,11 +146,10 @@ command-allowlist over Bash was tried and rejected on the merits, since a single
 executes project code (`poetry run pytest` running `conftest.py`) makes command-layer default-deny
 meaningless.
 
-`.claude/skills/*/SKILL.md` (the entry-point commands — `/pipeline`, `/spec-only`,
-`/pipeline-status`, `/security-recheck`, `/pipeline-lite`, `/pipeline-gapfill`, `/gap-scout-only`, `/inline-edit`, `/hotfix`, and
-`/pr-review`) are hand-authored but intentionally thin: each one points at its matching section of
-`.sdd/pipeline.md` (or, for `/hotfix`/`/pr-review`, their own neutral file — `.sdd/hotfix.md` /
-`.sdd/stages/pr-review.md`) rather than restating the procedure.
+`.claude/skills/*/SKILL.md` files are hand-authored but thin: each one reads `.sdd/pipeline.md`
+(core) then its own entrypoint file (`.sdd/entrypoints/<cmd>.md`) for the full procedure. Every
+pipeline command has a skill shim — `/pipeline`, `/pipeline-lite`, `/inline-edit`, `/hotfix`, etc.
+`/pr-review` is exempt (points at `.sdd/stages/pr-review.md`; not a pipeline entry point).
 
 **The second generated surface, added in PL-03c:** `.sdd/ledger/index.json` is generated the same
 way, from a different source. `scripts/build-ledger-index.mjs` reads every `.sdd/ledger/<run-id>/entry.md`

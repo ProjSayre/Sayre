@@ -7,11 +7,11 @@ argument-hint: (no arguments)
 
 Run only the dev stage.
 
-Follow `.sdd/pipeline.md`'s "`/dev`" section exactly — it is the authoritative, runtime-neutral
-definition of this command. Invoke the `dev` subagent; it writes `.pipeline/changes.md`/
-`changes.json` directly. Require `.pipeline/spec.md` to exist first — if it doesn't, say planner
-needs to run instead of improvising a spec. `dev` already knows, from its own stage file
-(`.sdd/stages/dev.md`), to treat a `NEEDS_FIXES` `review.json` or a `BLOCKED` `security.json` on
-disk as required fixes rather than a fresh implementation — this command does not need to detect or
-announce that case itself. Do not continue to `tester`, `review`, or `security-checker` — this
-command stops after dev, on purpose.
+Read `.sdd/pipeline.md` (core: stage sequence, routing, loop cap, staleness) then read
+`.sdd/entrypoints/dev.md` (the authoritative definition of this command). On a fix-loop
+(`NEEDS_FIXES`/`BLOCKED`), generate-then-invoke: run `scripts/write-fix-brief.mjs` before invoking
+the `dev` subagent, and do not invoke `dev` if the generator or freshness check refuses. Do not send
+fix-loop `dev` at full `spec.md` or scrape `review.md`. It writes `.pipeline/changes.md`/`changes.json`
+directly. Require `.pipeline/spec.md` to exist first — if it doesn't, say planner needs to run instead
+of improvising a spec. Do not continue to `tester`, `review`,
+or `security-checker` — this command stops after dev, on purpose.
